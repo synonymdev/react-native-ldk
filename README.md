@@ -16,7 +16,7 @@ This is my attempt at deconstructing what Lightning Labs has done with their Lig
    ```
     git clone https://github.com/coreyphillips/react-native-lightning
     cd react-native-lightning
-    yarn install && cd ../../ && cd ios && pod install && cd ..
+    yarn install && cd ios && pod install && cd ..
     ```
 3. Add the Lndmobile.aar & Lndmobile.framework files to the project:
     - Add the Lndmobile.aar file to `react-native-lightning/android/Lndmobile`
