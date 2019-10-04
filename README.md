@@ -2,8 +2,8 @@
 This is my attempt at deconstructing what Lightning Labs has done with their Lightning App. My goal is to use this as a playground for learning and experimentation prior to implementing it into [Moonshine](https://github.com/coreyphillips/moonshine).
 
 <p style="align-items: center">
-  <img src="./src/assets/screenshots/screenshot1.png" width="50%" alt="Screenshot 1" />
-  <img src="./src/assets/screenshots/screenshot2.png" width="50%" alt="Screenshot 2" />
+  <img src="./src/assets/screenshots/screenshot1.png" width="33%" alt="Screenshot 1" />
+  <img src="./src/assets/screenshots/screenshot2.png" width="33%" alt="Screenshot 2" />
 </p>
 
 ### Installation
@@ -16,7 +16,7 @@ This is my attempt at deconstructing what Lightning Labs has done with their Lig
    ```
     git clone https://github.com/coreyphillips/react-native-lightning
     cd react-native-lightning
-    yarn install && cd nodejs-assets/nodejs-project && yarn install && cd ../../ && cd ios && pod install && cd ..
+    yarn install && cd ../../ && cd ios && pod install && cd ..
     ```
 3. Add the Lndmobile.aar & Lndmobile.framework files to the project:
     - Add the Lndmobile.aar file to `react-native-lightning/android/Lndmobile`
