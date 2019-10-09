@@ -205,7 +205,7 @@ class LND {
 	
 	//TODO: Not working
 	async getBackup() {
-		return new Promise(async (resolve) => {
+		return new Promise(resolve => {
 			const failure = (data = "") => resolve({ error: true, data });
 			if (!this.isReady) return failure();
 			const timeout = setTimeout(() => {
@@ -217,10 +217,10 @@ class LND {
 					resolve({error: false, data});
 				});
 				stream.on("error", () => failure("Backup Failed!"));
-				//stream.write(JSON.stringify({}), 'utf8');
+				stream.on('status', status => console.log(`Channel backup status: ${status}`));
 			} catch (e) {
 				console.log(e);
-				failure("Backup Failed!");
+				return failure("Backup Failed!");
 			} finally {
 				try {clearTimeout(timeout);} catch (e) {}
 			}

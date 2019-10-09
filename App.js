@@ -59,7 +59,7 @@ const walletBalanceShape = {
 };
 
 const START_LND = true;
-this._updateDataInterval = null;
+this._updateDataInterval = {};
 
 const _Lightning = () => {
 	const [appState, setAppState] = useState(AppState.currentState);
@@ -140,7 +140,7 @@ const _Lightning = () => {
 				await updateData();
 				//Update info every 20 seconds.
 				clearInterval(this._updateDataInterval);
-				this._updateDataInterval = setInterval(() => updateData(), 5000);
+				this._updateDataInterval = setInterval(updateData, 5000);
 			}
 			AppState.addEventListener("change", _handleAppStateChange);
 			console.log(`LND is ready? ${lnd.isReady}`);
@@ -189,7 +189,13 @@ const _Lightning = () => {
 						value={lightningUri}
 						multiline={true}
 					/>
-					<Button onPress={() => payLightning({ lnd, uri: lightningUri })} text="Pay With Lightning" />
+					<Button
+						onPress={() => {
+							const paymentResponse = payLightning({ lnd, uri: lightningUri });
+							if (!paymentResponse.error) updateData();
+						}}
+						text="Pay With Lightning"
+					/>
 					<View style={styles.separator} />
 					
 					<TextInput
