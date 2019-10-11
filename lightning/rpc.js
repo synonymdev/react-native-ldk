@@ -18,7 +18,7 @@ export const lnrpc = $root.lnrpc = (() => {
 	 */
 	const lnrpc = {};
 	
-	lnrpc.WalletUnlocker = (function() {
+	lnrpc.WalletUnlocker = (function () {
 		
 		/**
 		 * Constructs a new WalletUnlocker service.
@@ -78,7 +78,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(WalletUnlocker.prototype.genSeed = function genSeed(request, callback) {
 			return this.rpcCall(genSeed, $root.lnrpc.GenSeedRequest, $root.lnrpc.GenSeedResponse, request, callback);
-		}, "name", { value: "GenSeed" });
+		}, "name", {value: "GenSeed"});
 		
 		/**
 		 * GenSeed is the first method that should be used to instantiate a new lnd
@@ -129,7 +129,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(WalletUnlocker.prototype.initWallet = function initWallet(request, callback) {
 			return this.rpcCall(initWallet, $root.lnrpc.InitWalletRequest, $root.lnrpc.InitWalletResponse, request, callback);
-		}, "name", { value: "InitWallet" });
+		}, "name", {value: "InitWallet"});
 		
 		/**
 		 * InitWallet is used when lnd is starting up for the first time to fully
@@ -175,7 +175,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(WalletUnlocker.prototype.unlockWallet = function unlockWallet(request, callback) {
 			return this.rpcCall(unlockWallet, $root.lnrpc.UnlockWalletRequest, $root.lnrpc.UnlockWalletResponse, request, callback);
-		}, "name", { value: "UnlockWallet" });
+		}, "name", {value: "UnlockWallet"});
 		
 		/**
 		 * lncli: `unlock`
@@ -212,7 +212,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(WalletUnlocker.prototype.changePassword = function changePassword(request, callback) {
 			return this.rpcCall(changePassword, $root.lnrpc.ChangePasswordRequest, $root.lnrpc.ChangePasswordResponse, request, callback);
-		}, "name", { value: "ChangePassword" });
+		}, "name", {value: "ChangePassword"});
 		
 		/**
 		 * lncli: `changepassword`
@@ -229,7 +229,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return WalletUnlocker;
 	})();
 	
-	lnrpc.GenSeedRequest = (function() {
+	lnrpc.GenSeedRequest = (function () {
 		
 		/**
 		 * Properties of a GenSeedRequest.
@@ -332,7 +332,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		GenSeedRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.GenSeedRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.GenSeedRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -461,7 +462,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return GenSeedRequest;
 	})();
 	
-	lnrpc.GenSeedResponse = (function() {
+	lnrpc.GenSeedResponse = (function () {
 		
 		/**
 		 * Properties of a GenSeedResponse.
@@ -572,7 +573,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		GenSeedResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.GenSeedResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.GenSeedResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -706,7 +708,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return GenSeedResponse;
 	})();
 	
-	lnrpc.InitWalletRequest = (function() {
+	lnrpc.InitWalletRequest = (function () {
 		
 		/**
 		 * Properties of an InitWalletRequest.
@@ -868,7 +870,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		InitWalletRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.InitWalletRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.InitWalletRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -1050,7 +1053,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return InitWalletRequest;
 	})();
 	
-	lnrpc.InitWalletResponse = (function() {
+	lnrpc.InitWalletResponse = (function () {
 		
 		/**
 		 * Properties of an InitWalletResponse.
@@ -1127,7 +1130,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		InitWalletResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.InitWalletResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.InitWalletResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -1210,7 +1214,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return InitWalletResponse;
 	})();
 	
-	lnrpc.UnlockWalletRequest = (function() {
+	lnrpc.UnlockWalletRequest = (function () {
 		
 		/**
 		 * Properties of an UnlockWalletRequest.
@@ -1342,7 +1346,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		UnlockWalletRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.UnlockWalletRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.UnlockWalletRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -1478,7 +1483,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return UnlockWalletRequest;
 	})();
 	
-	lnrpc.UnlockWalletResponse = (function() {
+	lnrpc.UnlockWalletResponse = (function () {
 		
 		/**
 		 * Properties of an UnlockWalletResponse.
@@ -1555,7 +1560,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		UnlockWalletResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.UnlockWalletResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.UnlockWalletResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -1638,7 +1644,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return UnlockWalletResponse;
 	})();
 	
-	lnrpc.ChangePasswordRequest = (function() {
+	lnrpc.ChangePasswordRequest = (function () {
 		
 		/**
 		 * Properties of a ChangePasswordRequest.
@@ -1741,7 +1747,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChangePasswordRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChangePasswordRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChangePasswordRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -1870,7 +1877,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChangePasswordRequest;
 	})();
 	
-	lnrpc.ChangePasswordResponse = (function() {
+	lnrpc.ChangePasswordResponse = (function () {
 		
 		/**
 		 * Properties of a ChangePasswordResponse.
@@ -1947,7 +1954,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChangePasswordResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChangePasswordResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChangePasswordResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -2030,7 +2038,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChangePasswordResponse;
 	})();
 	
-	lnrpc.Lightning = (function() {
+	lnrpc.Lightning = (function () {
 		
 		/**
 		 * Constructs a new Lightning service.
@@ -2086,7 +2094,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.walletBalance = function walletBalance(request, callback) {
 			return this.rpcCall(walletBalance, $root.lnrpc.WalletBalanceRequest, $root.lnrpc.WalletBalanceResponse, request, callback);
-		}, "name", { value: "WalletBalance" });
+		}, "name", {value: "WalletBalance"});
 		
 		/**
 		 * lncli: `walletbalance`
@@ -2124,7 +2132,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.channelBalance = function channelBalance(request, callback) {
 			return this.rpcCall(channelBalance, $root.lnrpc.ChannelBalanceRequest, $root.lnrpc.ChannelBalanceResponse, request, callback);
-		}, "name", { value: "ChannelBalance" });
+		}, "name", {value: "ChannelBalance"});
 		
 		/**
 		 * lncli: `channelbalance`
@@ -2161,7 +2169,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.getTransactions = function getTransactions(request, callback) {
 			return this.rpcCall(getTransactions, $root.lnrpc.GetTransactionsRequest, $root.lnrpc.TransactionDetails, request, callback);
-		}, "name", { value: "GetTransactions" });
+		}, "name", {value: "GetTransactions"});
 		
 		/**
 		 * lncli: `listchaintxns`
@@ -2198,7 +2206,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.estimateFee = function estimateFee(request, callback) {
 			return this.rpcCall(estimateFee, $root.lnrpc.EstimateFeeRequest, $root.lnrpc.EstimateFeeResponse, request, callback);
-		}, "name", { value: "EstimateFee" });
+		}, "name", {value: "EstimateFee"});
 		
 		/**
 		 * lncli: `estimatefee`
@@ -2238,7 +2246,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.sendCoins = function sendCoins(request, callback) {
 			return this.rpcCall(sendCoins, $root.lnrpc.SendCoinsRequest, $root.lnrpc.SendCoinsResponse, request, callback);
-		}, "name", { value: "SendCoins" });
+		}, "name", {value: "SendCoins"});
 		
 		/**
 		 * lncli: `sendcoins`
@@ -2278,7 +2286,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.listUnspent = function listUnspent(request, callback) {
 			return this.rpcCall(listUnspent, $root.lnrpc.ListUnspentRequest, $root.lnrpc.ListUnspentResponse, request, callback);
-		}, "name", { value: "ListUnspent" });
+		}, "name", {value: "ListUnspent"});
 		
 		/**
 		 * lncli: `listunspent`
@@ -2315,7 +2323,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.subscribeTransactions = function subscribeTransactions(request, callback) {
 			return this.rpcCall(subscribeTransactions, $root.lnrpc.GetTransactionsRequest, $root.lnrpc.Transaction, request, callback);
-		}, "name", { value: "SubscribeTransactions" });
+		}, "name", {value: "SubscribeTransactions"});
 		
 		/**
 		 * SubscribeTransactions creates a uni-directional stream from the server to
@@ -2354,7 +2362,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.sendMany = function sendMany(request, callback) {
 			return this.rpcCall(sendMany, $root.lnrpc.SendManyRequest, $root.lnrpc.SendManyResponse, request, callback);
-		}, "name", { value: "SendMany" });
+		}, "name", {value: "SendMany"});
 		
 		/**
 		 * lncli: `sendmany`
@@ -2392,7 +2400,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.newAddress = function newAddress(request, callback) {
 			return this.rpcCall(newAddress, $root.lnrpc.NewAddressRequest, $root.lnrpc.NewAddressResponse, request, callback);
-		}, "name", { value: "NewAddress" });
+		}, "name", {value: "NewAddress"});
 		
 		/**
 		 * lncli: `newaddress`
@@ -2429,7 +2437,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.signMessage = function signMessage(request, callback) {
 			return this.rpcCall(signMessage, $root.lnrpc.SignMessageRequest, $root.lnrpc.SignMessageResponse, request, callback);
-		}, "name", { value: "SignMessage" });
+		}, "name", {value: "SignMessage"});
 		
 		/**
 		 * lncli: `signmessage`
@@ -2469,7 +2477,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.verifyMessage = function verifyMessage(request, callback) {
 			return this.rpcCall(verifyMessage, $root.lnrpc.VerifyMessageRequest, $root.lnrpc.VerifyMessageResponse, request, callback);
-		}, "name", { value: "VerifyMessage" });
+		}, "name", {value: "VerifyMessage"});
 		
 		/**
 		 * lncli: `verifymessage`
@@ -2509,7 +2517,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.connectPeer = function connectPeer(request, callback) {
 			return this.rpcCall(connectPeer, $root.lnrpc.ConnectPeerRequest, $root.lnrpc.ConnectPeerResponse, request, callback);
-		}, "name", { value: "ConnectPeer" });
+		}, "name", {value: "ConnectPeer"});
 		
 		/**
 		 * lncli: `connect`
@@ -2548,7 +2556,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.disconnectPeer = function disconnectPeer(request, callback) {
 			return this.rpcCall(disconnectPeer, $root.lnrpc.DisconnectPeerRequest, $root.lnrpc.DisconnectPeerResponse, request, callback);
-		}, "name", { value: "DisconnectPeer" });
+		}, "name", {value: "DisconnectPeer"});
 		
 		/**
 		 * lncli: `disconnect`
@@ -2585,7 +2593,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.listPeers = function listPeers(request, callback) {
 			return this.rpcCall(listPeers, $root.lnrpc.ListPeersRequest, $root.lnrpc.ListPeersResponse, request, callback);
-		}, "name", { value: "ListPeers" });
+		}, "name", {value: "ListPeers"});
 		
 		/**
 		 * lncli: `listpeers`
@@ -2622,7 +2630,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.getInfo = function getInfo(request, callback) {
 			return this.rpcCall(getInfo, $root.lnrpc.GetInfoRequest, $root.lnrpc.GetInfoResponse, request, callback);
-		}, "name", { value: "GetInfo" });
+		}, "name", {value: "GetInfo"});
 		
 		/**
 		 * lncli: `getinfo`
@@ -2662,7 +2670,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.pendingChannels = function pendingChannels(request, callback) {
 			return this.rpcCall(pendingChannels, $root.lnrpc.PendingChannelsRequest, $root.lnrpc.PendingChannelsResponse, request, callback);
-		}, "name", { value: "PendingChannels" });
+		}, "name", {value: "PendingChannels"});
 		
 		/**
 		 * lncli: `pendingchannels`
@@ -2701,7 +2709,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.listChannels = function listChannels(request, callback) {
 			return this.rpcCall(listChannels, $root.lnrpc.ListChannelsRequest, $root.lnrpc.ListChannelsResponse, request, callback);
-		}, "name", { value: "ListChannels" });
+		}, "name", {value: "ListChannels"});
 		
 		/**
 		 * lncli: `listchannels`
@@ -2740,7 +2748,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.subscribeChannelEvents = function subscribeChannelEvents(request, callback) {
 			return this.rpcCall(subscribeChannelEvents, $root.lnrpc.ChannelEventSubscription, $root.lnrpc.ChannelEventUpdate, request, callback);
-		}, "name", { value: "SubscribeChannelEvents" });
+		}, "name", {value: "SubscribeChannelEvents"});
 		
 		/**
 		 * lncli: `subscribechannelevents`
@@ -2779,7 +2787,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.closedChannels = function closedChannels(request, callback) {
 			return this.rpcCall(closedChannels, $root.lnrpc.ClosedChannelsRequest, $root.lnrpc.ClosedChannelsResponse, request, callback);
-		}, "name", { value: "ClosedChannels" });
+		}, "name", {value: "ClosedChannels"});
 		
 		/**
 		 * lncli: `closedchannels`
@@ -2817,7 +2825,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.openChannelSync = function openChannelSync(request, callback) {
 			return this.rpcCall(openChannelSync, $root.lnrpc.OpenChannelRequest, $root.lnrpc.ChannelPoint, request, callback);
-		}, "name", { value: "OpenChannelSync" });
+		}, "name", {value: "OpenChannelSync"});
 		
 		/**
 		 * OpenChannelSync is a synchronous version of the OpenChannel RPC call. This
@@ -2858,7 +2866,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.openChannel = function openChannel(request, callback) {
 			return this.rpcCall(openChannel, $root.lnrpc.OpenChannelRequest, $root.lnrpc.OpenStatusUpdate, request, callback);
-		}, "name", { value: "OpenChannel" });
+		}, "name", {value: "OpenChannel"});
 		
 		/**
 		 * lncli: `openchannel`
@@ -2903,7 +2911,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.closeChannel = function closeChannel(request, callback) {
 			return this.rpcCall(closeChannel, $root.lnrpc.CloseChannelRequest, $root.lnrpc.CloseStatusUpdate, request, callback);
-		}, "name", { value: "CloseChannel" });
+		}, "name", {value: "CloseChannel"});
 		
 		/**
 		 * lncli: `closechannel`
@@ -2947,7 +2955,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.abandonChannel = function abandonChannel(request, callback) {
 			return this.rpcCall(abandonChannel, $root.lnrpc.AbandonChannelRequest, $root.lnrpc.AbandonChannelResponse, request, callback);
-		}, "name", { value: "AbandonChannel" });
+		}, "name", {value: "AbandonChannel"});
 		
 		/**
 		 * lncli: `abandonchannel`
@@ -2988,7 +2996,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.sendPayment = function sendPayment(request, callback) {
 			return this.rpcCall(sendPayment, $root.lnrpc.SendRequest, $root.lnrpc.SendResponse, request, callback);
-		}, "name", { value: "SendPayment" });
+		}, "name", {value: "SendPayment"});
 		
 		/**
 		 * lncli: `sendpayment`
@@ -3028,7 +3036,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.sendPaymentSync = function sendPaymentSync(request, callback) {
 			return this.rpcCall(sendPaymentSync, $root.lnrpc.SendRequest, $root.lnrpc.SendResponse, request, callback);
-		}, "name", { value: "SendPaymentSync" });
+		}, "name", {value: "SendPaymentSync"});
 		
 		/**
 		 * SendPaymentSync is the synchronous non-streaming version of SendPayment.
@@ -3068,7 +3076,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.sendToRoute = function sendToRoute(request, callback) {
 			return this.rpcCall(sendToRoute, $root.lnrpc.SendToRouteRequest, $root.lnrpc.SendResponse, request, callback);
-		}, "name", { value: "SendToRoute" });
+		}, "name", {value: "SendToRoute"});
 		
 		/**
 		 * lncli: `sendtoroute`
@@ -3106,7 +3114,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.sendToRouteSync = function sendToRouteSync(request, callback) {
 			return this.rpcCall(sendToRouteSync, $root.lnrpc.SendToRouteRequest, $root.lnrpc.SendResponse, request, callback);
-		}, "name", { value: "SendToRouteSync" });
+		}, "name", {value: "SendToRouteSync"});
 		
 		/**
 		 * SendToRouteSync is a synchronous version of SendToRoute. It Will block
@@ -3143,7 +3151,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.addInvoice = function addInvoice(request, callback) {
 			return this.rpcCall(addInvoice, $root.lnrpc.Invoice, $root.lnrpc.AddInvoiceResponse, request, callback);
-		}, "name", { value: "AddInvoice" });
+		}, "name", {value: "AddInvoice"});
 		
 		/**
 		 * lncli: `addinvoice`
@@ -3186,7 +3194,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.listInvoices = function listInvoices(request, callback) {
 			return this.rpcCall(listInvoices, $root.lnrpc.ListInvoiceRequest, $root.lnrpc.ListInvoiceResponse, request, callback);
-		}, "name", { value: "ListInvoices" });
+		}, "name", {value: "ListInvoices"});
 		
 		/**
 		 * lncli: `listinvoices`
@@ -3229,7 +3237,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.lookupInvoice = function lookupInvoice(request, callback) {
 			return this.rpcCall(lookupInvoice, $root.lnrpc.PaymentHash, $root.lnrpc.Invoice, request, callback);
-		}, "name", { value: "LookupInvoice" });
+		}, "name", {value: "LookupInvoice"});
 		
 		/**
 		 * lncli: `lookupinvoice`
@@ -3273,7 +3281,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.subscribeInvoices = function subscribeInvoices(request, callback) {
 			return this.rpcCall(subscribeInvoices, $root.lnrpc.InvoiceSubscription, $root.lnrpc.Invoice, request, callback);
-		}, "name", { value: "SubscribeInvoices" });
+		}, "name", {value: "SubscribeInvoices"});
 		
 		/**
 		 * SubscribeInvoices returns a uni-directional stream (server -> client) for
@@ -3317,7 +3325,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.decodePayReq = function decodePayReq(request, callback) {
 			return this.rpcCall(decodePayReq, $root.lnrpc.PayReqString, $root.lnrpc.PayReq, request, callback);
-		}, "name", { value: "DecodePayReq" });
+		}, "name", {value: "DecodePayReq"});
 		
 		/**
 		 * lncli: `decodepayreq`
@@ -3354,7 +3362,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.listPayments = function listPayments(request, callback) {
 			return this.rpcCall(listPayments, $root.lnrpc.ListPaymentsRequest, $root.lnrpc.ListPaymentsResponse, request, callback);
-		}, "name", { value: "ListPayments" });
+		}, "name", {value: "ListPayments"});
 		
 		/**
 		 * lncli: `listpayments`
@@ -3388,7 +3396,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.deleteAllPayments = function deleteAllPayments(request, callback) {
 			return this.rpcCall(deleteAllPayments, $root.lnrpc.DeleteAllPaymentsRequest, $root.lnrpc.DeleteAllPaymentsResponse, request, callback);
-		}, "name", { value: "DeleteAllPayments" });
+		}, "name", {value: "DeleteAllPayments"});
 		
 		/**
 		 * DeleteAllPayments deletes all outgoing payments from DB.
@@ -3427,7 +3435,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.describeGraph = function describeGraph(request, callback) {
 			return this.rpcCall(describeGraph, $root.lnrpc.ChannelGraphRequest, $root.lnrpc.ChannelGraph, request, callback);
-		}, "name", { value: "DescribeGraph" });
+		}, "name", {value: "DescribeGraph"});
 		
 		/**
 		 * lncli: `describegraph`
@@ -3470,7 +3478,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.getChanInfo = function getChanInfo(request, callback) {
 			return this.rpcCall(getChanInfo, $root.lnrpc.ChanInfoRequest, $root.lnrpc.ChannelEdge, request, callback);
-		}, "name", { value: "GetChanInfo" });
+		}, "name", {value: "GetChanInfo"});
 		
 		/**
 		 * lncli: `getchaninfo`
@@ -3509,7 +3517,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.getNodeInfo = function getNodeInfo(request, callback) {
 			return this.rpcCall(getNodeInfo, $root.lnrpc.NodeInfoRequest, $root.lnrpc.NodeInfo, request, callback);
-		}, "name", { value: "GetNodeInfo" });
+		}, "name", {value: "GetNodeInfo"});
 		
 		/**
 		 * lncli: `getnodeinfo`
@@ -3549,7 +3557,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.queryRoutes = function queryRoutes(request, callback) {
 			return this.rpcCall(queryRoutes, $root.lnrpc.QueryRoutesRequest, $root.lnrpc.QueryRoutesResponse, request, callback);
-		}, "name", { value: "QueryRoutes" });
+		}, "name", {value: "QueryRoutes"});
 		
 		/**
 		 * lncli: `queryroutes`
@@ -3589,7 +3597,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.getNetworkInfo = function getNetworkInfo(request, callback) {
 			return this.rpcCall(getNetworkInfo, $root.lnrpc.NetworkInfoRequest, $root.lnrpc.NetworkInfo, request, callback);
-		}, "name", { value: "GetNetworkInfo" });
+		}, "name", {value: "GetNetworkInfo"});
 		
 		/**
 		 * lncli: `getnetworkinfo`
@@ -3626,7 +3634,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.stopDaemon = function stopDaemon(request, callback) {
 			return this.rpcCall(stopDaemon, $root.lnrpc.StopRequest, $root.lnrpc.StopResponse, request, callback);
-		}, "name", { value: "StopDaemon" });
+		}, "name", {value: "StopDaemon"});
 		
 		/**
 		 * lncli: `stop`
@@ -3666,7 +3674,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.subscribeChannelGraph = function subscribeChannelGraph(request, callback) {
 			return this.rpcCall(subscribeChannelGraph, $root.lnrpc.GraphTopologySubscription, $root.lnrpc.GraphTopologyUpdate, request, callback);
-		}, "name", { value: "SubscribeChannelGraph" });
+		}, "name", {value: "SubscribeChannelGraph"});
 		
 		/**
 		 * SubscribeChannelGraph launches a streaming RPC that allows the caller to
@@ -3708,7 +3716,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.debugLevel = function debugLevel(request, callback) {
 			return this.rpcCall(debugLevel, $root.lnrpc.DebugLevelRequest, $root.lnrpc.DebugLevelResponse, request, callback);
-		}, "name", { value: "DebugLevel" });
+		}, "name", {value: "DebugLevel"});
 		
 		/**
 		 * lncli: `debuglevel`
@@ -3747,7 +3755,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.feeReport = function feeReport(request, callback) {
 			return this.rpcCall(feeReport, $root.lnrpc.FeeReportRequest, $root.lnrpc.FeeReportResponse, request, callback);
-		}, "name", { value: "FeeReport" });
+		}, "name", {value: "FeeReport"});
 		
 		/**
 		 * lncli: `feereport`
@@ -3784,7 +3792,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.updateChannelPolicy = function updateChannelPolicy(request, callback) {
 			return this.rpcCall(updateChannelPolicy, $root.lnrpc.PolicyUpdateRequest, $root.lnrpc.PolicyUpdateResponse, request, callback);
-		}, "name", { value: "UpdateChannelPolicy" });
+		}, "name", {value: "UpdateChannelPolicy"});
 		
 		/**
 		 * lncli: `updatechanpolicy`
@@ -3829,7 +3837,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.forwardingHistory = function forwardingHistory(request, callback) {
 			return this.rpcCall(forwardingHistory, $root.lnrpc.ForwardingHistoryRequest, $root.lnrpc.ForwardingHistoryResponse, request, callback);
-		}, "name", { value: "ForwardingHistory" });
+		}, "name", {value: "ForwardingHistory"});
 		
 		/**
 		 * lncli: `fwdinghistory`
@@ -3878,7 +3886,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.exportChannelBackup = function exportChannelBackup(request, callback) {
 			return this.rpcCall(exportChannelBackup, $root.lnrpc.ExportChannelBackupRequest, $root.lnrpc.ChannelBackup, request, callback);
-		}, "name", { value: "ExportChannelBackup" });
+		}, "name", {value: "ExportChannelBackup"});
 		
 		/**
 		 * lncli: `exportchanbackup`
@@ -3921,7 +3929,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.exportAllChannelBackups = function exportAllChannelBackups(request, callback) {
 			return this.rpcCall(exportAllChannelBackups, $root.lnrpc.ChanBackupExportRequest, $root.lnrpc.ChanBackupSnapshot, request, callback);
-		}, "name", { value: "ExportAllChannelBackups" });
+		}, "name", {value: "ExportAllChannelBackups"});
 		
 		/**
 		 * ExportAllChannelBackups returns static channel backups for all existing
@@ -3960,7 +3968,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.verifyChanBackup = function verifyChanBackup(request, callback) {
 			return this.rpcCall(verifyChanBackup, $root.lnrpc.ChanBackupSnapshot, $root.lnrpc.VerifyChanBackupResponse, request, callback);
-		}, "name", { value: "VerifyChanBackup" });
+		}, "name", {value: "VerifyChanBackup"});
 		
 		/**
 		 * VerifyChanBackup allows a caller to verify the integrity of a channel backup
@@ -3999,7 +4007,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.restoreChannelBackups = function restoreChannelBackups(request, callback) {
 			return this.rpcCall(restoreChannelBackups, $root.lnrpc.RestoreChanBackupRequest, $root.lnrpc.RestoreBackupResponse, request, callback);
-		}, "name", { value: "RestoreChannelBackups" });
+		}, "name", {value: "RestoreChannelBackups"});
 		
 		/**
 		 * lncli: `restorechanbackup`
@@ -4042,7 +4050,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Lightning.prototype.subscribeChannelBackups = function subscribeChannelBackups(request, callback) {
 			return this.rpcCall(subscribeChannelBackups, $root.lnrpc.ChannelBackupSubscription, $root.lnrpc.ChanBackupSnapshot, request, callback);
-		}, "name", { value: "SubscribeChannelBackups" });
+		}, "name", {value: "SubscribeChannelBackups"});
 		
 		/**
 		 * SubscribeChannelBackups allows a client to sub-subscribe to the most up to
@@ -4063,7 +4071,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Lightning;
 	})();
 	
-	lnrpc.Utxo = (function() {
+	lnrpc.Utxo = (function () {
 		
 		/**
 		 * Properties of an Utxo.
@@ -4114,7 +4122,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Utxo
 		 * @instance
 		 */
-		Utxo.prototype.amountSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Utxo.prototype.amountSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The pkscript in hex
@@ -4138,7 +4146,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Utxo
 		 * @instance
 		 */
-		Utxo.prototype.confirmations = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Utxo.prototype.confirmations = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Creates a new Utxo instance using the specified properties.
@@ -4417,7 +4425,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Utxo;
 	})();
 	
-	lnrpc.Transaction = (function() {
+	lnrpc.Transaction = (function () {
 		
 		/**
 		 * Properties of a Transaction.
@@ -4464,7 +4472,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Transaction
 		 * @instance
 		 */
-		Transaction.prototype.amount = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Transaction.prototype.amount = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The number of confirmations
@@ -4496,7 +4504,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Transaction
 		 * @instance
 		 */
-		Transaction.prototype.timeStamp = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Transaction.prototype.timeStamp = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Fees paid for this transaction
@@ -4504,7 +4512,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Transaction
 		 * @instance
 		 */
-		Transaction.prototype.totalFees = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Transaction.prototype.totalFees = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Addresses that received funds for this transaction
@@ -4840,7 +4848,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Transaction;
 	})();
 	
-	lnrpc.GetTransactionsRequest = (function() {
+	lnrpc.GetTransactionsRequest = (function () {
 		
 		/**
 		 * Properties of a GetTransactionsRequest.
@@ -4917,7 +4925,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		GetTransactionsRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.GetTransactionsRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.GetTransactionsRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -5000,7 +5009,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return GetTransactionsRequest;
 	})();
 	
-	lnrpc.TransactionDetails = (function() {
+	lnrpc.TransactionDetails = (function () {
 		
 		/**
 		 * Properties of a TransactionDetails.
@@ -5090,7 +5099,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		TransactionDetails.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.TransactionDetails();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.TransactionDetails();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -5208,7 +5218,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return TransactionDetails;
 	})();
 	
-	lnrpc.FeeLimit = (function() {
+	lnrpc.FeeLimit = (function () {
 		
 		/**
 		 * Properties of a FeeLimit.
@@ -5239,7 +5249,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.FeeLimit
 		 * @instance
 		 */
-		FeeLimit.prototype.fixed = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		FeeLimit.prototype.fixed = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The fee limit expressed as a percentage of the payment amount.
@@ -5247,7 +5257,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.FeeLimit
 		 * @instance
 		 */
-		FeeLimit.prototype.percent = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		FeeLimit.prototype.percent = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		// OneOf field names bound to virtual getters and setters
 		let $oneOfFields;
@@ -5461,7 +5471,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return FeeLimit;
 	})();
 	
-	lnrpc.SendRequest = (function() {
+	lnrpc.SendRequest = (function () {
 		
 		/**
 		 * Properties of a SendRequest.
@@ -5524,7 +5534,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.SendRequest
 		 * @instance
 		 */
-		SendRequest.prototype.amt = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		SendRequest.prototype.amt = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The hash to use within the payment's HTLC
@@ -5579,7 +5589,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.SendRequest
 		 * @instance
 		 */
-		SendRequest.prototype.outgoingChanId = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		SendRequest.prototype.outgoingChanId = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * An optional maximum total time lock for the route. If zero, there is no
@@ -5914,7 +5924,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return SendRequest;
 	})();
 	
-	lnrpc.SendResponse = (function() {
+	lnrpc.SendResponse = (function () {
 		
 		/**
 		 * Properties of a SendResponse.
@@ -6191,7 +6201,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return SendResponse;
 	})();
 	
-	lnrpc.SendToRouteRequest = (function() {
+	lnrpc.SendToRouteRequest = (function () {
 		
 		/**
 		 * Properties of a SendToRouteRequest.
@@ -6301,7 +6311,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		SendToRouteRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.SendToRouteRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.SendToRouteRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -6437,7 +6448,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return SendToRouteRequest;
 	})();
 	
-	lnrpc.ChannelPoint = (function() {
+	lnrpc.ChannelPoint = (function () {
 		
 		/**
 		 * Properties of a ChannelPoint.
@@ -6696,7 +6707,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelPoint;
 	})();
 	
-	lnrpc.OutPoint = (function() {
+	lnrpc.OutPoint = (function () {
 		
 		/**
 		 * Properties of an OutPoint.
@@ -6937,7 +6948,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return OutPoint;
 	})();
 	
-	lnrpc.LightningAddress = (function() {
+	lnrpc.LightningAddress = (function () {
 		
 		/**
 		 * Properties of a LightningAddress.
@@ -7036,7 +7047,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		LightningAddress.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.LightningAddress();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.LightningAddress();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -7147,7 +7159,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return LightningAddress;
 	})();
 	
-	lnrpc.EstimateFeeRequest = (function() {
+	lnrpc.EstimateFeeRequest = (function () {
 		
 		/**
 		 * Properties of an EstimateFeeRequest.
@@ -7248,7 +7260,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		EstimateFeeRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.EstimateFeeRequest(), key;
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.EstimateFeeRequest(), key;
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -7388,7 +7401,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return EstimateFeeRequest;
 	})();
 	
-	lnrpc.EstimateFeeResponse = (function() {
+	lnrpc.EstimateFeeResponse = (function () {
 		
 		/**
 		 * Properties of an EstimateFeeResponse.
@@ -7419,7 +7432,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.EstimateFeeResponse
 		 * @instance
 		 */
-		EstimateFeeResponse.prototype.feeSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		EstimateFeeResponse.prototype.feeSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The fee rate in satoshi/byte.
@@ -7427,7 +7440,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.EstimateFeeResponse
 		 * @instance
 		 */
-		EstimateFeeResponse.prototype.feerateSatPerByte = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		EstimateFeeResponse.prototype.feerateSatPerByte = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Creates a new EstimateFeeResponse instance using the specified properties.
@@ -7487,7 +7500,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		EstimateFeeResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.EstimateFeeResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.EstimateFeeResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -7626,7 +7640,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return EstimateFeeResponse;
 	})();
 	
-	lnrpc.SendManyRequest = (function() {
+	lnrpc.SendManyRequest = (function () {
 		
 		/**
 		 * Properties of a SendManyRequest.
@@ -7675,7 +7689,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.SendManyRequest
 		 * @instance
 		 */
-		SendManyRequest.prototype.satPerByte = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		SendManyRequest.prototype.satPerByte = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Creates a new SendManyRequest instance using the specified properties.
@@ -7738,7 +7752,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		SendManyRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.SendManyRequest(), key;
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.SendManyRequest(), key;
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -7904,7 +7919,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return SendManyRequest;
 	})();
 	
-	lnrpc.SendManyResponse = (function() {
+	lnrpc.SendManyResponse = (function () {
 		
 		/**
 		 * Properties of a SendManyResponse.
@@ -7992,7 +8007,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		SendManyResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.SendManyResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.SendManyResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -8091,7 +8107,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return SendManyResponse;
 	})();
 	
-	lnrpc.SendCoinsRequest = (function() {
+	lnrpc.SendCoinsRequest = (function () {
 		
 		/**
 		 * Properties of a SendCoinsRequest.
@@ -8135,7 +8151,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.SendCoinsRequest
 		 * @instance
 		 */
-		SendCoinsRequest.prototype.amount = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		SendCoinsRequest.prototype.amount = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The target number of blocks that this transaction should be confirmed by.
@@ -8151,7 +8167,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.SendCoinsRequest
 		 * @instance
 		 */
-		SendCoinsRequest.prototype.satPerByte = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		SendCoinsRequest.prototype.satPerByte = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * If set, then the amount field will be ignored, and lnd will attempt to
@@ -8227,7 +8243,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		SendCoinsRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.SendCoinsRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.SendCoinsRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -8399,7 +8416,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return SendCoinsRequest;
 	})();
 	
-	lnrpc.SendCoinsResponse = (function() {
+	lnrpc.SendCoinsResponse = (function () {
 		
 		/**
 		 * Properties of a SendCoinsResponse.
@@ -8487,7 +8504,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		SendCoinsResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.SendCoinsResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.SendCoinsResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -8586,7 +8604,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return SendCoinsResponse;
 	})();
 	
-	lnrpc.ListUnspentRequest = (function() {
+	lnrpc.ListUnspentRequest = (function () {
 		
 		/**
 		 * Properties of a ListUnspentRequest.
@@ -8685,7 +8703,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ListUnspentRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ListUnspentRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ListUnspentRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -8796,7 +8815,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ListUnspentRequest;
 	})();
 	
-	lnrpc.ListUnspentResponse = (function() {
+	lnrpc.ListUnspentResponse = (function () {
 		
 		/**
 		 * Properties of a ListUnspentResponse.
@@ -8886,7 +8905,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ListUnspentResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ListUnspentResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ListUnspentResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -9016,7 +9036,7 @@ export const lnrpc = $root.lnrpc = (() => {
 	 * @property {number} UNUSED_WITNESS_PUBKEY_HASH=2 UNUSED_WITNESS_PUBKEY_HASH value
 	 * @property {number} UNUSED_NESTED_PUBKEY_HASH=3 UNUSED_NESTED_PUBKEY_HASH value
 	 */
-	lnrpc.AddressType = (function() {
+	lnrpc.AddressType = (function () {
 		const valuesById = {}, values = Object.create(valuesById);
 		values[valuesById[0] = "WITNESS_PUBKEY_HASH"] = 0;
 		values[valuesById[1] = "NESTED_PUBKEY_HASH"] = 1;
@@ -9025,7 +9045,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return values;
 	})();
 	
-	lnrpc.NewAddressRequest = (function() {
+	lnrpc.NewAddressRequest = (function () {
 		
 		/**
 		 * Properties of a NewAddressRequest.
@@ -9113,7 +9133,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		NewAddressRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.NewAddressRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.NewAddressRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -9235,7 +9256,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return NewAddressRequest;
 	})();
 	
-	lnrpc.NewAddressResponse = (function() {
+	lnrpc.NewAddressResponse = (function () {
 		
 		/**
 		 * Properties of a NewAddressResponse.
@@ -9323,7 +9344,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		NewAddressResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.NewAddressResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.NewAddressResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -9422,7 +9444,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return NewAddressResponse;
 	})();
 	
-	lnrpc.SignMessageRequest = (function() {
+	lnrpc.SignMessageRequest = (function () {
 		
 		/**
 		 * Properties of a SignMessageRequest.
@@ -9510,7 +9532,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		SignMessageRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.SignMessageRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.SignMessageRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -9618,7 +9641,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return SignMessageRequest;
 	})();
 	
-	lnrpc.SignMessageResponse = (function() {
+	lnrpc.SignMessageResponse = (function () {
 		
 		/**
 		 * Properties of a SignMessageResponse.
@@ -9706,7 +9729,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		SignMessageResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.SignMessageResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.SignMessageResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -9805,7 +9829,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return SignMessageResponse;
 	})();
 	
-	lnrpc.VerifyMessageRequest = (function() {
+	lnrpc.VerifyMessageRequest = (function () {
 		
 		/**
 		 * Properties of a VerifyMessageRequest.
@@ -9904,7 +9928,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		VerifyMessageRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.VerifyMessageRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.VerifyMessageRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -10024,7 +10049,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return VerifyMessageRequest;
 	})();
 	
-	lnrpc.VerifyMessageResponse = (function() {
+	lnrpc.VerifyMessageResponse = (function () {
 		
 		/**
 		 * Properties of a VerifyMessageResponse.
@@ -10123,7 +10148,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		VerifyMessageResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.VerifyMessageResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.VerifyMessageResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -10234,7 +10260,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return VerifyMessageResponse;
 	})();
 	
-	lnrpc.ConnectPeerRequest = (function() {
+	lnrpc.ConnectPeerRequest = (function () {
 		
 		/**
 		 * Properties of a ConnectPeerRequest.
@@ -10335,7 +10361,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ConnectPeerRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ConnectPeerRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ConnectPeerRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -10451,7 +10478,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ConnectPeerRequest;
 	})();
 	
-	lnrpc.ConnectPeerResponse = (function() {
+	lnrpc.ConnectPeerResponse = (function () {
 		
 		/**
 		 * Properties of a ConnectPeerResponse.
@@ -10528,7 +10555,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ConnectPeerResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ConnectPeerResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ConnectPeerResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -10611,7 +10639,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ConnectPeerResponse;
 	})();
 	
-	lnrpc.DisconnectPeerRequest = (function() {
+	lnrpc.DisconnectPeerRequest = (function () {
 		
 		/**
 		 * Properties of a DisconnectPeerRequest.
@@ -10699,7 +10727,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		DisconnectPeerRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.DisconnectPeerRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.DisconnectPeerRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -10798,7 +10827,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return DisconnectPeerRequest;
 	})();
 	
-	lnrpc.DisconnectPeerResponse = (function() {
+	lnrpc.DisconnectPeerResponse = (function () {
 		
 		/**
 		 * Properties of a DisconnectPeerResponse.
@@ -10875,7 +10904,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		DisconnectPeerResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.DisconnectPeerResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.DisconnectPeerResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -10958,7 +10988,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return DisconnectPeerResponse;
 	})();
 	
-	lnrpc.HTLC = (function() {
+	lnrpc.HTLC = (function () {
 		
 		/**
 		 * Properties of a HTLC.
@@ -10999,7 +11029,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.HTLC
 		 * @instance
 		 */
-		HTLC.prototype.amount = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		HTLC.prototype.amount = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * HTLC hashLock.
@@ -11235,7 +11265,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return HTLC;
 	})();
 	
-	lnrpc.Channel = (function() {
+	lnrpc.Channel = (function () {
 		
 		/**
 		 * Properties of a Channel.
@@ -11324,7 +11354,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.chanId = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		Channel.prototype.chanId = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The total amount of funds held in this channel
@@ -11332,7 +11362,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.capacity = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.capacity = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * This node's current balance in this channel
@@ -11340,7 +11370,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.localBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.localBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The counterparty's current balance in this channel
@@ -11348,7 +11378,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.remoteBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.remoteBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The amount calculated to be paid in fees for the current set of commitment
@@ -11359,7 +11389,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.commitFee = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.commitFee = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The weight of the commitment transaction
@@ -11367,7 +11397,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.commitWeight = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.commitWeight = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The required number of satoshis per kilo-weight that the requester will pay
@@ -11377,7 +11407,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.feePerKw = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.feePerKw = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The unsettled balance in this channel
@@ -11385,7 +11415,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.unsettledBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.unsettledBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The total number of satoshis we've sent within this channel.
@@ -11393,7 +11423,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.totalSatoshisSent = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.totalSatoshisSent = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The total number of satoshis we've received within this channel.
@@ -11401,7 +11431,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.totalSatoshisReceived = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.totalSatoshisReceived = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The total number of updates conducted within this channel.
@@ -11409,7 +11439,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.numUpdates = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		Channel.prototype.numUpdates = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The list of active, uncleared HTLCs currently pending within the channel.
@@ -11458,7 +11488,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.localChanReserveSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.localChanReserveSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The minimum satoshis the other node is required to reserve in its balance.
@@ -11466,7 +11496,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Channel
 		 * @instance
 		 */
-		Channel.prototype.remoteChanReserveSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Channel.prototype.remoteChanReserveSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Creates a new Channel instance using the specified properties.
@@ -12087,7 +12117,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Channel;
 	})();
 	
-	lnrpc.ListChannelsRequest = (function() {
+	lnrpc.ListChannelsRequest = (function () {
 		
 		/**
 		 * Properties of a ListChannelsRequest.
@@ -12208,7 +12238,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ListChannelsRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ListChannelsRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ListChannelsRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -12341,7 +12372,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ListChannelsRequest;
 	})();
 	
-	lnrpc.ListChannelsResponse = (function() {
+	lnrpc.ListChannelsResponse = (function () {
 		
 		/**
 		 * Properties of a ListChannelsResponse.
@@ -12431,7 +12462,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ListChannelsResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ListChannelsResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ListChannelsResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -12549,7 +12581,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ListChannelsResponse;
 	})();
 	
-	lnrpc.ChannelCloseSummary = (function() {
+	lnrpc.ChannelCloseSummary = (function () {
 		
 		/**
 		 * Properties of a ChannelCloseSummary.
@@ -12596,7 +12628,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelCloseSummary
 		 * @instance
 		 */
-		ChannelCloseSummary.prototype.chanId = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ChannelCloseSummary.prototype.chanId = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The hash of the genesis block that this channel resides within.
@@ -12628,7 +12660,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelCloseSummary
 		 * @instance
 		 */
-		ChannelCloseSummary.prototype.capacity = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		ChannelCloseSummary.prototype.capacity = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Height at which the funding transaction was spent.
@@ -12644,7 +12676,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelCloseSummary
 		 * @instance
 		 */
-		ChannelCloseSummary.prototype.settledBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		ChannelCloseSummary.prototype.settledBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The sum of all the time-locked outputs at the time of channel closure
@@ -12652,7 +12684,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelCloseSummary
 		 * @instance
 		 */
-		ChannelCloseSummary.prototype.timeLockedBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		ChannelCloseSummary.prototype.timeLockedBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Details on how the channel was closed.
@@ -12736,7 +12768,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelCloseSummary.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelCloseSummary();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelCloseSummary();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -13032,7 +13065,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @property {number} FUNDING_CANCELED=4 FUNDING_CANCELED value
 		 * @property {number} ABANDONED=5 ABANDONED value
 		 */
-		ChannelCloseSummary.ClosureType = (function() {
+		ChannelCloseSummary.ClosureType = (function () {
 			const valuesById = {}, values = Object.create(valuesById);
 			values[valuesById[0] = "COOPERATIVE_CLOSE"] = 0;
 			values[valuesById[1] = "LOCAL_FORCE_CLOSE"] = 1;
@@ -13046,7 +13079,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelCloseSummary;
 	})();
 	
-	lnrpc.ClosedChannelsRequest = (function() {
+	lnrpc.ClosedChannelsRequest = (function () {
 		
 		/**
 		 * Properties of a ClosedChannelsRequest.
@@ -13189,7 +13222,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ClosedChannelsRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ClosedChannelsRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ClosedChannelsRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -13344,7 +13378,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ClosedChannelsRequest;
 	})();
 	
-	lnrpc.ClosedChannelsResponse = (function() {
+	lnrpc.ClosedChannelsResponse = (function () {
 		
 		/**
 		 * Properties of a ClosedChannelsResponse.
@@ -13434,7 +13468,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ClosedChannelsResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ClosedChannelsResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ClosedChannelsResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -13552,7 +13587,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ClosedChannelsResponse;
 	})();
 	
-	lnrpc.Peer = (function() {
+	lnrpc.Peer = (function () {
 		
 		/**
 		 * Properties of a Peer.
@@ -13606,7 +13641,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Peer
 		 * @instance
 		 */
-		Peer.prototype.bytesSent = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		Peer.prototype.bytesSent = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Bytes of data transmitted from this peer
@@ -13614,7 +13649,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Peer
 		 * @instance
 		 */
-		Peer.prototype.bytesRecv = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		Peer.prototype.bytesRecv = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Satoshis sent to this peer
@@ -13622,7 +13657,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Peer
 		 * @instance
 		 */
-		Peer.prototype.satSent = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Peer.prototype.satSent = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Satoshis received from this peer
@@ -13630,7 +13665,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Peer
 		 * @instance
 		 */
-		Peer.prototype.satRecv = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Peer.prototype.satRecv = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * A channel is inbound if the counterparty initiated the channel
@@ -13646,7 +13681,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Peer
 		 * @instance
 		 */
-		Peer.prototype.pingTime = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Peer.prototype.pingTime = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Peer syncType.
@@ -14009,7 +14044,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @property {number} ACTIVE_SYNC=1 Denotes that we are actively receiving new graph updates from the peer.
 		 * @property {number} PASSIVE_SYNC=2 Denotes that we are not receiving new graph updates from the peer.
 		 */
-		Peer.SyncType = (function() {
+		Peer.SyncType = (function () {
 			const valuesById = {}, values = Object.create(valuesById);
 			values[valuesById[0] = "UNKNOWN_SYNC"] = 0;
 			values[valuesById[1] = "ACTIVE_SYNC"] = 1;
@@ -14020,7 +14055,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Peer;
 	})();
 	
-	lnrpc.ListPeersRequest = (function() {
+	lnrpc.ListPeersRequest = (function () {
 		
 		/**
 		 * Properties of a ListPeersRequest.
@@ -14097,7 +14132,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ListPeersRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ListPeersRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ListPeersRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -14180,7 +14216,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ListPeersRequest;
 	})();
 	
-	lnrpc.ListPeersResponse = (function() {
+	lnrpc.ListPeersResponse = (function () {
 		
 		/**
 		 * Properties of a ListPeersResponse.
@@ -14270,7 +14306,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ListPeersResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ListPeersResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ListPeersResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -14388,7 +14425,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ListPeersResponse;
 	})();
 	
-	lnrpc.GetInfoRequest = (function() {
+	lnrpc.GetInfoRequest = (function () {
 		
 		/**
 		 * Properties of a GetInfoRequest.
@@ -14465,7 +14502,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		GetInfoRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.GetInfoRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.GetInfoRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -14548,7 +14586,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return GetInfoRequest;
 	})();
 	
-	lnrpc.GetInfoResponse = (function() {
+	lnrpc.GetInfoResponse = (function () {
 		
 		/**
 		 * Properties of a GetInfoResponse.
@@ -14676,7 +14714,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.GetInfoResponse
 		 * @instance
 		 */
-		GetInfoResponse.prototype.bestHeaderTimestamp = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		GetInfoResponse.prototype.bestHeaderTimestamp = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The version of the LND software that the node is running.
@@ -14796,7 +14834,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		GetInfoResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.GetInfoResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.GetInfoResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -15099,7 +15138,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return GetInfoResponse;
 	})();
 	
-	lnrpc.Chain = (function() {
+	lnrpc.Chain = (function () {
 		
 		/**
 		 * Properties of a Chain.
@@ -15309,7 +15348,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Chain;
 	})();
 	
-	lnrpc.ConfirmationUpdate = (function() {
+	lnrpc.ConfirmationUpdate = (function () {
 		
 		/**
 		 * Properties of a ConfirmationUpdate.
@@ -15419,7 +15458,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ConfirmationUpdate.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ConfirmationUpdate();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ConfirmationUpdate();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -15550,7 +15590,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ConfirmationUpdate;
 	})();
 	
-	lnrpc.ChannelOpenUpdate = (function() {
+	lnrpc.ChannelOpenUpdate = (function () {
 		
 		/**
 		 * Properties of a ChannelOpenUpdate.
@@ -15638,7 +15678,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelOpenUpdate.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelOpenUpdate();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelOpenUpdate();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -15742,7 +15783,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelOpenUpdate;
 	})();
 	
-	lnrpc.ChannelCloseUpdate = (function() {
+	lnrpc.ChannelCloseUpdate = (function () {
 		
 		/**
 		 * Properties of a ChannelCloseUpdate.
@@ -15841,7 +15882,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelCloseUpdate.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelCloseUpdate();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelCloseUpdate();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -15961,7 +16003,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelCloseUpdate;
 	})();
 	
-	lnrpc.CloseChannelRequest = (function() {
+	lnrpc.CloseChannelRequest = (function () {
 		
 		/**
 		 * Properties of a CloseChannelRequest.
@@ -16022,7 +16064,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.CloseChannelRequest
 		 * @instance
 		 */
-		CloseChannelRequest.prototype.satPerByte = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		CloseChannelRequest.prototype.satPerByte = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Creates a new CloseChannelRequest instance using the specified properties.
@@ -16086,7 +16128,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		CloseChannelRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.CloseChannelRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.CloseChannelRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -16238,7 +16281,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return CloseChannelRequest;
 	})();
 	
-	lnrpc.CloseStatusUpdate = (function() {
+	lnrpc.CloseStatusUpdate = (function () {
 		
 		/**
 		 * Properties of a CloseStatusUpdate.
@@ -16351,7 +16394,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		CloseStatusUpdate.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.CloseStatusUpdate();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.CloseStatusUpdate();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -16483,7 +16527,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return CloseStatusUpdate;
 	})();
 	
-	lnrpc.PendingUpdate = (function() {
+	lnrpc.PendingUpdate = (function () {
 		
 		/**
 		 * Properties of a PendingUpdate.
@@ -16582,7 +16626,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		PendingUpdate.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.PendingUpdate();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.PendingUpdate();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -16702,7 +16747,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return PendingUpdate;
 	})();
 	
-	lnrpc.OpenChannelRequest = (function() {
+	lnrpc.OpenChannelRequest = (function () {
 		
 		/**
 		 * Properties of an OpenChannelRequest.
@@ -16758,7 +16803,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.OpenChannelRequest
 		 * @instance
 		 */
-		OpenChannelRequest.prototype.localFundingAmount = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		OpenChannelRequest.prototype.localFundingAmount = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The number of satoshis to push to the remote side as part of the initial commitment state
@@ -16766,7 +16811,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.OpenChannelRequest
 		 * @instance
 		 */
-		OpenChannelRequest.prototype.pushSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		OpenChannelRequest.prototype.pushSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The target number of blocks that the funding transaction should be confirmed by.
@@ -16782,7 +16827,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.OpenChannelRequest
 		 * @instance
 		 */
-		OpenChannelRequest.prototype.satPerByte = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		OpenChannelRequest.prototype.satPerByte = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Whether this channel should be private, not announced to the greater network.
@@ -16798,7 +16843,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.OpenChannelRequest
 		 * @instance
 		 */
-		OpenChannelRequest.prototype.minHtlcMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		OpenChannelRequest.prototype.minHtlcMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The delay we require on the remote's commitment transaction. If this is not set, it will be scaled automatically with the channel size.
@@ -16822,7 +16867,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.OpenChannelRequest
 		 * @instance
 		 */
-		OpenChannelRequest.prototype.spendUnconfirmed = false;
+		OpenChannelRequest.prototype.spendUnconfirmed = true;
 		
 		/**
 		 * Creates a new OpenChannelRequest instance using the specified properties.
@@ -16900,7 +16945,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		OpenChannelRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.OpenChannelRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.OpenChannelRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -17175,7 +17221,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return OpenChannelRequest;
 	})();
 	
-	lnrpc.OpenStatusUpdate = (function() {
+	lnrpc.OpenStatusUpdate = (function () {
 		
 		/**
 		 * Properties of an OpenStatusUpdate.
@@ -17288,7 +17334,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		OpenStatusUpdate.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.OpenStatusUpdate();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.OpenStatusUpdate();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -17420,7 +17467,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return OpenStatusUpdate;
 	})();
 	
-	lnrpc.PendingHTLC = (function() {
+	lnrpc.PendingHTLC = (function () {
 		
 		/**
 		 * Properties of a PendingHTLC.
@@ -17465,7 +17512,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.PendingHTLC
 		 * @instance
 		 */
-		PendingHTLC.prototype.amount = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		PendingHTLC.prototype.amount = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The final output to be swept back to the user's wallet
@@ -17736,7 +17783,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return PendingHTLC;
 	})();
 	
-	lnrpc.PendingChannelsRequest = (function() {
+	lnrpc.PendingChannelsRequest = (function () {
 		
 		/**
 		 * Properties of a PendingChannelsRequest.
@@ -17813,7 +17860,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		PendingChannelsRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.PendingChannelsRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.PendingChannelsRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -17896,7 +17944,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return PendingChannelsRequest;
 	})();
 	
-	lnrpc.PendingChannelsResponse = (function() {
+	lnrpc.PendingChannelsResponse = (function () {
 		
 		/**
 		 * Properties of a PendingChannelsResponse.
@@ -17934,7 +17982,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.PendingChannelsResponse
 		 * @instance
 		 */
-		PendingChannelsResponse.prototype.totalLimboBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		PendingChannelsResponse.prototype.totalLimboBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Channels pending opening
@@ -18036,7 +18084,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		PendingChannelsResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.PendingChannelsResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.PendingChannelsResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -18268,7 +18317,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
 		};
 		
-		PendingChannelsResponse.PendingChannel = (function() {
+		PendingChannelsResponse.PendingChannel = (function () {
 			
 			/**
 			 * Properties of a PendingChannel.
@@ -18321,7 +18370,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.PendingChannel
 			 * @instance
 			 */
-			PendingChannel.prototype.capacity = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			PendingChannel.prototype.capacity = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * PendingChannel localBalance.
@@ -18329,7 +18378,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.PendingChannel
 			 * @instance
 			 */
-			PendingChannel.prototype.localBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			PendingChannel.prototype.localBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * PendingChannel remoteBalance.
@@ -18337,7 +18386,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.PendingChannel
 			 * @instance
 			 */
-			PendingChannel.prototype.remoteBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			PendingChannel.prototype.remoteBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * The minimum satoshis this node is required to reserve in its balance.
@@ -18345,7 +18394,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.PendingChannel
 			 * @instance
 			 */
-			PendingChannel.prototype.localChanReserveSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			PendingChannel.prototype.localChanReserveSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * The minimum satoshis the other node is required to reserve in its
@@ -18354,7 +18403,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.PendingChannel
 			 * @instance
 			 */
-			PendingChannel.prototype.remoteChanReserveSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			PendingChannel.prototype.remoteChanReserveSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * Creates a new PendingChannel instance using the specified properties.
@@ -18424,7 +18473,8 @@ export const lnrpc = $root.lnrpc = (() => {
 			PendingChannel.decode = function decode(reader, length) {
 				if (!(reader instanceof $Reader))
 					reader = $Reader.create(reader);
-				let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.PendingChannelsResponse.PendingChannel();
+				let end = length === undefined ? reader.len : reader.pos + length,
+					message = new $root.lnrpc.PendingChannelsResponse.PendingChannel();
 				while (reader.pos < end) {
 					let tag = reader.uint32();
 					switch (tag >>> 3) {
@@ -18660,7 +18710,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			return PendingChannel;
 		})();
 		
-		PendingChannelsResponse.PendingOpenChannel = (function() {
+		PendingChannelsResponse.PendingOpenChannel = (function () {
 			
 			/**
 			 * Properties of a PendingOpenChannel.
@@ -18720,7 +18770,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.PendingOpenChannel
 			 * @instance
 			 */
-			PendingOpenChannel.prototype.commitFee = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			PendingOpenChannel.prototype.commitFee = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * The weight of the commitment transaction
@@ -18728,7 +18778,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.PendingOpenChannel
 			 * @instance
 			 */
-			PendingOpenChannel.prototype.commitWeight = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			PendingOpenChannel.prototype.commitWeight = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * The required number of satoshis per kilo-weight that the requester will
@@ -18738,7 +18788,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.PendingOpenChannel
 			 * @instance
 			 */
-			PendingOpenChannel.prototype.feePerKw = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			PendingOpenChannel.prototype.feePerKw = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * Creates a new PendingOpenChannel instance using the specified properties.
@@ -18804,7 +18854,8 @@ export const lnrpc = $root.lnrpc = (() => {
 			PendingOpenChannel.decode = function decode(reader, length) {
 				if (!(reader instanceof $Reader))
 					reader = $Reader.create(reader);
-				let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.PendingChannelsResponse.PendingOpenChannel();
+				let end = length === undefined ? reader.len : reader.pos + length,
+					message = new $root.lnrpc.PendingChannelsResponse.PendingOpenChannel();
 				while (reader.pos < end) {
 					let tag = reader.uint32();
 					switch (tag >>> 3) {
@@ -18995,7 +19046,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			return PendingOpenChannel;
 		})();
 		
-		PendingChannelsResponse.WaitingCloseChannel = (function() {
+		PendingChannelsResponse.WaitingCloseChannel = (function () {
 			
 			/**
 			 * Properties of a WaitingCloseChannel.
@@ -19034,7 +19085,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.WaitingCloseChannel
 			 * @instance
 			 */
-			WaitingCloseChannel.prototype.limboBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			WaitingCloseChannel.prototype.limboBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * Creates a new WaitingCloseChannel instance using the specified properties.
@@ -19094,7 +19145,8 @@ export const lnrpc = $root.lnrpc = (() => {
 			WaitingCloseChannel.decode = function decode(reader, length) {
 				if (!(reader instanceof $Reader))
 					reader = $Reader.create(reader);
-				let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.PendingChannelsResponse.WaitingCloseChannel();
+				let end = length === undefined ? reader.len : reader.pos + length,
+					message = new $root.lnrpc.PendingChannelsResponse.WaitingCloseChannel();
 				while (reader.pos < end) {
 					let tag = reader.uint32();
 					switch (tag >>> 3) {
@@ -19224,7 +19276,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			return WaitingCloseChannel;
 		})();
 		
-		PendingChannelsResponse.ClosedChannel = (function() {
+		PendingChannelsResponse.ClosedChannel = (function () {
 			
 			/**
 			 * Properties of a ClosedChannel.
@@ -19323,7 +19375,8 @@ export const lnrpc = $root.lnrpc = (() => {
 			ClosedChannel.decode = function decode(reader, length) {
 				if (!(reader instanceof $Reader))
 					reader = $Reader.create(reader);
-				let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.PendingChannelsResponse.ClosedChannel();
+				let end = length === undefined ? reader.len : reader.pos + length,
+					message = new $root.lnrpc.PendingChannelsResponse.ClosedChannel();
 				while (reader.pos < end) {
 					let tag = reader.uint32();
 					switch (tag >>> 3) {
@@ -19439,7 +19492,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			return ClosedChannel;
 		})();
 		
-		PendingChannelsResponse.ForceClosedChannel = (function() {
+		PendingChannelsResponse.ForceClosedChannel = (function () {
 			
 			/**
 			 * Properties of a ForceClosedChannel.
@@ -19492,7 +19545,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.ForceClosedChannel
 			 * @instance
 			 */
-			ForceClosedChannel.prototype.limboBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			ForceClosedChannel.prototype.limboBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * The height at which funds can be swept into the wallet
@@ -19516,7 +19569,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			 * @memberof lnrpc.PendingChannelsResponse.ForceClosedChannel
 			 * @instance
 			 */
-			ForceClosedChannel.prototype.recoveredBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+			ForceClosedChannel.prototype.recoveredBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 			
 			/**
 			 * ForceClosedChannel pendingHtlcs.
@@ -19595,7 +19648,8 @@ export const lnrpc = $root.lnrpc = (() => {
 			ForceClosedChannel.decode = function decode(reader, length) {
 				if (!(reader instanceof $Reader))
 					reader = $Reader.create(reader);
-				let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.PendingChannelsResponse.ForceClosedChannel();
+				let end = length === undefined ? reader.len : reader.pos + length,
+					message = new $root.lnrpc.PendingChannelsResponse.ForceClosedChannel();
 				while (reader.pos < end) {
 					let tag = reader.uint32();
 					switch (tag >>> 3) {
@@ -19817,7 +19871,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return PendingChannelsResponse;
 	})();
 	
-	lnrpc.ChannelEventSubscription = (function() {
+	lnrpc.ChannelEventSubscription = (function () {
 		
 		/**
 		 * Properties of a ChannelEventSubscription.
@@ -19894,7 +19948,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelEventSubscription.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelEventSubscription();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelEventSubscription();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -19977,7 +20032,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelEventSubscription;
 	})();
 	
-	lnrpc.ChannelEventUpdate = (function() {
+	lnrpc.ChannelEventUpdate = (function () {
 		
 		/**
 		 * Properties of a ChannelEventUpdate.
@@ -20123,7 +20178,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelEventUpdate.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelEventUpdate();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelEventUpdate();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -20342,7 +20398,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @property {number} ACTIVE_CHANNEL=2 ACTIVE_CHANNEL value
 		 * @property {number} INACTIVE_CHANNEL=3 INACTIVE_CHANNEL value
 		 */
-		ChannelEventUpdate.UpdateType = (function() {
+		ChannelEventUpdate.UpdateType = (function () {
 			const valuesById = {}, values = Object.create(valuesById);
 			values[valuesById[0] = "OPEN_CHANNEL"] = 0;
 			values[valuesById[1] = "CLOSED_CHANNEL"] = 1;
@@ -20354,7 +20410,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelEventUpdate;
 	})();
 	
-	lnrpc.WalletBalanceRequest = (function() {
+	lnrpc.WalletBalanceRequest = (function () {
 		
 		/**
 		 * Properties of a WalletBalanceRequest.
@@ -20431,7 +20487,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		WalletBalanceRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.WalletBalanceRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.WalletBalanceRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -20514,7 +20571,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return WalletBalanceRequest;
 	})();
 	
-	lnrpc.WalletBalanceResponse = (function() {
+	lnrpc.WalletBalanceResponse = (function () {
 		
 		/**
 		 * Properties of a WalletBalanceResponse.
@@ -20546,7 +20603,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.WalletBalanceResponse
 		 * @instance
 		 */
-		WalletBalanceResponse.prototype.totalBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		WalletBalanceResponse.prototype.totalBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The confirmed balance of a wallet(with >= 1 confirmations)
@@ -20554,7 +20611,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.WalletBalanceResponse
 		 * @instance
 		 */
-		WalletBalanceResponse.prototype.confirmedBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		WalletBalanceResponse.prototype.confirmedBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The unconfirmed balance of a wallet(with 0 confirmations)
@@ -20562,7 +20619,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.WalletBalanceResponse
 		 * @instance
 		 */
-		WalletBalanceResponse.prototype.unconfirmedBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		WalletBalanceResponse.prototype.unconfirmedBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Creates a new WalletBalanceResponse instance using the specified properties.
@@ -20624,7 +20681,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		WalletBalanceResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.WalletBalanceResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.WalletBalanceResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -20788,7 +20846,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return WalletBalanceResponse;
 	})();
 	
-	lnrpc.ChannelBalanceRequest = (function() {
+	lnrpc.ChannelBalanceRequest = (function () {
 		
 		/**
 		 * Properties of a ChannelBalanceRequest.
@@ -20865,7 +20923,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelBalanceRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelBalanceRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelBalanceRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -20948,7 +21007,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelBalanceRequest;
 	})();
 	
-	lnrpc.ChannelBalanceResponse = (function() {
+	lnrpc.ChannelBalanceResponse = (function () {
 		
 		/**
 		 * Properties of a ChannelBalanceResponse.
@@ -20979,7 +21038,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelBalanceResponse
 		 * @instance
 		 */
-		ChannelBalanceResponse.prototype.balance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		ChannelBalanceResponse.prototype.balance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Sum of channels pending balances denominated in satoshis
@@ -20987,7 +21046,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelBalanceResponse
 		 * @instance
 		 */
-		ChannelBalanceResponse.prototype.pendingOpenBalance = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		ChannelBalanceResponse.prototype.pendingOpenBalance = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Creates a new ChannelBalanceResponse instance using the specified properties.
@@ -21047,7 +21106,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelBalanceResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelBalanceResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelBalanceResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -21186,7 +21246,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelBalanceResponse;
 	})();
 	
-	lnrpc.QueryRoutesRequest = (function() {
+	lnrpc.QueryRoutesRequest = (function () {
 		
 		/**
 		 * Properties of a QueryRoutesRequest.
@@ -21238,7 +21298,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.QueryRoutesRequest
 		 * @instance
 		 */
-		QueryRoutesRequest.prototype.amt = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		QueryRoutesRequest.prototype.amt = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * An optional CLTV delta from the current height that should be used for the timelock of the final hop
@@ -21365,7 +21425,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		QueryRoutesRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.QueryRoutesRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.QueryRoutesRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -21599,7 +21660,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return QueryRoutesRequest;
 	})();
 	
-	lnrpc.EdgeLocator = (function() {
+	lnrpc.EdgeLocator = (function () {
 		
 		/**
 		 * Properties of an EdgeLocator.
@@ -21633,7 +21694,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.EdgeLocator
 		 * @instance
 		 */
-		EdgeLocator.prototype.channelId = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		EdgeLocator.prototype.channelId = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The direction of this edge. If direction_reverse is false, the direction
@@ -21829,7 +21890,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return EdgeLocator;
 	})();
 	
-	lnrpc.QueryRoutesResponse = (function() {
+	lnrpc.QueryRoutesResponse = (function () {
 		
 		/**
 		 * Properties of a QueryRoutesResponse.
@@ -21919,7 +21980,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		QueryRoutesResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.QueryRoutesResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.QueryRoutesResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -22037,7 +22099,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return QueryRoutesResponse;
 	})();
 	
-	lnrpc.Hop = (function() {
+	lnrpc.Hop = (function () {
 		
 		/**
 		 * Properties of a Hop.
@@ -22079,7 +22141,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Hop
 		 * @instance
 		 */
-		Hop.prototype.chanId = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		Hop.prototype.chanId = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Hop chanCapacity.
@@ -22087,7 +22149,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Hop
 		 * @instance
 		 */
-		Hop.prototype.chanCapacity = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Hop.prototype.chanCapacity = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Hop amtToForward.
@@ -22095,7 +22157,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Hop
 		 * @instance
 		 */
-		Hop.prototype.amtToForward = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Hop.prototype.amtToForward = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Hop fee.
@@ -22103,7 +22165,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Hop
 		 * @instance
 		 */
-		Hop.prototype.fee = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Hop.prototype.fee = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Hop expiry.
@@ -22119,7 +22181,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Hop
 		 * @instance
 		 */
-		Hop.prototype.amtToForwardMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Hop.prototype.amtToForwardMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Hop feeMsat.
@@ -22127,7 +22189,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Hop
 		 * @instance
 		 */
-		Hop.prototype.feeMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Hop.prototype.feeMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * An optional public key of the hop. If the public key is given, the payment
@@ -22469,7 +22531,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Hop;
 	})();
 	
-	lnrpc.Route = (function() {
+	lnrpc.Route = (function () {
 		
 		/**
 		 * Properties of a Route.
@@ -22531,7 +22593,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Route
 		 * @instance
 		 */
-		Route.prototype.totalFees = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Route.prototype.totalFees = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The total amount of funds required to complete a payment over this route.
@@ -22543,7 +22605,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Route
 		 * @instance
 		 */
-		Route.prototype.totalAmt = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Route.prototype.totalAmt = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Contains details concerning the specific forwarding details at each hop.
@@ -22559,7 +22621,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Route
 		 * @instance
 		 */
-		Route.prototype.totalFeesMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Route.prototype.totalFeesMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The total amount in millisatoshis.
@@ -22567,7 +22629,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Route
 		 * @instance
 		 */
-		Route.prototype.totalAmtMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Route.prototype.totalAmtMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Creates a new Route instance using the specified properties.
@@ -22867,7 +22929,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Route;
 	})();
 	
-	lnrpc.NodeInfoRequest = (function() {
+	lnrpc.NodeInfoRequest = (function () {
 		
 		/**
 		 * Properties of a NodeInfoRequest.
@@ -22966,7 +23028,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		NodeInfoRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.NodeInfoRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.NodeInfoRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -23077,7 +23140,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return NodeInfoRequest;
 	})();
 	
-	lnrpc.NodeInfo = (function() {
+	lnrpc.NodeInfo = (function () {
 		
 		/**
 		 * Properties of a NodeInfo.
@@ -23133,7 +23196,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.NodeInfo
 		 * @instance
 		 */
-		NodeInfo.prototype.totalCapacity = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		NodeInfo.prototype.totalCapacity = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * A list of all public channels for the node.
@@ -23378,7 +23441,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return NodeInfo;
 	})();
 	
-	lnrpc.LightningNode = (function() {
+	lnrpc.LightningNode = (function () {
 		
 		/**
 		 * Properties of a LightningNode.
@@ -23515,7 +23578,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		LightningNode.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.LightningNode();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.LightningNode();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -23679,7 +23743,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return LightningNode;
 	})();
 	
-	lnrpc.NodeAddress = (function() {
+	lnrpc.NodeAddress = (function () {
 		
 		/**
 		 * Properties of a NodeAddress.
@@ -23889,7 +23953,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return NodeAddress;
 	})();
 	
-	lnrpc.RoutingPolicy = (function() {
+	lnrpc.RoutingPolicy = (function () {
 		
 		/**
 		 * Properties of a RoutingPolicy.
@@ -23933,7 +23997,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.RoutingPolicy
 		 * @instance
 		 */
-		RoutingPolicy.prototype.minHtlc = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		RoutingPolicy.prototype.minHtlc = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * RoutingPolicy feeBaseMsat.
@@ -23941,7 +24005,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.RoutingPolicy
 		 * @instance
 		 */
-		RoutingPolicy.prototype.feeBaseMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		RoutingPolicy.prototype.feeBaseMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * RoutingPolicy feeRateMilliMsat.
@@ -23949,7 +24013,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.RoutingPolicy
 		 * @instance
 		 */
-		RoutingPolicy.prototype.feeRateMilliMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		RoutingPolicy.prototype.feeRateMilliMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * RoutingPolicy disabled.
@@ -23965,7 +24029,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.RoutingPolicy
 		 * @instance
 		 */
-		RoutingPolicy.prototype.maxHtlcMsat = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		RoutingPolicy.prototype.maxHtlcMsat = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * RoutingPolicy lastUpdate.
@@ -24043,7 +24107,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		RoutingPolicy.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.RoutingPolicy();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.RoutingPolicy();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -24265,7 +24330,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return RoutingPolicy;
 	})();
 	
-	lnrpc.ChannelEdge = (function() {
+	lnrpc.ChannelEdge = (function () {
 		
 		/**
 		 * Properties of a ChannelEdge.
@@ -24310,7 +24375,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelEdge
 		 * @instance
 		 */
-		ChannelEdge.prototype.channelId = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ChannelEdge.prototype.channelId = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * ChannelEdge chanPoint.
@@ -24350,7 +24415,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelEdge
 		 * @instance
 		 */
-		ChannelEdge.prototype.capacity = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		ChannelEdge.prototype.capacity = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * ChannelEdge node1Policy.
@@ -24653,7 +24718,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelEdge;
 	})();
 	
-	lnrpc.ChannelGraphRequest = (function() {
+	lnrpc.ChannelGraphRequest = (function () {
 		
 		/**
 		 * Properties of a ChannelGraphRequest.
@@ -24745,7 +24810,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelGraphRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelGraphRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelGraphRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -24844,7 +24910,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelGraphRequest;
 	})();
 	
-	lnrpc.ChannelGraph = (function() {
+	lnrpc.ChannelGraph = (function () {
 		
 		/**
 		 * Properties of a ChannelGraph.
@@ -25096,7 +25162,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelGraph;
 	})();
 	
-	lnrpc.ChanInfoRequest = (function() {
+	lnrpc.ChanInfoRequest = (function () {
 		
 		/**
 		 * Properties of a ChanInfoRequest.
@@ -25130,7 +25196,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChanInfoRequest
 		 * @instance
 		 */
-		ChanInfoRequest.prototype.chanId = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ChanInfoRequest.prototype.chanId = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Creates a new ChanInfoRequest instance using the specified properties.
@@ -25188,7 +25254,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChanInfoRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChanInfoRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChanInfoRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -25301,7 +25368,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChanInfoRequest;
 	})();
 	
-	lnrpc.NetworkInfoRequest = (function() {
+	lnrpc.NetworkInfoRequest = (function () {
 		
 		/**
 		 * Properties of a NetworkInfoRequest.
@@ -25378,7 +25445,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		NetworkInfoRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.NetworkInfoRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.NetworkInfoRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -25461,7 +25529,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return NetworkInfoRequest;
 	})();
 	
-	lnrpc.NetworkInfo = (function() {
+	lnrpc.NetworkInfo = (function () {
 		
 		/**
 		 * Properties of a NetworkInfo.
@@ -25541,7 +25609,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.NetworkInfo
 		 * @instance
 		 */
-		NetworkInfo.prototype.totalNetworkCapacity = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		NetworkInfo.prototype.totalNetworkCapacity = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * NetworkInfo avgChannelSize.
@@ -25557,7 +25625,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.NetworkInfo
 		 * @instance
 		 */
-		NetworkInfo.prototype.minChannelSize = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		NetworkInfo.prototype.minChannelSize = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * NetworkInfo maxChannelSize.
@@ -25565,7 +25633,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.NetworkInfo
 		 * @instance
 		 */
-		NetworkInfo.prototype.maxChannelSize = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		NetworkInfo.prototype.maxChannelSize = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * NetworkInfo medianChannelSizeSat.
@@ -25573,7 +25641,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.NetworkInfo
 		 * @instance
 		 */
-		NetworkInfo.prototype.medianChannelSizeSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		NetworkInfo.prototype.medianChannelSizeSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * NetworkInfo numZombieChans.
@@ -25581,7 +25649,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.NetworkInfo
 		 * @instance
 		 */
-		NetworkInfo.prototype.numZombieChans = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		NetworkInfo.prototype.numZombieChans = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Creates a new NetworkInfo instance using the specified properties.
@@ -25939,7 +26007,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return NetworkInfo;
 	})();
 	
-	lnrpc.StopRequest = (function() {
+	lnrpc.StopRequest = (function () {
 		
 		/**
 		 * Properties of a StopRequest.
@@ -26099,7 +26167,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return StopRequest;
 	})();
 	
-	lnrpc.StopResponse = (function() {
+	lnrpc.StopResponse = (function () {
 		
 		/**
 		 * Properties of a StopResponse.
@@ -26259,7 +26327,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return StopResponse;
 	})();
 	
-	lnrpc.GraphTopologySubscription = (function() {
+	lnrpc.GraphTopologySubscription = (function () {
 		
 		/**
 		 * Properties of a GraphTopologySubscription.
@@ -26336,7 +26404,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		GraphTopologySubscription.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.GraphTopologySubscription();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.GraphTopologySubscription();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -26419,7 +26488,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return GraphTopologySubscription;
 	})();
 	
-	lnrpc.GraphTopologyUpdate = (function() {
+	lnrpc.GraphTopologyUpdate = (function () {
 		
 		/**
 		 * Properties of a GraphTopologyUpdate.
@@ -26535,7 +26604,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		GraphTopologyUpdate.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.GraphTopologyUpdate();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.GraphTopologyUpdate();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -26714,7 +26784,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return GraphTopologyUpdate;
 	})();
 	
-	lnrpc.NodeUpdate = (function() {
+	lnrpc.NodeUpdate = (function () {
 		
 		/**
 		 * Properties of a NodeUpdate.
@@ -27016,7 +27086,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return NodeUpdate;
 	})();
 	
-	lnrpc.ChannelEdgeUpdate = (function() {
+	lnrpc.ChannelEdgeUpdate = (function () {
 		
 		/**
 		 * Properties of a ChannelEdgeUpdate.
@@ -27055,7 +27125,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelEdgeUpdate
 		 * @instance
 		 */
-		ChannelEdgeUpdate.prototype.chanId = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ChannelEdgeUpdate.prototype.chanId = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * ChannelEdgeUpdate chanPoint.
@@ -27071,7 +27141,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelEdgeUpdate
 		 * @instance
 		 */
-		ChannelEdgeUpdate.prototype.capacity = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		ChannelEdgeUpdate.prototype.capacity = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * ChannelEdgeUpdate routingPolicy.
@@ -27163,7 +27233,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelEdgeUpdate.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelEdgeUpdate();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelEdgeUpdate();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -27356,7 +27427,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelEdgeUpdate;
 	})();
 	
-	lnrpc.ClosedChannelUpdate = (function() {
+	lnrpc.ClosedChannelUpdate = (function () {
 		
 		/**
 		 * Properties of a ClosedChannelUpdate.
@@ -27393,7 +27464,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ClosedChannelUpdate
 		 * @instance
 		 */
-		ClosedChannelUpdate.prototype.chanId = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ClosedChannelUpdate.prototype.chanId = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * ClosedChannelUpdate capacity.
@@ -27401,7 +27472,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ClosedChannelUpdate
 		 * @instance
 		 */
-		ClosedChannelUpdate.prototype.capacity = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		ClosedChannelUpdate.prototype.capacity = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * ClosedChannelUpdate closedHeight.
@@ -27481,7 +27552,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ClosedChannelUpdate.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ClosedChannelUpdate();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ClosedChannelUpdate();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -27647,7 +27719,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ClosedChannelUpdate;
 	})();
 	
-	lnrpc.HopHint = (function() {
+	lnrpc.HopHint = (function () {
 		
 		/**
 		 * Properties of a HopHint.
@@ -27690,7 +27762,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.HopHint
 		 * @instance
 		 */
-		HopHint.prototype.chanId = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		HopHint.prototype.chanId = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The base fee of the channel denominated in millisatoshis.
@@ -27939,7 +28011,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return HopHint;
 	})();
 	
-	lnrpc.RouteHint = (function() {
+	lnrpc.RouteHint = (function () {
 		
 		/**
 		 * Properties of a RouteHint.
@@ -28149,7 +28221,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return RouteHint;
 	})();
 	
-	lnrpc.Invoice = (function() {
+	lnrpc.Invoice = (function () {
 		
 		/**
 		 * Properties of an Invoice.
@@ -28263,7 +28335,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Invoice
 		 * @instance
 		 */
-		Invoice.prototype.value = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Invoice.prototype.value = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Whether this invoice has been fulfilled
@@ -28279,7 +28351,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Invoice
 		 * @instance
 		 */
-		Invoice.prototype.creationDate = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Invoice.prototype.creationDate = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * When this invoice was settled
@@ -28287,7 +28359,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Invoice
 		 * @instance
 		 */
-		Invoice.prototype.settleDate = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Invoice.prototype.settleDate = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * A bare-bones invoice for a payment within the Lightning Network.  With the
@@ -28315,7 +28387,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Invoice
 		 * @instance
 		 */
-		Invoice.prototype.expiry = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Invoice.prototype.expiry = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Fallback on-chain address.
@@ -28331,7 +28403,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Invoice
 		 * @instance
 		 */
-		Invoice.prototype.cltvExpiry = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		Invoice.prototype.cltvExpiry = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Route hints that can each be individually used to assist in reaching the
@@ -28359,7 +28431,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Invoice
 		 * @instance
 		 */
-		Invoice.prototype.addIndex = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		Invoice.prototype.addIndex = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The "settle" index of this invoice. Each newly settled invoice will
@@ -28370,7 +28442,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Invoice
 		 * @instance
 		 */
-		Invoice.prototype.settleIndex = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		Invoice.prototype.settleIndex = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Deprecated, use amt_paid_sat or amt_paid_msat.
@@ -28378,7 +28450,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Invoice
 		 * @instance
 		 */
-		Invoice.prototype.amtPaid = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Invoice.prototype.amtPaid = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The amount that was accepted for this invoice, in satoshis. This will ONLY
@@ -28391,7 +28463,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Invoice
 		 * @instance
 		 */
-		Invoice.prototype.amtPaidSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Invoice.prototype.amtPaidSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The amount that was accepted for this invoice, in millisatoshis. This will
@@ -28404,7 +28476,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Invoice
 		 * @instance
 		 */
-		Invoice.prototype.amtPaidMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Invoice.prototype.amtPaidMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The state the invoice is in.
@@ -29056,7 +29128,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @property {number} CANCELED=2 CANCELED value
 		 * @property {number} ACCEPTED=3 ACCEPTED value
 		 */
-		Invoice.InvoiceState = (function() {
+		Invoice.InvoiceState = (function () {
 			const valuesById = {}, values = Object.create(valuesById);
 			values[valuesById[0] = "OPEN"] = 0;
 			values[valuesById[1] = "SETTLED"] = 1;
@@ -29068,7 +29140,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Invoice;
 	})();
 	
-	lnrpc.AddInvoiceResponse = (function() {
+	lnrpc.AddInvoiceResponse = (function () {
 		
 		/**
 		 * Properties of an AddInvoiceResponse.
@@ -29126,7 +29198,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.AddInvoiceResponse
 		 * @instance
 		 */
-		AddInvoiceResponse.prototype.addIndex = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		AddInvoiceResponse.prototype.addIndex = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Creates a new AddInvoiceResponse instance using the specified properties.
@@ -29188,7 +29260,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		AddInvoiceResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.AddInvoiceResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.AddInvoiceResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -29333,7 +29406,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return AddInvoiceResponse;
 	})();
 	
-	lnrpc.PaymentHash = (function() {
+	lnrpc.PaymentHash = (function () {
 		
 		/**
 		 * Properties of a PaymentHash.
@@ -29554,7 +29627,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return PaymentHash;
 	})();
 	
-	lnrpc.ListInvoiceRequest = (function() {
+	lnrpc.ListInvoiceRequest = (function () {
 		
 		/**
 		 * Properties of a ListInvoiceRequest.
@@ -29598,7 +29671,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ListInvoiceRequest
 		 * @instance
 		 */
-		ListInvoiceRequest.prototype.indexOffset = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ListInvoiceRequest.prototype.indexOffset = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The max number of invoices to return in the response to this query.
@@ -29606,7 +29679,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ListInvoiceRequest
 		 * @instance
 		 */
-		ListInvoiceRequest.prototype.numMaxInvoices = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ListInvoiceRequest.prototype.numMaxInvoices = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * If set, the invoices returned will result from seeking backwards from the
@@ -29679,7 +29752,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ListInvoiceRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ListInvoiceRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ListInvoiceRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -29840,7 +29914,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ListInvoiceRequest;
 	})();
 	
-	lnrpc.ListInvoiceResponse = (function() {
+	lnrpc.ListInvoiceResponse = (function () {
 		
 		/**
 		 * Properties of a ListInvoiceResponse.
@@ -29886,7 +29960,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ListInvoiceResponse
 		 * @instance
 		 */
-		ListInvoiceResponse.prototype.lastIndexOffset = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ListInvoiceResponse.prototype.lastIndexOffset = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The index of the last item in the set of returned invoices. This can be used
@@ -29895,7 +29969,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ListInvoiceResponse
 		 * @instance
 		 */
-		ListInvoiceResponse.prototype.firstIndexOffset = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ListInvoiceResponse.prototype.firstIndexOffset = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Creates a new ListInvoiceResponse instance using the specified properties.
@@ -29958,7 +30032,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ListInvoiceResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ListInvoiceResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ListInvoiceResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -30128,7 +30203,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ListInvoiceResponse;
 	})();
 	
-	lnrpc.InvoiceSubscription = (function() {
+	lnrpc.InvoiceSubscription = (function () {
 		
 		/**
 		 * Properties of an InvoiceSubscription.
@@ -30168,7 +30243,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.InvoiceSubscription
 		 * @instance
 		 */
-		InvoiceSubscription.prototype.addIndex = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		InvoiceSubscription.prototype.addIndex = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * If specified (non-zero), then we'll first start by sending out
@@ -30179,7 +30254,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.InvoiceSubscription
 		 * @instance
 		 */
-		InvoiceSubscription.prototype.settleIndex = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		InvoiceSubscription.prototype.settleIndex = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Creates a new InvoiceSubscription instance using the specified properties.
@@ -30239,7 +30314,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		InvoiceSubscription.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.InvoiceSubscription();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.InvoiceSubscription();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -30378,7 +30454,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return InvoiceSubscription;
 	})();
 	
-	lnrpc.Payment = (function() {
+	lnrpc.Payment = (function () {
 		
 		/**
 		 * Properties of a Payment.
@@ -30428,7 +30504,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Payment
 		 * @instance
 		 */
-		Payment.prototype.value = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Payment.prototype.value = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The date of this payment
@@ -30436,7 +30512,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Payment
 		 * @instance
 		 */
-		Payment.prototype.creationDate = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Payment.prototype.creationDate = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The path this payment took
@@ -30452,7 +30528,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Payment
 		 * @instance
 		 */
-		Payment.prototype.fee = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Payment.prototype.fee = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The payment preimage
@@ -30468,7 +30544,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Payment
 		 * @instance
 		 */
-		Payment.prototype.valueSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Payment.prototype.valueSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The value of the payment in milli-satoshis
@@ -30476,7 +30552,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Payment
 		 * @instance
 		 */
-		Payment.prototype.valueMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Payment.prototype.valueMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The optional payment request being fulfilled.
@@ -30500,7 +30576,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Payment
 		 * @instance
 		 */
-		Payment.prototype.feeSat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Payment.prototype.feeSat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The fee paid for this payment in milli-satoshis
@@ -30508,7 +30584,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.Payment
 		 * @instance
 		 */
-		Payment.prototype.feeMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		Payment.prototype.feeMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * Creates a new Payment instance using the specified properties.
@@ -30952,7 +31028,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @property {number} SUCCEEDED=2 SUCCEEDED value
 		 * @property {number} FAILED=3 FAILED value
 		 */
-		Payment.PaymentStatus = (function() {
+		Payment.PaymentStatus = (function () {
 			const valuesById = {}, values = Object.create(valuesById);
 			values[valuesById[0] = "UNKNOWN"] = 0;
 			values[valuesById[1] = "IN_FLIGHT"] = 1;
@@ -30964,7 +31040,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Payment;
 	})();
 	
-	lnrpc.ListPaymentsRequest = (function() {
+	lnrpc.ListPaymentsRequest = (function () {
 		
 		/**
 		 * Properties of a ListPaymentsRequest.
@@ -31056,7 +31132,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ListPaymentsRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ListPaymentsRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ListPaymentsRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -31155,7 +31232,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ListPaymentsRequest;
 	})();
 	
-	lnrpc.ListPaymentsResponse = (function() {
+	lnrpc.ListPaymentsResponse = (function () {
 		
 		/**
 		 * Properties of a ListPaymentsResponse.
@@ -31245,7 +31322,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ListPaymentsResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ListPaymentsResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ListPaymentsResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -31363,7 +31441,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ListPaymentsResponse;
 	})();
 	
-	lnrpc.DeleteAllPaymentsRequest = (function() {
+	lnrpc.DeleteAllPaymentsRequest = (function () {
 		
 		/**
 		 * Properties of a DeleteAllPaymentsRequest.
@@ -31440,7 +31518,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		DeleteAllPaymentsRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.DeleteAllPaymentsRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.DeleteAllPaymentsRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -31523,7 +31602,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return DeleteAllPaymentsRequest;
 	})();
 	
-	lnrpc.DeleteAllPaymentsResponse = (function() {
+	lnrpc.DeleteAllPaymentsResponse = (function () {
 		
 		/**
 		 * Properties of a DeleteAllPaymentsResponse.
@@ -31600,7 +31679,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		DeleteAllPaymentsResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.DeleteAllPaymentsResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.DeleteAllPaymentsResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -31683,7 +31763,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return DeleteAllPaymentsResponse;
 	})();
 	
-	lnrpc.AbandonChannelRequest = (function() {
+	lnrpc.AbandonChannelRequest = (function () {
 		
 		/**
 		 * Properties of an AbandonChannelRequest.
@@ -31771,7 +31851,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		AbandonChannelRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.AbandonChannelRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.AbandonChannelRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -31875,7 +31956,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return AbandonChannelRequest;
 	})();
 	
-	lnrpc.AbandonChannelResponse = (function() {
+	lnrpc.AbandonChannelResponse = (function () {
 		
 		/**
 		 * Properties of an AbandonChannelResponse.
@@ -31952,7 +32033,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		AbandonChannelResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.AbandonChannelResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.AbandonChannelResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -32035,7 +32117,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return AbandonChannelResponse;
 	})();
 	
-	lnrpc.DebugLevelRequest = (function() {
+	lnrpc.DebugLevelRequest = (function () {
 		
 		/**
 		 * Properties of a DebugLevelRequest.
@@ -32134,7 +32216,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		DebugLevelRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.DebugLevelRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.DebugLevelRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -32245,7 +32328,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return DebugLevelRequest;
 	})();
 	
-	lnrpc.DebugLevelResponse = (function() {
+	lnrpc.DebugLevelResponse = (function () {
 		
 		/**
 		 * Properties of a DebugLevelResponse.
@@ -32333,7 +32416,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		DebugLevelResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.DebugLevelResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.DebugLevelResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -32432,7 +32516,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return DebugLevelResponse;
 	})();
 	
-	lnrpc.PayReqString = (function() {
+	lnrpc.PayReqString = (function () {
 		
 		/**
 		 * Properties of a PayReqString.
@@ -32619,7 +32703,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return PayReqString;
 	})();
 	
-	lnrpc.PayReq = (function() {
+	lnrpc.PayReq = (function () {
 		
 		/**
 		 * Properties of a PayReq.
@@ -32675,7 +32759,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.PayReq
 		 * @instance
 		 */
-		PayReq.prototype.numSatoshis = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		PayReq.prototype.numSatoshis = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * PayReq timestamp.
@@ -32683,7 +32767,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.PayReq
 		 * @instance
 		 */
-		PayReq.prototype.timestamp = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		PayReq.prototype.timestamp = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * PayReq expiry.
@@ -32691,7 +32775,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.PayReq
 		 * @instance
 		 */
-		PayReq.prototype.expiry = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		PayReq.prototype.expiry = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * PayReq description.
@@ -32723,7 +32807,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.PayReq
 		 * @instance
 		 */
-		PayReq.prototype.cltvExpiry = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		PayReq.prototype.cltvExpiry = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * PayReq routeHints.
@@ -33083,7 +33167,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return PayReq;
 	})();
 	
-	lnrpc.FeeReportRequest = (function() {
+	lnrpc.FeeReportRequest = (function () {
 		
 		/**
 		 * Properties of a FeeReportRequest.
@@ -33160,7 +33244,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		FeeReportRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.FeeReportRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.FeeReportRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -33243,7 +33328,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return FeeReportRequest;
 	})();
 	
-	lnrpc.ChannelFeeReport = (function() {
+	lnrpc.ChannelFeeReport = (function () {
 		
 		/**
 		 * Properties of a ChannelFeeReport.
@@ -33284,7 +33369,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelFeeReport
 		 * @instance
 		 */
-		ChannelFeeReport.prototype.baseFeeMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		ChannelFeeReport.prototype.baseFeeMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The amount charged per milli-satoshis transferred expressed in millionths of a satoshi.
@@ -33292,7 +33377,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ChannelFeeReport
 		 * @instance
 		 */
-		ChannelFeeReport.prototype.feePerMil = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		ChannelFeeReport.prototype.feePerMil = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The effective fee rate in milli-satoshis. Computed by dividing the fee_per_mil value by 1 million.
@@ -33364,7 +33449,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelFeeReport.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelFeeReport();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelFeeReport();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -33525,7 +33611,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelFeeReport;
 	})();
 	
-	lnrpc.FeeReportResponse = (function() {
+	lnrpc.FeeReportResponse = (function () {
 		
 		/**
 		 * Properties of a FeeReportResponse.
@@ -33567,7 +33653,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.FeeReportResponse
 		 * @instance
 		 */
-		FeeReportResponse.prototype.dayFeeSum = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		FeeReportResponse.prototype.dayFeeSum = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The total amount of fee revenue (in satoshis) the switch has collected over the past 1 week.
@@ -33575,7 +33661,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.FeeReportResponse
 		 * @instance
 		 */
-		FeeReportResponse.prototype.weekFeeSum = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		FeeReportResponse.prototype.weekFeeSum = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The total amount of fee revenue (in satoshis) the switch has collected over the past 1 month.
@@ -33583,7 +33669,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.FeeReportResponse
 		 * @instance
 		 */
-		FeeReportResponse.prototype.monthFeeSum = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		FeeReportResponse.prototype.monthFeeSum = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Creates a new FeeReportResponse instance using the specified properties.
@@ -33648,7 +33734,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		FeeReportResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.FeeReportResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.FeeReportResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -33843,7 +33930,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return FeeReportResponse;
 	})();
 	
-	lnrpc.PolicyUpdateRequest = (function() {
+	lnrpc.PolicyUpdateRequest = (function () {
 		
 		/**
 		 * Properties of a PolicyUpdateRequest.
@@ -33893,7 +33980,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.PolicyUpdateRequest
 		 * @instance
 		 */
-		PolicyUpdateRequest.prototype.baseFeeMsat = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+		PolicyUpdateRequest.prototype.baseFeeMsat = $util.Long ? $util.Long.fromBits(0, 0, false) : 0;
 		
 		/**
 		 * The effective fee rate in milli-satoshis. The precision of this value goes up to 6 decimal places, so 1e-6.
@@ -33989,7 +34076,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		PolicyUpdateRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.PolicyUpdateRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.PolicyUpdateRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -34164,7 +34252,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return PolicyUpdateRequest;
 	})();
 	
-	lnrpc.PolicyUpdateResponse = (function() {
+	lnrpc.PolicyUpdateResponse = (function () {
 		
 		/**
 		 * Properties of a PolicyUpdateResponse.
@@ -34241,7 +34329,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		PolicyUpdateResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.PolicyUpdateResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.PolicyUpdateResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -34324,7 +34413,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return PolicyUpdateResponse;
 	})();
 	
-	lnrpc.ForwardingHistoryRequest = (function() {
+	lnrpc.ForwardingHistoryRequest = (function () {
 		
 		/**
 		 * Properties of a ForwardingHistoryRequest.
@@ -34357,7 +34446,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ForwardingHistoryRequest
 		 * @instance
 		 */
-		ForwardingHistoryRequest.prototype.startTime = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ForwardingHistoryRequest.prototype.startTime = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * End time is the end point of the forwarding history request. The response will carry at most 50k records between the start time and the end time. The index offset can be used to implement pagination.
@@ -34365,7 +34454,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ForwardingHistoryRequest
 		 * @instance
 		 */
-		ForwardingHistoryRequest.prototype.endTime = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ForwardingHistoryRequest.prototype.endTime = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Index offset is the offset in the time series to start at. As each response can only contain 50k records, callers can use this to skip around within a packed time series.
@@ -34445,7 +34534,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ForwardingHistoryRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ForwardingHistoryRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ForwardingHistoryRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -34606,7 +34696,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ForwardingHistoryRequest;
 	})();
 	
-	lnrpc.ForwardingEvent = (function() {
+	lnrpc.ForwardingEvent = (function () {
 		
 		/**
 		 * Properties of a ForwardingEvent.
@@ -34642,7 +34732,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ForwardingEvent
 		 * @instance
 		 */
-		ForwardingEvent.prototype.timestamp = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ForwardingEvent.prototype.timestamp = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The incoming channel ID that carried the HTLC that created the circuit.
@@ -34650,7 +34740,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ForwardingEvent
 		 * @instance
 		 */
-		ForwardingEvent.prototype.chanIdIn = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ForwardingEvent.prototype.chanIdIn = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The outgoing channel ID that carried the preimage that completed the circuit.
@@ -34658,7 +34748,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ForwardingEvent
 		 * @instance
 		 */
-		ForwardingEvent.prototype.chanIdOut = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ForwardingEvent.prototype.chanIdOut = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The total amount (in satoshis) of the incoming HTLC that created half the circuit.
@@ -34666,7 +34756,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ForwardingEvent
 		 * @instance
 		 */
-		ForwardingEvent.prototype.amtIn = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ForwardingEvent.prototype.amtIn = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The total amount (in satoshis) of the outgoing HTLC that created the second half of the circuit.
@@ -34674,7 +34764,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ForwardingEvent
 		 * @instance
 		 */
-		ForwardingEvent.prototype.amtOut = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ForwardingEvent.prototype.amtOut = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The total fee (in satoshis) that this payment circuit carried.
@@ -34682,7 +34772,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ForwardingEvent
 		 * @instance
 		 */
-		ForwardingEvent.prototype.fee = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ForwardingEvent.prototype.fee = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * The total fee (in milli-satoshis) that this payment circuit carried.
@@ -34690,7 +34780,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 * @memberof lnrpc.ForwardingEvent
 		 * @instance
 		 */
-		ForwardingEvent.prototype.feeMsat = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
+		ForwardingEvent.prototype.feeMsat = $util.Long ? $util.Long.fromBits(0, 0, true) : 0;
 		
 		/**
 		 * Creates a new ForwardingEvent instance using the specified properties.
@@ -34760,7 +34850,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ForwardingEvent.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ForwardingEvent();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ForwardingEvent();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -35024,7 +35115,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ForwardingEvent;
 	})();
 	
-	lnrpc.ForwardingHistoryResponse = (function() {
+	lnrpc.ForwardingHistoryResponse = (function () {
 		
 		/**
 		 * Properties of a ForwardingHistoryResponse.
@@ -35125,7 +35216,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ForwardingHistoryResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ForwardingHistoryResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ForwardingHistoryResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -35255,7 +35347,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ForwardingHistoryResponse;
 	})();
 	
-	lnrpc.ExportChannelBackupRequest = (function() {
+	lnrpc.ExportChannelBackupRequest = (function () {
 		
 		/**
 		 * Properties of an ExportChannelBackupRequest.
@@ -35343,7 +35435,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ExportChannelBackupRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ExportChannelBackupRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ExportChannelBackupRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -35447,7 +35540,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ExportChannelBackupRequest;
 	})();
 	
-	lnrpc.ChannelBackup = (function() {
+	lnrpc.ChannelBackup = (function () {
 		
 		/**
 		 * Properties of a ChannelBackup.
@@ -35550,7 +35643,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelBackup.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelBackup();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelBackup();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -35675,7 +35769,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelBackup;
 	})();
 	
-	lnrpc.MultiChanBackup = (function() {
+	lnrpc.MultiChanBackup = (function () {
 		
 		/**
 		 * Properties of a MultiChanBackup.
@@ -35780,7 +35874,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		MultiChanBackup.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.MultiChanBackup();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.MultiChanBackup();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -35919,7 +36014,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return MultiChanBackup;
 	})();
 	
-	lnrpc.ChanBackupExportRequest = (function() {
+	lnrpc.ChanBackupExportRequest = (function () {
 		
 		/**
 		 * Properties of a ChanBackupExportRequest.
@@ -35996,7 +36091,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChanBackupExportRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChanBackupExportRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChanBackupExportRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -36079,7 +36175,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChanBackupExportRequest;
 	})();
 	
-	lnrpc.ChanBackupSnapshot = (function() {
+	lnrpc.ChanBackupSnapshot = (function () {
 		
 		/**
 		 * Properties of a ChanBackupSnapshot.
@@ -36182,7 +36278,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChanBackupSnapshot.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChanBackupSnapshot();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChanBackupSnapshot();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -36303,7 +36400,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChanBackupSnapshot;
 	})();
 	
-	lnrpc.ChannelBackups = (function() {
+	lnrpc.ChannelBackups = (function () {
 		
 		/**
 		 * Properties of a ChannelBackups.
@@ -36393,7 +36490,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelBackups.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelBackups();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelBackups();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -36511,7 +36609,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelBackups;
 	})();
 	
-	lnrpc.RestoreChanBackupRequest = (function() {
+	lnrpc.RestoreChanBackupRequest = (function () {
 		
 		/**
 		 * Properties of a RestoreChanBackupRequest.
@@ -36624,7 +36722,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		RestoreChanBackupRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.RestoreChanBackupRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.RestoreChanBackupRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -36753,7 +36852,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return RestoreChanBackupRequest;
 	})();
 	
-	lnrpc.RestoreBackupResponse = (function() {
+	lnrpc.RestoreBackupResponse = (function () {
 		
 		/**
 		 * Properties of a RestoreBackupResponse.
@@ -36830,7 +36929,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		RestoreBackupResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.RestoreBackupResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.RestoreBackupResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -36913,7 +37013,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return RestoreBackupResponse;
 	})();
 	
-	lnrpc.ChannelBackupSubscription = (function() {
+	lnrpc.ChannelBackupSubscription = (function () {
 		
 		/**
 		 * Properties of a ChannelBackupSubscription.
@@ -36990,7 +37090,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ChannelBackupSubscription.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ChannelBackupSubscription();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ChannelBackupSubscription();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -37073,7 +37174,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ChannelBackupSubscription;
 	})();
 	
-	lnrpc.VerifyChanBackupResponse = (function() {
+	lnrpc.VerifyChanBackupResponse = (function () {
 		
 		/**
 		 * Properties of a VerifyChanBackupResponse.
@@ -37150,7 +37251,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		VerifyChanBackupResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.VerifyChanBackupResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.VerifyChanBackupResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -37233,7 +37335,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return VerifyChanBackupResponse;
 	})();
 	
-	lnrpc.Autopilot = (function() {
+	lnrpc.Autopilot = (function () {
 		
 		/**
 		 * Constructs a new Autopilot service.
@@ -37286,7 +37388,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Autopilot.prototype.status = function status(request, callback) {
 			return this.rpcCall(status, $root.lnrpc.StatusRequest, $root.lnrpc.StatusResponse, request, callback);
-		}, "name", { value: "Status" });
+		}, "name", {value: "Status"});
 		
 		/**
 		 * Status returns whether the daemon's autopilot agent is active.
@@ -37320,7 +37422,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Autopilot.prototype.modifyStatus = function modifyStatus(request, callback) {
 			return this.rpcCall(modifyStatus, $root.lnrpc.ModifyStatusRequest, $root.lnrpc.ModifyStatusResponse, request, callback);
-		}, "name", { value: "ModifyStatus" });
+		}, "name", {value: "ModifyStatus"});
 		
 		/**
 		 * ModifyStatus is used to modify the status of the autopilot agent, like
@@ -37356,7 +37458,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Autopilot.prototype.queryScores = function queryScores(request, callback) {
 			return this.rpcCall(queryScores, $root.lnrpc.QueryScoresRequest, $root.lnrpc.QueryScoresResponse, request, callback);
-		}, "name", { value: "QueryScores" });
+		}, "name", {value: "QueryScores"});
 		
 		/**
 		 * QueryScores queries all available autopilot heuristics, in addition to any
@@ -37392,7 +37494,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		 */
 		Object.defineProperty(Autopilot.prototype.setScores = function setScores(request, callback) {
 			return this.rpcCall(setScores, $root.lnrpc.SetScoresRequest, $root.lnrpc.SetScoresResponse, request, callback);
-		}, "name", { value: "SetScores" });
+		}, "name", {value: "SetScores"});
 		
 		/**
 		 * SetScores attempts to set the scores used by the running autopilot agent,
@@ -37408,7 +37510,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return Autopilot;
 	})();
 	
-	lnrpc.StatusRequest = (function() {
+	lnrpc.StatusRequest = (function () {
 		
 		/**
 		 * Properties of a StatusRequest.
@@ -37485,7 +37587,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		StatusRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.StatusRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.StatusRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -37568,7 +37671,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return StatusRequest;
 	})();
 	
-	lnrpc.StatusResponse = (function() {
+	lnrpc.StatusResponse = (function () {
 		
 		/**
 		 * Properties of a StatusResponse.
@@ -37656,7 +37759,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		StatusResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.StatusResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.StatusResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -37755,7 +37859,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return StatusResponse;
 	})();
 	
-	lnrpc.ModifyStatusRequest = (function() {
+	lnrpc.ModifyStatusRequest = (function () {
 		
 		/**
 		 * Properties of a ModifyStatusRequest.
@@ -37843,7 +37947,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ModifyStatusRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ModifyStatusRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ModifyStatusRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -37942,7 +38047,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ModifyStatusRequest;
 	})();
 	
-	lnrpc.ModifyStatusResponse = (function() {
+	lnrpc.ModifyStatusResponse = (function () {
 		
 		/**
 		 * Properties of a ModifyStatusResponse.
@@ -38019,7 +38124,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		ModifyStatusResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.ModifyStatusResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.ModifyStatusResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -38102,7 +38208,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return ModifyStatusResponse;
 	})();
 	
-	lnrpc.QueryScoresRequest = (function() {
+	lnrpc.QueryScoresRequest = (function () {
 		
 		/**
 		 * Properties of a QueryScoresRequest.
@@ -38203,7 +38309,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		QueryScoresRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.QueryScoresRequest();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.QueryScoresRequest();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -38328,7 +38435,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return QueryScoresRequest;
 	})();
 	
-	lnrpc.QueryScoresResponse = (function() {
+	lnrpc.QueryScoresResponse = (function () {
 		
 		/**
 		 * Properties of a QueryScoresResponse.
@@ -38418,7 +38525,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		QueryScoresResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.QueryScoresResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.QueryScoresResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -38533,7 +38641,7 @@ export const lnrpc = $root.lnrpc = (() => {
 			return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
 		};
 		
-		QueryScoresResponse.HeuristicResult = (function() {
+		QueryScoresResponse.HeuristicResult = (function () {
 			
 			/**
 			 * Properties of a HeuristicResult.
@@ -38634,7 +38742,8 @@ export const lnrpc = $root.lnrpc = (() => {
 			HeuristicResult.decode = function decode(reader, length) {
 				if (!(reader instanceof $Reader))
 					reader = $Reader.create(reader);
-				let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.QueryScoresResponse.HeuristicResult(), key;
+				let end = length === undefined ? reader.len : reader.pos + length,
+					message = new $root.lnrpc.QueryScoresResponse.HeuristicResult(), key;
 				while (reader.pos < end) {
 					let tag = reader.uint32();
 					switch (tag >>> 3) {
@@ -38767,7 +38876,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return QueryScoresResponse;
 	})();
 	
-	lnrpc.SetScoresRequest = (function() {
+	lnrpc.SetScoresRequest = (function () {
 		
 		/**
 		 * Properties of a SetScoresRequest.
@@ -38870,7 +38979,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		SetScoresRequest.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.SetScoresRequest(), key;
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.SetScoresRequest(), key;
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -39000,7 +39110,7 @@ export const lnrpc = $root.lnrpc = (() => {
 		return SetScoresRequest;
 	})();
 	
-	lnrpc.SetScoresResponse = (function() {
+	lnrpc.SetScoresResponse = (function () {
 		
 		/**
 		 * Properties of a SetScoresResponse.
@@ -39077,7 +39187,8 @@ export const lnrpc = $root.lnrpc = (() => {
 		SetScoresResponse.decode = function decode(reader, length) {
 			if (!(reader instanceof $Reader))
 				reader = $Reader.create(reader);
-			let end = length === undefined ? reader.len : reader.pos + length, message = new $root.lnrpc.SetScoresResponse();
+			let end = length === undefined ? reader.len : reader.pos + length,
+				message = new $root.lnrpc.SetScoresResponse();
 			while (reader.pos < end) {
 				let tag = reader.uint32();
 				switch (tag >>> 3) {
@@ -39163,4 +39274,4 @@ export const lnrpc = $root.lnrpc = (() => {
 	return lnrpc;
 })();
 
-export { $root as default };
+export {$root as default};

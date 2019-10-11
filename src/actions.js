@@ -1,10 +1,9 @@
-export const payLightning = async ({ lnd = {}, uri = "" } = {}) => {
+export const payLightning = async ({ lnd = {}, uri = "", log = true } = {}) => {
 	try {
 		const decodeResponse = await lnd.decodePaymentRequest(uri);
 		console.log(decodeResponse);
 		const response = await lnd.payLightning(uri);
-		console.log('Logging PayLightning Response...');
-		console.log(response);
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);
@@ -19,103 +18,100 @@ export const getAllInfo = async ({ lnd = {} } = {}) => {
 	}
 };
 
-export const getInfo = async ({ lnd = {} } = {}) => {
+export const getInfo = async ({ lnd = {}, log = true } = {}) => {
 	try {
 		const response = await lnd.getInfo();
-		console.log(response);
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);
 	}
 };
 
-export const getAddress = async ({ lnd = {} } = {}) => {
+export const getAddress = async ({ lnd = {}, log = true } = {}) => {
 	try {
 		const response = await lnd.getAddress();
-		console.log(response);
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);
 	}
 };
 
-export const addInvoice = async ({ lnd = {}, amount = 0 } = {}) => {
+export const addInvoice = async ({ lnd = {}, amount = 0 , log = true} = {}) => {
 	try {
 		const response = await lnd.addInvoice({ amount });
-		if (!response.error) {
-			//const uri = `lightning:${response.data}`;
-		}
-		console.log(response);
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);
 	}
 };
 
-export const getBackup = async ({ lnd = {} } = {}) => {
+export const getBackup = async ({ lnd = {}, log = true } = {}) => {
 	try {
 		const response = await lnd.getBackup();
-		console.log(response);
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);
 	}
 };
 
-export const connectToPeer = async ({ lnd = {} } = {}) => {
+export const connectToPeer = async ({ lnd = {}, peer = "", log = true } = {}) => {
 	try {
-		const response = await lnd.connectToPeer();
-		console.log(response);
+		const response = await lnd.connectToPeer({ peer });
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);
 	}
 };
 
-export const getPeers = async ({ lnd = {} } = {}) => {
+export const getPeers = async ({ lnd = {}, log = true } = {}) => {
 	try {
 		const response = await lnd.getPeers();
-		console.log(response);
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);
 	}
 };
 
-export const getWalletBalance = async ({ lnd = {} } = {}) => {
+export const getWalletBalance = async ({ lnd = {}, log = true } = {}) => {
 	try {
 		const response = await lnd.getWalletBalance();
-		console.log(response);
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);
 	}
 };
 
-export const getChannelBalance = async ({ lnd = {} } = {}) => {
+export const getChannelBalance = async ({ lnd = {}, log = true } = {}) => {
 	try {
 		const response = await lnd.getChannelBalance();
-		console.log(response);
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);
 	}
 };
 
-export const getTransactions = async ({ lnd = {} } = {}) => {
+export const getTransactions = async ({ lnd = {}, log = true } = {}) => {
 	try {
 		const response = await lnd.getTransactions();
-		console.log(response);
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);
 	}
 };
 
-export const getInboundCapacity = async ({ lnd = {} } = {}) => {
+export const getInboundCapacity = async ({ lnd = {}, log = true } = {}) => {
 	try {
 		const response = await lnd.getInboundCapacity();
-		console.log(response);
+		if (log) console.log(response);
 		return response;
 	} catch (e) {
 		console.log(e);

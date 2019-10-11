@@ -74,7 +74,7 @@ const _Lightning = () => {
 	const updateInfo = () => {
 		try {
 			InteractionManager.runAfterInteractions(async () => {
-				const getInfoResponse = await getInfo({ lnd });
+				const getInfoResponse = await getInfo({ lnd, log: false });
 				if (!getInfoResponse.error) setInfo(getInfoResponse.data);
 			});
 		} catch(e) {
@@ -84,7 +84,7 @@ const _Lightning = () => {
 	const updateWalletBalance = () => {
 		try {
 			InteractionManager.runAfterInteractions(async () => {
-				const response = await getWalletBalance({ lnd });
+				const response = await getWalletBalance({ lnd, log: false });
 				if (!response.error) setWalletBalance(response.data);
 			});
 		} catch (e) {
@@ -94,7 +94,7 @@ const _Lightning = () => {
 	const updateChannelBalance = () => {
 		try {
 			InteractionManager.runAfterInteractions(async () => {
-				const response = await getChannelBalance({ lnd });
+				const response = await getChannelBalance({ lnd, log: false });
 				if (!response.error) setChannelBalance(response.data);
 			});
 		} catch (e) {
@@ -104,7 +104,7 @@ const _Lightning = () => {
 	const updateInboundCapacity = () => {
 		try {
 			InteractionManager.runAfterInteractions(async () => {
-				const response = await getInboundCapacity({ lnd });
+				const response = await getInboundCapacity({ lnd, log: false });
 				if (!response.error) setInboundCapacity(response.data);
 			});
 		} catch (e) {
@@ -141,16 +141,18 @@ const _Lightning = () => {
 				//Update info every 20 seconds.
 				clearInterval(this._updateDataInterval);
 				this._updateDataInterval = setInterval(updateData, 5000);
+				AppState.addEventListener("change", _handleAppStateChange);
 			}
-			AppState.addEventListener("change", _handleAppStateChange);
 			console.log(`LND is ready? ${lnd.isReady}`);
 		} catch (e) {
 			console.log(e);
 		}
 	};
 	const componentWillUnmount = () => {
-		AppState.removeEventListener("change", _handleAppStateChange);
-		clearInterval(this._updateDataInterval);
+		if (START_LND) {
+			AppState.removeEventListener("change", _handleAppStateChange);
+			clearInterval(this._updateDataInterval);
+		}
 	};
 	
 	useEffect(() => {
@@ -224,7 +226,7 @@ const _Lightning = () => {
 						value={peer}
 						multiline={true}
 					/>
-					<Button onPress={() => connectToPeer({ lnd })} text="Connect to Peer" />
+					<Button onPress={() => connectToPeer({ lnd, peer })} text="Connect to Peer" />
 					<View style={styles.separator} />
 					
 					<Button onPress={() => getPeers({ lnd })} text="Get Peers" />

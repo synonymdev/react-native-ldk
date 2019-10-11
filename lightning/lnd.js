@@ -118,17 +118,20 @@ class LND {
 		}
 	}
 	
-	async connectToPeer({ pubkey = "", host = "" } = {}) {
+	async connectToPeer({ peer = "" } = {}) {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			if (!this.isReady) return failure("Unable to connect to peer");
+			if (!this.isReady || !peer) return failure("Unable to connect to peer");
 			try {
-				await this.grpc.sendCommand('connectPeer', {
+				const pubkey = peer.split("@")[0];
+				const host = peer.split("@")[1];
+				await this.grpc.sendCommand("connectPeer", {
 					addr: { host, pubkey },
 				});
-				console.log(`Connected to: ${pubkey}@${host}`);
+				return { error: false, data: `Connected to ${pubkey}@${host}`};
 			} catch (err) {
-				console.log('Connecting to peer failed', err);
+				console.log("Connecting to peer failed", err);
+				return failure(err);
 			}
 		} catch (e) {
 			console.log(e);
