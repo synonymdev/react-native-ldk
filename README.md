@@ -1,26 +1,32 @@
 # react-native-lightning
-This is my attempt at deconstructing what Lightning Labs has done with their Lightning App. My goal is to use this as a playground for learning and experimentation prior to implementing it into [Moonshine](https://github.com/coreyphillips/moonshine).
-
-<p style="align-items: center">
-  <img src="./src/assets/screenshots/screenshot1.png" width="33%" alt="Screenshot 1" />
-  <img src="./src/assets/screenshots/screenshot2.png" width="33%" alt="Screenshot 2" />
-</p>
 
 ### Installation
-1. Generate the Lndmobile.aar & Lndmobile.framework files.
-    - Option 1 - Generate them locally:
+1. `yarn install react-native-lightning`
+
+2. Add the following to the postinstall script in yourproject/package.json:
+    - `(cd node_modules/rn-lnd && yarn install && ./node_modules/.bin/rn-nodeify --install buffer,stream,assert,events,crypto,vm,process --hack)`
+ 
+3. Copy react-native-lightning/src/lnd.config to the following. (Note: Create the directories if they do not exist):
+     - Android - `android/app/source/main/assets/lnd.config`
+     - iOS - `ios/lightning/lnd.config`
+     
+4. Copy necessary files over for Android & iOS respectively:
+    - Android - Copy LndNativeModule.java & LndNativePackage.java to:
+            - `android/app/source/main/java/com/yourproject/`
+    - iOS - Copy LndReactModule.h & LndReactModule.m to:
+            - `ios/lightning/`
+     
+5. Generate the Lndmobile.aar & Lndmobile.framework files.
+    - Option 1 - Generate them locally using lnd v0.10:
         - To generate these files, please follow the instructions detailed in the README of Lightning Lab's Lightning App [here.](https://github.com/lightninglabs/lightning-app/tree/master/mobile)
     - Option 2 - Download pre-generated files:
-        - If you do not wish to generate these files locally you can download them [here](https://github.com/coreyphillips/moonshine/releases/tag/v0.2.0-2) instead. However, I highly recommend you opt for option 1.
-2. Clone react-native-lightning and Install Dependencies:
-   ```
-    git clone https://github.com/coreyphillips/react-native-lightning
-    cd react-native-lightning
-    yarn install && cd ios && pod install && cd ..
-    ```
-3. Add the Lndmobile.aar & Lndmobile.framework files to the project:
-    - Add the Lndmobile.aar file to `react-native-lightning/android/Lndmobile`
-    - Add the Lndmobile.framework file to `react-native-lightning/ios/lightning`
+        - If you do not wish to generate these files locally you can download them [here](https://github.com/coreyphillips/react-native-lightning/releases/tag/v0.1) instead. However, I highly recommend you opt for option 1.
+
+6. Add the Lndmobile.aar & Lndmobile.framework files to the project:
+    - Add the Lndmobile.aar file to `android/Lndmobile`
+    - Add the Lndmobile.framework file to `ios/lightning`
+
+7. Add `packages.add(new LndNativePackage());` to "getPackages" in MainApplication.java just above `return packages`"
 
 4. Start the project:
     - iOS: `react-native run-ios`
