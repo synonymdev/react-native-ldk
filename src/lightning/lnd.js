@@ -20,12 +20,17 @@ class LND {
 			//Check if the user already has a lightning mnemonic & pass.
 			const lightningPass = await getKeychainValue({ key: "lightningPass" });
 			//const lightningMnemonic = await getKeychainValue({ key: "lightningMnemonic" });
+			await this._initWallet();
 			if (lightningPass.error === false && lightningPass.data.password) {
-				await this.grpc.sendUnlockerCommand('UnlockWallet', {
-					walletPassword: toBuffer(lightningPass.data.password),
-					recoveryWindow: 0,
-				});
-				this.isReady = true;
+				setTimeout(async () => {
+					this.grpc.sendUnlockerCommand('UnlockWallet', {
+						walletPassword: toBuffer(lightningPass.data.password),
+						recoveryWindow: 0,
+					}).then(cb => {
+						console.log(cb);
+					});
+					this.isReady = true;
+				}, 2000);
 			} else {
 				await this._initWallet();
 			}
@@ -65,7 +70,9 @@ class LND {
 	async start() {
 		try {
 			await this.grpc.initUnlocker();
-			await this._unlockWallet();
+			setTimeout(async () => {
+				await this._unlockWallet();
+			}, 2000);
 			return { error: false, data: "" };
 		} catch (e) {
 			return { error: true, data: e };

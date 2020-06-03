@@ -4,11 +4,13 @@
  * from the UI but rather used within other higher level actions.
  */
 import "../../shim";
+import { Platform } from "react-native";
 import base64 from "base64-js";
 import { lnrpc } from "./rpc";
 import { toCaps } from "./helpers";
 
 const { Duplex } = require("readable-stream");
+const OS = Platform.OS;
 
 class GrpcAction {
   constructor(NativeModules, NativeEventEmitter) {
@@ -30,10 +32,14 @@ class GrpcAction {
   async initUnlocker() {
     try {
       try {
-        this._lnd.start();
-        this._lndEvent.addListener("streamEvent", (response) => {
-          return Promise.resolve(response.data);
-        });
+        if (OS === "android") {
+          await this._lnd.start();
+        } else {
+          this._lnd.start();
+          this._lndEvent.addListener("streamEvent", (response) => {
+            return Promise.resolve(response.data);
+          });
+        }
       } catch (e) {console.log(e);}
       if (__DEV__) {
         this._lndEvent.addListener("logs", res => {
@@ -203,14 +209,19 @@ class GrpcAction {
     try {
       method = toCaps(method);
       const req = this._serializeRequest(method, body);
-     this._lnd.sendCommand(method, req);
-      this._lndEvent.addListener("streamEvent", (response) => {
-        if (response.event === 'data') {
-          return this._deserializeResponse(method, response.data);
-        } else {
-          return Promise.reject(response.error);
-        }
-      });
+      if (OS === "android") {
+        const response = await this._lnd.sendCommand(method, req);
+        return this._deserializeResponse(method, response.data);
+      } else {
+        this._lnd.sendCommand(method, req);
+        this._lndEvent.addListener("streamEvent", (response) => {
+          if (response.event === 'data') {
+            return this._deserializeResponse(method, response.data);
+          } else {
+            return Promise.reject(response.error);
+          }
+        });
+      }
     } catch (err) {
       if (typeof err === 'string') {
         throw new Error(err);
