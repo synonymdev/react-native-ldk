@@ -1,20 +1,18 @@
 # react-native-lightning
 
 ### Installation
-1. `yarn install react-native-lightning`
+1. `yarn add react-native-lightning`
 
 2. Add the following to the postinstall script in yourproject/package.json:
-    - `(cd node_modules/rn-lnd && yarn install && ./node_modules/.bin/rn-nodeify --install buffer,stream,assert,events,crypto,vm,process --hack)`
+    - `(cd node_modules/react-native-lightning && yarn install && ./node_modules/.bin/rn-nodeify --install buffer,stream,assert,events,crypto,vm,process --hack)`
  
 3. Copy react-native-lightning/src/lnd.config to the following. (Note: Create the directories if they do not exist):
      - Android - `android/app/source/main/assets/lnd.config`
      - iOS - `ios/lightning/lnd.config`
      
 4. Copy necessary files over for Android & iOS respectively:
-    - Android - Copy LndNativeModule.java & LndNativePackage.java to:
-            - `android/app/source/main/java/com/yourproject/`
-    - iOS - Copy LndReactModule.h & LndReactModule.m to:
-            - `ios/lightning/`
+    - Android - Copy LndNativeModule.java & LndNativePackage.java to `android/app/source/main/java/com/yourproject/` and be sure to replace "com.rnlightning" at the top of each file with the name of your own project.
+    - iOS - Copy LndReactModule.h & LndReactModule.m to `ios/lightning/`.
      
 5. Generate the Lndmobile.aar & Lndmobile.framework files.
     - Option 1 - Generate them locally using lnd v0.10:
