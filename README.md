@@ -1,10 +1,10 @@
 # react-native-lightning
 
 ### Installation
-1. `yarn add react-native-lightning`
+1. `yarn add react-native-lightning buffer react-native-randombytes && cd ios && pod install && cd ..`
 
-2. Add the following to the postinstall script in yourproject/package.json:
-    - `(cd node_modules/react-native-lightning && yarn install && ./node_modules/.bin/rn-nodeify --install buffer,stream,assert,events,crypto,vm,process --hack)`
+2. Add the following to the end of the postinstall script in yourproject/package.json:
+    - `cd node_modules/react-native-lightning && yarn install && ./node_modules/.bin/rn-nodeify --install buffer,stream,assert,events,crypto,vm,process --hack`
  
 3. Copy react-native-lightning/src/lnd.config to the following. (Note: Create the directories if they do not exist):
      - Android - `android/app/source/main/assets/lnd.config`
