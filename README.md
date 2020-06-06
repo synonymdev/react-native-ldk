@@ -5,12 +5,31 @@
 ### Description
 This library hopes to simplify the process of adding Lightning via LND's Neutrino to any React-Native app. 
 
-### Installation
+### Android Installation:
 
 Video Walkthrough: [TODO]
 
-Please use [this commit](https://github.com/coreyphillips/photon/commit/925510f3515f6bac812d41a49a43d3a0c0981dfe) as a reference to what needs to be changed/added to your project to get everything working.
+If you have any trouble, please use [this commit](https://github.com/coreyphillips/photon/commit/925510f3515f6bac812d41a49a43d3a0c0981dfe) as a reference to what needs to be changed/added to your project to get everything working.
 
+1. Install Dependencies:
+   ```
+    yarn add react-native-lightning buffer react-native-randombytes react-native-crypto react-native-keychain@4.0.5
+    yarn add -D rn-nodeify
+    yarn install
+    ```
+2. Start the project:
+    
+    `react-native run-android`
+    
+#### Example Usage
+```
+const lnd = require("react-native-lightning");
+lnd.start();
+```
+    
+### iOS Installation (In Progress)
+
+### Manual (Android/iOS):
 1. `yarn add react-native-lightning buffer react-native-randombytes`
 
 2. Add the following to the end of your postinstall script in yourproject/package.json:
