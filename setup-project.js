@@ -1,9 +1,13 @@
 const path = require('path');
 const fs = require('fs');
 const exec = require('child_process').exec;
+const extract = require('extract-zip');
 
-const BASE_PATH = "../..";
+const BASE_PATH = `${__dirname}/../..`;
 const BASE_ANDROID_PATH = `${BASE_PATH}/android`;
+const BASE_IOS_PATH = `${BASE_PATH}/ios`;
+const LND_MOBILE_DOWNLOAD_PATH = "https://github.com/coreyphillips/photon/releases/download/v0.0.1/";
+
 let packageJson = ""
 try {packageJson = require(`${BASE_PATH}/package.json`);} catch {return;}
 
@@ -67,7 +71,15 @@ const getFilePath = (startPath,filter,callback) => {
 }
 
 const downloadFile = (source, destination) => {
-	try {exec(`curl -L ${source} -o ${destination}`);} catch {}
+	return new Promise((resolve) => {
+		try {
+			const cmd = `curl -L ${source} -o ${destination}`;
+			exec(cmd, (error, stdout, stderr) => {
+				if (error) console.warn(error);
+				resolve(stdout ? stdout : stderr);
+			});
+		} catch (e) {resolve(e);}
+	});
 };
 
 let generalFiles = [
@@ -91,6 +103,27 @@ let androidFiles = [
 		source: "src/android/build.gradle",
 		destination: `${BASE_ANDROID_PATH}/Lndmobile`,
 		filename: "build.gradle"
+	},
+];
+
+let iosFiles = [
+	{
+		//Copy lnd.conf -> ios/lightning/
+		source: "src/lnd.conf",
+		destination: `${BASE_IOS_PATH}/lightning`,
+		filename: "lnd.conf"
+	},
+	{
+		//Copy build.gradle -> ios/lightning/
+		source: "src/ios/LndReactModule.h",
+		destination: `${BASE_IOS_PATH}/lightning`,
+		filename: "LndReactModule.h"
+	},
+	{
+		//Copy build.gradle -> ios/lightning/
+		source: "src/ios/LndReactModule.m",
+		destination: `${BASE_IOS_PATH}/lightning`,
+		filename: "LndReactModule.m"
 	},
 ];
 
@@ -188,10 +221,34 @@ const setupAndroid = () => {
 	const lndMobileName = "Lndmobile.aar";
 	if (!fs.existsSync(lndMobileDest)) mkDirByPathSync(lndMobileDest);
 	if (!fs.existsSync(`${lndMobileDest}/${lndMobileName}`)) {
-		const source = `https://github.com/coreyphillips/photon/releases/download/v0.0.1/${lndMobileName}`;
+		const source = `${LND_MOBILE_DOWNLOAD_PATH}${lndMobileName}`;
 		const destination = `${lndMobileDest}/${lndMobileName}`;
 		downloadFile(source, destination);
 	}
+};
+
+const setupIos = async () => {
+	const lndMobileDest = `${BASE_IOS_PATH}/lightning`;
+	
+	//Create Lndmobile path & download Lndmobile.framework.zip
+	if (!fs.existsSync(lndMobileDest)) mkDirByPathSync(lndMobileDest);
+	iosFiles.forEach(async ({ source, destination, filename }) => {
+		const filePath = `${destination}/${filename}`;
+		if (!fs.existsSync(filePath)) {
+			mkDirByPathSync(destination);
+			await createFile(source, filePath);
+		}
+	});
+	
+	//Download, extract and delete Lndmobile.framework.zip
+	const lndMobileName = "Lndmobile.framework.zip";
+	const zipDestination = `${lndMobileDest}/${lndMobileName}`;
+	if (!fs.existsSync(`${lndMobileDest}/${lndMobileName}`)) {
+		const source = `${LND_MOBILE_DOWNLOAD_PATH}${lndMobileName}`;
+		await downloadFile(source, zipDestination);
+		await extract(zipDestination, { dir: `${lndMobileDest}/` });
+	}
+	fs.unlinkSync(zipDestination);
 };
 
 const injectText = (filePath, searchString = "", textToInject = "", injectIndex = 0) => {
@@ -219,3 +276,4 @@ const injectText = (filePath, searchString = "", textToInject = "", injectIndex 
 
 generalSetup();
 setupAndroid();
+setupIos();
