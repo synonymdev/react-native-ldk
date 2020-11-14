@@ -51,9 +51,9 @@ class LND {
 		}
 	}
 
-	async initWallet() {
+	async initWallet(seed) {
 		try {
-			const pass = await secureRandomPassword();
+			const password = await secureRandomPassword();
 			// const response = await this.grpc.sendUnlockerCommand('GenSeed');
 			// const cipherSeedMnemonic = response.cipherSeedMnemonic;
 			// await this.grpc.sendUnlockerCommand('InitWallet', {
@@ -74,7 +74,7 @@ class LND {
 			// 	recoveryWindow: 250,
 			// });
 
-			await this.grpc.initWallet();
+			await this.grpc.initWallet(password, seed);
 
 			this.isReady = true;
 		} catch (e) {

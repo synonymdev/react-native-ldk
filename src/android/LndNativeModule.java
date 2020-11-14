@@ -10,6 +10,7 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
@@ -209,26 +210,26 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
         class UnlockCallback implements Callback {
             @Override
             public void onError(Exception e) {
-                Log.i(TAG, "unlock err");
-                Log.d(TAG, "unlock err");
+                Log.i(TAG, "Wallet unlock err: " + e.getMessage());
+                Log.d(TAG, "Wallet unlock err: " + e.getMessage());
             }
             @Override
             public void onResponse(byte[] bytes) {
-                Log.i(TAG, "unlock started");
-                Log.d(TAG, "unlock started");
+                Log.i(TAG, "Wallet ready to be unlocked");
+                Log.d(TAG, "Wallet ready to be unlocked");
                 promise.resolve("unlocked");
             }
         }
         class RPCCallback implements Callback {
             @Override
             public void onError(Exception e) {
-                Log.i(TAG, "rpc callback err");
-                Log.d(TAG, "unlock started");
+                Log.i(TAG, "RPC start err: " + e.getMessage());
+                Log.d(TAG, "RPC start err: " + e.getMessage());
             }
             @Override
             public void onResponse(byte[] bytes) {
-                Log.i(TAG, "rpc callback started");
-                Log.d(TAG, "unlock started");
+                Log.i(TAG, "RPC ready for requests");
+                Log.d(TAG, "RPC ready for requests");
                 promise.resolve("rpc started");
             }
         }
@@ -243,14 +244,14 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void init(final Promise promise) {
+    public void init(String password, ReadableArray seed, final Promise promise) {
         Log.i("LndNativeModule", "Initializing wallet...");
 
         class InitializeWalletCallback implements Callback {
             @Override
             public void onError(Exception e) {
-                Log.i(TAG, "init err");
-                Log.d(TAG, "init err");
+                Log.i(TAG, "init err: " + e.getMessage());
+                Log.d(TAG, "init err: " + e.getMessage());
             }
             @Override
             public void onResponse(byte[] bytes) {
@@ -260,20 +261,26 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             }
         }
 
-        Runnable initWallet = new Runnable() {
-            @Override
+        //Map a react native ReadableArray to java string array
+        String[] seedArray = new String[seed.size()];
+        for (int i = 0; i < seed.size(); i++) {
+            seedArray[i] = seed.getString(i);
+        }
+
+        //Build init request
+        lnrpc.Walletunlocker.InitWalletRequest.Builder initRequest = lnrpc.Walletunlocker.InitWalletRequest.newBuilder();
+        initRequest.setWalletPassword(ByteString.copyFrom(password.getBytes()));
+        initRequest.addAllCipherSeedMnemonic(Arrays.asList(seedArray));
+
+        class InitWalletTask implements Runnable {
+            byte[] request;
+            InitWalletTask(byte[] r) { request = r;}
             public void run() {
-                String password = "Shhhhhhhh";
-                String[] seed = {"about", "pride", "arrest", "ladder", "neutral", "unknown", "duck", "tilt", "electric", "cattle", "skate", "run", "friend", "advance", "melody", "helmet", "fat", "close", "believe", "copper", "unaware", "quote", "above", "decade"};
-
-                lnrpc.Walletunlocker.InitWalletRequest.Builder initRequest = lnrpc.Walletunlocker.InitWalletRequest.newBuilder();
-                initRequest.setWalletPassword(ByteString.copyFrom(password.getBytes()));
-                initRequest.addAllCipherSeedMnemonic(Arrays.asList(seed));
-
-                Lndmobile.initWallet(initRequest.build().toByteArray(), new InitializeWalletCallback());
+                Lndmobile.initWallet(request, new InitializeWalletCallback());
             }
-        };
-        new Thread(initWallet).start();
+        }
+        Thread t = new Thread(new InitWalletTask(initRequest.build().toByteArray()));
+        t.start();
     }
 
     private void readToEnd(BufferedReader buf, boolean emit) throws IOException {

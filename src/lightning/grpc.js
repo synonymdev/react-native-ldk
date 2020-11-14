@@ -53,19 +53,21 @@ class GrpcAction {
     }
   }
 
-  async initWallet() {
+  /**
+   * Once `unlockerReady` is set then the wallet can be created and unlocked with this.
+   * made to the client.
+   * @param  {string} wallet password
+   * @param  {Array<string>} wallet seed phrase
+   * @return {Promise<undefined>}
+   */
+  async initWallet(password, seed) {
     try {
       try {
-        if (OS === "android") {
-          await this._lnd.start();
-        } else {
-          //TODO test iOS
-          this._lnd.start();
-          this._lndEvent.addListener("streamEvent", (response) => {
-            return Promise.resolve(response.data);
-          });
-        }
-      } catch (e) {console.log(e);}
+        await this._lnd.init(password, seed);
+      } catch (e) {
+        console.log(e);
+        return { error: true, data: e };
+      }
 
       return { error: false, data: "" };
     } catch (e) {
