@@ -309,6 +309,55 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
         t.start();
     }
 
+    @ReactMethod
+    public void unlock(String password, final Promise promise) {
+        Log.i("LndNativeModule", "Unlocking wallet...");
+
+        class UnlockWalletCallback implements Callback {
+            @Override
+            public void onError(Exception e) {
+                Log.i(TAG, "Unlock err: " + e.getMessage());
+                Log.d(TAG, "Unlock err: " + e.getMessage());
+                e.printStackTrace();
+
+                //TODO wallet still unlocked but sometimes returns an error. Error needs some investigation.
+                if (e.getMessage().contains("transport is closing")) {
+                    promise.resolve("unlocked");
+                } else {
+                    promise.reject(e);
+                }
+            }
+            @Override
+            public void onResponse(byte[] bytes) {
+                Log.i(TAG, "Wallet successfully unlocked");
+                Log.d(TAG, "Wallet successfully unlocked");
+                promise.resolve("unlocked");
+            }
+        }
+
+        //Build unlock request
+        Walletunlocker.UnlockWalletRequest.Builder unlockRequest = Walletunlocker.UnlockWalletRequest.newBuilder();
+        unlockRequest.setWalletPassword(ByteString.copyFrom(password.getBytes()));
+
+        class UnlockWalletTask implements Runnable {
+            byte[] request;
+            UnlockWalletTask(byte[] r) { request = r;}
+            public void run() {
+                Lndmobile.unlockWallet(request, new UnlockWalletCallback());
+            }
+        }
+        Thread t = new Thread(new UnlockWalletTask(unlockRequest.build().toByteArray()));
+        t.start();
+    }
+
+    @ReactMethod
+    public void walletExists(String network, final Promise promise) {
+        File directory = new File(getReactApplicationContext().getFilesDir().toString() + "/data/chain/bitcoin/" + network + "/wallet.db");
+        boolean exists = directory.exists();
+        Log.d(TAG, "Wallet exists: " + exists);
+        promise.resolve(exists);
+    }
+
     private void readToEnd(BufferedReader buf, boolean emit) throws IOException {
         String s = "";
         while ( (s = buf.readLine()) != null ) {

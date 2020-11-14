@@ -15,31 +15,6 @@ class LND {
 		this.grpc = new GrpcAction(NativeModules, NativeEventEmitter);
 	}
 
-	// async unlockWallet() {
-	// 	try {
-	// 		//Check if the user already has a lightning mnemonic & pass.
-	// 		const lightningPass = await getKeychainValue({ key: "lightningPass" });
-	// 		//const lightningMnemonic = await getKeychainValue({ key: "lightningMnemonic" });
-	// 		await this._initWallet();
-	// 		if (lightningPass.error === false && lightningPass.data.password) {
-	// 			setTimeout(async () => {
-	// 				this.grpc.sendUnlockerCommand('UnlockWallet', {
-	// 					walletPassword: toBuffer(lightningPass.data.password),
-	// 					recoveryWindow: 0,
-	// 				}).then(cb => {
-	// 					console.log(cb);
-	// 				});
-	// 				this.isReady = true;
-	// 			}, 2000);
-	// 		} else {
-	// 			await this._initWallet();
-	// 		}
-	// 	} catch (e) {
-	// 		console.log(e);
-	// 		await this._initWallet();
-	// 	}
-	// }
-
 	async start() {
 		try {
 			return await this.grpc.initUnlocker();
@@ -52,40 +27,54 @@ class LND {
 		try {
 			return await this.grpc.genSeed();
 		} catch (e) {
-			return e.toString();
+			return { error: true, data: e };
+		}
+	}
+
+	async walletExists(network) {
+		try {
+			return await this.grpc.walletExists(network);
+		} catch (e) {
+			return { error: true, data: e };
+		}
+	}
+
+	async unlockWallet() {
+		try {
+			const lightningPass = await getKeychainValue({ key: "lightningPass" });
+
+			//TODO it might be better to give the dev control over how the password is stored
+			if (lightningPass.error === false && lightningPass.data.password) {
+				const res = await this.grpc.unlockWallet(lightningPass.data.password);
+				this.isReady = true;
+				return res;
+			} else {
+				return { error: true, data: lightningPass.data };
+			}
+		} catch (e) {
+			return { error: true, data: e };
 		}
 	}
 
 	async initWallet(seed) {
 		try {
 			const password = await secureRandomPassword();
-			// const response = await this.grpc.sendUnlockerCommand('GenSeed');
-			// const cipherSeedMnemonic = response.cipherSeedMnemonic;
-			// await this.grpc.sendUnlockerCommand('InitWallet', {
-			// 	walletPassword: toBuffer(pass),
-			// 	cipherSeedMnemonic,
-			// 	recoveryWindow: 250,
-			// });
 
 			//Set the new lightning mnemonic & pass
-			// await Promise.all([
-			// 	setKeychainValue({ key: "lightningMnemonic", value: JSON.stringify(cipherSeedMnemonic) }),
-			// 	setKeychainValue({ key: "lightningPass", value: pass }),
-			// 	nap(5000)
-			// ]);
+			await Promise.all([
+				setKeychainValue({ key: "lightningMnemonic", value: JSON.stringify(seed) }),
+				setKeychainValue({ key: "lightningPass", value: password }),
+				nap(5000)
+			]);
 
-			// await this.grpc.sendUnlockerCommand('UnlockWallet', {
-			// 	walletPassword: toBuffer(pass),
-			// 	recoveryWindow: 250,
-			// });
-
+			const res = await this.grpc.initWallet(password, seed);
 			this.isReady = true;
-			return await this.grpc.initWallet(password, seed);
+			return res;
 		} catch (e) {
-			console.log(e);
+			return { error: true, data: e };
 		}
 	}
-
+	
 	async getInfo() {
 		try {
 			if (!this.isReady || !this.grpc) await this.start();
