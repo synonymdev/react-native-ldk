@@ -1,4 +1,4 @@
-package com.rnlightning;
+package com.lightningtest;
 
 import android.content.res.AssetManager;
 import android.os.FileObserver;
@@ -24,6 +24,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,7 +32,7 @@ import lndmobile.Callback;
 import lndmobile.Lndmobile;
 import lndmobile.RecvStream;
 import lndmobile.SendStream;
-
+import com.google.protobuf.ByteString;
 
 public class LndNativeModule extends ReactContextBaseJavaModule {
 
@@ -235,11 +236,44 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
         Runnable startLnd = new Runnable() {
             @Override
             public void run() {
-                //Lndmobile.start(args, new NativeCallback(promise));
                 Lndmobile.start(args, new UnlockCallback(), new RPCCallback());
             }
         };
         new Thread(startLnd).start();
+    }
+
+    @ReactMethod
+    public void init(final Promise promise) {
+        Log.i("LndNativeModule", "Initializing wallet...");
+
+        class InitializeWalletCallback implements Callback {
+            @Override
+            public void onError(Exception e) {
+                Log.i(TAG, "init err");
+                Log.d(TAG, "init err");
+            }
+            @Override
+            public void onResponse(byte[] bytes) {
+                Log.i(TAG, "Wallet successfully initialized");
+                Log.d(TAG, "Wallet successfully initialized");
+                promise.resolve("initialized");
+            }
+        }
+
+        Runnable initWallet = new Runnable() {
+            @Override
+            public void run() {
+                String password = "Shhhhhhhh";
+                String[] seed = {"about", "pride", "arrest", "ladder", "neutral", "unknown", "duck", "tilt", "electric", "cattle", "skate", "run", "friend", "advance", "melody", "helmet", "fat", "close", "believe", "copper", "unaware", "quote", "above", "decade"};
+
+                lnrpc.Walletunlocker.InitWalletRequest.Builder initRequest = lnrpc.Walletunlocker.InitWalletRequest.newBuilder();
+                initRequest.setWalletPassword(ByteString.copyFrom(password.getBytes()));
+                initRequest.addAllCipherSeedMnemonic(Arrays.asList(seed));
+
+                Lndmobile.initWallet(initRequest.build().toByteArray(), new InitializeWalletCallback());
+            }
+        };
+        new Thread(initWallet).start();
     }
 
     private void readToEnd(BufferedReader buf, boolean emit) throws IOException {

@@ -53,6 +53,27 @@ class GrpcAction {
     }
   }
 
+  async initWallet() {
+    try {
+      try {
+        if (OS === "android") {
+          await this._lnd.start();
+        } else {
+          //TODO test iOS
+          this._lnd.start();
+          this._lndEvent.addListener("streamEvent", (response) => {
+            return Promise.resolve(response.data);
+          });
+        }
+      } catch (e) {console.log(e);}
+
+      return { error: false, data: "" };
+    } catch (e) {
+      console.log(e);
+      return { error: true, data: e };
+    }
+  }
+
   /**
    * This GRPC api is called after the wallet is unlocked to close the grpc
    * client to lnd before the main lnd client is re-opened
