@@ -62,7 +62,8 @@ class GrpcAction {
    */
   async initWallet(password, seed) {
     try {
-      await this._lnd.init(password, seed);
+      const res = await this._lnd.init(password, seed);
+      return { error: false, data: res };
     } catch (e) {
       console.log(e);
       return { error: true, data: e };
@@ -77,7 +78,8 @@ class GrpcAction {
    */
   async genSeed() {
     try {
-      return await this._lnd.genSeed();
+      const seed = await this._lnd.genSeed();
+      return { error: false, data: { seed } };
     } catch (e) {
       console.log(e);
       return { error: true, data: e };

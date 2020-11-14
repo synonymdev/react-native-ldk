@@ -96,32 +96,6 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
         return constants;
     }
 
-    class NativeCallback implements Callback {
-        Promise promise;
-
-        NativeCallback(Promise promise) {
-            this.promise = promise;
-        }
-
-        @Override
-        public void onError(Exception e) {
-            promise.reject("LndNativeModule", e);
-        }
-
-        @Override
-        public void onResponse(byte[] bytes) {
-            String b64 = "";
-            if (bytes != null && bytes.length > 0) {
-                b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
-            }
-
-            WritableMap params = Arguments.createMap();
-            params.putString(respB64DataKey, b64);
-
-            promise.resolve(params);
-        }
-    }
-
     class ReceiveStream implements RecvStream {
         String streamID;
 
@@ -217,6 +191,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onError(Exception e) {
                 Log.i(TAG, "Wallet unlock err: " + e.getMessage());
                 Log.d(TAG, "Wallet unlock err: " + e.getMessage());
+                promise.reject(e);
             }
             @Override
             public void onResponse(byte[] bytes) {
@@ -257,6 +232,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onError(Exception e) {
                 Log.i(TAG, "Seed err: " + e.getMessage());
                 Log.d(TAG, "Seed err: " + e.getMessage());
+                promise.reject(e);
             }
             @Override
             public void onResponse(byte[] bytes) {
@@ -274,8 +250,9 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
 
                     promise.resolve(promiseSeed);
                 } catch (InvalidProtocolBufferException e) {
-                    e.printStackTrace();
-                    promise.resolve("Failed to pass genSeed response: " + e.getMessage());
+                    Log.i(TAG, "Failed to pass genSeed response: " + e.getMessage());
+                    Log.d(TAG, "Failed to pass genSeed response: " + e.getMessage());
+                    promise.reject(e);
                 }
             }
         }
@@ -300,6 +277,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onError(Exception e) {
                 Log.i(TAG, "init err: " + e.getMessage());
                 Log.d(TAG, "init err: " + e.getMessage());
+                promise.reject(e);
             }
             @Override
             public void onResponse(byte[] bytes) {
@@ -366,6 +344,32 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void sendCommand(String method, String msg, final Promise promise) {
+        class NativeCallback implements Callback {
+            Promise promise;
+
+            NativeCallback(Promise promise) {
+                this.promise = promise;
+            }
+
+            @Override
+            public void onError(Exception e) {
+                promise.reject("LndNativeModule", e);
+            }
+
+            @Override
+            public void onResponse(byte[] bytes) {
+                String b64 = "";
+                if (bytes != null && bytes.length > 0) {
+                    b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
+                }
+
+                WritableMap params = Arguments.createMap();
+                params.putString(respB64DataKey, b64);
+
+                promise.resolve(params);
+            }
+        }
+
         Method m = syncMethods.get(method);
         if (m == null) {
             promise.reject("LndNativeModule", "method not found");

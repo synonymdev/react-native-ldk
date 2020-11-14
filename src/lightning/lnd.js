@@ -40,12 +40,9 @@ class LND {
 	// 	}
 	// }
 
-
-
 	async start() {
 		try {
-			await this.grpc.initUnlocker();
-			return { error: false, data: "" };
+			return await this.grpc.initUnlocker();
 		} catch (e) {
 			return { error: true, data: e };
 		}
@@ -53,8 +50,7 @@ class LND {
 
 	async genSeed() {
 		try {
-			const seed = await this.grpc.genSeed();
-			return { error: false, data: { seed } };
+			return await this.grpc.genSeed();
 		} catch (e) {
 			return e.toString();
 		}
