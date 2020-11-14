@@ -62,14 +62,22 @@ class GrpcAction {
    */
   async initWallet(password, seed) {
     try {
-      try {
-        await this._lnd.init(password, seed);
-      } catch (e) {
-        console.log(e);
-        return { error: true, data: e };
-      }
+      await this._lnd.init(password, seed);
+    } catch (e) {
+      console.log(e);
+      return { error: true, data: e };
+    }
 
-      return { error: false, data: "" };
+    return { error: false, data: "" };
+  }
+
+  /**
+   * Generates wallet seed phrase which can be used in initWallet
+   * @return {Promise<undefined>}
+   */
+  async genSeed() {
+    try {
+      return await this._lnd.genSeed();
     } catch (e) {
       console.log(e);
       return { error: true, data: e };

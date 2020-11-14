@@ -51,6 +51,15 @@ class LND {
 		}
 	}
 
+	async genSeed() {
+		try {
+			const seed = await this.grpc.genSeed();
+			return { error: false, data: { seed } };
+		} catch (e) {
+			return e.toString();
+		}
+	}
+
 	async initWallet(seed) {
 		try {
 			const password = await secureRandomPassword();
@@ -74,9 +83,8 @@ class LND {
 			// 	recoveryWindow: 250,
 			// });
 
-			await this.grpc.initWallet(password, seed);
-
 			this.isReady = true;
+			return await this.grpc.initWallet(password, seed);
 		} catch (e) {
 			console.log(e);
 		}

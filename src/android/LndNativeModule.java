@@ -11,6 +11,7 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
@@ -33,7 +34,11 @@ import lndmobile.Callback;
 import lndmobile.Lndmobile;
 import lndmobile.RecvStream;
 import lndmobile.SendStream;
+import lnrpc.Walletunlocker;
+
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.ProtocolStringList;
 
 public class LndNativeModule extends ReactContextBaseJavaModule {
 
@@ -244,6 +249,49 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void genSeed(final Promise promise) {
+        Log.i("LndNativeModule", "Generating seed...");
+
+        class SeedCallback implements Callback {
+            @Override
+            public void onError(Exception e) {
+                Log.i(TAG, "Seed err: " + e.getMessage());
+                Log.d(TAG, "Seed err: " + e.getMessage());
+            }
+            @Override
+            public void onResponse(byte[] bytes) {
+                Log.i(TAG, "Seed generated successfully");
+                Log.d(TAG, "Seed generated successfully");
+
+                try {
+                    ProtocolStringList seed = Walletunlocker.GenSeedResponse.parseFrom(bytes).getCipherSeedMnemonicList();
+
+                    //Map seed list into a react native string array
+                    WritableArray promiseSeed = Arguments.createArray();
+                    for(int i = 0; i < seed.size(); i++){
+                        promiseSeed.pushString(seed.get(i));
+                    }
+
+                    promise.resolve(promiseSeed);
+                } catch (InvalidProtocolBufferException e) {
+                    e.printStackTrace();
+                    promise.resolve("Failed to pass genSeed response: " + e.getMessage());
+                }
+            }
+        }
+
+        class GenSeedTask implements Runnable {
+            byte[] request;
+            GenSeedTask(byte[] r) { request = r;}
+            public void run() {
+                Lndmobile.genSeed(request, new SeedCallback());
+            }
+        }
+        Thread t = new Thread(new GenSeedTask(Walletunlocker.GenSeedRequest.newBuilder().build().toByteArray()));
+        t.start();
+    }
+
+    @ReactMethod
     public void init(String password, ReadableArray seed, final Promise promise) {
         Log.i("LndNativeModule", "Initializing wallet...");
 
@@ -268,7 +316,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
         }
 
         //Build init request
-        lnrpc.Walletunlocker.InitWalletRequest.Builder initRequest = lnrpc.Walletunlocker.InitWalletRequest.newBuilder();
+        Walletunlocker.InitWalletRequest.Builder initRequest = Walletunlocker.InitWalletRequest.newBuilder();
         initRequest.setWalletPassword(ByteString.copyFrom(password.getBytes()));
         initRequest.addAllCipherSeedMnemonic(Arrays.asList(seedArray));
 
