@@ -1,4 +1,4 @@
-package com.lightningtest;
+package com.rnlightning;
 
 import android.content.res.AssetManager;
 import android.os.FileObserver;
@@ -210,7 +210,6 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "RPC ready for requests");
                 Log.d(TAG, "RPC ready for requests");
-                promise.resolve("rpc started");
             }
         }
 

@@ -55,6 +55,8 @@ lnd.start();
 
 7. Add `packages.add(new LndNativePackage());` to "getPackages" in MainApplication.java just above `return packages`"
 
-8. Start the project:
+8. For Android add `implementation 'com.android.support:multidex:1.0.3'` as a dependency and `multiDexEnabled true` under `defaultConfig` in your projects build gradle `android/app/build.gradle`.
+
+9. Start the project:
     - iOS: `react-native run-ios`
     - Android: `react-native run-android`

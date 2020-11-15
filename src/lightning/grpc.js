@@ -100,7 +100,7 @@ class GrpcAction {
 
   /**
    * Generates wallet seed phrase which can be used in initWallet
-   * @param  {string} Neywork (bitcoin, testnet, regtest)
+   * @param  {string} Network (bitcoin, testnet, regtest)
    * @return {Promise<undefined>}
    */
   async walletExists(network) {
