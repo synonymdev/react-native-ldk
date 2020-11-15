@@ -1,4 +1,4 @@
-package com.lightningtest;
+package com.rnlightning;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;

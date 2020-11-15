@@ -99,7 +99,7 @@ class GrpcAction {
   }
 
   /**
-   * Generates wallet seed phrase which can be used in initWallet
+   * Determines if a wallet has already been initialized for the network specified.
    * @param  {string} Network (bitcoin, testnet, regtest)
    * @return {Promise<undefined>}
    */
