@@ -6,7 +6,7 @@ const extract = require('extract-zip');
 const BASE_PATH = `${__dirname}/../..`;
 const BASE_ANDROID_PATH = `${BASE_PATH}/android`;
 const BASE_IOS_PATH = `${BASE_PATH}/ios`;
-const LND_MOBILE_DOWNLOAD_PATH = "https://github.com/coreyphillips/react-native-lightning/releases/download/v0.0.1/";
+const LND_MOBILE_DOWNLOAD_PATH = "https://github.com/coreyphillips/react-native-lightning/releases/download/v0.0.2/";
 
 let packageJson = ""
 try {packageJson = require(`${BASE_PATH}/package.json`);} catch {return;}
