@@ -183,7 +183,7 @@ const setupAndroid = () => {
 				})
 			});
 		}
-		const packageName = path.replace(`${BASE_ANDROID_PATH}/app/src/main/java/`, "").replace("/", ".");
+		const packageName = path.substring(path.indexOf("com")).replace("/", ".");
 		androidFiles.forEach(async ({ source, destination, filename }) => {
 			const filePath = `${destination}/${filename}`;
 			if (!fs.existsSync(filePath)) {
