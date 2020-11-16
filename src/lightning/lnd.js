@@ -14,66 +14,62 @@ class LND {
 		this.isReady = false;
 		this.grpc = new GrpcAction(NativeModules, NativeEventEmitter);
 	}
-	
-	async _unlockWallet() {
-		try {
-			//Check if the user already has a lightning mnemonic & pass.
-			const lightningPass = await getKeychainValue({ key: "lightningPass" });
-			//const lightningMnemonic = await getKeychainValue({ key: "lightningMnemonic" });
-			await this._initWallet();
-			if (lightningPass.error === false && lightningPass.data.password) {
-				setTimeout(async () => {
-					this.grpc.sendUnlockerCommand('UnlockWallet', {
-						walletPassword: toBuffer(lightningPass.data.password),
-						recoveryWindow: 0,
-					}).then(cb => {
-						console.log(cb);
-					});
-					this.isReady = true;
-				}, 2000);
-			} else {
-				await this._initWallet();
-			}
-		} catch (e) {
-			console.log(e);
-			await this._initWallet();
-		}
-	}
-	
-	async _initWallet() {
-		try {
-			const pass = await secureRandomPassword();
-			const response = await this.grpc.sendUnlockerCommand('GenSeed');
-			const cipherSeedMnemonic = response.cipherSeedMnemonic;
-			await this.grpc.sendUnlockerCommand('InitWallet', {
-				walletPassword: toBuffer(pass),
-				cipherSeedMnemonic,
-				recoveryWindow: 250,
-			});
-			
-			//Set the new lightning mnemonic & pass
-			await Promise.all([
-				setKeychainValue({ key: "lightningMnemonic", value: JSON.stringify(cipherSeedMnemonic) }),
-				setKeychainValue({ key: "lightningPass", value: pass }),
-				nap(5000)
-			]);
-			await this.grpc.sendUnlockerCommand('UnlockWallet', {
-				walletPassword: toBuffer(pass),
-				recoveryWindow: 250,
-			});
-			this.isReady = true;
-		} catch (e) {
-			console.log(e);
-		}
-	}
-	
+
 	async start() {
 		try {
-			await this.grpc.initUnlocker();
-			setTimeout(async () => {
-				await this._unlockWallet();
-			}, 2000);
-			return { error: false, data: "" };
+			return await this.grpc.initUnlocker();
+		} catch (e) {
+			return { error: true, data: e };
+		}
+	}
+
+	async genSeed() {
+		try {
+			return await this.grpc.genSeed();
+		} catch (e) {
+			return { error: true, data: e };
+		}
+	}
+
+	async walletExists(network) {
+		try {
+			return await this.grpc.walletExists(network);
+		} catch (e) {
+			return { error: true, data: e };
+		}
+	}
+
+	async unlockWallet() {
+		try {
+			const lightningPass = await getKeychainValue({ key: "lightningPass" });
+
+			//TODO it might be better to give the dev control over how the password is stored
+			if (lightningPass.error === false && lightningPass.data.password) {
+				const res = await this.grpc.unlockWallet(lightningPass.data.password);
+				this.isReady = true;
+				return res;
+			} else {
+				return { error: true, data: lightningPass.data };
+			}
+		} catch (e) {
+			return { error: true, data: e };
+		}
+	}
+
+	async initWallet(seed) {
+		try {
+			const password = await secureRandomPassword();
+
+			//Set the new lightning mnemonic & pass
+			await Promise.all([
+				setKeychainValue({ key: "lightningMnemonic", value: JSON.stringify(seed) }),
+				setKeychainValue({ key: "lightningPass", value: password }),
+				nap(5000)
+			]);
+
+			const res = await this.grpc.initWallet(password, seed);
+			this.isReady = true;
+			return res;
 		} catch (e) {
 			return { error: true, data: e };
 		}
@@ -89,7 +85,7 @@ class LND {
 			return { error: true, data: e };
 		}
 	}
-	
+
 	async getTransactions() {
 		try {
 			if (!this.isReady || !this.grpc) await this.start();
@@ -99,7 +95,7 @@ class LND {
 			return { error: true, data: e };
 		}
 	}
-	
+
 	async getInboundCapacity() {
 		try {
 			if (!this.isReady || !this.grpc) await this.start();
@@ -113,7 +109,7 @@ class LND {
 			return { error: true, data: e };
 		}
 	}
-	
+
 	async connectToPeer({ peer = "" } = {}) {
 		const failure = (data = "") => ({ error: true, data });
 		try {
@@ -134,7 +130,7 @@ class LND {
 			return { error: true, data: e };
 		}
 	}
-	
+
 	async getPeers() {
 		try {
 			const response = await this.grpc.sendCommand('listPeers');
@@ -144,7 +140,7 @@ class LND {
 			return({ error: true, data });
 		}
 	}
-	
+
 	async subscribeTransactions({ onReceive = () => null, onError = () => null } = {}) {
 		const failure = (data = "") => onError({ error: true, data });
 		try {
@@ -161,14 +157,14 @@ class LND {
 			failure(e);
 		}
 	}
-	
+
 	async stop() {
 		try {
 			await this.grpc.sendCommand('stopDaemon');
 			this.isReady = false;
 		} catch (e) {}
 	}
-	
+
 	/**
 	 * Send the amount specified in the invoice as a lightning transaction and
 	 * display the wait screen while the payment confirms.
@@ -201,7 +197,7 @@ class LND {
 			}
 		});
 	}
-	
+
 	//TODO: Not working
 	async getBackup() {
 		return new Promise(resolve => {
@@ -225,7 +221,7 @@ class LND {
 			}
 		});
 	}
-	
+
 	async getAddress() {
 		const failure = (data = "") => ({ error: true, data });
 		try {
@@ -238,7 +234,7 @@ class LND {
 			return failure(e);
 		}
 	}
-	
+
 	async addInvoice({ amount = 0, memo = "", expiry = 172800 } = {}) {
 		const failure = (data = "") => ({ error: true, data });
 		try {
@@ -256,7 +252,7 @@ class LND {
 			return failure(e);
 		}
 	}
-	
+
 	async getWalletBalance() {
 		const failure = (data = "") => ({ error: true, data });
 		try {
@@ -275,7 +271,7 @@ class LND {
 			return failure(e);
 		}
 	}
-	
+
 	async getChannelBalance() {
 		const failure = (data = "") => ({ error: true, data });
 		try {
@@ -293,7 +289,7 @@ class LND {
 			return failure(e);
 		}
 	}
-	
+
 	async decodePaymentRequest(payReq = "") {
 		const failure = (data = "") => ({ error: true, data });
 		if (!this.isReady) return failure();
@@ -306,7 +302,7 @@ class LND {
 			return failure(e);
 		}
 	}
-	
+
 	async logAvailableData() {
 		if (!this.isReady) return { error: true, data: "" };
 		try {
@@ -314,31 +310,31 @@ class LND {
 			const getInfoResponse = await this.grpc.sendCommand('getInfo');
 			console.log("Logging GetInfoResponse: ");
 			console.log(getInfoResponse);
-			
+
 			const getWalletBalanceResponse = await this.grpc.sendCommand('WalletBalance');
 			console.log("Logging getWalletBalanceResponse: ");
 			console.log(getWalletBalanceResponse);
-			
+
 			const getChannelBalanceResponse = await this.grpc.sendCommand('ChannelBalance');
 			console.log("Logging getChannelBalanceResponse: ");
 			console.log(getChannelBalanceResponse);
-			
+
 			const getTransactionsResponse = await this.grpc.sendCommand('GetTransactions');
 			console.log("Logging getTransactionsResponse: ");
 			console.log(getTransactionsResponse);
-			
+
 			const listPeersResponse = await this.grpc.sendCommand('ListPeers');
 			console.log("Logging listPeersResponse: ");
 			console.log(listPeersResponse);
-			
+
 			const pendingChannelsResponse = await this.grpc.sendCommand('PendingChannels');
 			console.log("Logging pendingChannelsResponse: ");
 			console.log(pendingChannelsResponse);
-			
+
 			const listChannelsResponse = await this.grpc.sendCommand('ListChannels');
 			console.log("Logging listChannelsResponse: ");
 			console.log(listChannelsResponse);
-			
+
 			const listPaymentsResponse = await this.grpc.sendCommand('ListPayments');
 			console.log("Logging listPaymentsResponse: ");
 			console.log(listPaymentsResponse);

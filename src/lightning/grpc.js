@@ -54,6 +54,66 @@ class GrpcAction {
   }
 
   /**
+   * Once `unlockerReady` is set then the wallet can be created and unlocked with this.
+   * @param  {string} wallet password
+   * @param  {Array<string>} wallet seed phrase
+   * @return {Promise<undefined>}
+   */
+  async initWallet(password, seed) {
+    try {
+      const res = await this._lnd.init(password, seed);
+      return { error: false, data: res };
+    } catch (e) {
+      console.log(e);
+      return { error: true, data: e };
+    }
+  }
+
+  /**
+   * Once `unlockerReady` is set then the wallet can be unlocked with this.
+   * @param  {string} wallet password
+   * @return {Promise<undefined>}
+   */
+  async unlockWallet(password) {
+    try {
+      const res = await this._lnd.unlock(password);
+      return { error: false, data: res };
+    } catch (e) {
+      console.log(e);
+      return { error: true, data: e };
+    }
+  }
+
+  /**
+   * Generates wallet seed phrase which can be used in initWallet
+   * @return {Promise<undefined>}
+   */
+  async genSeed() {
+    try {
+      const seed = await this._lnd.genSeed();
+      return { error: false, data: { seed } };
+    } catch (e) {
+      console.log(e);
+      return { error: true, data: e };
+    }
+  }
+
+  /**
+   * Determines if a wallet has already been initialized for the network specified.
+   * @param  {string} Network (bitcoin, testnet, regtest)
+   * @return {Promise<undefined>}
+   */
+  async walletExists(network) {
+    try {
+      const exists = await this._lnd.walletExists(network);
+      return { error: false, data: { exists } };
+    } catch (e) {
+      console.log(e);
+      return { error: true, data: e };
+    }
+  }
+
+  /**
    * This GRPC api is called after the wallet is unlocked to close the grpc
    * client to lnd before the main lnd client is re-opened
    * @return {Promise<undefined>}

@@ -55,6 +55,11 @@ lnd.start();
 
 7. Add `packages.add(new LndNativePackage());` to "getPackages" in MainApplication.java just above `return packages`"
 
-8. Start the project:
+8. For Android you'll need these additional dependencies in `YourProject/android/app/build.gradle`:
+ - `implementation 'com.google.protobuf:protobuf-java:3.13.0'`
+ - `implementation 'com.android.support:multidex:1.0.3'` 
+ - Then Add `multiDexEnabled true` under `defaultConfig` in the same gradle file.
+
+9. Start the project:
     - iOS: `react-native run-ios`
     - Android: `react-native run-android`

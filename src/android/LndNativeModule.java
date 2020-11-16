@@ -10,6 +10,8 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
@@ -24,6 +26,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,7 +34,11 @@ import lndmobile.Callback;
 import lndmobile.Lndmobile;
 import lndmobile.RecvStream;
 import lndmobile.SendStream;
+import lnrpc.Walletunlocker;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.ProtocolStringList;
 
 public class LndNativeModule extends ReactContextBaseJavaModule {
 
@@ -87,32 +94,6 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
     public Map<String, Object> getConstants() {
         final Map<String, Object> constants = new HashMap<>();
         return constants;
-    }
-
-    class NativeCallback implements Callback {
-        Promise promise;
-
-        NativeCallback(Promise promise) {
-            this.promise = promise;
-        }
-
-        @Override
-        public void onError(Exception e) {
-            promise.reject("LndNativeModule", e);
-        }
-
-        @Override
-        public void onResponse(byte[] bytes) {
-            String b64 = "";
-            if (bytes != null && bytes.length > 0) {
-                b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
-            }
-
-            WritableMap params = Arguments.createMap();
-            params.putString(respB64DataKey, b64);
-
-            promise.resolve(params);
-        }
     }
 
     class ReceiveStream implements RecvStream {
@@ -208,38 +189,172 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
         class UnlockCallback implements Callback {
             @Override
             public void onError(Exception e) {
-                Log.i(TAG, "unlock err");
-                Log.d(TAG, "unlock err");
+                Log.i(TAG, "Wallet unlock err: " + e.getMessage());
+                Log.d(TAG, "Wallet unlock err: " + e.getMessage());
+                promise.reject(e);
             }
             @Override
             public void onResponse(byte[] bytes) {
-                Log.i(TAG, "unlock started");
-                Log.d(TAG, "unlock started");
+                Log.i(TAG, "Wallet ready to be unlocked");
+                Log.d(TAG, "Wallet ready to be unlocked");
                 promise.resolve("unlocked");
             }
         }
         class RPCCallback implements Callback {
             @Override
             public void onError(Exception e) {
-                Log.i(TAG, "rpc callback err");
-                Log.d(TAG, "unlock started");
+                Log.i(TAG, "RPC start err: " + e.getMessage());
+                Log.d(TAG, "RPC start err: " + e.getMessage());
             }
             @Override
             public void onResponse(byte[] bytes) {
-                Log.i(TAG, "rpc callback started");
-                Log.d(TAG, "unlock started");
-                promise.resolve("rpc started");
+                Log.i(TAG, "RPC ready for requests");
+                Log.d(TAG, "RPC ready for requests");
             }
         }
 
         Runnable startLnd = new Runnable() {
             @Override
             public void run() {
-                //Lndmobile.start(args, new NativeCallback(promise));
                 Lndmobile.start(args, new UnlockCallback(), new RPCCallback());
             }
         };
         new Thread(startLnd).start();
+    }
+
+    @ReactMethod
+    public void genSeed(final Promise promise) {
+        Log.i("LndNativeModule", "Generating seed...");
+
+        class SeedCallback implements Callback {
+            @Override
+            public void onError(Exception e) {
+                Log.i(TAG, "Seed err: " + e.getMessage());
+                Log.d(TAG, "Seed err: " + e.getMessage());
+                promise.reject(e);
+            }
+            @Override
+            public void onResponse(byte[] bytes) {
+                Log.i(TAG, "Seed generated successfully");
+                Log.d(TAG, "Seed generated successfully");
+
+                try {
+                    ProtocolStringList seed = Walletunlocker.GenSeedResponse.parseFrom(bytes).getCipherSeedMnemonicList();
+
+                    //Map seed list into a react native string array
+                    WritableArray promiseSeed = Arguments.createArray();
+                    for(int i = 0; i < seed.size(); i++){
+                        promiseSeed.pushString(seed.get(i));
+                    }
+
+                    promise.resolve(promiseSeed);
+                } catch (InvalidProtocolBufferException e) {
+                    Log.i(TAG, "Failed to pass genSeed response: " + e.getMessage());
+                    Log.d(TAG, "Failed to pass genSeed response: " + e.getMessage());
+                    promise.reject(e);
+                }
+            }
+        }
+
+        class GenSeedTask implements Runnable {
+            byte[] request;
+            GenSeedTask(byte[] r) { request = r;}
+            public void run() {
+                Lndmobile.genSeed(request, new SeedCallback());
+            }
+        }
+        Thread t = new Thread(new GenSeedTask(Walletunlocker.GenSeedRequest.newBuilder().build().toByteArray()));
+        t.start();
+    }
+
+    @ReactMethod
+    public void init(String password, ReadableArray seed, final Promise promise) {
+        Log.i("LndNativeModule", "Initializing wallet...");
+
+        class InitializeWalletCallback implements Callback {
+            @Override
+            public void onError(Exception e) {
+                Log.i(TAG, "init err: " + e.getMessage());
+                Log.d(TAG, "init err: " + e.getMessage());
+                promise.reject(e);
+            }
+            @Override
+            public void onResponse(byte[] bytes) {
+                Log.i(TAG, "Wallet successfully initialized");
+                Log.d(TAG, "Wallet successfully initialized");
+                promise.resolve("initialized");
+            }
+        }
+
+        //Map a react native ReadableArray to java string array
+        String[] seedArray = new String[seed.size()];
+        for (int i = 0; i < seed.size(); i++) {
+            seedArray[i] = seed.getString(i);
+        }
+
+        //Build init request
+        Walletunlocker.InitWalletRequest.Builder initRequest = Walletunlocker.InitWalletRequest.newBuilder();
+        initRequest.setWalletPassword(ByteString.copyFrom(password.getBytes()));
+        initRequest.addAllCipherSeedMnemonic(Arrays.asList(seedArray));
+
+        class InitWalletTask implements Runnable {
+            byte[] request;
+            InitWalletTask(byte[] r) { request = r;}
+            public void run() {
+                Lndmobile.initWallet(request, new InitializeWalletCallback());
+            }
+        }
+        Thread t = new Thread(new InitWalletTask(initRequest.build().toByteArray()));
+        t.start();
+    }
+
+    @ReactMethod
+    public void unlock(String password, final Promise promise) {
+        Log.i("LndNativeModule", "Unlocking wallet...");
+
+        class UnlockWalletCallback implements Callback {
+            @Override
+            public void onError(Exception e) {
+                Log.i(TAG, "Unlock err: " + e.getMessage());
+                Log.d(TAG, "Unlock err: " + e.getMessage());
+                e.printStackTrace();
+
+                //TODO wallet still unlocked but sometimes returns an error. Error needs some investigation.
+                if (e.getMessage().contains("transport is closing")) {
+                    promise.resolve("unlocked");
+                } else {
+                    promise.reject(e);
+                }
+            }
+            @Override
+            public void onResponse(byte[] bytes) {
+                Log.i(TAG, "Wallet successfully unlocked");
+                Log.d(TAG, "Wallet successfully unlocked");
+                promise.resolve("unlocked");
+            }
+        }
+
+        //Build unlock request
+        Walletunlocker.UnlockWalletRequest.Builder unlockRequest = Walletunlocker.UnlockWalletRequest.newBuilder();
+        unlockRequest.setWalletPassword(ByteString.copyFrom(password.getBytes()));
+
+        class UnlockWalletTask implements Runnable {
+            byte[] request;
+            UnlockWalletTask(byte[] r) { request = r;}
+            public void run() {
+                Lndmobile.unlockWallet(request, new UnlockWalletCallback());
+            }
+        }
+        Thread t = new Thread(new UnlockWalletTask(unlockRequest.build().toByteArray()));
+        t.start();
+    }
+
+    @ReactMethod
+    public void walletExists(String network, final Promise promise) {
+        File directory = new File(getReactApplicationContext().getFilesDir().toString() + "/data/chain/bitcoin/" + network + "/wallet.db");
+        boolean exists = directory.exists();
+        Log.d(TAG, "Wallet exists: " + exists);
+        promise.resolve(exists);
     }
 
     private void readToEnd(BufferedReader buf, boolean emit) throws IOException {
@@ -277,6 +392,32 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void sendCommand(String method, String msg, final Promise promise) {
+        class NativeCallback implements Callback {
+            Promise promise;
+
+            NativeCallback(Promise promise) {
+                this.promise = promise;
+            }
+
+            @Override
+            public void onError(Exception e) {
+                promise.reject("LndNativeModule", e);
+            }
+
+            @Override
+            public void onResponse(byte[] bytes) {
+                String b64 = "";
+                if (bytes != null && bytes.length > 0) {
+                    b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
+                }
+
+                WritableMap params = Arguments.createMap();
+                params.putString(respB64DataKey, b64);
+
+                promise.resolve(params);
+            }
+        }
+
         Method m = syncMethods.get(method);
         if (m == null) {
             promise.reject("LndNativeModule", "method not found");
