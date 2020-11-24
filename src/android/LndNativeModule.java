@@ -73,6 +73,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
     public LndNativeModule(ReactApplicationContext reactContext) {
         super(reactContext);
 
+        //Populate all available methods found in Lndmobile
         Method[] methods = Lndmobile.class.getDeclaredMethods();
         for (Method m : methods) {
             String name = m.getName();
@@ -268,7 +269,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void init(String password, ReadableArray seed, final Promise promise) {
+    public void createWallet(String password, ReadableArray seed, final Promise promise) {
         Log.i("LndNativeModule", "Initializing wallet...");
 
         class InitializeWalletCallback implements Callback {
@@ -309,7 +310,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void unlock(String password, final Promise promise) {
+    public void unlockWallet(String password, final Promise promise) {
         Log.i("LndNativeModule", "Unlocking wallet...");
 
         class UnlockWalletCallback implements Callback {

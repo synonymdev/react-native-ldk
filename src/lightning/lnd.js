@@ -39,6 +39,16 @@ class LND {
 		}
 	}
 
+	checkGrpcReady() {
+		if (!this.isReady) {
+			throw "lnd not started";
+		};
+
+		if (!this.grpc) {
+			throw "grpc not ready";
+		};
+	}
+
 	async unlockWallet() {
 		try {
 			const lightningPass = await getKeychainValue({ key: "lightningPass" });
@@ -56,7 +66,7 @@ class LND {
 		}
 	}
 
-	async initWallet(seed) {
+	async createWallet(seed) {
 		try {
 			const password = await secureRandomPassword();
 
@@ -67,18 +77,17 @@ class LND {
 				nap(5000)
 			]);
 
-			const res = await this.grpc.initWallet(password, seed);
+			const res = await this.grpc.createWallet(password, seed);
 			this.isReady = true;
 			return res;
 		} catch (e) {
 			return { error: true, data: e };
 		}
 	}
-	
+
 	async getInfo() {
 		try {
-			if (!this.isReady || !this.grpc) await this.start();
-			if (!this.isReady) return { error: true, data: "Unable to initialize LND." };
+			this.checkGrpcReady();
 			const getInfoResponse = await this.grpc.sendCommand('getInfo');
 			return { error: false, data: getInfoResponse };
 		} catch (e) {
@@ -88,7 +97,7 @@ class LND {
 
 	async getTransactions() {
 		try {
-			if (!this.isReady || !this.grpc) await this.start();
+			this.checkGrpcReady();
 			const response = await this.grpc.sendCommand('GetTransactions');
 			return { error: false, data: response };
 		} catch (e) {
@@ -98,7 +107,7 @@ class LND {
 
 	async getInboundCapacity() {
 		try {
-			if (!this.isReady || !this.grpc) await this.start();
+			this.checkGrpcReady();
 			const getChannelBalanceResponse = await this.grpc.sendCommand('ListChannels');
 			let remoteBalance = 0;
 			await Promise.all(getChannelBalanceResponse.channels.map((channel) => {
@@ -113,7 +122,8 @@ class LND {
 	async connectToPeer({ peer = "" } = {}) {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			if (!this.isReady || !peer) return failure("Unable to connect to peer");
+			this.checkGrpcReady();
+			if (!peer) return failure("Invalid peer");
 			try {
 				const pubkey = peer.split("@")[0];
 				const host = peer.split("@")[1];
@@ -133,6 +143,7 @@ class LND {
 
 	async getPeers() {
 		try {
+			this.checkGrpcReady();
 			const response = await this.grpc.sendCommand('listPeers');
 			return { error: false, data: response };
 		} catch (e) {
@@ -225,9 +236,12 @@ class LND {
 	async getAddress() {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			if (!this.isReady) return failure();
+			this.checkGrpcReady();
 			const newAddressResponse = await this.grpc.sendCommand('newAddress', {type: "p2pkh"});
-			if (newAddressResponse.address) return { error: false, data: newAddressResponse.address };
+			if (newAddressResponse.address) {
+				return { error: false, data: newAddressResponse.address };
+			}
+
 			return failure("Unable to generate address.");
 		} catch (e) {
 			console.log(e);
@@ -238,7 +252,7 @@ class LND {
 	async addInvoice({ amount = 0, memo = "", expiry = 172800 } = {}) {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			if (!this.isReady) return failure();
+			this.checkGrpcReady();
 			const response = await this.grpc.sendCommand('addInvoice', {
 				value: amount,
 				memo,
@@ -256,7 +270,7 @@ class LND {
 	async getWalletBalance() {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			if (!this.isReady) return failure();
+			this.checkGrpcReady();
 			const response = await this.grpc.sendCommand("WalletBalance");
 			return {
 				error: false,
@@ -275,7 +289,7 @@ class LND {
 	async getChannelBalance() {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			if (!this.isReady) return failure();
+			this.checkGrpcReady();
 			const response = await this.grpc.sendCommand("ChannelBalance");
 			return {
 				error: false,
@@ -292,7 +306,7 @@ class LND {
 
 	async decodePaymentRequest(payReq = "") {
 		const failure = (data = "") => ({ error: true, data });
-		if (!this.isReady) return failure();
+		this.checkGrpcReady();
 		const request = { payReq };
 		try {
 			const response = await this.grpc.sendCommand("DecodePayReq", request);
@@ -344,4 +358,14 @@ class LND {
 	}
 }
 
-module.exports = new LND();
+//Using a factory prevents a new instance of LND from being returned each time.
+//this.isReady and this.grpc can maintain consistant state while react refreshes the app
+let instance;
+const lnd = (() => {
+	if (!instance) {
+		instance = new LND();
+	}
+	return instance;
+});
+
+module.exports = lnd;

@@ -26,7 +26,7 @@ const mkDirByPathSync = (targetDir, { isRelativeToScript = false } = {}) => {
 	const sep = path.sep;
 	const initDir = path.isAbsolute(targetDir) ? sep : '';
 	const baseDir = isRelativeToScript ? __dirname : '.';
-	
+
 	return targetDir.split(sep).reduce((parentDir, childDir) => {
 		const curDir = path.resolve(baseDir, parentDir, childDir);
 		try {
@@ -35,18 +35,18 @@ const mkDirByPathSync = (targetDir, { isRelativeToScript = false } = {}) => {
 			if (err.code === 'EEXIST') { // curDir already exists!
 				return curDir;
 			}
-			
+
 			// To avoid `EISDIR` error on Mac and `EACCES`-->`ENOENT` and `EPERM` on Windows.
 			if (err.code === 'ENOENT') { // Throw the original parentDir error on curDir `ENOENT` failure.
 				throw new Error(`EACCES: permission denied, mkdir '${parentDir}'`);
 			}
-			
+
 			const caughtErr = ['EACCES', 'EPERM', 'EISDIR'].indexOf(err.code) > -1;
 			if (!caughtErr || caughtErr && curDir === path.resolve(targetDir)) {
 				throw err; // Throw if it's just the last created dir.
 			}
 		}
-		
+
 		return curDir;
 	}, initDir);
 }
@@ -143,7 +143,7 @@ const generalSetup = () => {
 			await createFile(source, filePath);
 		}
 	});
-	
+
 	//Setup postinstall script
 	let postinsall = undefined;
 	try {postinsall = packageJson["scripts"]["postinstall"];} catch {}
@@ -192,7 +192,7 @@ const setupAndroid = () => {
 				if (filename.includes(".java")) updatePackageName(filePath, packageName);
 			}
 		});
-		
+
 		//Add LND Native Package to MainApplication.java
 		injectText(
 			`${path}/MainApplication.java`,
@@ -215,7 +215,7 @@ const setupAndroid = () => {
 			0
 		);
 	});
-	
+
 	//Create Lndmobile path & download Lndmobile.aar
 	const lndMobileDest = `${BASE_ANDROID_PATH}/Lndmobile`;
 	const lndMobileName = "Lndmobile.aar";
@@ -229,7 +229,7 @@ const setupAndroid = () => {
 
 const setupIos = async () => {
 	const lndMobileDest = `${BASE_IOS_PATH}/lightning`;
-	
+
 	//Create Lndmobile path & download Lndmobile.framework.zip
 	if (!fs.existsSync(lndMobileDest)) mkDirByPathSync(lndMobileDest);
 	iosFiles.forEach(async ({ source, destination, filename }) => {
@@ -239,7 +239,7 @@ const setupIos = async () => {
 			await createFile(source, filePath);
 		}
 	});
-	
+
 	//Download, extract and delete Lndmobile.framework.zip
 	const lndMobileName = "Lndmobile.framework.zip";
 	const zipDestination = `${lndMobileDest}/${lndMobileName}`;

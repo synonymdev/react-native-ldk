@@ -31,24 +31,27 @@ class GrpcAction {
    */
   async initUnlocker() {
     try {
-      try {
-        if (OS === "android") {
-          await this._lnd.start();
-        } else {
-          this._lnd.start();
-          this._lndEvent.addListener("streamEvent", (response) => {
-            return Promise.resolve(response.data);
-          });
-        }
-      } catch (e) {console.log(e);}
-      if (__DEV__) {
+
+      //TODO remove andrid only check once fixed for iOS
+      if (__DEV__ && OS == "android") {
         this._lndEvent.addListener("logs", res => {
           if (res) console.log(res);
         });
       }
-      return { error: false, data: "" };
+
+      const res = await this._lnd.start();
+
+      return { error: false, data: res };
+
+      // if (OS === "android") {
+      //   return await this._lnd.start();
+      // } else {
+      //   this._lnd.start();
+      //   this._lndEvent.addListener("streamEvent", (response) => {
+      //     return Promise.resolve(response.data);
+      //   });
+      // }
     } catch (e) {
-      console.log(e);
       return { error: true, data: e };
     }
   }
@@ -59,9 +62,9 @@ class GrpcAction {
    * @param  {Array<string>} wallet seed phrase
    * @return {Promise<undefined>}
    */
-  async initWallet(password, seed) {
+  async createWallet(password, seed) {
     try {
-      const res = await this._lnd.init(password, seed);
+      const res = await this._lnd.createWallet(password, seed);
       return { error: false, data: res };
     } catch (e) {
       console.log(e);
@@ -76,7 +79,7 @@ class GrpcAction {
    */
   async unlockWallet(password) {
     try {
-      const res = await this._lnd.unlock(password);
+      const res = await this._lnd.unlockWallet(password);
       return { error: false, data: res };
     } catch (e) {
       console.log(e);
@@ -113,7 +116,7 @@ class GrpcAction {
     }
   }
 
-  /**
+/**
    * This GRPC api is called after the wallet is unlocked to close the grpc
    * client to lnd before the main lnd client is re-opened
    * @return {Promise<undefined>}
@@ -124,20 +127,6 @@ class GrpcAction {
     // TODO: restart is not required on mobile
     // await this._lnd.closeUnlocker();
     console.log("GRPC unlockerClosed");
-  }
-
-  /**
-   * Wrapper function to execute calls to the wallet unlocker.
-   * @param  {string} method The unlocker GRPC api to call
-   * @param  {Object} body   The payload passed to the api
-   * @return {Promise<Object>}
-   */
-  async sendUnlockerCommand(method, body) {
-    try {
-      return await this._lnrpcRequest(method, body);
-    } catch (e) {
-      console.log(e);
-    }
   }
 
   //
@@ -212,11 +201,7 @@ class GrpcAction {
    * @return {Promise<Object>}
    */
   sendCommand(method, body) {
-    try {
-      return this._lnrpcRequest(method, body);
-    } catch (e) {
-      console.log(e);
-    }
+    return this._lnrpcRequest(method, body);
   }
 
   /**
@@ -267,21 +252,24 @@ class GrpcAction {
 
   async _lnrpcRequest(method, body) {
     try {
+      console.log(`Method: ${method}`);
+      console.log(`body: ${body}`);
+
       method = toCaps(method);
       const req = this._serializeRequest(method, body);
-      if (OS === "android") {
-        const response = await this._lnd.sendCommand(method, req);
-        return this._deserializeResponse(method, response.data);
-      } else {
-        this._lnd.sendCommand(method, req);
-        this._lndEvent.addListener("streamEvent", (response) => {
-          if (response.event === 'data') {
-            return this._deserializeResponse(method, response.data);
-          } else {
-            return Promise.reject(response.error);
-          }
-        });
+      const response = await this._lnd.sendCommand(method, req);
+
+      console.log(`response: ${JSON.stringify(response)}`);
+
+      let data = response.data;
+      if (data == undefined) { //Some responses can be empty strings
+        throw new Error("Invalid response");
       }
+
+      const deserializedResponse = this._deserializeResponse(method, data);
+      console.log(`deserializedResponse: ${deserializedResponse}`);
+
+      return deserializedResponse;
     } catch (err) {
       if (typeof err === 'string') {
         throw new Error(err);
@@ -293,6 +281,7 @@ class GrpcAction {
 
   _serializeRequest(method, body = {}) {
     const req = lnrpc[this._getRequestName(method)];
+    //TODO validate rpc class exists
     const message = req.create(body);
     const buffer = req.encode(message).finish();
     return base64.fromByteArray(buffer);
