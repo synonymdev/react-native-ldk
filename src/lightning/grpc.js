@@ -15,7 +15,10 @@ const OS = Platform.OS;
 class GrpcAction {
   constructor(NativeModules, NativeEventEmitter) {
     this._lnd = NativeModules.LndReactModule;
-    this._lndEvent = new NativeEventEmitter(this._lnd);
+
+    //TODO try expose the iOS event emitter in the same native module.
+    this._lndEvent  = Platform.OS === 'ios' ? new NativeEventEmitter(NativeModules.LightningEventEmitter) : new NativeEventEmitter(this._lnd);;
+
     this._streamCounter = 0;
   }
 
@@ -31,9 +34,7 @@ class GrpcAction {
    */
   async initUnlocker() {
     try {
-
-      //TODO remove andrid only check once fixed for iOS
-      if (__DEV__ && OS == "android") {
+      if (__DEV__) {
         this._lndEvent.addListener("logs", res => {
           if (res) console.log(res);
         });

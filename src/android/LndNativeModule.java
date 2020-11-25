@@ -97,41 +97,6 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
         return constants;
     }
 
-    class ReceiveStream implements RecvStream {
-        String streamID;
-
-        ReceiveStream(String id) {
-            this.streamID = id;
-        }
-
-        @Override
-        public void onError(Exception e) {
-            WritableMap params = Arguments.createMap();
-            params.putString(streamIdKey, streamID);
-            params.putString(respEventTypeKey, respEventTypeError);
-            params.putString(respErrorKey, e.getLocalizedMessage());
-            getReactApplicationContext()
-                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                    .emit(streamEventName, params);
-        }
-
-        @Override
-        public void onResponse(byte[] bytes) {
-            String b64 = "";
-            if (bytes != null && bytes.length > 0) {
-                b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
-            }
-
-            WritableMap params = Arguments.createMap();
-            params.putString(streamIdKey, streamID);
-            params.putString(respEventTypeKey, respEventTypeData);
-            params.putString(respB64DataKey, b64);
-            getReactApplicationContext()
-                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                    .emit(streamEventName, params);
-        }
-    }
-
     @ReactMethod
     public void start(final Promise promise) {
         File appDir = getReactApplicationContext().getFilesDir();
@@ -437,6 +402,41 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void sendStreamCommand(String method, String streamId, String msg) {
+        class ReceiveStream implements RecvStream {
+            String streamID;
+
+            ReceiveStream(String id) {
+                this.streamID = id;
+            }
+
+            @Override
+            public void onError(Exception e) {
+                WritableMap params = Arguments.createMap();
+                params.putString(streamIdKey, streamID);
+                params.putString(respEventTypeKey, respEventTypeError);
+                params.putString(respErrorKey, e.getLocalizedMessage());
+                getReactApplicationContext()
+                        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                        .emit(streamEventName, params);
+            }
+
+            @Override
+            public void onResponse(byte[] bytes) {
+                String b64 = "";
+                if (bytes != null && bytes.length > 0) {
+                    b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
+                }
+
+                WritableMap params = Arguments.createMap();
+                params.putString(streamIdKey, streamID);
+                params.putString(respEventTypeKey, respEventTypeData);
+                params.putString(respB64DataKey, b64);
+                getReactApplicationContext()
+                        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                        .emit(streamEventName, params);
+            }
+        }
+
         Method m = streamMethods.get(method);
         if (m == null) {
             return;

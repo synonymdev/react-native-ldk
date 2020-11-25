@@ -105,6 +105,9 @@ class LndReactModule: NSObject {
 
     print(args)
     
+    //TODO allow the developer to pass the network in when starting LND
+    watchLndLog("testnet")
+    
     LightningEventEmitter.shared.send(withEvent: .logs, body: "Starting LND with args: \(args)")
 
     //TODO start tailing the log file and use `LightningEventEmitter.shared.send` to send back to RN
@@ -116,7 +119,6 @@ class LndReactModule: NSObject {
           return reject("error", e.localizedDescription, e)
         }
         
-        //LND started
         resolve(LightningCallbackResponses.started)
       },
       LndEmptyResponseCallback { (error) in
@@ -294,13 +296,41 @@ extension LndReactModule {
       completion(p0 ?? LightningError.unknown)
     }
   }
+  
+  func watchLndLog(_ network: String) {
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      
+      let logFile = self.storage.appendingPathComponent("logs/bitcoin/\(network)/lnd.log").path
+      guard let fileHandle = FileHandle(forReadingAtPath: logFile) else {
+        //If the file for some reason doesn't exist (if LND has never been started) just wait a second and try again
+        return DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.watchLndLog(network) }
+      }
+          
+      LightningEventEmitter.shared.send(withEvent: .logs, body: "Observing LND log: \(logFile)")
+
+      NotificationCenter.default.addObserver(forName: FileHandle.readCompletionNotification, object: fileHandle, queue: OperationQueue.main) { (notification) in
+        fileHandle.readInBackgroundAndNotify()
+        
+        guard let info = notification.userInfo else { return }
+        guard let data = info[NSFileHandleNotificationDataItem] as? Data else { return }
+        guard data.count > 0 else { return }
+        guard let logLine = NSString(data: data, encoding: String.Encoding.utf8.rawValue) else { return }
+                
+        LightningEventEmitter.shared.send(withEvent: .logs, body: logLine as String)
+      }
+      
+      fileHandle.seekToEndOfFile()
+      fileHandle.readInBackgroundAndNotify()
+    }
+  }
 }
 
 //MARK: Singleton react native event emitter
 @objc(LightningEventEmitter)
 class LightningEventEmitter: RCTEventEmitter {
   public static var shared: LightningEventEmitter!
-    
+
   public enum EventTypes: String {
     case logs = "logs"
     case streamEvent = "streamEvent"
@@ -314,12 +344,11 @@ class LightningEventEmitter: RCTEventEmitter {
   public func send(withEvent eventType: EventTypes, body: String) {
     sendEvent(withName: eventType.rawValue, body: body)
   }
-  
+
   override func supportedEvents() -> [String]! {
     return ["logs", "streamEvent"]
   }
 }
-
 
 //MARK: Module can be initialised on main thread as LndMobile handles all it's own tasks on background threads (https://reactnative.dev/docs/native-modules-ios#implementing--requiresmainqueuesetup)
 extension LndReactModule {
@@ -335,3 +364,4 @@ extension LightningEventEmitter {
     return true
   }
 }
+
