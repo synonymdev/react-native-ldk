@@ -11,7 +11,6 @@ const {
 const PAYMENT_TIMEOUT = 60 * 1000;
 class LND {
 	constructor() {
-		this.isReady = false;
 		this.grpc = new GrpcAction(NativeModules, NativeEventEmitter);
 	}
 
@@ -39,12 +38,22 @@ class LND {
 		}
 	}
 
-	checkGrpcReady() {
-		if (!this.isReady) {
+	async currentState() {
+		try {
+			return await this.grpc.currentState();
+		} catch (e) {
+			return { error: true, data: e };
+		}
+	}
+
+	async checkGrpcReady() {
+		const { data: { lndRunning, grpcReady } } = await this.currentState();
+		
+		if (!lndRunning) {
 			throw "lnd not started";
 		};
 
-		if (!this.grpc) {
+		if (!grpcReady) {
 			throw "grpc not ready";
 		};
 	}
@@ -56,7 +65,6 @@ class LND {
 			//TODO it might be better to give the dev control over how the password is stored
 			if (lightningPass.error === false && lightningPass.data.password) {
 				const res = await this.grpc.unlockWallet(lightningPass.data.password);
-				this.isReady = true;
 				return res;
 			} else {
 				return { error: true, data: lightningPass.data };
@@ -78,7 +86,6 @@ class LND {
 			]);
 
 			const res = await this.grpc.createWallet(password, seed);
-			this.isReady = true;
 			return res;
 		} catch (e) {
 			return { error: true, data: e };
@@ -87,7 +94,7 @@ class LND {
 
 	async getInfo() {
 		try {
-			this.checkGrpcReady();
+			await this.checkGrpcReady();
 			const getInfoResponse = await this.grpc.sendCommand('getInfo');
 			return { error: false, data: getInfoResponse };
 		} catch (e) {
@@ -97,7 +104,7 @@ class LND {
 
 	async getTransactions() {
 		try {
-			this.checkGrpcReady();
+			await this.checkGrpcReady();
 			const response = await this.grpc.sendCommand('GetTransactions');
 			return { error: false, data: response };
 		} catch (e) {
@@ -107,7 +114,7 @@ class LND {
 
 	async getInboundCapacity() {
 		try {
-			this.checkGrpcReady();
+			await this.checkGrpcReady();
 			const getChannelBalanceResponse = await this.grpc.sendCommand('ListChannels');
 			let remoteBalance = 0;
 			await Promise.all(getChannelBalanceResponse.channels.map((channel) => {
@@ -122,7 +129,7 @@ class LND {
 	async connectToPeer({ peer = "" } = {}) {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			this.checkGrpcReady();
+			await this.checkGrpcReady();
 			if (!peer) return failure("Invalid peer");
 			try {
 				const pubkey = peer.split("@")[0];
@@ -143,7 +150,7 @@ class LND {
 
 	async getPeers() {
 		try {
-			this.checkGrpcReady();
+			await this.checkGrpcReady();
 			const response = await this.grpc.sendCommand('listPeers');
 			return { error: false, data: response };
 		} catch (e) {
@@ -155,7 +162,7 @@ class LND {
 	async subscribeTransactions({ onReceive = () => null, onError = () => null } = {}) {
 		const failure = (data = "") => onError({ error: true, data });
 		try {
-			if (!this.isReady) return failure("Unable to initialize LND.");
+			await this.checkGrpcReady();
 			try {
 				const stream = this.grpc.sendStreamCommand("subscribeTransactions");
 				stream.on("data", data => {try {onReceive(data);} catch (e) {onError(e);}});
@@ -172,7 +179,6 @@ class LND {
 	async stop() {
 		try {
 			await this.grpc.sendCommand('stopDaemon');
-			this.isReady = false;
 		} catch (e) {}
 	}
 
@@ -186,7 +192,7 @@ class LND {
 	async payLightning(invoice = "") {
 		return new Promise(async (resolve) => {
 			const failure = (data = "") => resolve({ error: true, data });
-			if (!this.isReady) return failure();
+			await this.checkGrpcReady();
 			const timeout = setTimeout(() => {
 				return failure();
 			}, PAYMENT_TIMEOUT);
@@ -211,9 +217,15 @@ class LND {
 
 	//TODO: Not working
 	async getBackup() {
+		const failure = (data = "") => resolve({ error: true, data });
+
+		try {
+			await this.checkGrpcReady();
+		} catch(e) {
+			return failure(e)
+		}
+
 		return new Promise(resolve => {
-			const failure = (data = "") => resolve({ error: true, data });
-			if (!this.isReady) return failure();
 			const timeout = setTimeout(() => {
 				return failure();
 			}, PAYMENT_TIMEOUT);
@@ -236,7 +248,7 @@ class LND {
 	async getAddress() {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			this.checkGrpcReady();
+			await this.checkGrpcReady();
 			const newAddressResponse = await this.grpc.sendCommand('newAddress', {type: "p2pkh"});
 			if (newAddressResponse.address) {
 				return { error: false, data: newAddressResponse.address };
@@ -252,7 +264,7 @@ class LND {
 	async addInvoice({ amount = 0, memo = "", expiry = 172800 } = {}) {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			this.checkGrpcReady();
+			await this.checkGrpcReady();
 			const response = await this.grpc.sendCommand('addInvoice', {
 				value: amount,
 				memo,
@@ -270,7 +282,7 @@ class LND {
 	async getWalletBalance() {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			this.checkGrpcReady();
+			await this.checkGrpcReady();
 			const response = await this.grpc.sendCommand("WalletBalance");
 			return {
 				error: false,
@@ -289,7 +301,7 @@ class LND {
 	async getChannelBalance() {
 		const failure = (data = "") => ({ error: true, data });
 		try {
-			this.checkGrpcReady();
+			await this.checkGrpcReady();
 			const response = await this.grpc.sendCommand("ChannelBalance");
 			return {
 				error: false,
@@ -306,7 +318,7 @@ class LND {
 
 	async decodePaymentRequest(payReq = "") {
 		const failure = (data = "") => ({ error: true, data });
-		this.checkGrpcReady();
+		await this.checkGrpcReady();
 		const request = { payReq };
 		try {
 			const response = await this.grpc.sendCommand("DecodePayReq", request);
@@ -318,8 +330,9 @@ class LND {
 	}
 
 	async logAvailableData() {
-		if (!this.isReady) return { error: true, data: "" };
 		try {
+			await this.checkGrpcReady();
+
 			console.log("Attempting to get info...");
 			const getInfoResponse = await this.grpc.sendCommand('getInfo');
 			console.log("Logging GetInfoResponse: ");

@@ -107,6 +107,20 @@ class GrpcAction {
   }
 
   /**
+   * Provides the current state of LND from the native module
+   * @return {Promise<undefined>}
+   */
+  async currentState() {
+    try {
+      const res = await this._lnd.currentState();
+      return { error: false, data: res };
+    } catch (e) {
+      console.log(e);
+      return { error: true, data: e };
+    }
+  }
+
+  /**
    * This GRPC api is called after the wallet is unlocked to close the grpc
    * client to lnd before the main lnd client is re-opened
    * @return {Promise<undefined>}
@@ -242,24 +256,16 @@ class GrpcAction {
 
   async _lnrpcRequest(method, body) {
     try {
-      console.log(`Method: ${method}`);
-      console.log(`body: ${body}`);
-
       method = toCaps(method);
       const req = this._serializeRequest(method, body);
       const response = await this._lnd.sendCommand(method, req);
-
-      console.log(`response: ${JSON.stringify(response)}`);
 
       let data = response.data;
       if (data == undefined) { //Some responses can be empty strings
         throw new Error("Invalid response");
       }
 
-      const deserializedResponse = this._deserializeResponse(method, data);
-      console.log(`deserializedResponse: ${deserializedResponse}`);
-
-      return deserializedResponse;
+      return this._deserializeResponse(method, data);
     } catch (err) {
       if (typeof err === 'string') {
         throw new Error(err);

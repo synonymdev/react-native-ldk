@@ -32,8 +32,19 @@ enum LightningCallbackResponses: String {
   case walletUnlocked = "Wallet unlocked"
 }
 
+struct LndState {
+  var lndRunning: Bool = false
+  var walletUnlocked: Bool = false
+  var grpcReady: Bool = false
+  
+  func formatted() -> [String: Bool] {
+    return ["lndRunning": lndRunning, "walletUnlocked": walletUnlocked, "grpcReady": grpcReady]
+  }
+}
+
 @objc(LndReactModule)
 class LndReactModule: NSObject {
+  var state = LndState()
   
   private var storage: URL {
     let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -87,6 +98,11 @@ class LndReactModule: NSObject {
   }
   
   @objc
+  func currentState(_ resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
+    resolve(state.formatted())
+  }
+  
+  @objc
   func start(_ configContent: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     LightningEventEmitter.shared.send(withEvent: .logs, body: "LND Start Request")
     
@@ -111,16 +127,17 @@ class LndReactModule: NSObject {
     
     LndmobileStart(
       args,
-      LndEmptyResponseCallback { (error) in
+      LndEmptyResponseCallback { [weak self] (error) in
         if let e = error {
           return reject("error", e.localizedDescription, e)
         }
         
+        self?.state.lndRunning = true
         resolve(LightningCallbackResponses.started)
       },
-      LndEmptyResponseCallback { (error) in
-        //RPC is ready (only called after wallet is unlocked)
-        //TODO allow for additional callback here and in the java
+      LndEmptyResponseCallback { [weak self] (error) in
+        //RPC is ready (only called after wallet is unlocked/created)
+        self?.state.grpcReady = true
       }
     )
   }
@@ -154,11 +171,12 @@ class LndReactModule: NSObject {
     do {
       LndmobileInitWallet(
         try request.serializedData(),
-        LndEmptyResponseCallback { (error) in
+        LndEmptyResponseCallback { [weak self] (error) in
           if let e = error {
             return reject("error", e.localizedDescription, e)
           }
           
+          self?.state.walletUnlocked = true
           resolve(LightningCallbackResponses.walletCreated)
         }
       )
@@ -175,11 +193,12 @@ class LndReactModule: NSObject {
     do {
       LndmobileUnlockWallet(
         try request.serializedData(),
-        LndEmptyResponseCallback { (error) in
+        LndEmptyResponseCallback { [weak self] (error) in
           if let e = error {
             return reject("error", e.localizedDescription, e)
           }
           
+          self?.state.walletUnlocked = true
           resolve(LightningCallbackResponses.walletUnlocked)
         }
       )

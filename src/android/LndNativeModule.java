@@ -55,6 +55,8 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
 
     private FileObserver logObserver;
 
+    private LndState state = new LndState();
+
     private static boolean isReceiveStream(Method m) {
         return m.toString().contains("RecvStream");
     }
@@ -149,7 +151,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
         final String args = "--lnddir=" + appDir;
         Log.i("LndNativeModule", "Starting LND with args " + args);
 
-        class UnlockCallback implements Callback {
+        class StartedCallback implements Callback {
             @Override
             public void onError(Exception e) {
                 Log.i(TAG, "Wallet unlock err: " + e.getMessage());
@@ -160,6 +162,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "Wallet ready to be unlocked");
                 Log.d(TAG, "Wallet ready to be unlocked");
+                state.lndRunning = true;
                 promise.resolve("unlocked");
             }
         }
@@ -173,13 +176,14 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "RPC ready for requests");
                 Log.d(TAG, "RPC ready for requests");
+                state.grpcReady = true;
             }
         }
 
         Runnable startLnd = new Runnable() {
             @Override
             public void run() {
-                Lndmobile.start(args, new UnlockCallback(), new RPCCallback());
+                Lndmobile.start(args, new StartedCallback(), new RPCCallback());
             }
         };
         new Thread(startLnd).start();
@@ -245,6 +249,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "Wallet successfully initialized");
                 Log.d(TAG, "Wallet successfully initialized");
+                state.walletUnlocked = true;
                 promise.resolve("initialized");
             }
         }
@@ -293,6 +298,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "Wallet successfully unlocked");
                 Log.d(TAG, "Wallet successfully unlocked");
+                state.walletUnlocked = true;
                 promise.resolve("unlocked");
             }
         }
@@ -318,6 +324,11 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
         boolean exists = directory.exists();
         Log.d(TAG, "Wallet exists: " + exists);
         promise.resolve(exists);
+    }
+
+    @ReactMethod
+    public void currentState(final Promise promise) {
+        promise.resolve(state.formatted());
     }
 
     private void readToEnd(BufferedReader buf, boolean emit) throws IOException {
@@ -459,6 +470,20 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             stream.send(b);
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    class LndState {
+        Boolean lndRunning = false;
+        Boolean walletUnlocked = false;
+        Boolean grpcReady = false;
+
+        WritableMap formatted() {
+            WritableMap params = Arguments.createMap();
+            params.putBoolean("lndRunning", lndRunning);
+            params.putBoolean("walletUnlocked", walletUnlocked);
+            params.putBoolean("grpcReady", grpcReady);
+            return params;
         }
     }
 }
