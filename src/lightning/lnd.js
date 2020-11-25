@@ -17,7 +17,7 @@ class LND {
 
 	async start() {
 		try {
-			return await this.grpc.initUnlocker();
+			return await this.grpc.start();
 		} catch (e) {
 			return { error: true, data: e };
 		}
@@ -357,15 +357,5 @@ class LND {
 		}
 	}
 }
-
-//Using a factory prevents a new instance of LND from being returned each time.
-//this.isReady and this.grpc can maintain consistant state while react refreshes the app
-// let instance;
-// const lnd = (() => {
-// 	if (!instance) {
-// 		instance = new LND();
-// 	}
-// 	return instance;
-// });
 
 module.exports = new LND();

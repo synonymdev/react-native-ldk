@@ -87,16 +87,15 @@ class LndReactModule: NSObject {
   }
   
   @objc
-  func start(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+  func start(_ configContent: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     LightningEventEmitter.shared.send(withEvent: .logs, body: "LND Start Request")
     
     //Delete previous config if it exists
     try? FileManager.default.removeItem(at: confFile)
     
-    //Copy new config into LND directory
+    //Write new config into LND directory
     do {
-        let originalConf = "lnd.conf"
-        try FileManager.default.copyItem(at: Bundle.main.bundleURL.appendingPathComponent(originalConf), to: confFile)
+      try configContent.write(to: confFile, atomically: false, encoding: String.Encoding.utf8.rawValue)
     } catch {
         return reject("error", error.localizedDescription, error)
     }
@@ -105,12 +104,10 @@ class LndReactModule: NSObject {
 
     print(args)
     
-    //TODO allow the developer to pass the network in when starting LND
+    //TODO read the network from the configContent
     watchLndLog("testnet")
     
     LightningEventEmitter.shared.send(withEvent: .logs, body: "Starting LND with args: \(args)")
-
-    //TODO start tailing the log file and use `LightningEventEmitter.shared.send` to send back to RN
     
     LndmobileStart(
       args,
@@ -331,7 +328,7 @@ extension LndReactModule {
 class LightningEventEmitter: RCTEventEmitter {
   public static var shared: LightningEventEmitter!
 
-  public enum EventTypes: String {
+  public enum EventTypes: String, CaseIterable {
     case logs = "logs"
     case streamEvent = "streamEvent"
   }
@@ -345,8 +342,8 @@ class LightningEventEmitter: RCTEventEmitter {
     sendEvent(withName: eventType.rawValue, body: body)
   }
 
-  override func supportedEvents() -> [String]! {
-    return ["logs", "streamEvent"]
+  override func supportedEvents() -> [String] {
+    return EventTypes.allCases.map { $0.rawValue }
   }
 }
 

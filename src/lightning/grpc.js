@@ -8,6 +8,7 @@ import { Platform } from "react-native";
 import base64 from "base64-js";
 import { lnrpc } from "./rpc";
 import { toCaps } from "./helpers";
+import confString from "./lnd.conf";
 
 const { Duplex } = require("readable-stream");
 const OS = Platform.OS;
@@ -17,8 +18,7 @@ class GrpcAction {
     this._lnd = NativeModules.LndReactModule;
 
     //TODO try expose the iOS event emitter in the same native module.
-    this._lndEvent  = Platform.OS === 'ios' ? new NativeEventEmitter(NativeModules.LightningEventEmitter) : new NativeEventEmitter(this._lnd);;
-
+    this._lndEvent  = Platform.OS === 'ios' ? new NativeEventEmitter(NativeModules.LightningEventEmitter) : new NativeEventEmitter(this._lnd);
     this._streamCounter = 0;
   }
 
@@ -27,12 +27,10 @@ class GrpcAction {
   //
 
   /**
-   * The first GRPC api that is called to initialize the wallet unlocker.
-   * Once `unlockerReady` is set to true on the store GRPC calls can be
-   * made to the client.
+   * Starts the LND service. GRPC will only be ready once the wallet is unlocked/created
    * @return {Promise<undefined>}
    */
-  async initUnlocker() {
+  async start() {
     try {
       if (__DEV__) {
         this._lndEvent.addListener("logs", res => {
@@ -40,25 +38,16 @@ class GrpcAction {
         });
       }
 
-      const res = await this._lnd.start();
+      const res = await this._lnd.start(confString);
 
       return { error: false, data: res };
-
-      // if (OS === "android") {
-      //   return await this._lnd.start();
-      // } else {
-      //   this._lnd.start();
-      //   this._lndEvent.addListener("streamEvent", (response) => {
-      //     return Promise.resolve(response.data);
-      //   });
-      // }
     } catch (e) {
       return { error: true, data: e };
     }
   }
 
   /**
-   * Once `unlockerReady` is set then the wallet can be created and unlocked with this.
+   * Once LND is started then the wallet can be created and unlocked with this.
    * @param  {string} wallet password
    * @param  {Array<string>} wallet seed phrase
    * @return {Promise<undefined>}
@@ -74,7 +63,7 @@ class GrpcAction {
   }
 
   /**
-   * Once `unlockerReady` is set then the wallet can be unlocked with this.
+   * Once LND is started then the wallet can be unlocked with this.
    * @param  {string} wallet password
    * @return {Promise<undefined>}
    */
@@ -89,7 +78,7 @@ class GrpcAction {
   }
 
   /**
-   * Generates wallet seed phrase which can be used in initWallet
+   * Generates wallet seed phrase which can be used in createWallet
    * @return {Promise<undefined>}
    */
   async genSeed() {
@@ -117,7 +106,7 @@ class GrpcAction {
     }
   }
 
-/**
+  /**
    * This GRPC api is called after the wallet is unlocked to close the grpc
    * client to lnd before the main lnd client is re-opened
    * @return {Promise<undefined>}

@@ -1,6 +1,4 @@
 package com.rnlightning;
-
-import android.content.res.AssetManager;
 import android.os.FileObserver;
 import android.util.Base64;
 import android.util.Log;
@@ -16,14 +14,13 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -98,9 +95,9 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void start(final Promise promise) {
+    public void start(String configContent, final Promise promise) {
         File appDir = getReactApplicationContext().getFilesDir();
-        copyConfig(appDir);
+        writeToConfig(configContent, appDir);
 
         final String logDir = appDir + "/logs/bitcoin/testnet";
         final String logFile = logDir + "/lnd.log";
@@ -335,24 +332,16 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
         }
     }
 
-    private void copyConfig(File appDir) {
+    private void writeToConfig(String configContent, File appDir) {
         File conf = new File(appDir, "lnd.conf");
-        AssetManager am = getCurrentActivity().getAssets();
+        if (conf.exists()) {
+            conf.delete();
+        }
 
-        try (InputStream in = am.open("lnd.conf")) {
-            copy(in, conf);
+        try (BufferedWriter out = new BufferedWriter(new FileWriter(appDir.getPath() + "/lnd.conf"))) {
+            out.write(configContent);
         } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-
-    private static void copy(InputStream in, File dst) throws IOException {
-        try (OutputStream out = new FileOutputStream(dst)) {
-            byte[] buf = new byte[1024];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
         }
     }
 
