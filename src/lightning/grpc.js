@@ -8,6 +8,7 @@ import { Platform } from "react-native";
 import base64 from "base64-js";
 import { lnrpc } from "./rpc";
 import { toCaps } from "./helpers";
+import confString from "./lnd.conf";
 
 const { Duplex } = require("readable-stream");
 const OS = Platform.OS;
@@ -15,7 +16,9 @@ const OS = Platform.OS;
 class GrpcAction {
   constructor(NativeModules, NativeEventEmitter) {
     this._lnd = NativeModules.LndReactModule;
-    this._lndEvent = new NativeEventEmitter(this._lnd);
+
+    //TODO try expose the iOS event emitter in the same native module.
+    this._lndEvent  = Platform.OS === 'ios' ? new NativeEventEmitter(NativeModules.LightningEventEmitter) : new NativeEventEmitter(this._lnd);
     this._streamCounter = 0;
   }
 
@@ -24,44 +27,34 @@ class GrpcAction {
   //
 
   /**
-   * The first GRPC api that is called to initialize the wallet unlocker.
-   * Once `unlockerReady` is set to true on the store GRPC calls can be
-   * made to the client.
+   * Starts the LND service. GRPC will only be ready once the wallet is unlocked/created
    * @return {Promise<undefined>}
    */
-  async initUnlocker() {
+  async start() {
     try {
-      try {
-        if (OS === "android") {
-          await this._lnd.start();
-        } else {
-          this._lnd.start();
-          this._lndEvent.addListener("streamEvent", (response) => {
-            return Promise.resolve(response.data);
-          });
-        }
-      } catch (e) {console.log(e);}
       if (__DEV__) {
         this._lndEvent.addListener("logs", res => {
           if (res) console.log(res);
         });
       }
-      return { error: false, data: "" };
+
+      const res = await this._lnd.start(confString);
+
+      return { error: false, data: res };
     } catch (e) {
-      console.log(e);
       return { error: true, data: e };
     }
   }
 
   /**
-   * Once `unlockerReady` is set then the wallet can be created and unlocked with this.
+   * Once LND is started then the wallet can be created and unlocked with this.
    * @param  {string} wallet password
    * @param  {Array<string>} wallet seed phrase
    * @return {Promise<undefined>}
    */
-  async initWallet(password, seed) {
+  async createWallet(password, seed) {
     try {
-      const res = await this._lnd.init(password, seed);
+      const res = await this._lnd.createWallet(password, seed);
       return { error: false, data: res };
     } catch (e) {
       console.log(e);
@@ -70,13 +63,13 @@ class GrpcAction {
   }
 
   /**
-   * Once `unlockerReady` is set then the wallet can be unlocked with this.
+   * Once LND is started then the wallet can be unlocked with this.
    * @param  {string} wallet password
    * @return {Promise<undefined>}
    */
   async unlockWallet(password) {
     try {
-      const res = await this._lnd.unlock(password);
+      const res = await this._lnd.unlockWallet(password);
       return { error: false, data: res };
     } catch (e) {
       console.log(e);
@@ -85,7 +78,7 @@ class GrpcAction {
   }
 
   /**
-   * Generates wallet seed phrase which can be used in initWallet
+   * Generates wallet seed phrase which can be used in createWallet
    * @return {Promise<undefined>}
    */
   async genSeed() {
@@ -114,6 +107,20 @@ class GrpcAction {
   }
 
   /**
+   * Provides the current state of LND from the native module
+   * @return {Promise<undefined>}
+   */
+  async currentState() {
+    try {
+      const res = await this._lnd.currentState();
+      return { error: false, data: res };
+    } catch (e) {
+      console.log(e);
+      return { error: true, data: e };
+    }
+  }
+
+  /**
    * This GRPC api is called after the wallet is unlocked to close the grpc
    * client to lnd before the main lnd client is re-opened
    * @return {Promise<undefined>}
@@ -124,20 +131,6 @@ class GrpcAction {
     // TODO: restart is not required on mobile
     // await this._lnd.closeUnlocker();
     console.log("GRPC unlockerClosed");
-  }
-
-  /**
-   * Wrapper function to execute calls to the wallet unlocker.
-   * @param  {string} method The unlocker GRPC api to call
-   * @param  {Object} body   The payload passed to the api
-   * @return {Promise<Object>}
-   */
-  async sendUnlockerCommand(method, body) {
-    try {
-      return await this._lnrpcRequest(method, body);
-    } catch (e) {
-      console.log(e);
-    }
   }
 
   //
@@ -212,11 +205,7 @@ class GrpcAction {
    * @return {Promise<Object>}
    */
   sendCommand(method, body) {
-    try {
-      return this._lnrpcRequest(method, body);
-    } catch (e) {
-      console.log(e);
-    }
+    return this._lnrpcRequest(method, body);
   }
 
   /**
@@ -269,19 +258,14 @@ class GrpcAction {
     try {
       method = toCaps(method);
       const req = this._serializeRequest(method, body);
-      if (OS === "android") {
-        const response = await this._lnd.sendCommand(method, req);
-        return this._deserializeResponse(method, response.data);
-      } else {
-        this._lnd.sendCommand(method, req);
-        this._lndEvent.addListener("streamEvent", (response) => {
-          if (response.event === 'data') {
-            return this._deserializeResponse(method, response.data);
-          } else {
-            return Promise.reject(response.error);
-          }
-        });
+      const response = await this._lnd.sendCommand(method, req);
+
+      let data = response.data;
+      if (data == undefined) { //Some responses can be empty strings
+        throw new Error("Invalid response");
       }
+
+      return this._deserializeResponse(method, data);
     } catch (err) {
       if (typeof err === 'string') {
         throw new Error(err);
@@ -293,6 +277,7 @@ class GrpcAction {
 
   _serializeRequest(method, body = {}) {
     const req = lnrpc[this._getRequestName(method)];
+    //TODO validate rpc class exists
     const message = req.create(body);
     const buffer = req.encode(message).finish();
     return base64.fromByteArray(buffer);

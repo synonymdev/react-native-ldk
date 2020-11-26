@@ -1,2 +1,5 @@
 node_modules/
 .idea/
+src/lightning/router.js
+src/lightning/autopilot.js
+src/lightning/rpc.js
