@@ -1,1 +1,1 @@
-module.exports = require('./src/lightning/lnd');
+module.exports = require('./dist/lnd');
