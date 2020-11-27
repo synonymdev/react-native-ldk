@@ -1,4 +1,6 @@
 import { NativeModulesStatic } from 'react-native';
+import base64 from 'base64-js';
+import { CurrentLndState, GrpcMethods } from './interfaces';
 
 class GrpcAction {
   private readonly lnd: NativeModulesStatic;
@@ -8,45 +10,43 @@ class GrpcAction {
   }
 
   /**
+   * Throws an error if LND is not in a state to be queried via GRPC
+   * @throws Error
+   * @returns {Promise<void>}
+   */
+  async checkGrpcReady(): Promise<void> {
+    const res: CurrentLndState = await this.lnd.currentState();
+
+    if (!res) {
+      throw new Error('Unable to determine LND state');
+    }
+
+    if (!res.lndRunning) {
+      throw new Error('LND not started');
+    }
+
+    if (!res.grpcReady) {
+      throw new Error('GRPC not ready');
+    }
+  }
+
+  /**
    * Wrapper function to execute calls to the lnd grpc client.
    * @param method
-   * @param body
-   * @return {Promise<void>}
+   * @return {Promise<Uint8Array>}
+   * @param buffer
    */
-  // async sendCommand(method: string, body: unknown): Promise<void> {
-  //   const m = toCaps(method);
-  //
-  //   return this._lnrpcRequest(method, body);
-  // }
-  //
-  // async _lnrpcRequest(method: string, body: Object) {
-  //   try {
-  //     method = toCaps(method);
-  //     const req = this._serializeRequest(method, body);
-  //     const response = await this.lnd.sendCommand(method, req);
-  //
-  //     let data = response.data;
-  //     if (data == undefined) { //Some responses can be empty strings
-  //       throw new Error("Invalid response");
-  //     }
-  //
-  //     return this._deserializeResponse(method, data);
-  //   } catch (err) {
-  //     if (typeof err === 'string') {
-  //       throw new Error(err);
-  //     } else {
-  //       throw err;
-  //     }
-  //   }
-  // }
-  //
-  // _serializeRequest(method: string, body = {}) {
-  //   const req = lnrpc[this._getRequestName(method)];
-  //   //TODO validate rpc class exists
-  //   const message = req.create(body);
-  //   const buffer = req.encode(message).finish();
-  //   return base64.fromByteArray(buffer);
-  // }
+  async sendCommand(method: GrpcMethods, buffer: Uint8Array): Promise<Uint8Array> {
+    await this.checkGrpcReady(); // Throws an exception if LND is not ready to be queried via grpc
+
+    const serialisedReq = base64.fromByteArray(buffer);
+    const { data: serializedResponse } = await this.lnd.sendCommand(method, serialisedReq);
+    if (serializedResponse === undefined) {
+      throw new Error('Missing response');
+    }
+
+    return base64.toByteArray(serializedResponse);
+  }
 }
 
 export default GrpcAction;

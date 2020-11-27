@@ -3,3 +3,10 @@ export type CurrentLndState = {
   walletUnlocked: boolean;
   grpcReady: boolean;
 };
+
+export enum GrpcMethods {
+  getInfo = 'GetInfo',
+  getWalletBalance = 'WalletBalance',
+  newAddress = 'NewAddress',
+  getChannelBalance = "ChannelBalance"
+}
