@@ -9,14 +9,16 @@ class GrpcAction {
 
   /**
    * Wrapper function to execute calls to the lnd grpc client.
-   * @param  {string} method The lnd GRPC api to call
-   * @param  {Object} body   The payload passed to the api
-   * @return {Promise<Object>}
+   * @param method
+   * @param body
+   * @return {Promise<void>}
    */
-  // sendCommand(method: string, body: Object) {
+  // async sendCommand(method: string, body: unknown): Promise<void> {
+  //   const m = toCaps(method);
+  //
   //   return this._lnrpcRequest(method, body);
   // }
-
+  //
   // async _lnrpcRequest(method: string, body: Object) {
   //   try {
   //     method = toCaps(method);
@@ -36,6 +38,14 @@ class GrpcAction {
   //       throw err;
   //     }
   //   }
+  // }
+  //
+  // _serializeRequest(method: string, body = {}) {
+  //   const req = lnrpc[this._getRequestName(method)];
+  //   //TODO validate rpc class exists
+  //   const message = req.create(body);
+  //   const buffer = req.encode(message).finish();
+  //   return base64.fromByteArray(buffer);
   // }
 }
 

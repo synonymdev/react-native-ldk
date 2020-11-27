@@ -12,10 +12,11 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rm -rf dist && tsc -p ./src/lightning",
+    "build": "rm -rf dist && mkdir dist/ && yarn protobuf && tsc -p ./src/lightning",
     "watch": "yarn run build -- -w",
     "lint": "yarn run lint:ts",
-    "lint:ts": "eslint . --ext .ts,.tsx --fix"
+    "lint:ts": "eslint . --ext .ts,.tsx --fix",
+    "protobuf": "pbjs -t json-module -w commonjs -o dist/rpc.js src/lightning/protos/rpc.proto && pbjs -t static-module src/lightning/protos/rpc.proto | pbts -o dist/rpc.d.ts - && cp dist/rpc.d.ts ./src/lightning/"
   },
   "repository": {
     "type": "git",
