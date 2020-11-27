@@ -55,7 +55,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
 
     private FileObserver logObserver;
 
-    private LndState state = new LndState();
+    private static LndState state = new LndState();
 
     private static boolean isReceiveStream(Method m) {
         return m.toString().contains("RecvStream");
@@ -472,18 +472,18 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             e.printStackTrace();
         }
     }
+}
 
-    class LndState {
-        Boolean lndRunning = false;
-        Boolean walletUnlocked = false;
-        Boolean grpcReady = false;
+class LndState {
+    Boolean lndRunning = false;
+    Boolean walletUnlocked = false;
+    Boolean grpcReady = false;
 
-        WritableMap formatted() {
-            WritableMap params = Arguments.createMap();
-            params.putBoolean("lndRunning", lndRunning);
-            params.putBoolean("walletUnlocked", walletUnlocked);
-            params.putBoolean("grpcReady", grpcReady);
-            return params;
-        }
+    WritableMap formatted() {
+        WritableMap params = Arguments.createMap();
+        params.putBoolean("lndRunning", lndRunning);
+        params.putBoolean("walletUnlocked", walletUnlocked);
+        params.putBoolean("grpcReady", grpcReady);
+        return params;
     }
 }
