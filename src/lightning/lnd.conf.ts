@@ -2,6 +2,33 @@
 
 // TODO maybe make this into a factory to allow the developer to override fields with their own
 
+const regtestConfString =
+  '[Application Options]\n' +
+  'debuglevel=info\n' +
+  'no-macaroons=false\n' +
+  'nolisten=true\n' +
+  '\n' +
+  '[Routing]\n' +
+  'routing.assumechanvalid=true\n' +
+  '\n' +
+  '[Bitcoin]\n' +
+  'bitcoin.active=true\n' +
+  'bitcoin.regtest=true\n' +
+  'bitcoin.node=bitcoind\n' +
+  '\n' +
+  '[autopilot]\n' +
+  'autopilot.active=false\n' +
+  '\n' +
+  '[watchtower]\n' +
+  'watchtower.active=false\n' +
+  '\n' +
+  '[Bitcoind]\n' +
+  'bitcoind.rpchost=localhost\n' +
+  'bitcoind.rpcuser=polaruser\n' +
+  'bitcoind.rpcpass=polarpass\n' +
+  'bitcoind.zmqpubrawblock=tcp://10.0.0.100:28334\n' +
+  'bitcoind.zmqpubrawtx=tcp://10.0.0.100:29335';
+
 const confString =
   '[Application Options]\n' +
   'debuglevel=info\n' +
@@ -30,4 +57,4 @@ const confString =
   'autopilot.heuristic=externalscore:0.95\n' +
   'autopilot.heuristic=preferential:0.05\n';
 
-export default confString;
+export default regtestConfString;

@@ -8,5 +8,8 @@ export enum GrpcMethods {
   getInfo = 'GetInfo',
   getWalletBalance = 'WalletBalance',
   newAddress = 'NewAddress',
-  getChannelBalance = "ChannelBalance"
+  getChannelBalance = 'ChannelBalance',
+  openChannel = 'OpenChannel',
+  connectPeer = 'ConnectPeer',
+  listChannels = 'ListChannels'
 }

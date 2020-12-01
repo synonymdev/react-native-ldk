@@ -1,9 +1,8 @@
 import { NativeEventEmitter, NativeModules, NativeModulesStatic, Platform } from 'react-native';
-import base64 from 'base64-js';
 import GrpcAction from './grpc';
 import confString from './lnd.conf';
 import { Result, ok, err } from './result';
-import { CurrentLndState, GenericRequest, GrpcMethods } from './interfaces';
+import { CurrentLndState, GrpcMethods } from './interfaces';
 import { lnrpc } from './rpc';
 
 class LND {
@@ -20,6 +19,14 @@ class LND {
       Platform.OS === 'ios'
         ? new NativeEventEmitter(NativeModules.LightningEventEmitter)
         : new NativeEventEmitter(NativeModules.LndReactModule);
+
+    if (__DEV__) {
+      this.lndEvent.addListener('logs', (res) => {
+        if (res) {
+          console.log(res);
+        }
+      });
+    }
   }
 
   /**
@@ -28,14 +35,6 @@ class LND {
    */
   async start(): Promise<Result<string, Error>> {
     try {
-      if (__DEV__) {
-        this.lndEvent.addListener('logs', (res) => {
-          if (res) {
-            console.log(res);
-          }
-        });
-      }
-
       const res = await this.lnd.start(confString);
       return ok(res);
     } catch (e) {
@@ -178,6 +177,93 @@ class LND {
       );
 
       return ok(lnrpc.ChannelBalanceResponse.decode(serializedResponse));
+    } catch (e) {
+      return err(e);
+    }
+  }
+
+  /**
+   * LND ConnectPeer
+   * @returns {Promise<Err<lnrpc.ConnectPeerResponse, any> | Ok<any, Error>>}
+   */
+  async connectPeer(
+    nodePubkey: string,
+    host: string
+  ): Promise<Result<lnrpc.ConnectPeerResponse, Error>> {
+    try {
+      const message = lnrpc.ConnectPeerRequest.create();
+
+      const lightningAddress = lnrpc.LightningAddress.create();
+      lightningAddress.pubkey = nodePubkey;
+      lightningAddress.host = host;
+
+      message.addr = lightningAddress;
+      message.perm = true;
+
+      const serializedResponse = await this.grpc.sendCommand(
+        GrpcMethods.connectPeer,
+        lnrpc.ConnectPeerRequest.encode(message).finish()
+      );
+
+      return ok(lnrpc.ConnectPeerResponse.decode(serializedResponse));
+    } catch (e) {
+      return err(e);
+    }
+  }
+
+  /**
+   * LND OpenChannelSync
+   * @returns {Promise<Err<unknown, Error> | Ok<lnrpc.OpenStatusUpdate, Error> | Err<unknown, any>>}
+   * @param fundingAmount
+   * @param nodePubkey
+   */
+  async openChannel(
+    fundingAmount: number,
+    nodePubkey: string
+  ): Promise<Result<lnrpc.OpenStatusUpdate, Error>> {
+    // Create a new address for closing of channel
+    const newAddressRes = await this.getAddress();
+    if (newAddressRes.isErr()) {
+      return err(newAddressRes.error);
+    }
+    const address = newAddressRes.value.address;
+
+    try {
+      const message = lnrpc.OpenChannelRequest.create();
+      message.localFundingAmount = fundingAmount;
+      message.closeAddress = address;
+      message.nodePubkeyString = nodePubkey;
+      message.pushSat = 0;
+
+      // //TODO have the below config driven maybe
+      message.minConfs = 2;
+      message.targetConf = 2;
+      message.spendUnconfirmed = false;
+
+      const serializedResponse = await this.grpc.sendCommand(
+        GrpcMethods.openChannel,
+        lnrpc.OpenChannelRequest.encode(message).finish()
+      );
+
+      return ok(lnrpc.OpenStatusUpdate.decode(serializedResponse));
+    } catch (e) {
+      return err(e);
+    }
+  }
+
+  /**
+   * LND ListChannels
+   * @returns {Promise<Ok<lnrpc.ListChannelsResponse, Error> | Err<unknown, any>>}
+   */
+  async listChannels(): Promise<Result<lnrpc.ListChannelsResponse, Error>> {
+    try {
+      const message = lnrpc.ListChannelsRequest.create();
+      const serializedResponse = await this.grpc.sendCommand(
+        GrpcMethods.listChannels,
+        lnrpc.ListChannelsRequest.encode(message).finish()
+      );
+
+      return ok(lnrpc.ListChannelsResponse.decode(serializedResponse));
     } catch (e) {
       return err(e);
     }
