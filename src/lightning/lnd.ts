@@ -3,7 +3,7 @@ import GrpcAction from './grpc';
 import { Result, ok, err } from './result';
 import { CurrentLndState, GrpcMethods, Networks } from './interfaces';
 import { lnrpc } from './rpc';
-import LndConf from "./lnd.conf";
+import LndConf from './lnd.conf';
 
 class LND {
   private readonly grpc: GrpcAction;
@@ -265,6 +265,72 @@ class LND {
       );
 
       return ok(lnrpc.ListChannelsResponse.decode(serializedResponse));
+    } catch (e) {
+      return err(e);
+    }
+  }
+
+  /**
+   * LND PayInvoice
+   * @param invoice
+   * @returns {Promise<Ok<lnrpc.SendResponse, Error> | Err<unknown, any>>}
+   */
+  async payInvoice(invoice: string): Promise<Result<lnrpc.SendResponse, Error>> {
+    try {
+      const message = lnrpc.SendRequest.create();
+      message.paymentRequest = invoice;
+      const serializedResponse = await this.grpc.sendCommand(
+        GrpcMethods.sendPayment,
+        lnrpc.SendRequest.encode(message).finish()
+      );
+
+      return ok(lnrpc.SendResponse.decode(serializedResponse));
+    } catch (e) {
+      return err(e);
+    }
+  }
+
+  /**
+   * LND CreateInvoice
+   * @param value
+   * @param memo
+   * @param expiry
+   * @returns {Promise<Ok<lnrpc.SendResponse, Error> | Err<unknown, any>>}
+   */
+  async createInvoice(
+    value: number,
+    memo: string,
+    expiry: number = 172800
+  ): Promise<Result<lnrpc.AddInvoiceResponse, Error>> {
+    try {
+      const message = lnrpc.Invoice.create();
+      message.value = value;
+      message.memo = memo;
+      message.expiry = expiry;
+      const serializedResponse = await this.grpc.sendCommand(
+        GrpcMethods.addInvoice,
+        lnrpc.Invoice.encode(message).finish()
+      );
+
+      return ok(lnrpc.AddInvoiceResponse.decode(serializedResponse));
+    } catch (e) {
+      return err(e);
+    }
+  }
+
+  /**
+   * LND ListInvoices
+   * @returns {Promise<Ok<lnrpc.ListInvoiceResponse, Error> | Err<unknown, any>>}
+   */
+  async listInvoices(): Promise<Result<lnrpc.ListInvoiceResponse, Error>> {
+    try {
+      const message = lnrpc.ListInvoiceRequest.create();
+      const serializedResponse = await this.grpc.sendCommand(
+        GrpcMethods.listInvoices,
+        lnrpc.ListInvoiceRequest.encode(message).finish()
+      );
+
+      return ok(lnrpc.ListInvoiceResponse.decode(serializedResponse));
     } catch (e) {
       return err(e);
     }

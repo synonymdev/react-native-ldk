@@ -11,7 +11,10 @@ export enum GrpcMethods {
   getChannelBalance = 'ChannelBalance',
   openChannel = 'OpenChannel',
   connectPeer = 'ConnectPeer',
-  listChannels = 'ListChannels'
+  listChannels = 'ListChannels',
+  sendPayment = 'SendPayment',
+  addInvoice = 'AddInvoice',
+  listInvoices = 'ListInvoices'
 }
 
 export enum Networks {
