@@ -1,9 +1,9 @@
 import { NativeEventEmitter, NativeModules, NativeModulesStatic, Platform } from 'react-native';
 import GrpcAction from './grpc';
-import confString from './lnd.conf';
 import { Result, ok, err } from './result';
-import { CurrentLndState, GrpcMethods } from './interfaces';
+import { CurrentLndState, GrpcMethods, Networks } from './interfaces';
 import { lnrpc } from './rpc';
+import LndConf from "./lnd.conf";
 
 class LND {
   private readonly grpc: GrpcAction;
@@ -31,11 +31,12 @@ class LND {
 
   /**
    * Starts the LND service
-   * @return {Promise<Result<boolean, Error>>}
+   * @return {Promise<Ok<any, Error> | Err<unknown, any>>}
+   * @param network
    */
-  async start(): Promise<Result<string, Error>> {
+  async start(conf: LndConf): Promise<Result<string, Error>> {
     try {
-      const res = await this.lnd.start(confString);
+      const res = await this.lnd.start(conf.build(), conf.network);
       return ok(res);
     } catch (e) {
       return err(e);
@@ -89,7 +90,7 @@ class LND {
    * @return {Promise<Result<boolean, Error>>}
    * @param network
    */
-  async walletExists(network: string): Promise<Result<boolean, Error>> {
+  async walletExists(network: Networks): Promise<Result<boolean, Error>> {
     try {
       const exists = await this.lnd.walletExists(network);
       return ok(exists);

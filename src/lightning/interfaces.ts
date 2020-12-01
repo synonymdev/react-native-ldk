@@ -13,3 +13,9 @@ export enum GrpcMethods {
   connectPeer = 'ConnectPeer',
   listChannels = 'ListChannels'
 }
+
+export enum Networks {
+  regtest = 'regtest',
+  testnet = 'testnet',
+  mainnet = 'mainnet'
+}

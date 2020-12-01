@@ -1,6 +1,6 @@
 /* Allows the conf to be kept in one place and passed to the native modules when lnd is started */
 
-// TODO maybe make this into a factory to allow the developer to override fields with their own
+import { Networks } from './interfaces';
 
 const regtestConfString =
   '[Application Options]\n' +
@@ -29,7 +29,7 @@ const regtestConfString =
   'bitcoind.zmqpubrawblock=tcp://10.0.0.100:28334\n' +
   'bitcoind.zmqpubrawtx=tcp://10.0.0.100:29335';
 
-const confString =
+const testnetConfString =
   '[Application Options]\n' +
   'debuglevel=info\n' +
   'no-macaroons=1\n' +
@@ -48,7 +48,7 @@ const confString =
   'neutrino.addpeer=faucet.lightning.community\n' +
   'neutrino.feeurl=https://nodes.lightning.computer/fees/v1/btc-fee-estimates.json\n' +
   '\n' +
-  '[autopilot]\n' +
+  '[Autopilot]\n' +
   'autopilot.active=0\n' +
   'autopilot.private=0\n' +
   'autopilot.minconfs=0\n' +
@@ -57,4 +57,28 @@ const confString =
   'autopilot.heuristic=externalscore:0.95\n' +
   'autopilot.heuristic=preferential:0.05\n';
 
-export default regtestConfString;
+class LndConf {
+  readonly network: Networks;
+
+  constructor(network: Networks) {
+    this.network = network;
+  }
+
+  // TODO allow the developer to override all other fields with their own
+
+  build(): string {
+    switch (this.network) {
+      case Networks.regtest: {
+        return regtestConfString;
+      }
+      case Networks.testnet: {
+        return testnetConfString;
+      }
+      case Networks.mainnet: {
+        throw new Error('Not implemented yet: Networks.mainnet case');
+      }
+    }
+  }
+}
+
+export default LndConf;
