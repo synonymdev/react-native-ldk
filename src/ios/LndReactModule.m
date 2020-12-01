@@ -17,6 +17,7 @@ RCT_EXTERN_METHOD(
 
 RCT_EXTERN_METHOD(
                   start: (NSString *)configContent
+                  network: (NSString *)network
                   resolve: (RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject
                   )

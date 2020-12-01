@@ -89,6 +89,8 @@ class LndReactModule: NSObject {
       "QueryScores": { (req: Data?, cb: BlindLndCallback) in LndmobileQueryScores(req, cb) },
       "ModifyStatus": { (req: Data?, cb: BlindLndCallback) in LndmobileModifyStatus(req, cb) },
       "GetNetworkInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetNetworkInfo(req, cb) },
+      "OpenChannel": { (req: Data?, cb: BlindLndCallback) in LndmobileOpenChannelSync(req, cb) },
+      "SendPayment": { (req: Data?, cb: BlindLndCallback) in LndmobileSendPaymentSync(req, cb) },
     ]
   }()
   
@@ -103,7 +105,7 @@ class LndReactModule: NSObject {
   }
   
   @objc
-  func start(_ configContent: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+  func start(_ configContent: NSString, network: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     LightningEventEmitter.shared.send(withEvent: .logs, body: "LND Start Request")
     
     //Delete previous config if it exists
@@ -120,8 +122,7 @@ class LndReactModule: NSObject {
 
     print(args)
     
-    //TODO read the network from the configContent
-    watchLndLog("testnet")
+    watchLndLog(network)
     
     LightningEventEmitter.shared.send(withEvent: .logs, body: "Starting LND with args: \(args)")
     
@@ -313,7 +314,7 @@ extension LndReactModule {
     }
   }
   
-  func watchLndLog(_ network: String) {
+  func watchLndLog(_ network: NSString) {
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
       
@@ -339,6 +340,12 @@ extension LndReactModule {
       fileHandle.seekToEndOfFile()
       fileHandle.readInBackgroundAndNotify()
     }
+  }
+  
+  func wipeWallet() {
+    //TODO ensure regtest only
+    print("WARNING: removing existing LND directory")
+    try! FileManager.default.removeItem(at: storage)
   }
 }
 

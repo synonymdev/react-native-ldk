@@ -97,11 +97,11 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void start(String configContent, final Promise promise) {
+    public void start(String configContent, String network, final Promise promise) {
         File appDir = getReactApplicationContext().getFilesDir();
         writeToConfig(configContent, appDir);
 
-        final String logDir = appDir + "/logs/bitcoin/testnet";
+        final String logDir = appDir + "/logs/bitcoin/" + network;
         final String logFile = logDir + "/lnd.log";
 
         FileInputStream stream = null;
