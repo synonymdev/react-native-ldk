@@ -9,10 +9,11 @@ export enum GrpcMethods {
   getWalletBalance = 'WalletBalance',
   newAddress = 'NewAddress',
   getChannelBalance = 'ChannelBalance',
-  openChannel = 'OpenChannel',
+  openChannelSync = 'OpenChannelSync',
   connectPeer = 'ConnectPeer',
   listChannels = 'ListChannels',
-  sendPayment = 'SendPayment',
+  sendPaymentSync = 'OpenChannelSync',
+  closeChannel = 'CloseChannel',
   addInvoice = 'AddInvoice',
   listInvoices = 'ListInvoices'
 }

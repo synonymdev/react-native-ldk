@@ -23,7 +23,7 @@ const regtestConfString =
   'watchtower.active=false\n' +
   '\n' +
   '[Bitcoind]\n' +
-  'bitcoind.rpchost=localhost\n' +
+  'bitcoind.rpchost=10.0.0.100\n' +
   'bitcoind.rpcuser=polaruser\n' +
   'bitcoind.rpcpass=polarpass\n' +
   'bitcoind.zmqpubrawblock=tcp://10.0.0.100:28334\n' +
@@ -45,7 +45,13 @@ const testnetConfString =
   'bitcoin.node=neutrino\n' +
   '\n' +
   '[Neutrino]\n' +
-  'neutrino.addpeer=faucet.lightning.community\n' +
+  'neutrino.connect=btcd-testnet.lightning.computer\n' +
+  'neutrino.connect=lnd.bitrefill.com:18333\n' +
+  'neutrino.connect=faucet.lightning.community\n' +
+  'neutrino.connect=testnet1-btcd.zaphq.io\n' +
+  'neutrino.connect=testnet2-btcd.zaphq.io\n' +
+  'neutrino.connect=testnet3-btcd.zaphq.io\n' +
+  'neutrino.connect=testnet4-btcd.zaphq.io\n' +
   'neutrino.feeurl=https://nodes.lightning.computer/fees/v1/btc-fee-estimates.json\n' +
   '\n' +
   '[Autopilot]\n' +

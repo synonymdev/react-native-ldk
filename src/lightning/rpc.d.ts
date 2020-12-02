@@ -2380,6 +2380,30 @@ export namespace lnrpc {
 
         /** ChannelAcceptResponse pendingChanId */
         pendingChanId?: (Uint8Array|null);
+
+        /** ChannelAcceptResponse error */
+        error?: (string|null);
+
+        /** ChannelAcceptResponse upfrontShutdown */
+        upfrontShutdown?: (string|null);
+
+        /** ChannelAcceptResponse csvDelay */
+        csvDelay?: (number|null);
+
+        /** ChannelAcceptResponse reserveSat */
+        reserveSat?: (number|Long|null);
+
+        /** ChannelAcceptResponse inFlightMaxMsat */
+        inFlightMaxMsat?: (number|Long|null);
+
+        /** ChannelAcceptResponse maxHtlcCount */
+        maxHtlcCount?: (number|null);
+
+        /** ChannelAcceptResponse minHtlcIn */
+        minHtlcIn?: (number|Long|null);
+
+        /** ChannelAcceptResponse minAcceptDepth */
+        minAcceptDepth?: (number|null);
     }
 
     /** Represents a ChannelAcceptResponse. */
@@ -2396,6 +2420,30 @@ export namespace lnrpc {
 
         /** ChannelAcceptResponse pendingChanId. */
         public pendingChanId: Uint8Array;
+
+        /** ChannelAcceptResponse error. */
+        public error: string;
+
+        /** ChannelAcceptResponse upfrontShutdown. */
+        public upfrontShutdown: string;
+
+        /** ChannelAcceptResponse csvDelay. */
+        public csvDelay: number;
+
+        /** ChannelAcceptResponse reserveSat. */
+        public reserveSat: (number|Long);
+
+        /** ChannelAcceptResponse inFlightMaxMsat. */
+        public inFlightMaxMsat: (number|Long);
+
+        /** ChannelAcceptResponse maxHtlcCount. */
+        public maxHtlcCount: number;
+
+        /** ChannelAcceptResponse minHtlcIn. */
+        public minHtlcIn: (number|Long);
+
+        /** ChannelAcceptResponse minAcceptDepth. */
+        public minAcceptDepth: number;
 
         /**
          * Creates a new ChannelAcceptResponse instance using the specified properties.
@@ -7690,6 +7738,9 @@ export namespace lnrpc {
 
         /** OpenChannelRequest remoteMaxHtlcs */
         remoteMaxHtlcs?: (number|null);
+
+        /** OpenChannelRequest maxLocalCsv */
+        maxLocalCsv?: (number|null);
     }
 
     /** Represents an OpenChannelRequest. */
@@ -7745,6 +7796,9 @@ export namespace lnrpc {
 
         /** OpenChannelRequest remoteMaxHtlcs. */
         public remoteMaxHtlcs: number;
+
+        /** OpenChannelRequest maxLocalCsv. */
+        public maxLocalCsv: number;
 
         /**
          * Creates a new OpenChannelRequest instance using the specified properties.
@@ -13952,6 +14006,9 @@ export namespace lnrpc {
 
         /** Invoice isKeysend */
         isKeysend?: (boolean|null);
+
+        /** Invoice paymentAddr */
+        paymentAddr?: (Uint8Array|null);
     }
 
     /** Represents an Invoice. */
@@ -14034,6 +14091,9 @@ export namespace lnrpc {
 
         /** Invoice isKeysend. */
         public isKeysend: boolean;
+
+        /** Invoice paymentAddr. */
+        public paymentAddr: Uint8Array;
 
         /**
          * Creates a new Invoice instance using the specified properties.
@@ -14279,6 +14339,9 @@ export namespace lnrpc {
 
         /** AddInvoiceResponse addIndex */
         addIndex?: (number|Long|null);
+
+        /** AddInvoiceResponse paymentAddr */
+        paymentAddr?: (Uint8Array|null);
     }
 
     /** Represents an AddInvoiceResponse. */
@@ -14298,6 +14361,9 @@ export namespace lnrpc {
 
         /** AddInvoiceResponse addIndex. */
         public addIndex: (number|Long);
+
+        /** AddInvoiceResponse paymentAddr. */
+        public paymentAddr: Uint8Array;
 
         /**
          * Creates a new AddInvoiceResponse instance using the specified properties.

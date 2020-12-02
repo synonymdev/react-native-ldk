@@ -32,7 +32,7 @@ class LND {
   /**
    * Starts the LND service
    * @return {Promise<Ok<any, Error> | Err<unknown, any>>}
-   * @param network
+   * @param conf
    */
   async start(conf: LndConf): Promise<Result<string, Error>> {
     try {
@@ -45,7 +45,7 @@ class LND {
 
   /**
    * Generates wallet seed phrase which can be used in createWallet
-   * @return {Promise<Result<string, Error>>}
+   * @return {Promise<Ok<any, Error> | Err<unknown, any>>}
    */
   async genSeed(): Promise<Result<string[], Error>> {
     try {
@@ -131,7 +131,8 @@ class LND {
 
   /**
    * LND GetAddress
-   * @returns {Promise<Err<lnrpc.NewAddressResponse, any> | Ok<any, Error>>}
+   * @returns {Promise<Ok<lnrpc.NewAddressResponse, Error> | Err<unknown, any>>}
+   * @param type
    */
   async getAddress(type?: lnrpc.AddressType): Promise<Result<lnrpc.NewAddressResponse, Error>> {
     try {
@@ -149,7 +150,7 @@ class LND {
 
   /**
    * LND GetWalletBalance
-   * @returns {Promise<Err<lnrpc.WalletBalanceResponse, any> | Ok<any, Error>>}
+   * @returns {Promise<Ok<lnrpc.WalletBalanceResponse, Error> | Err<unknown, any>>}
    */
   async getWalletBalance(): Promise<Result<lnrpc.WalletBalanceResponse, Error>> {
     try {
@@ -167,7 +168,7 @@ class LND {
 
   /**
    * LND GetChannelBalance
-   * @returns {Promise<Err<lnrpc.ChannelBalanceResponse, any> | Ok<any, Error>>}
+   * @returns {Promise<Ok<lnrpc.ChannelBalanceResponse, Error> | Err<unknown, any>>}
    */
   async getChannelBalance(): Promise<Result<lnrpc.ChannelBalanceResponse, Error>> {
     try {
@@ -185,7 +186,9 @@ class LND {
 
   /**
    * LND ConnectPeer
-   * @returns {Promise<Err<lnrpc.ConnectPeerResponse, any> | Ok<any, Error>>}
+   * @returns {Promise<Ok<lnrpc.ConnectPeerResponse, Error> | Err<unknown, any>>}
+   * @param nodePubkey
+   * @param host
    */
   async connectPeer(
     nodePubkey: string,
@@ -220,19 +223,24 @@ class LND {
    */
   async openChannel(
     fundingAmount: number,
-    nodePubkey: string
+    nodePubkey: string,
+    closeAddress: string | undefined = undefined
   ): Promise<Result<lnrpc.OpenStatusUpdate, Error>> {
-    // Create a new address for closing of channel
-    const newAddressRes = await this.getAddress();
-    if (newAddressRes.isErr()) {
-      return err(newAddressRes.error);
-    }
-    const address = newAddressRes.value.address;
-
     try {
       const message = lnrpc.OpenChannelRequest.create();
       message.localFundingAmount = fundingAmount;
-      message.closeAddress = address;
+
+      // Create a new address for closing of channel if one wasn't provided
+      if (closeAddress === undefined) {
+        const newAddressRes = await this.getAddress();
+        if (newAddressRes.isErr()) {
+          return err(newAddressRes.error);
+        }
+        message.closeAddress = newAddressRes.value.address;
+      } else {
+        message.closeAddress = closeAddress;
+      }
+
       message.nodePubkeyString = nodePubkey;
       message.pushSat = 0;
 
@@ -242,11 +250,57 @@ class LND {
       message.spendUnconfirmed = false;
 
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.openChannel,
+        GrpcMethods.openChannelSync,
         lnrpc.OpenChannelRequest.encode(message).finish()
       );
 
-      return ok(lnrpc.OpenStatusUpdate.decode(serializedResponse));
+      return ok(lnrpc.ChannelPoint.decode(serializedResponse));
+    } catch (e) {
+      return err(e);
+    }
+  }
+
+  /**
+   * LND CloseChannel
+   * @returns {Promise<Err<unknown, Error> | Ok<lnrpc.ClosedChannelsResponse, Error> | Err<unknown, any>>}
+   * @param channel
+   */
+  async closeChannel(
+    channel: lnrpc.IChannel
+  ): Promise<Result<lnrpc.ClosedChannelsResponse, Error>> {
+    const channelsResult = await this.listChannels();
+    if (channelsResult.isErr()) {
+      return err(channelsResult.error);
+    }
+
+    if (channelsResult.value.channels.length === 0) {
+      return err(Error('No open channels'));
+    }
+
+    const cp = channelsResult.value.channels[0].channelPoint;
+
+    if (!cp) {
+      return err(new Error('Missing channel point'));
+    }
+
+    try {
+      const message = lnrpc.CloseChannelRequest.create();
+
+      // Recreate ChannelPoint obj from string found in channel
+      const point = lnrpc.ChannelPoint.create();
+      point.fundingTxid = 'fundingTxidStr';
+      const [txid, txIndex] = cp.split(':');
+      point.outputIndex = Number(txIndex);
+      point.fundingTxidStr = txid;
+
+      message.channelPoint = point;
+
+      const serializedResponse = await this.grpc.sendCommand(
+        GrpcMethods.closeChannel,
+        lnrpc.CloseChannelRequest.encode(message).finish()
+      );
+
+      return ok(lnrpc.ClosedChannelsResponse.decode(serializedResponse));
     } catch (e) {
       return err(e);
     }
@@ -280,7 +334,7 @@ class LND {
       const message = lnrpc.SendRequest.create();
       message.paymentRequest = invoice;
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.sendPayment,
+        GrpcMethods.sendPaymentSync,
         lnrpc.SendRequest.encode(message).finish()
       );
 
