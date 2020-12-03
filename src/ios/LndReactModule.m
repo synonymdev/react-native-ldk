@@ -46,6 +46,12 @@ RCT_EXTERN_METHOD(
                   resolve: (RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject
                   )
+
+RCT_EXTERN_METHOD(
+                  sendStreamCommand: (NSString *)method
+                  streamId: (NSString *)streamId
+                  body: (NSString *)body
+                  )
 @end
 
 //MARK: Events
