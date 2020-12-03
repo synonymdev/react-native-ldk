@@ -69,6 +69,8 @@ class LndReactModule: NSObject {
   private var confFile: URL {
       return storage.appendingPathComponent(confName)
   }
+    
+  private let activeStreams: [String: LndmobileSendStream] = [:]
   
   lazy var syncMethods: [String: (Data?, BlindLndCallback) -> Void] = {
     return [
@@ -127,15 +129,15 @@ class LndReactModule: NSObject {
   lazy var streamMethods: [String: (Data?, BlindLndCallback) -> Void] = {
     return [
       "CloseChannel": { (req: Data?, cb: BlindLndCallback) in LndmobileCloseChannel(req, cb) },
-      "ChannelAcceptor": { (req: Data?, cb: BlindLndCallback) in LndmobileChannelAcceptor(req, cb) },      
+//      "ChannelAcceptor": { (req: Data?, cb: BlindLndCallback) in LndmobileChannelAcceptor(req, cb) },
       "SubscribeChannelBackups": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeChannelBackups(req, cb) },
       "SubscribePeerEvents": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribePeerEvents(req, cb) },
       "SubscribeChannelGraph": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeChannelGraph(req, cb) },
       "SubscribeInvoices": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeInvoices(req, cb) },
       "SubscribeTransactions": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeTransactions(req, cb) },
       "SubscribeChannelEvents": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeChannelEvents(req, cb) },
-      "SendPayment": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeSendPayment(req, cb) },
-      "SendToRoute": { (req: Data?, cb: BlindLndCallback) in LndmobileSendToRoute(req, cb) },
+//      "SendPayment": { (req: Data?, cb: BlindLndCallback) in LndmobileSendPayment(req, cb) },
+//      "SendToRoute": { (req: Data?, cb: BlindLndCallback) in LndmobileSendToRoute(req, cb) }, TODO these probably need to be passed pointers to a LndmobileSendStream
     ]
   }()
   

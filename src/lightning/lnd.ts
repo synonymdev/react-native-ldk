@@ -297,6 +297,72 @@ class LND {
   }
 
   /**
+   * LND subscribe to any changes to on-chain transaction states
+   * @param onUpdate
+   * @param onDone
+   */
+  subscribeToOnChainTransactions(
+    onUpdate: (res: Result<lnrpc.Transaction, Error>) => void,
+    onDone: (res: Result<boolean, Error>) => void
+  ): void {
+    try {
+      const message = lnrpc.GetTransactionsRequest.create();
+
+      // Decode the response before sending update back
+      const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
+        if (res.isErr()) {
+          onUpdate(res);
+          return;
+        }
+
+        onUpdate(ok(lnrpc.Transaction.decode(res.value)));
+      };
+
+      this.grpc.sendStreamCommand(
+        GrpcStreamMethods.SubscribeTransactions,
+        lnrpc.GetTransactionsRequest.encode(message).finish(),
+        onStateUpdate,
+        onDone
+      );
+    } catch (e) {
+      onUpdate(err(e));
+    }
+  }
+
+  /**
+   * LND subscribe to any changes in invoice states
+   * @param onUpdate
+   * @param onDone
+   */
+  subscribeToInvoices(
+    onUpdate: (res: Result<lnrpc.Invoice, Error>) => void,
+    onDone: (res: Result<boolean, Error>) => void
+  ): void {
+    try {
+      const message = lnrpc.ListInvoiceRequest.create();
+
+      // Decode the response before sending update back
+      const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
+        if (res.isErr()) {
+          onUpdate(res);
+          return;
+        }
+
+        onUpdate(ok(lnrpc.Invoice.decode(res.value)));
+      };
+
+      this.grpc.sendStreamCommand(
+        GrpcStreamMethods.SubscribeInvoices,
+        lnrpc.ListInvoiceRequest.encode(message).finish(),
+        onStateUpdate,
+        onDone
+      );
+    } catch (e) {
+      onUpdate(err(e));
+    }
+  }
+
+  /**
    * LND ListChannels
    * @returns {Promise<Ok<lnrpc.ListChannelsResponse, Error> | Err<unknown, any>>}
    */

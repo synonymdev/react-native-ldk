@@ -90,8 +90,6 @@ class GrpcAction {
 
           this.lndEvent.addListener('streamEvent', (res: NativeStreamResponse | undefined) => {
             if (res && res.streamId === streamId) {
-              // {"data": "CiIKIMAr05LYL8oP+oKOjo3YHZBzd0ZRfYuBnJFilHrkvvN9", "event": "data", "streamId": "1"}
-              // {"error": "EOF", "event": "error", "streamId": "1"}
               if (res.error === 'EOF') {
                 onDone(ok(true));
                 return;
