@@ -65,34 +65,75 @@ class LndReactModule: NSObject {
   
   lazy var syncMethods: [String: (Data?, BlindLndCallback) -> Void] = {
     return [
-      "GetInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetInfo(req, cb) },
-      "NewAddress": { (req: Data?, cb: BlindLndCallback) in LndmobileNewAddress(req, cb) },
-      "WalletBalance": { (req: Data?, cb: BlindLndCallback) in LndmobileWalletBalance(req, cb) },
-      "ListChannels": { (req: Data?, cb: BlindLndCallback) in LndmobileListChannels(req, cb) },
-      "PendingChannels": { (req: Data?, cb: BlindLndCallback) in LndmobilePendingChannels(req, cb) },
-      "ClosedChannels": { (req: Data?, cb: BlindLndCallback) in LndmobileClosedChannels(req, cb) },
-      "ListPeers": { (req: Data?, cb: BlindLndCallback) in LndmobileListPeers(req, cb) },
-      "ConnectPeer": { (req: Data?, cb: BlindLndCallback) in LndmobileConnectPeer(req, cb) },
-      "AddInvoice": { (req: Data?, cb: BlindLndCallback) in LndmobileAddInvoice(req, cb) },
-      "DecodePayReq": { (req: Data?, cb: BlindLndCallback) in LndmobileDecodePayReq(req, cb) },
-      "QueryRoutes": { (req: Data?, cb: BlindLndCallback) in LndmobileQueryRoutes(req, cb) },
-      "SendCoins": { (req: Data?, cb: BlindLndCallback) in LndmobileSendCoins(req, cb) },
-      "GetTransactions": { (req: Data?, cb: BlindLndCallback) in LndmobileGetTransactions(req, cb) },
-      "ListInvoices": { (req: Data?, cb: BlindLndCallback) in LndmobileListInvoices(req, cb) },
-      "ListPayments": { (req: Data?, cb: BlindLndCallback) in LndmobileListPayments(req, cb) },
-      "ChangePassword": { (req: Data?, cb: BlindLndCallback) in LndmobileChangePassword(req, cb) },
-      "ChannelBalance": { (req: Data?, cb: BlindLndCallback) in LndmobileChannelBalance(req, cb) },
       "EstimateFee": { (req: Data?, cb: BlindLndCallback) in LndmobileEstimateFee(req, cb) },
-      "StopDaemon": { (req: Data?, cb: BlindLndCallback) in LndmobileStopDaemon(req, cb) },
-      "Status": { (req: Data?, cb: BlindLndCallback) in LndmobileStatus(req, cb) },
-      "SetScores": { (req: Data?, cb: BlindLndCallback) in LndmobileSetScores(req, cb) },
-      "QueryScores": { (req: Data?, cb: BlindLndCallback) in LndmobileQueryScores(req, cb) },
-      "ModifyStatus": { (req: Data?, cb: BlindLndCallback) in LndmobileModifyStatus(req, cb) },
+      "PendingChannels": { (req: Data?, cb: BlindLndCallback) in LndmobilePendingChannels(req, cb) },
+      "NewAddress": { (req: Data?, cb: BlindLndCallback) in LndmobileNewAddress(req, cb) },
+      "AddInvoice": { (req: Data?, cb: BlindLndCallback) in LndmobileAddInvoice(req, cb) },
+      "GetNodeInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetNodeInfo(req, cb) },
+      "DisconnectPeer": { (req: Data?, cb: BlindLndCallback) in LndmobileDisconnectPeer(req, cb) },
       "GetNetworkInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetNetworkInfo(req, cb) },
-      "OpenChannel": { (req: Data?, cb: BlindLndCallback) in LndmobileOpenChannelSync(req, cb) },
-      "SendPayment": { (req: Data?, cb: BlindLndCallback) in LndmobileSendPaymentSync(req, cb) },
+      "ChannelBalance": { (req: Data?, cb: BlindLndCallback) in LndmobileChannelBalance(req, cb) },
+      "ListPeers": { (req: Data?, cb: BlindLndCallback) in LndmobileListPeers(req, cb) },
+      "LookupInvoice": { (req: Data?, cb: BlindLndCallback) in LndmobileLookupInvoice(req, cb) },
+      "ListInvoices": { (req: Data?, cb: BlindLndCallback) in LndmobileListInvoices(req, cb) },
+      "SendMany": { (req: Data?, cb: BlindLndCallback) in LndmobileSendMany(req, cb) },
+      "SendPaymentSync": { (req: Data?, cb: BlindLndCallback) in LndmobileSendPaymentSync(req, cb) },
+      "ForwardingHistory": { (req: Data?, cb: BlindLndCallback) in LndmobileForwardingHistory(req, cb) },
+      "DebugLevel": { (req: Data?, cb: BlindLndCallback) in LndmobileDebugLevel(req, cb) },
+      "SetScores": { (req: Data?, cb: BlindLndCallback) in LndmobileSetScores(req, cb) },
+      "Status": { (req: Data?, cb: BlindLndCallback) in LndmobileStatus(req, cb) },
+      "QueryScores": { (req: Data?, cb: BlindLndCallback) in LndmobileQueryScores(req, cb) },
+      "FeeReport": { (req: Data?, cb: BlindLndCallback) in LndmobileFeeReport(req, cb) },
+      "SendToRouteSync": { (req: Data?, cb: BlindLndCallback) in LndmobileSendToRouteSync(req, cb) },
+      "ListUnspent": { (req: Data?, cb: BlindLndCallback) in LndmobileListUnspent(req, cb) },
+      "ExportAllChannelBackups": { (req: Data?, cb: BlindLndCallback) in LndmobileExportAllChannelBackups(req, cb) },
+      "GetNodeMetrics": { (req: Data?, cb: BlindLndCallback) in LndmobileGetNodeMetrics(req, cb) },
+      "GetInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetInfo(req, cb) },
+      "ChangePassword": { (req: Data?, cb: BlindLndCallback) in LndmobileChangePassword(req, cb) },
+      "DeleteAllPayments": { (req: Data?, cb: BlindLndCallback) in LndmobileDeleteAllPayments(req, cb) },
+      "ListPayments": { (req: Data?, cb: BlindLndCallback) in LndmobileListPayments(req, cb) },
+      "SendCoins": { (req: Data?, cb: BlindLndCallback) in LndmobileSendCoins(req, cb) },
+      "VerifyMessage": { (req: Data?, cb: BlindLndCallback) in LndmobileVerifyMessage(req, cb) },
+      "FundingStateStep": { (req: Data?, cb: BlindLndCallback) in LndmobileFundingStateStep(req, cb) },
+      "WalletBalance": { (req: Data?, cb: BlindLndCallback) in LndmobileWalletBalance(req, cb) },
+      "GetTransactions": { (req: Data?, cb: BlindLndCallback) in LndmobileGetTransactions(req, cb) },
+      "DescribeGraph": { (req: Data?, cb: BlindLndCallback) in LndmobileDescribeGraph(req, cb) },
+      "QueryRoutes": { (req: Data?, cb: BlindLndCallback) in LndmobileQueryRoutes(req, cb) },
+      "SignMessage": { (req: Data?, cb: BlindLndCallback) in LndmobileSignMessage(req, cb) },
+      "GetRecoveryInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetRecoveryInfo(req, cb) },
+      "DecodePayReq": { (req: Data?, cb: BlindLndCallback) in LndmobileDecodePayReq(req, cb) },
+      "GetChanInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetChanInfo(req, cb) },
+      "RestoreChannelBackups":  { (req: Data?, cb: BlindLndCallback) in LndmobileRestoreChannelBackups(req, cb) },
+      "ConnectPeer": { (req: Data?, cb: BlindLndCallback) in LndmobileConnectPeer(req, cb) },
+      "ListChannels": { (req: Data?, cb: BlindLndCallback) in LndmobileListChannels(req, cb) },
+      "VerifyChanBackup": { (req: Data?, cb: BlindLndCallback) in LndmobileVerifyChanBackup(req, cb) },
+      "OpenChannelSync": { (req: Data?, cb: BlindLndCallback) in LndmobileOpenChannelSync(req, cb) },
+      "ClosedChannels": { (req: Data?, cb: BlindLndCallback) in LndmobileClosedChannels(req, cb) },
+      "ExportChannelBackup": { (req: Data?, cb: BlindLndCallback) in LndmobileExportChannelBackup(req, cb) },
+      "StopDaemon": { (req: Data?, cb: BlindLndCallback) in LndmobileStopDaemon(req, cb) },
+      "ModifyStatus": { (req: Data?, cb: BlindLndCallback) in LndmobileModifyStatus(req, cb) },
+      "UpdateChannelPolicy": { (req: Data?, cb: BlindLndCallback) in LndmobileUpdateChannelPolicy(req, cb) },
+      "BakeMacaroon": { (req: Data?, cb: BlindLndCallback) in LndmobileBakeMacaroon(req, cb) },
     ]
   }()
+  
+  lazy var streamMethods: [String: (Data?, BlindLndCallback) -> Void] = {
+    return [:
+//        CloseChannel
+//        ChannelAcceptor
+//        SubscribeChannelBackups
+//        SubscribePeerEvents
+//        SubscribeChannelGraph
+//        SubscribeInvoices
+//        SubscribeTransactions
+//        SubscribeChannelEvents
+//        SendPayment
+//        SendToRoute
+    ]
+  }()
+  
+  //      "CloseChannel": { (req: Data?, cb: BlindLndCallback) in LndmobileCloseChannel(req, cb) }, //TODO move to stream method
+
   
   @objc
   func walletExists(_ network: NSString, resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
@@ -218,6 +259,9 @@ class LndReactModule: NSObject {
       }
       
       let resultData = res ?? Data() //For requests like balance, if the balance is zero the response can be empty
+      
+      
+      print("********CALLBACK")
       
       resolve(["data": resultData.base64EncodedString()])
     }

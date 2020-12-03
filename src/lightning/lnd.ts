@@ -1,32 +1,17 @@
 import { NativeEventEmitter, NativeModules, NativeModulesStatic, Platform } from 'react-native';
 import GrpcAction from './grpc';
-import { Result, ok, err } from './result';
-import { CurrentLndState, GrpcMethods, Networks } from './interfaces';
+import { err, ok, Result } from './result';
+import { CurrentLndState, GrpcStreamMethods, GrpcSyncMethods, Networks } from './interfaces';
 import { lnrpc } from './rpc';
 import LndConf from './lnd.conf';
 
 class LND {
   private readonly grpc: GrpcAction;
   private readonly lnd: NativeModulesStatic;
-  private readonly lndEvent: NativeEventEmitter;
 
   constructor() {
     this.lnd = NativeModules.LndReactModule;
     this.grpc = new GrpcAction(this.lnd);
-
-    // TODO try expose the iOS event emitter in the same native module.
-    this.lndEvent =
-      Platform.OS === 'ios'
-        ? new NativeEventEmitter(NativeModules.LightningEventEmitter)
-        : new NativeEventEmitter(NativeModules.LndReactModule);
-
-    if (__DEV__) {
-      this.lndEvent.addListener('logs', (res) => {
-        if (res) {
-          console.log(res);
-        }
-      });
-    }
   }
 
   /**
@@ -119,7 +104,7 @@ class LND {
     try {
       const message = lnrpc.GetInfoRequest.create();
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.getInfo,
+        GrpcSyncMethods.GetInfo,
         lnrpc.GetInfoRequest.encode(message).finish()
       );
 
@@ -138,7 +123,7 @@ class LND {
     try {
       const message = lnrpc.NewAddressRequest.create({ type });
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.newAddress,
+        GrpcSyncMethods.NewAddress,
         lnrpc.NewAddressRequest.encode(message).finish()
       );
 
@@ -156,7 +141,7 @@ class LND {
     try {
       const message = lnrpc.WalletBalanceRequest.create();
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.getWalletBalance,
+        GrpcSyncMethods.WalletBalance,
         lnrpc.WalletBalanceRequest.encode(message).finish()
       );
 
@@ -174,7 +159,7 @@ class LND {
     try {
       const message = lnrpc.ChannelBalanceRequest.create();
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.getChannelBalance,
+        GrpcSyncMethods.ChannelBalance,
         lnrpc.ChannelBalanceRequest.encode(message).finish()
       );
 
@@ -205,7 +190,7 @@ class LND {
       message.perm = true;
 
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.connectPeer,
+        GrpcSyncMethods.ConnectPeer,
         lnrpc.ConnectPeerRequest.encode(message).finish()
       );
 
@@ -217,15 +202,16 @@ class LND {
 
   /**
    * LND OpenChannelSync
-   * @returns {Promise<Err<unknown, Error> | Ok<lnrpc.OpenStatusUpdate, Error> | Err<unknown, any>>}
+   * @returns {Promise<Err<unknown, Error> | Ok<lnrpc.ChannelPoint, Error> | Err<unknown, any>>}
    * @param fundingAmount
    * @param nodePubkey
+   * @param closeAddress
    */
   async openChannel(
     fundingAmount: number,
     nodePubkey: string,
     closeAddress: string | undefined = undefined
-  ): Promise<Result<lnrpc.OpenStatusUpdate, Error>> {
+  ): Promise<Result<lnrpc.ChannelPoint, Error>> {
     try {
       const message = lnrpc.OpenChannelRequest.create();
       message.localFundingAmount = fundingAmount;
@@ -250,7 +236,7 @@ class LND {
       message.spendUnconfirmed = false;
 
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.openChannelSync,
+        GrpcSyncMethods.OpenChannelSync,
         lnrpc.OpenChannelRequest.encode(message).finish()
       );
 
@@ -264,23 +250,18 @@ class LND {
    * LND CloseChannel
    * @returns {Promise<Err<unknown, Error> | Ok<lnrpc.ClosedChannelsResponse, Error> | Err<unknown, any>>}
    * @param channel
+   * @param onUpdate
+   * @param onDone
    */
-  async closeChannel(
-    channel: lnrpc.IChannel
-  ): Promise<Result<lnrpc.ClosedChannelsResponse, Error>> {
-    const channelsResult = await this.listChannels();
-    if (channelsResult.isErr()) {
-      return err(channelsResult.error);
-    }
-
-    if (channelsResult.value.channels.length === 0) {
-      return err(Error('No open channels'));
-    }
-
-    const cp = channelsResult.value.channels[0].channelPoint;
-
-    if (!cp) {
-      return err(new Error('Missing channel point'));
+  closeChannelStream(
+    channel: lnrpc.IChannel,
+    onUpdate: (res: Result<lnrpc.ClosedChannelsResponse, Error>) => void,
+    onDone: (res: Result<boolean, Error>) => void
+  ): void {
+    const channelPoint = channel.channelPoint;
+    if (!channelPoint) {
+      onDone(err(new Error('Missing channel point')));
+      return;
     }
 
     try {
@@ -289,20 +270,29 @@ class LND {
       // Recreate ChannelPoint obj from string found in channel
       const point = lnrpc.ChannelPoint.create();
       point.fundingTxid = 'fundingTxidStr';
-      const [txid, txIndex] = cp.split(':');
+      const [txid, txIndex] = channelPoint.split(':');
       point.outputIndex = Number(txIndex);
       point.fundingTxidStr = txid;
-
       message.channelPoint = point;
 
-      const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.closeChannel,
-        lnrpc.CloseChannelRequest.encode(message).finish()
-      );
+      // Decode the response before sending update back
+      const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
+        if (res.isErr()) {
+          onUpdate(res);
+          return;
+        }
 
-      return ok(lnrpc.ClosedChannelsResponse.decode(serializedResponse));
+        onUpdate(ok(lnrpc.ClosedChannelsResponse.decode(res.value)));
+      };
+
+      this.grpc.sendStreamCommand(
+        GrpcStreamMethods.CloseChannel,
+        lnrpc.CloseChannelRequest.encode(message).finish(),
+        onStateUpdate,
+        onDone
+      );
     } catch (e) {
-      return err(e);
+      onDone(err(e));
     }
   }
 
@@ -314,7 +304,7 @@ class LND {
     try {
       const message = lnrpc.ListChannelsRequest.create();
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.listChannels,
+        GrpcSyncMethods.ListChannels,
         lnrpc.ListChannelsRequest.encode(message).finish()
       );
 
@@ -334,7 +324,7 @@ class LND {
       const message = lnrpc.SendRequest.create();
       message.paymentRequest = invoice;
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.sendPaymentSync,
+        GrpcSyncMethods.SendPaymentSync,
         lnrpc.SendRequest.encode(message).finish()
       );
 
@@ -362,7 +352,7 @@ class LND {
       message.memo = memo;
       message.expiry = expiry;
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.addInvoice,
+        GrpcSyncMethods.AddInvoice,
         lnrpc.Invoice.encode(message).finish()
       );
 
@@ -380,7 +370,7 @@ class LND {
     try {
       const message = lnrpc.ListInvoiceRequest.create();
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcMethods.listInvoices,
+        GrpcSyncMethods.ListInvoices,
         lnrpc.ListInvoiceRequest.encode(message).finish()
       );
 
