@@ -13,18 +13,31 @@ If you have any trouble, please use [this commit](https://github.com/coreyphilli
 
 1. Install Dependencies:
    ```
-    yarn add react-native-lightning buffer react-native-randombytes react-native-crypto react-native-keychain@4.0.5
+    yarn add react-native-lightning buffer
     yarn add -D rn-nodeify
     yarn install
     ```
-2. Start the project:
-    
-    `react-native run-android`
-    
+   
+2. Run setup script
+   [TODO]
+
+3. Start the project:
+
+   ```
+    react-native run-android
+   ```
+     
 #### Example Usage
 ```
-const lnd = require("react-native-lightning");
-lnd.start();
+import lnd from 'react-native-lightning';
+const lndConf = new LndConf(Networks.regtest);
+
+...
+
+const res = await lnd.start(lndConf);
+if (res.isOk()) {
+  //Lnd started
+}
 ```
     
 ### iOS Installation (In Progress)
@@ -33,7 +46,6 @@ lnd.start();
 1. `yarn add react-native-lightning buffer react-native-randombytes`
 
 2. Add the following to the end of your postinstall script in yourproject/package.json:
-    - `cd node_modules/react-native-lightning && yarn install && ./node_modules/.bin/rn-nodeify --install buffer,stream,assert,events,crypto,vm,process --hack`
  
 3. Copy necessary files over for Android & iOS respectively (Note: Create the directories if they do not exist):
     - Android - Copy LndNativeModule.java & LndNativePackage.java to `android/app/src/main/java/com/yourproject/` and be sure to replace "com.rnlightning" at the top of each file with the name of your own project.

@@ -1,4 +1,4 @@
-import { NativeEventEmitter, NativeModules, NativeModulesStatic, Platform } from 'react-native';
+import { NativeModules, NativeModulesStatic } from 'react-native';
 import GrpcAction from './grpc';
 import { err, ok, Result } from './result';
 import {
