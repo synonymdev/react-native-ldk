@@ -86,3 +86,9 @@ export type NativeStreamResponse = {
   streamId: string;
   error: string | undefined;
 };
+
+export enum StreamEventTypes {
+  Logs = 'logs',
+  StreamEvent = 'streamEvent',
+  LndStateUpdate = 'lndStateUpdate'
+}

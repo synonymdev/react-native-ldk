@@ -1,7 +1,13 @@
 import { NativeEventEmitter, NativeModules, NativeModulesStatic, Platform } from 'react-native';
 import GrpcAction from './grpc';
 import { err, ok, Result } from './result';
-import { CurrentLndState, GrpcStreamMethods, GrpcSyncMethods, Networks } from './interfaces';
+import {
+  CurrentLndState,
+  GrpcStreamMethods,
+  GrpcSyncMethods,
+  Networks,
+  StreamEventTypes
+} from './interfaces';
 import { lnrpc } from './rpc';
 import LndConf from './lnd.conf';
 
@@ -94,6 +100,14 @@ class LND {
     } catch (e) {
       return err(e);
     }
+  }
+
+  /**
+   * Subscribe to the current LND service state
+   * @param onUpdate
+   */
+  subscribeToCurrentState(onUpdate: (res: CurrentLndState) => void): void {
+    this.grpc.lndEvent.addListener(StreamEventTypes.LndStateUpdate, onUpdate);
   }
 
   /**

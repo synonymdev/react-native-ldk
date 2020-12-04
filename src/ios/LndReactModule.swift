@@ -40,12 +40,16 @@ enum LightningResponseKeys: String {
 }
 
 struct LndState {
-  var lndRunning: Bool = false
-  var walletUnlocked: Bool = false
-  var grpcReady: Bool = false
+  var lndRunning: Bool = false { didSet { updateStateStream() }}
+  var walletUnlocked: Bool = false { didSet { updateStateStream() }}
+  var grpcReady: Bool = false { didSet { updateStateStream() }}
   
   func formatted() -> [String: Bool] {
     return ["lndRunning": lndRunning, "walletUnlocked": walletUnlocked, "grpcReady": grpcReady]
+  }
+  
+  func updateStateStream() {
+    LightningEventEmitter.shared.send(withEvent: .lndStateUpdate, body: formatted())
   }
 }
 
@@ -447,6 +451,7 @@ class LightningEventEmitter: RCTEventEmitter {
   public enum EventTypes: String, CaseIterable {
     case logs = "logs"
     case streamEvent = "streamEvent"
+    case lndStateUpdate = "lndStateUpdate"
   }
 
   override init() {

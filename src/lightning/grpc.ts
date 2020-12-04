@@ -4,13 +4,14 @@ import {
   CurrentLndState,
   GrpcStreamMethods,
   GrpcSyncMethods,
-  NativeStreamResponse
+  NativeStreamResponse,
+  StreamEventTypes
 } from './interfaces';
 import { err, ok, Result } from './result';
 
 class GrpcAction {
   private readonly lnd: NativeModulesStatic;
-  private readonly lndEvent: NativeEventEmitter;
+  readonly lndEvent: NativeEventEmitter;
   private static streamCounter = 0;
 
   constructor(lndModule: NativeModulesStatic) {
@@ -22,7 +23,7 @@ class GrpcAction {
         : new NativeEventEmitter(NativeModules.LndReactModule);
 
     if (__DEV__) {
-      this.lndEvent.addListener('logs', (res) => {
+      this.lndEvent.addListener(StreamEventTypes.Logs, (res) => {
         if (res) {
           console.log(res);
         }
@@ -88,21 +89,24 @@ class GrpcAction {
           const streamId = this.generateStreamId();
           this.lnd.sendStreamCommand(method, streamId, serialisedReq);
 
-          this.lndEvent.addListener('streamEvent', (res: NativeStreamResponse | undefined) => {
-            if (res && res.streamId === streamId) {
-              if (res.error === 'EOF') {
-                onDone(ok(true));
-                return;
-              } else if (res.error) {
-                // Not done but received an error update
-                onUpdate(err(new Error(res.error)));
-              }
+          this.lndEvent.addListener(
+            StreamEventTypes.StreamEvent,
+            (res: NativeStreamResponse | undefined) => {
+              if (res && res.streamId === streamId) {
+                if (res.error === 'EOF') {
+                  onDone(ok(true));
+                  return;
+                } else if (res.error) {
+                  // Not done but received an error update
+                  onUpdate(err(new Error(res.error)));
+                }
 
-              if (res.data) {
-                onUpdate(ok(base64.toByteArray(res.data)));
+                if (res.data) {
+                  onUpdate(ok(base64.toByteArray(res.data)));
+                }
               }
             }
-          });
+          );
         })
         .catch((e) => {
           onDone(err(e));
