@@ -26,6 +26,16 @@ class LND {
    * @param conf
    */
   async start(conf: LndConf): Promise<Result<string, Error>> {
+    const stateRes = await this.currentState();
+    if (stateRes.isErr()) {
+      return err(stateRes.error);
+    }
+
+    const { lndRunning } = stateRes.value;
+    if (lndRunning) {
+      return ok('LND already running');
+    }
+
     try {
       const res = await this.lnd.start(conf.build(), conf.network);
       return ok(res);
@@ -292,7 +302,7 @@ class LND {
       // Decode the response before sending update back
       const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
         if (res.isErr()) {
-          onUpdate(res);
+          onUpdate(err(res.error));
           return;
         }
 
@@ -325,7 +335,7 @@ class LND {
       // Decode the response before sending update back
       const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
         if (res.isErr()) {
-          onUpdate(res);
+          onUpdate(err(res.error));
           return;
         }
 
@@ -358,7 +368,7 @@ class LND {
       // Decode the response before sending update back
       const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
         if (res.isErr()) {
-          onUpdate(res);
+          onUpdate(err(res.error));
           return;
         }
 
