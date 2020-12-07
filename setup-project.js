@@ -93,12 +93,6 @@ let generalFiles = [
 
 let androidFiles = [
 	{
-		//Copy lnd.conf -> android/app/src/main/assets
-		source: "src/lnd.conf",
-		destination: `${BASE_ANDROID_PATH}/app/src/main/assets`,
-		filename: "lnd.conf"
-	},
-	{
 		//Copy build.gradle -> android/Lndmobile
 		source: "src/android/build.gradle",
 		destination: `${BASE_ANDROID_PATH}/Lndmobile`,
@@ -107,12 +101,6 @@ let androidFiles = [
 ];
 
 let iosFiles = [
-	{
-		//Copy lnd.conf -> ios/lightning/
-		source: "src/lnd.conf",
-		destination: `${BASE_IOS_PATH}/lightning`,
-		filename: "lnd.conf"
-	},
 	{
 		//Copy build.gradle -> ios/lightning/
 		source: "src/ios/LndReactModule.h",

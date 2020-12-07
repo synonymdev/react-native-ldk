@@ -55,7 +55,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
 
     private FileObserver logObserver;
 
-    private LndState state = new LndState();
+    private static LndState state = new LndState();
 
     private static boolean isReceiveStream(Method m) {
         return m.toString().contains("RecvStream");
@@ -97,11 +97,11 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void start(String configContent, final Promise promise) {
+    public void start(String configContent, String network, final Promise promise) {
         File appDir = getReactApplicationContext().getFilesDir();
         writeToConfig(configContent, appDir);
 
-        final String logDir = appDir + "/logs/bitcoin/testnet";
+        final String logDir = appDir + "/logs/bitcoin/" + network;
         final String logFile = logDir + "/lnd.log";
 
         FileInputStream stream = null;
@@ -162,7 +162,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "Wallet ready to be unlocked");
                 Log.d(TAG, "Wallet ready to be unlocked");
-                state.lndRunning = true;
+                state.setLndRunning(true, getReactApplicationContext());
                 promise.resolve("unlocked");
             }
         }
@@ -176,7 +176,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "RPC ready for requests");
                 Log.d(TAG, "RPC ready for requests");
-                state.grpcReady = true;
+                state.setGrpcReady(true, getReactApplicationContext());
             }
         }
 
@@ -249,7 +249,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "Wallet successfully initialized");
                 Log.d(TAG, "Wallet successfully initialized");
-                state.walletUnlocked = true;
+                state.setWalletUnlocked(true, getReactApplicationContext());
                 promise.resolve("initialized");
             }
         }
@@ -298,7 +298,7 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "Wallet successfully unlocked");
                 Log.d(TAG, "Wallet successfully unlocked");
-                state.walletUnlocked = true;
+                state.setWalletUnlocked(true, getReactApplicationContext());
                 promise.resolve("unlocked");
             }
         }
@@ -472,18 +472,37 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
             e.printStackTrace();
         }
     }
+}
 
-    class LndState {
-        Boolean lndRunning = false;
-        Boolean walletUnlocked = false;
-        Boolean grpcReady = false;
+class LndState {
+    private Boolean lndRunning = false;
+    private Boolean walletUnlocked = false;
+    private Boolean grpcReady = false;
 
-        WritableMap formatted() {
-            WritableMap params = Arguments.createMap();
-            params.putBoolean("lndRunning", lndRunning);
-            params.putBoolean("walletUnlocked", walletUnlocked);
-            params.putBoolean("grpcReady", grpcReady);
-            return params;
-        }
+    public void setLndRunning(Boolean lndRunning, ReactApplicationContext context) {
+        this.lndRunning = lndRunning;
+        updateStateStream(context);
+    }
+
+    public void setWalletUnlocked(Boolean walletUnlocked, ReactApplicationContext context) {
+        this.walletUnlocked = walletUnlocked;
+        updateStateStream(context);
+    }
+
+    public void setGrpcReady(Boolean grpcReady, ReactApplicationContext context) {
+        this.grpcReady = grpcReady;
+        updateStateStream(context);
+    }
+
+    WritableMap formatted() {
+        WritableMap params = Arguments.createMap();
+        params.putBoolean("lndRunning", lndRunning);
+        params.putBoolean("walletUnlocked", walletUnlocked);
+        params.putBoolean("grpcReady", grpcReady);
+        return params;
+    }
+
+    private void updateStateStream(ReactApplicationContext context) {
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("lndStateUpdate", formatted());
     }
 }

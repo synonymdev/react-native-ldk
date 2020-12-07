@@ -32,19 +32,30 @@ enum LightningCallbackResponses: String {
   case walletUnlocked = "Wallet unlocked"
 }
 
+enum LightningResponseKeys: String {
+  case streamIdKey = "streamId"
+  case b64DataKey = "data"
+  case errorKey = "error"
+  case eventKey = "event"
+}
+
 struct LndState {
-  var lndRunning: Bool = false
-  var walletUnlocked: Bool = false
-  var grpcReady: Bool = false
+  var lndRunning: Bool = false { didSet { updateStateStream() }}
+  var walletUnlocked: Bool = false { didSet { updateStateStream() }}
+  var grpcReady: Bool = false { didSet { updateStateStream() }}
   
   func formatted() -> [String: Bool] {
     return ["lndRunning": lndRunning, "walletUnlocked": walletUnlocked, "grpcReady": grpcReady]
+  }
+  
+  func updateStateStream() {
+    LightningEventEmitter.shared.send(withEvent: .lndStateUpdate, body: formatted())
   }
 }
 
 @objc(LndReactModule)
 class LndReactModule: NSObject {
-  var state = LndState()
+  static var state = LndState()
   
   private var storage: URL {
     let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -62,33 +73,75 @@ class LndReactModule: NSObject {
   private var confFile: URL {
       return storage.appendingPathComponent(confName)
   }
+    
+  private let activeStreams: [String: LndmobileSendStream] = [:]
   
   lazy var syncMethods: [String: (Data?, BlindLndCallback) -> Void] = {
     return [
-      "GetInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetInfo(req, cb) },
-      "NewAddress": { (req: Data?, cb: BlindLndCallback) in LndmobileNewAddress(req, cb) },
-      "WalletBalance": { (req: Data?, cb: BlindLndCallback) in LndmobileWalletBalance(req, cb) },
-      "ListChannels": { (req: Data?, cb: BlindLndCallback) in LndmobileListChannels(req, cb) },
-      "PendingChannels": { (req: Data?, cb: BlindLndCallback) in LndmobilePendingChannels(req, cb) },
-      "ClosedChannels": { (req: Data?, cb: BlindLndCallback) in LndmobileClosedChannels(req, cb) },
-      "ListPeers": { (req: Data?, cb: BlindLndCallback) in LndmobileListPeers(req, cb) },
-      "ConnectPeer": { (req: Data?, cb: BlindLndCallback) in LndmobileConnectPeer(req, cb) },
-      "AddInvoice": { (req: Data?, cb: BlindLndCallback) in LndmobileAddInvoice(req, cb) },
-      "DecodePayReq": { (req: Data?, cb: BlindLndCallback) in LndmobileDecodePayReq(req, cb) },
-      "QueryRoutes": { (req: Data?, cb: BlindLndCallback) in LndmobileQueryRoutes(req, cb) },
-      "SendCoins": { (req: Data?, cb: BlindLndCallback) in LndmobileSendCoins(req, cb) },
-      "GetTransactions": { (req: Data?, cb: BlindLndCallback) in LndmobileGetTransactions(req, cb) },
-      "ListInvoices": { (req: Data?, cb: BlindLndCallback) in LndmobileListInvoices(req, cb) },
-      "ListPayments": { (req: Data?, cb: BlindLndCallback) in LndmobileListPayments(req, cb) },
-      "ChangePassword": { (req: Data?, cb: BlindLndCallback) in LndmobileChangePassword(req, cb) },
-      "ChannelBalance": { (req: Data?, cb: BlindLndCallback) in LndmobileChannelBalance(req, cb) },
       "EstimateFee": { (req: Data?, cb: BlindLndCallback) in LndmobileEstimateFee(req, cb) },
-      "StopDaemon": { (req: Data?, cb: BlindLndCallback) in LndmobileStopDaemon(req, cb) },
-      "Status": { (req: Data?, cb: BlindLndCallback) in LndmobileStatus(req, cb) },
-      "SetScores": { (req: Data?, cb: BlindLndCallback) in LndmobileSetScores(req, cb) },
-      "QueryScores": { (req: Data?, cb: BlindLndCallback) in LndmobileQueryScores(req, cb) },
-      "ModifyStatus": { (req: Data?, cb: BlindLndCallback) in LndmobileModifyStatus(req, cb) },
+      "PendingChannels": { (req: Data?, cb: BlindLndCallback) in LndmobilePendingChannels(req, cb) },
+      "NewAddress": { (req: Data?, cb: BlindLndCallback) in LndmobileNewAddress(req, cb) },
+      "AddInvoice": { (req: Data?, cb: BlindLndCallback) in LndmobileAddInvoice(req, cb) },
+      "GetNodeInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetNodeInfo(req, cb) },
+      "DisconnectPeer": { (req: Data?, cb: BlindLndCallback) in LndmobileDisconnectPeer(req, cb) },
       "GetNetworkInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetNetworkInfo(req, cb) },
+      "ChannelBalance": { (req: Data?, cb: BlindLndCallback) in LndmobileChannelBalance(req, cb) },
+      "ListPeers": { (req: Data?, cb: BlindLndCallback) in LndmobileListPeers(req, cb) },
+      "LookupInvoice": { (req: Data?, cb: BlindLndCallback) in LndmobileLookupInvoice(req, cb) },
+      "ListInvoices": { (req: Data?, cb: BlindLndCallback) in LndmobileListInvoices(req, cb) },
+      "SendMany": { (req: Data?, cb: BlindLndCallback) in LndmobileSendMany(req, cb) },
+      "SendPaymentSync": { (req: Data?, cb: BlindLndCallback) in LndmobileSendPaymentSync(req, cb) },
+      "ForwardingHistory": { (req: Data?, cb: BlindLndCallback) in LndmobileForwardingHistory(req, cb) },
+      "DebugLevel": { (req: Data?, cb: BlindLndCallback) in LndmobileDebugLevel(req, cb) },
+      "SetScores": { (req: Data?, cb: BlindLndCallback) in LndmobileSetScores(req, cb) },
+      "Status": { (req: Data?, cb: BlindLndCallback) in LndmobileStatus(req, cb) },
+      "QueryScores": { (req: Data?, cb: BlindLndCallback) in LndmobileQueryScores(req, cb) },
+      "FeeReport": { (req: Data?, cb: BlindLndCallback) in LndmobileFeeReport(req, cb) },
+      "SendToRouteSync": { (req: Data?, cb: BlindLndCallback) in LndmobileSendToRouteSync(req, cb) },
+      "ListUnspent": { (req: Data?, cb: BlindLndCallback) in LndmobileListUnspent(req, cb) },
+      "ExportAllChannelBackups": { (req: Data?, cb: BlindLndCallback) in LndmobileExportAllChannelBackups(req, cb) },
+      "GetNodeMetrics": { (req: Data?, cb: BlindLndCallback) in LndmobileGetNodeMetrics(req, cb) },
+      "GetInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetInfo(req, cb) },
+      "ChangePassword": { (req: Data?, cb: BlindLndCallback) in LndmobileChangePassword(req, cb) },
+      "DeleteAllPayments": { (req: Data?, cb: BlindLndCallback) in LndmobileDeleteAllPayments(req, cb) },
+      "ListPayments": { (req: Data?, cb: BlindLndCallback) in LndmobileListPayments(req, cb) },
+      "SendCoins": { (req: Data?, cb: BlindLndCallback) in LndmobileSendCoins(req, cb) },
+      "VerifyMessage": { (req: Data?, cb: BlindLndCallback) in LndmobileVerifyMessage(req, cb) },
+      "FundingStateStep": { (req: Data?, cb: BlindLndCallback) in LndmobileFundingStateStep(req, cb) },
+      "WalletBalance": { (req: Data?, cb: BlindLndCallback) in LndmobileWalletBalance(req, cb) },
+      "GetTransactions": { (req: Data?, cb: BlindLndCallback) in LndmobileGetTransactions(req, cb) },
+      "DescribeGraph": { (req: Data?, cb: BlindLndCallback) in LndmobileDescribeGraph(req, cb) },
+      "QueryRoutes": { (req: Data?, cb: BlindLndCallback) in LndmobileQueryRoutes(req, cb) },
+      "SignMessage": { (req: Data?, cb: BlindLndCallback) in LndmobileSignMessage(req, cb) },
+      "GetRecoveryInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetRecoveryInfo(req, cb) },
+      "DecodePayReq": { (req: Data?, cb: BlindLndCallback) in LndmobileDecodePayReq(req, cb) },
+      "GetChanInfo": { (req: Data?, cb: BlindLndCallback) in LndmobileGetChanInfo(req, cb) },
+      "RestoreChannelBackups":  { (req: Data?, cb: BlindLndCallback) in LndmobileRestoreChannelBackups(req, cb) },
+      "ConnectPeer": { (req: Data?, cb: BlindLndCallback) in LndmobileConnectPeer(req, cb) },
+      "ListChannels": { (req: Data?, cb: BlindLndCallback) in LndmobileListChannels(req, cb) },
+      "VerifyChanBackup": { (req: Data?, cb: BlindLndCallback) in LndmobileVerifyChanBackup(req, cb) },
+      "OpenChannelSync": { (req: Data?, cb: BlindLndCallback) in LndmobileOpenChannelSync(req, cb) },
+      "ClosedChannels": { (req: Data?, cb: BlindLndCallback) in LndmobileClosedChannels(req, cb) },
+      "ExportChannelBackup": { (req: Data?, cb: BlindLndCallback) in LndmobileExportChannelBackup(req, cb) },
+      "StopDaemon": { (req: Data?, cb: BlindLndCallback) in LndmobileStopDaemon(req, cb) },
+      "ModifyStatus": { (req: Data?, cb: BlindLndCallback) in LndmobileModifyStatus(req, cb) },
+      "UpdateChannelPolicy": { (req: Data?, cb: BlindLndCallback) in LndmobileUpdateChannelPolicy(req, cb) },
+      "BakeMacaroon": { (req: Data?, cb: BlindLndCallback) in LndmobileBakeMacaroon(req, cb) },
+    ]
+  }()
+  
+  lazy var streamMethods: [String: (Data?, BlindLndCallback) -> Void] = {
+    return [
+      "CloseChannel": { (req: Data?, cb: BlindLndCallback) in LndmobileCloseChannel(req, cb) },
+//      "ChannelAcceptor": { (req: Data?, cb: BlindLndCallback) in LndmobileChannelAcceptor(req, cb) },
+      "SubscribeChannelBackups": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeChannelBackups(req, cb) },
+      "SubscribePeerEvents": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribePeerEvents(req, cb) },
+      "SubscribeChannelGraph": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeChannelGraph(req, cb) },
+      "SubscribeInvoices": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeInvoices(req, cb) },
+      "SubscribeTransactions": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeTransactions(req, cb) },
+      "SubscribeChannelEvents": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeChannelEvents(req, cb) },
+//      "SendPayment": { (req: Data?, cb: BlindLndCallback) in LndmobileSendPayment(req, cb) },
+//      "SendToRoute": { (req: Data?, cb: BlindLndCallback) in LndmobileSendToRoute(req, cb) }, TODO these probably need to be passed pointers to a LndmobileSendStream
     ]
   }()
   
@@ -99,11 +152,11 @@ class LndReactModule: NSObject {
   
   @objc
   func currentState(_ resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
-    resolve(state.formatted())
+    resolve(LndReactModule.state.formatted())
   }
   
   @objc
-  func start(_ configContent: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+  func start(_ configContent: NSString, network: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     LightningEventEmitter.shared.send(withEvent: .logs, body: "LND Start Request")
     
     //Delete previous config if it exists
@@ -120,24 +173,23 @@ class LndReactModule: NSObject {
 
     print(args)
     
-    //TODO read the network from the configContent
-    watchLndLog("testnet")
+    watchLndLog(network)
     
     LightningEventEmitter.shared.send(withEvent: .logs, body: "Starting LND with args: \(args)")
     
     LndmobileStart(
       args,
-      LndEmptyResponseCallback { [weak self] (error) in
+      LndEmptyResponseCallback { (error) in
         if let e = error {
           return reject("error", e.localizedDescription, e)
         }
         
-        self?.state.lndRunning = true
-        resolve(LightningCallbackResponses.started)
+        LndReactModule.state.lndRunning = true
+        resolve(LightningCallbackResponses.started.rawValue)
       },
-      LndEmptyResponseCallback { [weak self] (error) in
+      LndEmptyResponseCallback { (error) in
         //RPC is ready (only called after wallet is unlocked/created)
-        self?.state.grpcReady = true
+        LndReactModule.state.grpcReady = true
       }
     )
   }
@@ -171,13 +223,13 @@ class LndReactModule: NSObject {
     do {
       LndmobileInitWallet(
         try request.serializedData(),
-        LndEmptyResponseCallback { [weak self] (error) in
+        LndEmptyResponseCallback { (error) in
           if let e = error {
             return reject("error", e.localizedDescription, e)
           }
           
-          self?.state.walletUnlocked = true
-          resolve(LightningCallbackResponses.walletCreated)
+          LndReactModule.state.walletUnlocked = true
+          resolve(LightningCallbackResponses.walletCreated.rawValue)
         }
       )
     } catch {
@@ -193,13 +245,13 @@ class LndReactModule: NSObject {
     do {
       LndmobileUnlockWallet(
         try request.serializedData(),
-        LndEmptyResponseCallback { [weak self] (error) in
+        LndEmptyResponseCallback { (error) in
           if let e = error {
             return reject("error", e.localizedDescription, e)
           }
           
-          self?.state.walletUnlocked = true
-          resolve(LightningCallbackResponses.walletUnlocked)
+          LndReactModule.state.walletUnlocked = true
+          resolve(LightningCallbackResponses.walletUnlocked.rawValue)
         }
       )
     } catch {
@@ -213,12 +265,11 @@ class LndReactModule: NSObject {
   
     let onResponse: (Data?, Error?) -> Void = { (res, error) in
       if let e = error {
-        return reject("error", e.localizedDescription, e)
+        return reject(LightningResponseKeys.errorKey.rawValue, e.localizedDescription, e)
       }
       
       let resultData = res ?? Data() //For requests like balance, if the balance is zero the response can be empty
-      
-      resolve(["data": resultData.base64EncodedString()])
+      resolve([LightningResponseKeys.b64DataKey.rawValue: resultData.base64EncodedString()])
     }
     
     let completion = BlindLndCallback(onResponse)
@@ -228,6 +279,50 @@ class LndReactModule: NSObject {
     }
     
     lndMethod(request, completion)
+  }
+  
+  @objc
+  func sendStreamCommand(_ method: NSString, streamId: NSString, body: NSString) {
+    let request = Data(base64Encoded: String(body))
+    
+    let onResponse: (Data?, Error?) -> Void = { (res, error) in
+      if let e = error {
+        LightningEventEmitter.shared.send(
+          withEvent: .streamEvent,
+          body: [
+            LightningResponseKeys.errorKey.rawValue: e.localizedDescription,
+            LightningResponseKeys.eventKey.rawValue: LightningResponseKeys.errorKey.rawValue,
+            LightningResponseKeys.streamIdKey.rawValue: streamId
+          ]
+        )
+        return
+      }
+      
+      let resultData = res ?? Data() //For some requests the response can be empty
+      
+      LightningEventEmitter.shared.send(
+        withEvent: .streamEvent,
+        body: [
+          LightningResponseKeys.b64DataKey.rawValue: resultData.base64EncodedString(),
+          LightningResponseKeys.eventKey.rawValue: LightningResponseKeys.b64DataKey.rawValue,
+          LightningResponseKeys.streamIdKey.rawValue: streamId
+        ]
+      )
+    }
+    
+    guard let lndMethod = streamMethods[method as String] else {
+      LightningEventEmitter.shared.send(
+        withEvent: .streamEvent,
+        body: [
+          LightningResponseKeys.errorKey.rawValue: LightningError.unknownMethod.localizedDescription,
+          LightningResponseKeys.eventKey.rawValue: LightningResponseKeys.errorKey.rawValue,
+          LightningResponseKeys.streamIdKey.rawValue: streamId
+        ]
+      )
+      return
+    }
+    
+    lndMethod(request, BlindLndCallback(onResponse))
   }
 }
 
@@ -313,7 +408,7 @@ extension LndReactModule {
     }
   }
   
-  func watchLndLog(_ network: String) {
+  func watchLndLog(_ network: NSString) {
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
       
@@ -340,6 +435,12 @@ extension LndReactModule {
       fileHandle.readInBackgroundAndNotify()
     }
   }
+  
+  func wipeWallet() {
+    //TODO ensure regtest only
+    print("WARNING: removing existing LND directory")
+    try! FileManager.default.removeItem(at: storage)
+  }
 }
 
 //MARK: Singleton react native event emitter
@@ -350,6 +451,7 @@ class LightningEventEmitter: RCTEventEmitter {
   public enum EventTypes: String, CaseIterable {
     case logs = "logs"
     case streamEvent = "streamEvent"
+    case lndStateUpdate = "lndStateUpdate"
   }
 
   override init() {
@@ -357,7 +459,7 @@ class LightningEventEmitter: RCTEventEmitter {
     LightningEventEmitter.shared = self
   }
 
-  public func send(withEvent eventType: EventTypes, body: String) {
+  public func send(withEvent eventType: EventTypes, body: Any) {
     sendEvent(withName: eventType.rawValue, body: body)
   }
 

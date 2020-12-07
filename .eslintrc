@@ -1,0 +1,36 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": [
+      "./src/lightning/tsconfig.json"
+    ]
+  },
+  "plugins": [
+    "@typescript-eslint",
+    "prettier",
+    "no-null"
+  ],
+  "extends": [
+    "standard-with-typescript",
+    "prettier",
+    "prettier/@typescript-eslint",
+    "prettier/standard"
+  ],
+  "rules": {
+    "no-param-reassign": "error",
+    "no-shadow": "error",
+    "prettier/prettier": "warn",
+    "no-null/no-null": "error",
+    "@typescript-eslint/ban-types": ["error", { "types": { "null": null } }],
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/ban-ts-comment": "error",
+    "@typescript-eslint/switch-exhaustiveness-check": "error",
+    "@typescript-eslint/consistent-type-definitions": ["error", "type"],
+    "@typescript-eslint/explicit-function-return-type": "error",
+    "@typescript-eslint/space-before-function-paren": ["warn", "never"],
+    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/strict-boolean-expressions": "off"
+  }
+}

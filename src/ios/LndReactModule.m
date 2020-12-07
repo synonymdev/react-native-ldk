@@ -17,6 +17,7 @@ RCT_EXTERN_METHOD(
 
 RCT_EXTERN_METHOD(
                   start: (NSString *)configContent
+                  network: (NSString *)network
                   resolve: (RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject
                   )
@@ -44,6 +45,12 @@ RCT_EXTERN_METHOD(
                   body: (NSString *)seed
                   resolve: (RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject
+                  )
+
+RCT_EXTERN_METHOD(
+                  sendStreamCommand: (NSString *)method
+                  streamId: (NSString *)streamId
+                  body: (NSString *)body
                   )
 @end
 
