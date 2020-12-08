@@ -1,6 +1,6 @@
 /* Allows the conf to be kept in one place and passed to the native modules when lnd is started */
 
-import { Networks, TLndConf, TLndConfSection } from './interfaces';
+import { ENetworks, TLndConf, TLndConfSection } from './types';
 
 const defaultRegtestConf = {
   'Application Options': {
@@ -58,10 +58,10 @@ const defaultTestnetBitcoindConf = {
 };
 
 class LndConf {
-  readonly network: Networks;
+  readonly network: ENetworks;
   readonly customFields: TLndConf;
 
-  constructor(network: Networks, customFields: TLndConf = {}) {
+  constructor(network: ENetworks, customFields: TLndConf = {}) {
     this.network = network;
     this.customFields = customFields;
   }
@@ -93,15 +93,15 @@ class LndConf {
     let defaultConfObj: TLndConf;
 
     switch (this.network) {
-      case Networks.regtest: {
+      case ENetworks.regtest: {
         defaultConfObj = defaultRegtestConf;
         break;
       }
-      case Networks.testnet: {
+      case ENetworks.testnet: {
         defaultConfObj = defaultTestnetBitcoindConf;
         break;
       }
-      case Networks.mainnet: {
+      case ENetworks.mainnet: {
         throw new Error('Not implemented yet: Networks.mainnet case');
       }
     }

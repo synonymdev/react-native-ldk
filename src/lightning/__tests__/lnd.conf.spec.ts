@@ -1,5 +1,5 @@
 import LndConf from '../lnd.conf';
-import { Networks } from '../interfaces';
+import { ENetworks } from '../types';
 
 const customConfFields = {
   Bitcoind: { 'bitcoind.rpcpass': 'custom_password' },
@@ -7,7 +7,7 @@ const customConfFields = {
 };
 
 test('lndConf should contain custom field lines when built', () => {
-  const lndConf = new LndConf(Networks.regtest, customConfFields);
+  const lndConf = new LndConf(ENetworks.regtest, customConfFields);
   const confString = lndConf.build();
 
   expect(confString).toContain('\nbitcoind.rpcpass=custom_password\n');
@@ -17,7 +17,7 @@ test('lndConf should contain custom field lines when built', () => {
 });
 
 test('should override custom field with one occurrence', () => {
-  const lndConf = new LndConf(Networks.regtest, customConfFields);
+  const lndConf = new LndConf(ENetworks.regtest, customConfFields);
   const confString = lndConf.build();
   expect((confString.match(/bitcoind.rpcpass/g) ?? []).length).toStrictEqual(1);
 });

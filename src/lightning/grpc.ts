@@ -1,12 +1,12 @@
 import { NativeEventEmitter, NativeModules, NativeModulesStatic, Platform } from 'react-native';
 import base64 from 'base64-js';
 import {
-  CurrentLndState,
-  GrpcStreamMethods,
-  GrpcSyncMethods,
-  NativeStreamResponse,
-  StreamEventTypes
-} from './interfaces';
+  TCurrentLndState,
+  EGrpcStreamMethods,
+  EGrpcSyncMethods,
+  TNativeStreamResponse,
+  EStreamEventTypes
+} from './types';
 import { err, ok, Result } from './result';
 
 class GrpcAction {
@@ -23,7 +23,7 @@ class GrpcAction {
         : new NativeEventEmitter(NativeModules.LndReactModule);
 
     if (__DEV__) {
-      this.lndEvent.addListener(StreamEventTypes.Logs, (res) => {
+      this.lndEvent.addListener(EStreamEventTypes.Logs, (res) => {
         if (res) {
           console.log(res);
         }
@@ -37,7 +37,7 @@ class GrpcAction {
    * @returns {Promise<void>}
    */
   async checkGrpcReady(): Promise<void> {
-    const res: CurrentLndState = await this.lnd.currentState();
+    const res: TCurrentLndState = await this.lnd.currentState();
 
     if (!res) {
       throw new Error('Unable to determine LND state');
@@ -58,7 +58,7 @@ class GrpcAction {
    * @return {Promise<Uint8Array>}
    * @param buffer
    */
-  async sendCommand(method: GrpcSyncMethods, buffer: Uint8Array): Promise<Uint8Array> {
+  async sendCommand(method: EGrpcSyncMethods, buffer: Uint8Array): Promise<Uint8Array> {
     await this.checkGrpcReady(); // Throws an exception if LND is not ready to be queried via grpc
 
     const serialisedReq = base64.fromByteArray(buffer);
@@ -76,7 +76,7 @@ class GrpcAction {
   }
 
   sendStreamCommand(
-    method: GrpcStreamMethods,
+    method: EGrpcStreamMethods,
     buffer: Uint8Array,
     onUpdate: (res: Result<Uint8Array, Error>) => void,
     onDone: (res: Result<boolean, Error>) => void
@@ -90,8 +90,8 @@ class GrpcAction {
           this.lnd.sendStreamCommand(method, streamId, serialisedReq);
 
           this.lndEvent.addListener(
-            StreamEventTypes.StreamEvent,
-            (res: NativeStreamResponse | undefined) => {
+            EStreamEventTypes.StreamEvent,
+            (res: TNativeStreamResponse | undefined) => {
               if (res && res.streamId === streamId) {
                 if (res.error === 'EOF') {
                   onDone(ok(true));
