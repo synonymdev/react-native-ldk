@@ -92,3 +92,13 @@ export enum StreamEventTypes {
   StreamEvent = 'streamEvent',
   LndStateUpdate = 'lndStateUpdate'
 }
+
+export type TLndConfValue = string | number | boolean | string[];
+
+export type TLndConfSection = {
+  [key: string]: TLndConfValue;
+};
+
+export type TLndConf = {
+  [key: string]: TLndConfSection;
+};

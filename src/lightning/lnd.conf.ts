@@ -1,89 +1,141 @@
 /* Allows the conf to be kept in one place and passed to the native modules when lnd is started */
 
-import { Networks } from './interfaces';
+import {Networks, TLndConf, TLndConfSection} from './interfaces';
 
-const regtestConfString =
-  '[Application Options]\n' +
-  'debuglevel=info\n' +
-  'no-macaroons=false\n' +
-  'nolisten=true\n' +
-  '\n' +
-  '[Routing]\n' +
-  'routing.assumechanvalid=true\n' +
-  '\n' +
-  '[Bitcoin]\n' +
-  'bitcoin.active=true\n' +
-  'bitcoin.regtest=true\n' +
-  'bitcoin.node=bitcoind\n' +
-  '\n' +
-  '[autopilot]\n' +
-  'autopilot.active=false\n' +
-  '\n' +
-  '[watchtower]\n' +
-  'watchtower.active=false\n' +
-  '\n' +
-  '[Bitcoind]\n' +
-  'bitcoind.rpchost=10.0.0.100\n' +
-  'bitcoind.rpcuser=polaruser\n' +
-  'bitcoind.rpcpass=polarpass\n' +
-  'bitcoind.zmqpubrawblock=tcp://10.0.0.100:28334\n' +
-  'bitcoind.zmqpubrawtx=tcp://10.0.0.100:29335';
+const defaultRegtestConf = {
+  'Application Options': {
+    debuglevel: 'info',
+    'no-macaroons': false,
+    nolisten: true
+  },
+  Routing: {
+    'routing.assumechanvalid': true
+  },
+  Bitcoin: {
+    'bitcoin.active': true,
+    'bitcoin.regtest': true,
+    'bitcoin.node': 'bitcoind'
+  },
+  watchtower: {
+    'watchtower.active': false
+  },
+  Bitcoind: {
+    'bitcoind.rpchost': '127.0.0.1',
+    'bitcoind.rpcuser': 'polaruser',
+    'bitcoind.rpcpass': 'polarpass',
+    'bitcoind.zmqpubrawblock': 'tcp://127.0.0.1:28334',
+    'bitcoind.zmqpubrawtx': 'tcp://127.0.0.1:29335'
+  }
+};
 
-const testnetConfString =
-  '[Application Options]\n' +
-  'debuglevel=info\n' +
-  'no-macaroons=1\n' +
-  'maxbackoff=2s\n' +
-  'nolisten=1\n' +
-  '\n' +
-  '[Routing]\n' +
-  'routing.assumechanvalid=1\n' +
-  '\n' +
-  '[Bitcoin]\n' +
-  'bitcoin.active=1\n' +
-  'bitcoin.testnet=1\n' +
-  'bitcoin.node=neutrino\n' +
-  '\n' +
-  '[Neutrino]\n' +
-  'neutrino.connect=btcd-testnet.lightning.computer\n' +
-  'neutrino.connect=lnd.bitrefill.com:18333\n' +
-  'neutrino.connect=faucet.lightning.community\n' +
-  'neutrino.connect=testnet1-btcd.zaphq.io\n' +
-  'neutrino.connect=testnet2-btcd.zaphq.io\n' +
-  'neutrino.connect=testnet3-btcd.zaphq.io\n' +
-  'neutrino.connect=testnet4-btcd.zaphq.io\n' +
-  'neutrino.feeurl=https://nodes.lightning.computer/fees/v1/btc-fee-estimates.json\n' +
-  '\n' +
-  '[Autopilot]\n' +
-  'autopilot.active=0\n' +
-  'autopilot.private=0\n' +
-  'autopilot.minconfs=0\n' +
-  'autopilot.conftarget=30\n' +
-  'autopilot.allocation=1.0\n' +
-  'autopilot.heuristic=externalscore:0.95\n' +
-  'autopilot.heuristic=preferential:0.05\n';
+const defaultTestnetBitcoindConf = {
+  'Application Options': {
+    debuglevel: 'info',
+    'no-macaroons': false,
+    maxbackoff: '2s',
+    nolisten: true
+  },
+  Routing: {
+    'routing.assumechanvalid': true
+  },
+  Bitcoin: {
+    'bitcoin.active': true,
+    'bitcoin.testnet': true,
+    'bitcoin.node': 'neutrino'
+  },
+  Neutrino: {
+    'neutrino.connect': '159.203.125.125:18333',
+    'neutrino.addpeer': [
+      'lnd.bitrefill.com:18333',
+      'faucet.lightning.community',
+      'testnet1-btcd.zaphq.io',
+      'testnet2-btcd.zaphq.io',
+      'testnet3-btcd.zaphq.io',
+      'testnet4-btcd.zaphq.io'
+    ],
+    'neutrino.feeurl': 'https://nodes.lightning.computer/fees/v1/btc-fee-estimates.json'
+  }
+};
 
 class LndConf {
   readonly network: Networks;
+  readonly customFields: TLndConf;
 
-  constructor(network: Networks) {
+  constructor(network: Networks, customFields: TLndConf = {}) {
     this.network = network;
+    this.customFields = customFields;
   }
 
-  // TODO allow the developer to override all other fields with their own
+  private mergeConf(conf1: TLndConf, conf2: TLndConf): TLndConf {
+    const mergedConf: TLndConf = {};
+    Object.keys(conf1).forEach((heading) => {
+      const section: TLndConfSection = conf1[heading];
+      let customSectionFields: TLndConfSection = {};
 
-  build(): string {
+      if (conf2[heading]) {
+        customSectionFields = conf2[heading];
+      }
+
+      mergedConf[heading] = { ...section, ...customSectionFields };
+    });
+
+    // Merge headings that didn't exist in conf1 but exist in conf2
+    Object.keys(conf2).forEach((heading) => {
+      if (!mergedConf[heading]) {
+        mergedConf[heading] = conf2[heading];
+      }
+    });
+
+    return mergedConf;
+  }
+
+  private getDefaultConf(): TLndConf {
+    let defaultConfObj: TLndConf;
+
     switch (this.network) {
       case Networks.regtest: {
-        return regtestConfString;
+        defaultConfObj = defaultRegtestConf;
+        break;
       }
       case Networks.testnet: {
-        return testnetConfString;
+        defaultConfObj = defaultTestnetBitcoindConf;
+        break;
       }
       case Networks.mainnet: {
         throw new Error('Not implemented yet: Networks.mainnet case');
       }
     }
+
+    return defaultConfObj;
+  }
+
+  build(): string {
+    const defaultConfObj = this.getDefaultConf();
+    const mergedConf = this.mergeConf(defaultConfObj, this.customFields);
+
+    // Build lnd.conf string
+    let confContent = '';
+    Object.keys(mergedConf).forEach((heading) => {
+      confContent += `[${heading}]\n`;
+
+      const section: TLndConfSection = mergedConf[heading];
+      Object.keys(section).forEach((key: string) => {
+        const value = section[key];
+
+        // If it's an array then add multi line items
+        if (Array.isArray(value)) {
+          value.forEach((valueItem) => {
+            confContent += `${key}=${valueItem}\n`;
+          });
+        } else {
+          confContent += `${key}=${String(value)}\n`;
+        }
+      });
+
+      confContent += '\n';
+    });
+
+    return confContent;
   }
 }
 
