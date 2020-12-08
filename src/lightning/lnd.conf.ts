@@ -1,6 +1,6 @@
 /* Allows the conf to be kept in one place and passed to the native modules when lnd is started */
 
-import {Networks, TLndConf, TLndConfSection} from './interfaces';
+import { Networks, TLndConf, TLndConfSection } from './interfaces';
 
 const defaultRegtestConf = {
   'Application Options': {
