@@ -1,10 +1,10 @@
-export type CurrentLndState = {
+export type TCurrentLndState = {
   lndRunning: boolean;
   walletUnlocked: boolean;
   grpcReady: boolean;
 };
 
-export enum GrpcSyncMethods {
+export enum EGrpcSyncMethods {
   EstimateFee = 'EstimateFee',
   PendingChannels = 'PendingChannels',
   NewAddress = 'NewAddress',
@@ -56,7 +56,7 @@ export enum GrpcSyncMethods {
   BakeMacaroon = 'BakeMacaroon'
 }
 
-export enum GrpcStreamMethods {
+export enum EGrpcStreamMethods {
   CloseChannel = 'CloseChannel',
   ChannelAcceptor = 'ChannelAcceptor',
   SubscribeChannelBackups = 'SubscribeChannelBackups',
@@ -69,26 +69,36 @@ export enum GrpcStreamMethods {
   SendToRoute = 'SendToRoute'
 }
 
-export enum Networks {
+export enum ENetworks {
   regtest = 'regtest',
   testnet = 'testnet',
   mainnet = 'mainnet'
 }
 
-export enum StreamEventType {
+export enum EStreamEventType {
   data = 'data',
   error = 'error'
 }
 
-export type NativeStreamResponse = {
+export type TNativeStreamResponse = {
   data: string | undefined;
-  event: StreamEventType;
+  event: EStreamEventType;
   streamId: string;
   error: string | undefined;
 };
 
-export enum StreamEventTypes {
+export enum EStreamEventTypes {
   Logs = 'logs',
   StreamEvent = 'streamEvent',
   LndStateUpdate = 'lndStateUpdate'
 }
+
+export type TLndConfValue = string | number | boolean | string[];
+
+export type TLndConfSection = {
+  [key: string]: TLndConfValue;
+};
+
+export type TLndConf = {
+  [key: string]: TLndConfSection;
+};

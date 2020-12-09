@@ -2,12 +2,12 @@ import { NativeModules, NativeModulesStatic } from 'react-native';
 import GrpcAction from './grpc';
 import { err, ok, Result } from './result';
 import {
-  CurrentLndState,
-  GrpcStreamMethods,
-  GrpcSyncMethods,
-  Networks,
-  StreamEventTypes
-} from './interfaces';
+  TCurrentLndState,
+  EGrpcStreamMethods,
+  EGrpcSyncMethods,
+  ENetworks,
+  EStreamEventTypes
+} from './types';
 import { lnrpc } from './rpc';
 import LndConf from './lnd.conf';
 
@@ -91,7 +91,7 @@ class LND {
    * @return {Promise<Result<boolean, Error>>}
    * @param network
    */
-  async walletExists(network: Networks): Promise<Result<boolean, Error>> {
+  async walletExists(network: ENetworks): Promise<Result<boolean, Error>> {
     try {
       const exists = await this.lnd.walletExists(network);
       return ok(exists);
@@ -104,7 +104,7 @@ class LND {
    * Provides the current state of LND from the native module
    * @return {Promise<Result<CurrentLndState, Error>>}
    */
-  async currentState(): Promise<Result<CurrentLndState, Error>> {
+  async currentState(): Promise<Result<TCurrentLndState, Error>> {
     try {
       return ok(await this.lnd.currentState());
     } catch (e) {
@@ -116,8 +116,8 @@ class LND {
    * Subscribe to the current LND service state
    * @param onUpdate
    */
-  subscribeToCurrentState(onUpdate: (res: CurrentLndState) => void): void {
-    this.grpc.lndEvent.addListener(StreamEventTypes.LndStateUpdate, onUpdate);
+  subscribeToCurrentState(onUpdate: (res: TCurrentLndState) => void): void {
+    this.grpc.lndEvent.addListener(EStreamEventTypes.LndStateUpdate, onUpdate);
   }
 
   /**
@@ -128,7 +128,7 @@ class LND {
     try {
       const message = lnrpc.GetInfoRequest.create();
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcSyncMethods.GetInfo,
+        EGrpcSyncMethods.GetInfo,
         lnrpc.GetInfoRequest.encode(message).finish()
       );
 
@@ -147,7 +147,7 @@ class LND {
     try {
       const message = lnrpc.NewAddressRequest.create({ type });
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcSyncMethods.NewAddress,
+        EGrpcSyncMethods.NewAddress,
         lnrpc.NewAddressRequest.encode(message).finish()
       );
 
@@ -165,7 +165,7 @@ class LND {
     try {
       const message = lnrpc.WalletBalanceRequest.create();
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcSyncMethods.WalletBalance,
+        EGrpcSyncMethods.WalletBalance,
         lnrpc.WalletBalanceRequest.encode(message).finish()
       );
 
@@ -183,7 +183,7 @@ class LND {
     try {
       const message = lnrpc.ChannelBalanceRequest.create();
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcSyncMethods.ChannelBalance,
+        EGrpcSyncMethods.ChannelBalance,
         lnrpc.ChannelBalanceRequest.encode(message).finish()
       );
 
@@ -214,7 +214,7 @@ class LND {
       message.perm = true;
 
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcSyncMethods.ConnectPeer,
+        EGrpcSyncMethods.ConnectPeer,
         lnrpc.ConnectPeerRequest.encode(message).finish()
       );
 
@@ -260,7 +260,7 @@ class LND {
       message.spendUnconfirmed = false;
 
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcSyncMethods.OpenChannelSync,
+        EGrpcSyncMethods.OpenChannelSync,
         lnrpc.OpenChannelRequest.encode(message).finish()
       );
 
@@ -310,7 +310,7 @@ class LND {
       };
 
       this.grpc.sendStreamCommand(
-        GrpcStreamMethods.CloseChannel,
+        EGrpcStreamMethods.CloseChannel,
         lnrpc.CloseChannelRequest.encode(message).finish(),
         onStateUpdate,
         onDone
@@ -343,7 +343,7 @@ class LND {
       };
 
       this.grpc.sendStreamCommand(
-        GrpcStreamMethods.SubscribeTransactions,
+        EGrpcStreamMethods.SubscribeTransactions,
         lnrpc.GetTransactionsRequest.encode(message).finish(),
         onStateUpdate,
         onDone
@@ -376,7 +376,7 @@ class LND {
       };
 
       this.grpc.sendStreamCommand(
-        GrpcStreamMethods.SubscribeInvoices,
+        EGrpcStreamMethods.SubscribeInvoices,
         lnrpc.ListInvoiceRequest.encode(message).finish(),
         onStateUpdate,
         onDone
@@ -394,7 +394,7 @@ class LND {
     try {
       const message = lnrpc.ListChannelsRequest.create();
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcSyncMethods.ListChannels,
+        EGrpcSyncMethods.ListChannels,
         lnrpc.ListChannelsRequest.encode(message).finish()
       );
 
@@ -414,7 +414,7 @@ class LND {
       const message = lnrpc.SendRequest.create();
       message.paymentRequest = invoice;
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcSyncMethods.SendPaymentSync,
+        EGrpcSyncMethods.SendPaymentSync,
         lnrpc.SendRequest.encode(message).finish()
       );
 
@@ -442,7 +442,7 @@ class LND {
       message.memo = memo;
       message.expiry = expiry;
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcSyncMethods.AddInvoice,
+        EGrpcSyncMethods.AddInvoice,
         lnrpc.Invoice.encode(message).finish()
       );
 
@@ -460,7 +460,7 @@ class LND {
     try {
       const message = lnrpc.ListInvoiceRequest.create();
       const serializedResponse = await this.grpc.sendCommand(
-        GrpcSyncMethods.ListInvoices,
+        EGrpcSyncMethods.ListInvoices,
         lnrpc.ListInvoiceRequest.encode(message).finish()
       );
 
