@@ -404,6 +404,26 @@ class LND {
     }
   }
 
+    /**
+     * LND DecodePaymentRequest (Invoice)
+     * @param invoice
+     * @returns {Promise<Ok<lnrpc.PayReq, Error> | Err<unknown, any>>}
+     */
+    async decodeInvoice(invoice: string): Promise<Result<lnrpc.PayReq, Error>> {
+        try {
+            const message = lnrpc.PayReqString.create();
+            message.payReq = invoice;
+            const serializedResponse = await this.grpc.sendCommand(
+                EGrpcSyncMethods.DecodePayReq,
+                lnrpc.PayReqString.encode(message).finish()
+            );
+
+            return ok(lnrpc.PayReq.decode(serializedResponse));
+        } catch (e) {
+            return err(e);
+        }
+    }
+
   /**
    * LND PayInvoice
    * @param invoice
