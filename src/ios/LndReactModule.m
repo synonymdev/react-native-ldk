@@ -16,6 +16,13 @@ RCT_EXTERN_METHOD(
                   )
 
 RCT_EXTERN_METHOD(
+                  logFileContent: (NSString *)network
+                  limit: (NSInteger)limit
+                  resolve: (RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject
+                  )
+
+RCT_EXTERN_METHOD(
                   start: (NSString *)configContent
                   network: (NSString *)network
                   resolve: (RCTPromiseResolveBlock)resolve

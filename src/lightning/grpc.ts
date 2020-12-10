@@ -21,14 +21,6 @@ class GrpcAction {
       Platform.OS === 'ios'
         ? new NativeEventEmitter(NativeModules.LightningEventEmitter)
         : new NativeEventEmitter(NativeModules.LndReactModule);
-
-    if (__DEV__) {
-      this.lndEvent.addListener(EStreamEventTypes.Logs, (res) => {
-        if (res) {
-          console.log(res);
-        }
-      });
-    }
   }
 
   /**

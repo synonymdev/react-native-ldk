@@ -18,13 +18,16 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import lndmobile.Callback;
@@ -329,6 +332,51 @@ public class LndNativeModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void currentState(final Promise promise) {
         promise.resolve(state.formatted());
+    }
+
+    @ReactMethod
+    public void logFileContent(String network, Integer limit, final Promise promise) {
+        File appDir = getReactApplicationContext().getFilesDir();
+        final String logDir = appDir + "/logs/bitcoin/" + network;
+        final String logFile = logDir + "/lnd.log";
+
+        try (FileReader file = new FileReader(logFile)) {
+            List<String> logLines = new ArrayList<>();
+
+            StringBuffer sb = new StringBuffer();
+            while (file.ready()) {
+                char c = (char) file.read();
+                if (c == '\n') {
+                    logLines.add(sb.toString() + "\n");
+                    sb = new StringBuffer();
+                } else {
+                    sb.append(c);
+                }
+            }
+            if (sb.length() > 0) {
+                logLines.add(sb.toString() + "\n");
+            }
+
+            Integer lastIndex = logLines.size() - 1;
+            Integer startIndex = lastIndex - limit;
+            if (startIndex < 0) {
+                startIndex = 0;
+            }
+
+            WritableArray trimmedLines = Arguments.createArray();
+
+            if (startIndex != 0) {
+                trimmedLines.pushString("---Trimmed " + startIndex + " lines above---\n");
+            }
+
+            for(String line : logLines.subList(startIndex, lastIndex)) {
+                trimmedLines.pushString(line);
+            }
+
+            promise.resolve(trimmedLines);
+        } catch (IOException e) {
+            promise.reject(e);
+        }
     }
 
     private void readToEnd(BufferedReader buf, boolean emit) throws IOException {
