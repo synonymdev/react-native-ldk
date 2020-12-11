@@ -102,3 +102,8 @@ export type TLndConfSection = {
 export type TLndConf = {
   [key: string]: TLndConfSection;
 };
+
+export type TLogListener = {
+  id: string;
+  callback: (log: string) => void;
+};

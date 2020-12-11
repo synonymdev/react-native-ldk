@@ -2,11 +2,12 @@ import { NativeModules, NativeModulesStatic } from 'react-native';
 import GrpcAction from './grpc';
 import { err, ok, Result } from './result';
 import {
-  TCurrentLndState,
   EGrpcStreamMethods,
   EGrpcSyncMethods,
   ENetworks,
-  EStreamEventTypes
+  EStreamEventTypes,
+  TCurrentLndState,
+  TLogListener
 } from './types';
 import { lnrpc } from './rpc';
 import LndConf from './lnd.conf';
@@ -14,10 +15,22 @@ import LndConf from './lnd.conf';
 class LND {
   private readonly grpc: GrpcAction;
   private readonly lnd: NativeModulesStatic;
+  private currentConf?: LndConf = undefined;
+
+  /**
+   * Array of callbacks to be fired off when a new log entry arrives.
+   * Developers are responsible for adding and removing listeners.
+   *
+   * @type {TLogListener[]}
+   */
+  private readonly logListeners: TLogListener[];
 
   constructor() {
     this.lnd = NativeModules.LndReactModule;
     this.grpc = new GrpcAction(this.lnd);
+    this.logListeners = [];
+
+    this.grpc.lndEvent.addListener(EStreamEventTypes.Logs, this.processLogListeners.bind(this));
   }
 
   /**
@@ -38,7 +51,69 @@ class LND {
 
     try {
       const res = await this.lnd.start(conf.build(), conf.network);
+      this.currentConf = conf;
       return ok(res);
+    } catch (e) {
+      return err(e);
+    }
+  }
+
+  /**
+   * Callback passed though will get triggered for each LND log item
+   * @param callback
+   * @returns {string}
+   */
+  addLogListener(callback: (log: string) => void): string {
+    const id = new Date().valueOf().toString() + Math.random().toString();
+    this.logListeners.push({ id, callback });
+    return id; // Developer needs to use this ID to unsubscribe later
+  }
+
+  /**
+   * Removes a log listener once dev no longer wants to receive updates.
+   * e.g. When a component has been unmounted
+   * @param id
+   */
+  removeLogListener(id: string): void {
+    let removeIndex = -1;
+    this.logListeners.forEach((listener, index) => {
+      if (listener.id === id) {
+        removeIndex = index;
+      }
+    });
+
+    if (removeIndex > -1) {
+      this.logListeners.splice(removeIndex, 1);
+    }
+  }
+
+  /**
+   * Triggers every listener that has subscribed
+   * @param log
+   */
+  private processLogListeners(log: string): void {
+    if (!log) {
+      return;
+    }
+
+    this.logListeners.forEach((listener) => listener.callback(log));
+  }
+
+  /**
+   * Gets LND log file content
+   * @param limit
+   * @returns {Promise<Ok<string[], Error> | Err<unknown, any>>}
+   */
+  async getLogFileContent(limit: number = 100): Promise<Result<string[], Error>> {
+    let network = this.currentConf?.network;
+    if (!network) {
+      // return err(new Error('Current network not set. LND must be running first.'));
+      network = ENetworks.testnet;
+    }
+
+    try {
+      const content: string[] = await this.lnd.logFileContent(network, limit);
+      return ok(content);
     } catch (e) {
       return err(e);
     }
@@ -404,25 +479,25 @@ class LND {
     }
   }
 
-    /**
-     * LND DecodePaymentRequest (Invoice)
-     * @param invoice
-     * @returns {Promise<Ok<lnrpc.PayReq, Error> | Err<unknown, any>>}
-     */
-    async decodeInvoice(invoice: string): Promise<Result<lnrpc.PayReq, Error>> {
-        try {
-            const message = lnrpc.PayReqString.create();
-            message.payReq = invoice;
-            const serializedResponse = await this.grpc.sendCommand(
-                EGrpcSyncMethods.DecodePayReq,
-                lnrpc.PayReqString.encode(message).finish()
-            );
+  /**
+   * LND DecodePaymentRequest (Invoice)
+   * @param invoice
+   * @returns {Promise<Ok<lnrpc.PayReq, Error> | Err<unknown, any>>}
+   */
+  async decodeInvoice(invoice: string): Promise<Result<lnrpc.PayReq, Error>> {
+    try {
+      const message = lnrpc.PayReqString.create();
+      message.payReq = invoice;
+      const serializedResponse = await this.grpc.sendCommand(
+        EGrpcSyncMethods.DecodePayReq,
+        lnrpc.PayReqString.encode(message).finish()
+      );
 
-            return ok(lnrpc.PayReq.decode(serializedResponse));
-        } catch (e) {
-            return err(e);
-        }
+      return ok(lnrpc.PayReq.decode(serializedResponse));
+    } catch (e) {
+      return err(e);
     }
+  }
 
   /**
    * LND PayInvoice

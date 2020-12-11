@@ -11,6 +11,7 @@ enum LightningError: Error {
   case unknown
   case unknownMethod
   case mapping
+  case logFileNotFound
 }
 
 extension LightningError: LocalizedError {
@@ -22,6 +23,8 @@ extension LightningError: LocalizedError {
       return "Unknown method"
     case .mapping:
       return "GRPC mapping error"
+    case .logFileNotFound:
+      return "Log file not found"
     }
   }
 }
@@ -153,6 +156,34 @@ class LndReactModule: NSObject {
   @objc
   func currentState(_ resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
     resolve(LndReactModule.state.formatted())
+  }
+  
+  @objc
+  func logFileContent(_ network: NSString, limit: NSInteger, resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
+    let logFile = self.getLogFile(network)
+    
+    let logFileUrl = URL(fileURLWithPath: logFile)
+    do {
+      let logFileContent = try String(contentsOf: logFileUrl, encoding: .utf8)
+      let lines: [String] = logFileContent.components(separatedBy: "\n")
+
+      if (limit > lines.count) {
+        return resolve(lines)
+      }
+      
+      let lastIndex = lines.count - 1
+      let startIndex = lastIndex - limit
+      
+      var trimmedLines: [String] = ["---Trimmed \(startIndex) lines above---\n"]
+
+      Array(lines[startIndex...lastIndex]).forEach { (line) in
+        trimmedLines.append("\(line)\n")
+      }
+            
+      resolve(trimmedLines)
+    } catch {
+      return reject("error", error.localizedDescription, error)
+    }
   }
   
   @objc
@@ -408,11 +439,15 @@ extension LndReactModule {
     }
   }
   
+  func getLogFile(_ network: NSString) -> String {
+    return self.storage.appendingPathComponent("logs/bitcoin/\(network)/lnd.log").path;
+  }
+  
   func watchLndLog(_ network: NSString) {
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
       
-      let logFile = self.storage.appendingPathComponent("logs/bitcoin/\(network)/lnd.log").path
+      let logFile = self.getLogFile(network)
       guard let fileHandle = FileHandle(forReadingAtPath: logFile) else {
         //If the file for some reason doesn't exist (if LND has never been started) just wait a second and try again
         return DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.watchLndLog(network) }
