@@ -564,6 +564,24 @@ class LND {
 			return err(e);
 		}
 	}
+
+	/**
+	 * LND ListPeers
+	 * @returns {Promise<Ok<lnrpc.ListPeersResponse, Error> | Err<unknown, any>>}
+	 */
+	async listPeers(): Promise<Result<lnrpc.ListPeersResponse, Error>> {
+		try {
+			const message = lnrpc.ListPeersRequest.create();
+			const serializedResponse = await this.grpc.sendCommand(
+				EGrpcSyncMethods.ListPeers,
+				lnrpc.ListPeersRequest.encode(message).finish()
+			);
+
+			return ok(lnrpc.ListPeersResponse.decode(serializedResponse));
+		} catch (e) {
+			return err(e);
+		}
+	}
 }
 
 export default new LND();
