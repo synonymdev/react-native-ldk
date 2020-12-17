@@ -47,14 +47,14 @@
  * @return {string}           The words conected with the separator
  */
 export const toCaps = (
-  value: string = '',
-  separator: string = ' ',
-  split: string = '-'
+	value: string = '',
+	separator: string = ' ',
+	split: string = '-'
 ): string => {
-  return value
-    .split(split)
-    .map((v) => v.charAt(0).toUpperCase() + v.substring(1))
-    .reduce((a, b) => `${a}${separator}${b}`);
+	return value
+		.split(split)
+		.map((v) => v.charAt(0).toUpperCase() + v.substring(1))
+		.reduce((a, b) => `${a}${separator}${b}`);
 };
 //
 // /**
