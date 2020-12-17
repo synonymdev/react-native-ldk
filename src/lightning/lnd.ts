@@ -96,6 +96,10 @@ class LND {
 			return;
 		}
 
+		if (__DEV__) {
+			console.log(log);
+		}
+
 		this.logListeners.forEach((listener) => listener.callback(log));
 	}
 
@@ -578,6 +582,30 @@ class LND {
 			);
 
 			return ok(lnrpc.ListPeersResponse.decode(serializedResponse));
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * LND FeeEstimate
+	 * @returns {Promise<Ok<lnrpc.EstimateFeeResponse, Error> | Err<unknown, any>>}
+	 */
+	async feeEstimate(
+		address: string,
+		amount: number,
+		targetConf = 1
+	): Promise<Result<lnrpc.EstimateFeeResponse, Error>> {
+		try {
+			const message = lnrpc.EstimateFeeRequest.create();
+			message.targetConf = targetConf;
+			// message.AddrToAmount = { [address]: amount };
+			const serializedResponse = await this.grpc.sendCommand(
+				EGrpcSyncMethods.EstimateFee,
+				lnrpc.EstimateFeeRequest.encode(message).finish()
+			);
+
+			return ok(lnrpc.EstimateFeeResponse.decode(serializedResponse));
 		} catch (e) {
 			return err(e);
 		}
