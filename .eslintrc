@@ -21,6 +21,11 @@
     "no-param-reassign": "error",
     "no-shadow": "error",
     "prettier/prettier": "warn",
+    "indent": [
+      2,
+      "tab",
+      { "SwitchCase": 1, "ignoredNodes": ["ConditionalExpression"] },
+    ],
     "no-null/no-null": "error",
     "@typescript-eslint/ban-types": ["error", { "types": { "null": null } }],
     "@typescript-eslint/no-explicit-any": "error",
