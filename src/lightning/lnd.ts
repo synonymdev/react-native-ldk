@@ -279,18 +279,14 @@ class LND {
 	 * @param host
 	 */
 	async connectPeer(
-		nodePubkey: string,
+		pubkey: string,
 		host: string
 	): Promise<Result<lnrpc.ConnectPeerResponse, Error>> {
 		try {
 			const message = lnrpc.ConnectPeerRequest.create();
-
-			const lightningAddress = lnrpc.LightningAddress.create();
-			lightningAddress.pubkey = nodePubkey;
-			lightningAddress.host = host;
-
-			message.addr = lightningAddress;
+			message.addr = lnrpc.LightningAddress.create({ pubkey, host });
 			message.perm = true;
+			message.timeout = 10;
 
 			const serializedResponse = await this.grpc.sendCommand(
 				EGrpcSyncMethods.ConnectPeer,
