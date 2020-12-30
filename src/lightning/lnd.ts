@@ -550,10 +550,27 @@ class LND {
 	/**
 	 * LND ListInvoices
 	 * @returns {Promise<Ok<lnrpc.ListInvoiceResponse, Error> | Err<unknown, any>>}
+	 * @param indexOffset
+	 * @param numMaxInvoices
+	 * @param pendingOnly
+	 * @param reversed
 	 */
-	async listInvoices(): Promise<Result<lnrpc.ListInvoiceResponse, Error>> {
+	async listInvoices(
+		indexOffset = 0,
+		numMaxInvoices = -1,
+		pendingOnly = false,
+		reversed = false
+	): Promise<Result<lnrpc.ListInvoiceResponse, Error>> {
 		try {
 			const message = lnrpc.ListInvoiceRequest.create();
+			message.indexOffset = indexOffset;
+			if (numMaxInvoices > 0) {
+				message.numMaxInvoices = numMaxInvoices;
+			}
+
+			message.pendingOnly = pendingOnly;
+			message.reversed = reversed;
+
 			const serializedResponse = await this.grpc.sendCommand(
 				EGrpcSyncMethods.ListInvoices,
 				lnrpc.ListInvoiceRequest.encode(message).finish()
