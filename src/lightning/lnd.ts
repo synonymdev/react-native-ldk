@@ -462,6 +462,24 @@ class LND {
 	}
 
 	/**
+	 * LND ListPayments
+	 * @returns {Promise<Err<unknown, any> | Ok<any, Error>>}
+	 */
+	async listPayments(): Promise<Result<lnrpc.ListPaymentsResponse, Error>> {
+		try {
+			const message = lnrpc.ListPaymentsRequest.create();
+			const serializedResponse = await this.grpc.sendCommand(
+				EGrpcSyncMethods.ListPayments,
+				lnrpc.ListPaymentsRequest.encode(message).finish()
+			);
+
+			return ok(lnrpc.ListPaymentsResponse.decode(serializedResponse));
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
 	 * LND ListChannels
 	 * @returns {Promise<Ok<lnrpc.ListChannelsResponse, Error> | Err<unknown, any>>}
 	 */
