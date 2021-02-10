@@ -1,5 +1,3 @@
 #import <React/RCTBridgeModule.h>
-
-@interface ReactNativeLightning : NSObject <RCTBridgeModule>
-
-@end
+#import <React/RCTEventEmitter.h>
+//#import "Lndmobile.framework/Headers/Lndmobile.h"

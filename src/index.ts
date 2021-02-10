@@ -1,5 +1,7 @@
-import { NativeModules } from 'react-native';
+import lnd from './lnd';
+import LndConf from './lnd.conf';
 
-const { ReactNativeLightning } = NativeModules;
-
-export default ReactNativeLightning;
+export { LndConf };
+export * from './types';
+export * from './rpc';
+export default lnd;

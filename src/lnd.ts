@@ -26,7 +26,7 @@ class LND {
 	private readonly logListeners: TLogListener[];
 
 	constructor() {
-		this.lnd = NativeModules.LndReactModule;
+		this.lnd = NativeModules.ReactNativeLightning;
 		this.grpc = new GrpcAction(this.lnd);
 		this.logListeners = [];
 
@@ -197,6 +197,14 @@ class LND {
 	 */
 	subscribeToCurrentState(onUpdate: (res: TCurrentLndState) => void): void {
 		this.grpc.lndEvent.addListener(EStreamEventTypes.LndStateUpdate, onUpdate);
+		// Call update at least once so callback has latest state
+		this.currentState()
+			.then((res) => {
+				if (res.isOk()) {
+					onUpdate(res.value);
+				}
+			})
+			.catch(() => {});
 	}
 
 	/**

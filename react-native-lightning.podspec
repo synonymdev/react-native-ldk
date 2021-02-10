@@ -18,10 +18,13 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => "9.0" }
   s.source       = { :git => "https://github.com/synonymdev/react-native-lightning.git", :tag => "#{s.version}" }
 
-  s.source_files = "ios/**/*.{h,c,m,swift}"
+  s.source_files = "ios/**/*.{h,m,swift}"
   s.requires_arc = true
 
+#  s.frameworks   = 'Lndmobile'
+  s.vendored_frameworks = 'ios/Lndmobile.framework'
   s.dependency "React"
+  s.dependency 'SwiftProtobuf', '~> 1.0'
   # ...
   # s.dependency "..."
 end

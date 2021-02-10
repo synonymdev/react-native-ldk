@@ -20,7 +20,7 @@ class GrpcAction {
 		this.lndEvent =
 			Platform.OS === 'ios'
 				? new NativeEventEmitter(NativeModules.LightningEventEmitter)
-				: new NativeEventEmitter(NativeModules.LndReactModule);
+				: new NativeEventEmitter(NativeModules.ReactNativeLightning);
 	}
 
 	/**
