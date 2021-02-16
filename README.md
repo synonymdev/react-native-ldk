@@ -53,7 +53,7 @@ if (res.isOk()) {
     console.log(res.value);
 }
 
-//Use subscribeToOnChainTransactions/subscribeToInvoices to subscribe to real time updates
+//Use subscribeToOnChainTransactions/subscribeToInvoices for real time transaction updates
 lnd.subscribeToOnChainTransactions(
     (res) => {
         if (res.isOk()) {
