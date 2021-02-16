@@ -8,3 +8,4 @@ dist/
 android/build/
 android/local.properties
 android/.gradle/
+yarn-error.log

@@ -2,7 +2,7 @@
   "name": "react-native-lightning",
   "title": "React Native Lightning",
   "version": "0.0.4",
-  "description": "TODO",
+  "description": "React Native wrapper for Lndmobile",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [

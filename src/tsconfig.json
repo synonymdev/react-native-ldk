@@ -4,7 +4,6 @@
     "target": "es6",
     "strict": true,
     "outDir": "../dist",
-//    "outDir": "../../../spectrum/node_modules/react-native-lightning/dist/",
     "jsx": "react-native",
     "lib": ["es2016"],
     "declaration": true,
