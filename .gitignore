@@ -5,3 +5,7 @@ src/lightning/autopilot.js
 src/lightning/rpc.js
 dist/
 **.DS_Store
+android/build/
+android/local.properties
+android/.gradle/
+yarn-error.log

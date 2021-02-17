@@ -2,72 +2,104 @@
 
 :warning: This is pre-alpha software. Please use as your own risk.
 
+
 ### Description
-This library hopes to simplify the process of adding Lightning via LND's Neutrino to any React-Native app. 
+This library hopes to simplify the process of adding Lightning via LND's Neutrino to any React-Native app.
 
-### Android Installation:
+## Getting started
 
-Video Walkthrough: [TODO]
+```bash
+yarn add react-native-lightning
+cd ios && pod install && cd ../
+````
 
-If you have any trouble, please use [this commit](https://github.com/coreyphillips/photon/commit/925510f3515f6bac812d41a49a43d3a0c0981dfe) as a reference to what needs to be changed/added to your project to get everything working.
+#### or build and add from local repo
 
-1. Install Dependencies:
-   ```
-    yarn add react-native-lightning buffer
-    yarn add -D rn-nodeify
-    yarn install
-    ```
-   
-2. Run setup script
-   [TODO]
+```bash
+#Clone, install and build project
+git clone https://github.com/synonymdev/react-native-lightning.git
+cd react-native-lightning
+yarn install && yarn build
+cd ../
 
-3. Start the project:
+#Add to your app
+yarn add ../react-native-lightning #Might need to adjust path if not clones to same directory as app
+cd ios && pod install && cd ../
+````
 
-   ```
-    react-native run-android
-   ```
-     
-#### Example Usage
+## Running example app
+```bash
+
+#Build dist files
+git clone https://github.com/synonymdev/react-native-lightning.git
+yarn install && yarn build
+
+cd example/
+yarn install
+
+yarn ios
+#or
+yarn android
 ```
-import lnd from 'react-native-lightning';
-const lndConf = new LndConf(Networks.regtest);
 
-...
+## Usage
+```javascript
+import lnd, {
+    ENetworks,
+    LndConf,
+    TCurrentLndState,
+} from 'react-native-lightning';
 
+const lndConf = new LndConf(ENetworks.regtest);
+```
+
+```javascript
 const res = await lnd.start(lndConf);
-if (res.isOk()) {
-  //Lnd started
+if (res.isErr()) {
+    //Lnd failed to start
+    console.error(res.error)
 }
+
+//LND state changes
+lnd.subscribeToCurrentState(({lndRunning, walletUnlocked, grpcReady}) => {
+    console.log(`lndRunning: ${lndRunning}`);
+    console.log(`walletUnlocked: ${walletUnlocked}`);
+    console.log(`grpcReady: ${grpcReady}`);
+});
+
+
+//Subscribe to LND logs
+const logListener = lnd.addLogListener((message) => {
+    console.log(message);
+});
+
+//Unsubscribe if listening component is unmounted
+lnd.removeLogListener(logListener);
+
+//All function results can be checked with res.isOk() or res.isErr()
+const res = await lnd.getInfo();
+if (res.isErr()) {
+    console.log(res.error.message);
+}
+
+if (res.isOk()) {
+    console.log(res.value);
+}
+
+//Use subscribeToOnChainTransactions/subscribeToInvoices for real time transaction updates
+lnd.subscribeToOnChainTransactions(
+    (res) => {
+        if (res.isOk()) {
+            const { amount, blockHeight, numConfirmations } = res.value;
+            
+            alert(`Received ${amount} sats on chain in block ${blockHeight}`)
+        }
+    },
+    (res) => {
+        //If this fails ever then we need to subscribe again
+        console.error(res);
+    },
+);
+
+
 ```
-    
-### iOS Installation (In Progress)
-
-### Manual (Android/iOS):
-1. `yarn add react-native-lightning buffer react-native-randombytes`
-
-2. Add the following to the end of your postinstall script in yourproject/package.json:
- 
-3. Copy necessary files over for Android & iOS respectively (Note: Create the directories if they do not exist):
-    - Android - Copy LndNativeModule.java & LndNativePackage.java to `android/app/src/main/java/com/yourproject/` and be sure to replace "com.rnlightning" at the top of each file with the name of your own project.
-    - iOS - Copy LndReactModule.h & LndReactModule.m to `ios/lightning/`.
-     
-4. Generate the Lndmobile.aar & Lndmobile.framework files.
-    - Option 1 - Generate them locally with lnd v0.9:
-        - To generate these files, please follow the instructions detailed in the README of Lightning Lab's Lightning App [here.](https://github.com/lightninglabs/lightning-app/tree/master/mobile)
-    - Option 2 - Download pre-generated files:
-        - If you do not wish to generate these files locally you can download them [here](https://github.com/coreyphillips/photon/releases/tag/v0.0.1) instead. However, I highly recommend you opt for option 1.
-
-5. Add the Lndmobile.aar & Lndmobile.framework files to the project:
-    - Add the Lndmobile.aar file to `android/Lndmobile`
-    - Add the Lndmobile.framework file to `ios/lightning`
-
-6. Add `packages.add(new LndNativePackage());` to "getPackages" in MainApplication.java just above `return packages`"
-
-7. For Android you'll need these additional dependencies in `YourProject/android/app/build.gradle`:
- - `implementation 'com.google.protobuf:protobuf-java:3.13.0'`
- - `implementation 'com.android.support:multidex:1.0.3'` 
- - Then Add `multiDexEnabled true` under `defaultConfig` in the same gradle file.
-
-8. Start the project:
-    - iOS: `react-native run-ios`
-    - Android: `react-native run-android`

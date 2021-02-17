@@ -3,7 +3,7 @@
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "project": [
-      "./src/lightning/tsconfig.json"
+      "./src/tsconfig.json"
     ]
   },
   "plugins": [
@@ -24,7 +24,7 @@
     "indent": [
       2,
       "tab",
-      { "SwitchCase": 1, "ignoredNodes": ["ConditionalExpression"] },
+      { "SwitchCase": 1, "ignoredNodes": ["ConditionalExpression"] }
     ],
     "no-null/no-null": "error",
     "@typescript-eslint/ban-types": ["error", { "types": { "null": null } }],
