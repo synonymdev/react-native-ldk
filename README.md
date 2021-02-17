@@ -8,19 +8,52 @@ This library hopes to simplify the process of adding Lightning via LND's Neutrin
 
 ## Getting started
 
-`yarn add react-native-lightning`
+```bash
+yarn add react-native-lightning
+cd ios && pod install && cd ../
+````
 
-or 
+#### or build and add from local repo
 
-`yarn add ssh://github.com/synonymdev/react-native-lightning`
+```bash
+#Clone, install and build project
+git clone https://github.com/synonymdev/react-native-lightning.git
+cd react-native-lightning
+yarn install && yarn build
+cd ../
+
+#Add to your app
+yarn add ../react-native-lightning #Might need to adjust path if not clones to same directory as app
+cd ios && pod install && cd ../
+````
+
+## Running example app
+```bash
+
+#Build dist files
+git clone https://github.com/synonymdev/react-native-lightning.git
+yarn install && yarn build
+
+cd example/
+yarn install
+
+yarn ios
+#or
+yarn android
+```
 
 ## Usage
 ```javascript
-import lnd from 'react-native-lightning';
-const lndConf = new LndConf(Networks.regtest);
+import lnd, {
+    ENetworks,
+    LndConf,
+    TCurrentLndState,
+} from 'react-native-lightning';
 
-...
+const lndConf = new LndConf(ENetworks.regtest);
+```
 
+```javascript
 const res = await lnd.start(lndConf);
 if (res.isErr()) {
     //Lnd failed to start
