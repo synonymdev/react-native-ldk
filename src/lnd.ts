@@ -649,6 +649,31 @@ class LND {
 			return err(e);
 		}
 	}
+
+	/**
+	 * LND SignMessage
+	 * @returns {Promise<Ok<lnrpc.SignMessageResponse, Error> | Err<unknown, any>>}
+	 */
+	async sign(msg: string): Promise<Result<lnrpc.SignMessageResponse, Error>> {
+		try {
+			const message = lnrpc.SignMessageRequest.create();
+
+			const charList = msg.split('');
+			const uintArray = [];
+			for (let i = 0; i < charList.length; i++) {
+				uintArray.push(charList[i].charCodeAt(0));
+			}
+			message.msg = new Uint8Array(uintArray);
+			const serializedResponse = await this.grpc.sendCommand(
+				EGrpcSyncMethods.SignMessage,
+				lnrpc.SignMessageRequest.encode(message).finish()
+			);
+
+			return ok(lnrpc.SignMessageResponse.decode(serializedResponse));
+		} catch (e) {
+			return err(e);
+		}
+	}
 }
 
 export default new LND();
