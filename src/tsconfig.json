@@ -14,6 +14,5 @@
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true,
     "removeComments": true
-  },
-  "exclude" : ["./__tests__/*.ts"]
+  }
 }
