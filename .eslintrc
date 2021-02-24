@@ -12,6 +12,7 @@
     "no-null"
   ],
   "extends": [
+    "@react-native-community",
     "standard-with-typescript",
     "prettier",
     "prettier/@typescript-eslint",
