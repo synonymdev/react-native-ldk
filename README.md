@@ -23,7 +23,7 @@ yarn install && yarn build
 cd ../
 
 #Add to your app
-yarn add ../react-native-lightning #Might need to adjust path if not clones to same directory as app
+yarn add ../react-native-lightning #Might need to adjust path if not cloned to same directory as app
 cd ios && pod install && cd ../
 ````
 
