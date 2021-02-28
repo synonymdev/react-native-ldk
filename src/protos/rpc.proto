@@ -1487,6 +1487,11 @@ message Peer {
         Denotes that we are not receiving new graph updates from the peer.
         */
         PASSIVE_SYNC = 2;
+
+        /*
+        Denotes that this peer is pinned into an active sync.
+        */
+        PINNED_SYNC = 3;
     }
 
     // The type of sync we are currently performing with this peer.
@@ -2694,9 +2699,15 @@ message GraphTopologyUpdate {
 message NodeUpdate {
     repeated string addresses = 1;
     string identity_key = 2;
-    bytes global_features = 3;
+    bytes global_features = 3 [deprecated = true];
     string alias = 4;
     string color = 5;
+
+    /*
+    Features that the node has advertised in the init message, node
+    announcements and invoices.
+    */
+    map<uint32, Feature> features = 6;
 }
 message ChannelEdgeUpdate {
     /*
@@ -2962,7 +2973,7 @@ message AddInvoiceResponse {
     invoices with an add_index greater than this one.
     */
     uint64 add_index = 16;
-    
+
     /*
     The payment address of the generated invoice. This value should be used
     in all payments for this invoice as we require it for end to end
@@ -3140,6 +3151,9 @@ message Payment {
 }
 
 message HTLCAttempt {
+    // The unique ID that is used for this attempt.
+    uint64 attempt_id = 7;
+
     enum HTLCStatus {
         IN_FLIGHT = 0;
         SUCCEEDED = 1;
@@ -3275,6 +3289,12 @@ enum FeatureBit {
     PAYMENT_ADDR_OPT = 15;
     MPP_REQ = 16;
     MPP_OPT = 17;
+    WUMBO_CHANNELS_REQ = 18;
+    WUMBO_CHANNELS_OPT = 19;
+    ANCHORS_REQ = 20;
+    ANCHORS_OPT = 21;
+    ANCHORS_ZERO_FEE_HTLC_REQ = 22;
+    ANCHORS_ZERO_FEE_HTLC_OPT = 23;
 }
 
 message Feature {

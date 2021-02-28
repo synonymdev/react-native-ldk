@@ -5965,7 +5965,8 @@ export namespace lnrpc {
         enum SyncType {
             UNKNOWN_SYNC = 0,
             ACTIVE_SYNC = 1,
-            PASSIVE_SYNC = 2
+            PASSIVE_SYNC = 2,
+            PINNED_SYNC = 3
         }
     }
 
@@ -13403,6 +13404,9 @@ export namespace lnrpc {
 
         /** NodeUpdate color */
         color?: (string|null);
+
+        /** NodeUpdate features */
+        features?: ({ [k: string]: lnrpc.IFeature }|null);
     }
 
     /** Represents a NodeUpdate. */
@@ -13428,6 +13432,9 @@ export namespace lnrpc {
 
         /** NodeUpdate color. */
         public color: string;
+
+        /** NodeUpdate features. */
+        public features: { [k: string]: lnrpc.IFeature };
 
         /**
          * Creates a new NodeUpdate instance using the specified properties.
@@ -15036,6 +15043,9 @@ export namespace lnrpc {
     /** Properties of a HTLCAttempt. */
     interface IHTLCAttempt {
 
+        /** HTLCAttempt attemptId */
+        attemptId?: (number|Long|null);
+
         /** HTLCAttempt status */
         status?: (lnrpc.HTLCAttempt.HTLCStatus|null);
 
@@ -15063,6 +15073,9 @@ export namespace lnrpc {
          * @param [properties] Properties to set
          */
         constructor(properties?: lnrpc.IHTLCAttempt);
+
+        /** HTLCAttempt attemptId. */
+        public attemptId: (number|Long);
 
         /** HTLCAttempt status. */
         public status: lnrpc.HTLCAttempt.HTLCStatus;
@@ -16177,7 +16190,13 @@ export namespace lnrpc {
         PAYMENT_ADDR_REQ = 14,
         PAYMENT_ADDR_OPT = 15,
         MPP_REQ = 16,
-        MPP_OPT = 17
+        MPP_OPT = 17,
+        WUMBO_CHANNELS_REQ = 18,
+        WUMBO_CHANNELS_OPT = 19,
+        ANCHORS_REQ = 20,
+        ANCHORS_OPT = 21,
+        ANCHORS_ZERO_FEE_HTLC_REQ = 22,
+        ANCHORS_ZERO_FEE_HTLC_OPT = 23
     }
 
     /** Properties of a Feature. */
