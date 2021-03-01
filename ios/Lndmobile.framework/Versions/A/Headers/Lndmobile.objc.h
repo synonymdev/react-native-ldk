@@ -36,8 +36,10 @@
 /**
  * AbandonChannel removes all channel state from the database except for a
 close summary. This method can be used to get rid of permanently unusable
-channels due to bugs fixed in newer versions of lnd. Only available
-when in debug builds of lnd.
+channels due to bugs fixed in newer versions of lnd. This method can also be
+used to remove externally funded channels where the funding transaction was
+never broadcast. Only available for non-externally funded channels in dev
+build.
 
 NOTE: This method produces a single result or error, and the callback will
 be called only once.
@@ -88,8 +90,9 @@ is closed.
 FOUNDATION_EXPORT id<LndmobileSendStream> _Nullable LndmobileChannelAcceptor(id<LndmobileRecvStream> _Nullable rStream, NSError* _Nullable* _Nullable error);
 
 /**
- * ChannelBalance returns the total funds available across all open channels
-in satoshis.
+ * ChannelBalance returns a report on the total funds across all open channels,
+categorized in local/remote, pending local/remote and unsettled local/remote
+balances.
 
 NOTE: This method produces a single result or error, and the callback will
 be called only once.
@@ -158,6 +161,15 @@ NOTE: This method produces a single result or error, and the callback will
 be called only once.
  */
 FOUNDATION_EXPORT void LndmobileDeleteAllPayments(NSData* _Nullable msg, id<LndmobileCallback> _Nullable callback);
+
+/**
+ * DeleteMacaroonID deletes the specified macaroon ID and invalidates all
+macaroons derived from that ID.
+
+NOTE: This method produces a single result or error, and the callback will
+be called only once.
+ */
+FOUNDATION_EXPORT void LndmobileDeleteMacaroonID(NSData* _Nullable msg, id<LndmobileCallback> _Nullable callback);
 
 /**
  * DescribeGraph returns a description of the latest graph state from the
@@ -387,6 +399,14 @@ be called only once.
 FOUNDATION_EXPORT void LndmobileListInvoices(NSData* _Nullable msg, id<LndmobileCallback> _Nullable callback);
 
 /**
+ * ListMacaroonIDs returns all root key IDs that are in use.
+
+NOTE: This method produces a single result or error, and the callback will
+be called only once.
+ */
+FOUNDATION_EXPORT void LndmobileListMacaroonIDs(NSData* _Nullable msg, id<LndmobileCallback> _Nullable callback);
+
+/**
  * ListPayments returns a list of all outgoing payments.
 
 NOTE: This method produces a single result or error, and the callback will
@@ -401,6 +421,15 @@ NOTE: This method produces a single result or error, and the callback will
 be called only once.
  */
 FOUNDATION_EXPORT void LndmobileListPeers(NSData* _Nullable msg, id<LndmobileCallback> _Nullable callback);
+
+/**
+ * ListPermissions lists all RPC method URIs and their required macaroon
+permissions to access them.
+
+NOTE: This method produces a single result or error, and the callback will
+be called only once.
+ */
+FOUNDATION_EXPORT void LndmobileListPermissions(NSData* _Nullable msg, id<LndmobileCallback> _Nullable callback);
 
 /**
  * NOTE: This method produces a single result or error, and the callback will
