@@ -74,7 +74,7 @@ repositories {
 dependencies {
     //noinspection GradleDynamicVersion
     implementation 'com.facebook.react:react-native:+'  // From node_modules
-    implementation fileTree(dir: "libs", include: ["*.aar"])
+    compileOnly files('libs/Lndmobile.aar')
     implementation 'com.google.protobuf:protobuf-java:3.13.0'
     implementation 'com.android.support:multidex:1.0.3'
 }
