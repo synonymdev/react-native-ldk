@@ -24,7 +24,16 @@ cd ../
 
 #Add to your app
 yarn add ../react-native-lightning #Might need to adjust path if not cloned to same directory as app
+
+# iOS installation
+
 cd ios && pod install && cd ../
+
+# Android installation
+
+open `android/app/build.gradle` and add the below line to `dependencies`
+
+`implementation files("../../node_modules/react-native-lightning/android/libs/Lndmobile.aar")`
 ````
 
 ## Running example app
