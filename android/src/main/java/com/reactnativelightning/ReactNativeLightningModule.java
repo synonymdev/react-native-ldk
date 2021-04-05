@@ -435,6 +435,8 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
             }
         }
 
+
+
         Method m = syncMethods.get(method);
         if (m == null) {
             promise.reject("LndNativeModule", "method not found");
@@ -445,6 +447,13 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
 
         try {
             m.invoke(null, b, new NativeCallback(promise));
+
+            //If LND was stopped reset state
+            if (method.equals("StopDaemon")) {
+                state.setLndRunning(false, getReactApplicationContext());
+                state.setGrpcReady(false, getReactApplicationContext());
+                state.setWalletUnlocked(false, getReactApplicationContext());
+            }
         } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             promise.reject("LndNativeModule", e);

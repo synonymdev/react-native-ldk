@@ -674,6 +674,24 @@ class LND {
 			return err(e);
 		}
 	}
+
+	/**
+	 * Stop the LND daemon
+	 * @returns {Promise<Ok<lnrpc.StopResponse, Error> | Err<unknown, any>>}
+	 */
+	async stop(): Promise<Result<lnrpc.StopResponse, Error>> {
+		try {
+			const message = lnrpc.StopRequest.create();
+			const serializedResponse = await this.grpc.sendCommand(
+				EGrpcSyncMethods.StopDaemon,
+				lnrpc.StopRequest.encode(message).finish()
+			);
+
+			return ok(lnrpc.StopResponse.decode(serializedResponse));
+		} catch (e) {
+			return err(e);
+		}
+	}
 }
 
 export default new LND();

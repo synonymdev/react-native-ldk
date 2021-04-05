@@ -75,6 +75,22 @@ const App = () => {
               const res = await lnd.start(lndConf);
 
               if (res.isErr()) {
+                setMessage(res.error.message);
+                console.error(res.error);
+                return;
+              }
+
+              setMessage(JSON.stringify(res.value));
+            }}
+          />
+
+          <Button
+            title={'Stop LND'}
+            onPress={async () => {
+              setMessage('Stopping LND...');
+              const res = await lnd.stop();
+              if (res.isErr()) {
+                setMessage(res.error.message);
                 console.error(res.error);
                 return;
               }
