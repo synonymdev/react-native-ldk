@@ -78,17 +78,7 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
     }
 
     public void LndNativeModule(ReactApplicationContext reactContext) {
-        //Populate all available methods found in Lndmobile
-        Method[] methods = Lndmobile.class.getDeclaredMethods();
-        for (Method m : methods) {
-            String name = m.getName();
-            name = name.substring(0, 1).toUpperCase() + name.substring(1);
-            if (isStream(m)) {
-                streamMethods.put(name, m);
-            } else {
-                syncMethods.put(name, m);
-            }
-        }
+        setAvailableMethods();
     }
 
     @Override
@@ -100,6 +90,21 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
     public Map<String, Object> getConstants() {
         final Map<String, Object> constants = new HashMap<>();
         return constants;
+    }
+
+    //Populate all available methods found in Lndmobile
+    private void setAvailableMethods() {
+        Method[] methods = Lndmobile.class.getDeclaredMethods();
+
+        for (Method m : methods) {
+            String name = m.getName();
+            name = name.substring(0, 1).toUpperCase() + name.substring(1);
+            if (isStream(m)) {
+                streamMethods.put(name, m);
+            } else {
+                syncMethods.put(name, m);
+            }
+        }
     }
 
     @ReactMethod
@@ -437,14 +442,26 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
 
         Method m = syncMethods.get(method);
         if (m == null) {
-            promise.reject("LndNativeModule", "method not found");
-            return;
+            //Not all methods are exposed at time of init. Re-populate the available methods to make sure before rejecting.
+            setAvailableMethods();
+            m = syncMethods.get(method);
+            if (m == null) {
+                promise.reject("LndNativeModule",  "'" + method + "' method not found");
+                return;
+            }
         }
 
         byte[] b = Base64.decode(msg, Base64.NO_WRAP);
 
         try {
             m.invoke(null, b, new NativeCallback(promise));
+
+            //If LND was stopped reset state
+            if (method.equals("StopDaemon")) {
+                state.setLndRunning(false, getReactApplicationContext());
+                state.setGrpcReady(false, getReactApplicationContext());
+                state.setWalletUnlocked(false, getReactApplicationContext());
+            }
         } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             promise.reject("LndNativeModule", e);

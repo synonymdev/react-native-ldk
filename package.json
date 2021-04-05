@@ -1,7 +1,7 @@
 {
   "name": "react-native-lightning",
   "title": "React Native Lightning",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "description": "React Native wrapper for Lndmobile",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

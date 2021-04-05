@@ -303,12 +303,19 @@ class ReactNativeLightning: NSObject {
     }
 
     let completion = BlindLndCallback(onResponse)
-
+    
     guard let lndMethod = syncMethods[method as String] else {
       return onResponse(nil, LightningError.unknownMethod)
     }
 
     lndMethod(request, completion)
+    
+    //If LND was stopped reset state
+    if method == "StopDaemon" {
+        ReactNativeLightning.state.lndRunning = false
+        ReactNativeLightning.state.grpcReady = false
+        ReactNativeLightning.state.walletUnlocked = false
+    }
   }
 
   @objc
