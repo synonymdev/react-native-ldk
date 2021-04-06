@@ -337,7 +337,7 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void walletExists(String network, final Promise promise) {
-        File directory = new File(getReactApplicationContext().getFilesDir().toString() + "/data/chain/bitcoin/" + network + "/wallet.db");
+        File directory = new File(getReactApplicationContext().getFilesDir().toString() + "/lnd/data/chain/bitcoin/" + network + "/wallet.db");
         boolean exists = directory.exists();
         Log.d(TAG, "Wallet exists: " + exists);
         promise.resolve(exists);
