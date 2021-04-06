@@ -109,8 +109,14 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void start(String configContent, String network, final Promise promise) {
-        File appDir = getReactApplicationContext().getFilesDir();
-        writeToConfig(configContent, appDir);
+        String appDir = getReactApplicationContext().getFilesDir().toString().concat("/lnd");
+
+        File appFile = new File(appDir);
+        if (!appFile.exists()){
+            appFile.mkdirs();
+        }
+
+        writeToConfig(configContent, new File(appDir));
 
         final String logDir = appDir + "/logs/bitcoin/" + network;
         final String logFile = logDir + "/lnd.log";
