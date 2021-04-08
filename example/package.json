@@ -10,6 +10,7 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
   },
   "dependencies": {
+    "@react-native-clipboard/clipboard": "^1.7.0",
     "react": "16.13.1",
     "react-native": "0.63.4",
     "react-native-lightning": "link:../"
