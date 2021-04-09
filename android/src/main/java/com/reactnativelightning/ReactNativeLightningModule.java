@@ -26,7 +26,6 @@ import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,11 +34,6 @@ import lndmobile.Callback;
 import lndmobile.Lndmobile;
 import lndmobile.RecvStream;
 import lndmobile.SendStream;
-import lnrpc.Walletunlocker;
-
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.ProtocolStringList;
 
 public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
 
@@ -222,21 +216,15 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
                 Log.i(TAG, "Seed generated successfully");
                 Log.d(TAG, "Seed generated successfully");
 
-                try {
-                    ProtocolStringList seed = Walletunlocker.GenSeedResponse.parseFrom(bytes).getCipherSeedMnemonicList();
-
-                    //Map seed list into a react native string array
-                    WritableArray promiseSeed = Arguments.createArray();
-                    for(int i = 0; i < seed.size(); i++){
-                        promiseSeed.pushString(seed.get(i));
-                    }
-
-                    promise.resolve(promiseSeed);
-                } catch (InvalidProtocolBufferException e) {
-                    Log.i(TAG, "Failed to pass genSeed response: " + e.getMessage());
-                    Log.d(TAG, "Failed to pass genSeed response: " + e.getMessage());
-                    promise.reject(e);
+                String b64 = "";
+                if (bytes != null && bytes.length > 0) {
+                    b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
                 }
+
+                WritableMap params = Arguments.createMap();
+                params.putString(respB64DataKey, b64);
+
+                promise.resolve(params);
             }
         }
 
@@ -247,12 +235,13 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
                 Lndmobile.genSeed(request, new SeedCallback());
             }
         }
-        Thread t = new Thread(new GenSeedTask(Walletunlocker.GenSeedRequest.newBuilder().build().toByteArray()));
+
+        Thread t = new Thread(new GenSeedTask(new byte[0]));
         t.start();
     }
 
     @ReactMethod
-    public void createWallet(String password, ReadableArray seed, final Promise promise) {
+    public void createWallet(String msg, final Promise promise) {
         Log.i("LndNativeModule", "Initializing wallet...");
 
         class InitializeWalletCallback implements Callback {
@@ -271,17 +260,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
             }
         }
 
-        //Map a react native ReadableArray to java string array
-        String[] seedArray = new String[seed.size()];
-        for (int i = 0; i < seed.size(); i++) {
-            seedArray[i] = seed.getString(i);
-        }
-
-        //Build init request
-        Walletunlocker.InitWalletRequest.Builder initRequest = Walletunlocker.InitWalletRequest.newBuilder();
-        initRequest.setWalletPassword(ByteString.copyFrom(password.getBytes()));
-        initRequest.addAllCipherSeedMnemonic(Arrays.asList(seedArray));
-
         class InitWalletTask implements Runnable {
             byte[] request;
             InitWalletTask(byte[] r) { request = r;}
@@ -289,12 +267,12 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
                 Lndmobile.initWallet(request, new InitializeWalletCallback());
             }
         }
-        Thread t = new Thread(new InitWalletTask(initRequest.build().toByteArray()));
+        Thread t = new Thread(new InitWalletTask(Base64.decode(msg, Base64.NO_WRAP)));
         t.start();
     }
 
     @ReactMethod
-    public void unlockWallet(String password, final Promise promise) {
+    public void unlockWallet(String msg, final Promise promise) {
         Log.i("LndNativeModule", "Unlocking wallet...");
 
         class UnlockWalletCallback implements Callback {
@@ -320,10 +298,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
             }
         }
 
-        //Build unlock request
-        Walletunlocker.UnlockWalletRequest.Builder unlockRequest = Walletunlocker.UnlockWalletRequest.newBuilder();
-        unlockRequest.setWalletPassword(ByteString.copyFrom(password.getBytes()));
-
         class UnlockWalletTask implements Runnable {
             byte[] request;
             UnlockWalletTask(byte[] r) { request = r;}
@@ -331,7 +305,7 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
                 Lndmobile.unlockWallet(request, new UnlockWalletCallback());
             }
         }
-        Thread t = new Thread(new UnlockWalletTask(unlockRequest.build().toByteArray()));
+        Thread t = new Thread(new UnlockWalletTask(Base64.decode(msg, Base64.NO_WRAP)));
         t.start();
     }
 
@@ -457,10 +431,8 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
             }
         }
 
-        byte[] b = Base64.decode(msg, Base64.NO_WRAP);
-
         try {
-            m.invoke(null, b, new NativeCallback(promise));
+            m.invoke(null, Base64.decode(msg, Base64.NO_WRAP), new NativeCallback(promise));
 
             //If LND was stopped reset state
             if (method.equals("StopDaemon")) {
