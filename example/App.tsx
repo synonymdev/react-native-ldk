@@ -19,10 +19,10 @@ import {
   Text,
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-
 import lnd, {
   ENetworks,
   LndConf,
+  lnrpc,
   TCurrentLndState,
 } from 'react-native-lightning';
 
@@ -73,11 +73,25 @@ const App = () => {
         },
         () => {},
       );
+
+      lnd.subscribeToBackups(
+        (res) => {
+          if (res.isErr()) {
+            return console.error(res.error);
+          }
+
+          const backupBytes = res.value.multiChanBackup.multiChanBackup;
+          console.log('Backup required');
+        },
+        () => {},
+      );
     }
   }, [lndState]);
 
   const showUnlockButton =
     lndState.lndRunning && !lndState.walletUnlocked && walletExists;
+  const showGenerateSeed =
+    lndState.lndRunning && !lndState.walletUnlocked && !walletExists;
   const showCreateButton =
     lndState.lndRunning && !lndState.walletUnlocked && !walletExists;
 
@@ -133,7 +147,7 @@ const App = () => {
             />
           )}
 
-          {!walletExists ? (
+          {showGenerateSeed ? (
             <Button
               title={'Generate seed'}
               onPress={async () => {
@@ -146,6 +160,7 @@ const App = () => {
 
                 if (res.isOk()) {
                   setSeed(res.value);
+                  Clipboard.setString(res.value.join(' '));
                   setMessage(res.value.join(' '));
                 }
               }}
@@ -317,7 +332,7 @@ const App = () => {
                   }
 
                   let list = '';
-                  res.value.channels.forEach((channel) => {
+                  res.value.channels.forEach((channel: lnrpc.IChannel) => {
                     list += `Remote pubkey: ${channel.remotePubkey}\n`;
                     list += `Capacity: ${channel.capacity}\n`;
                     list += `Local balance: ${channel.localBalance}\n`;
@@ -391,6 +406,29 @@ const App = () => {
 
                   Clipboard.setString(res.value.paymentRequest);
                   setMessage(res.value.paymentRequest);
+                }}
+              />
+
+              <Button
+                title={'Export backup and verify it'}
+                onPress={async () => {
+                  const res = await lnd.exportAllChannelBackups();
+
+                  if (res.isErr()) {
+                    console.error(res.error);
+                    return;
+                  }
+
+                  const verifyRes = await lnd.verifyMultiChannelBackup(
+                    res.value.multiChanBackup.multiChanBackup,
+                  );
+
+                  if (verifyRes.isErr()) {
+                    setMessage(verifyRes.error.message);
+                    return;
+                  }
+
+                  setMessage(`Backup verification: ${emoji(verifyRes.value)}`);
                 }}
               />
             </>

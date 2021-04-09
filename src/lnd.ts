@@ -413,8 +413,6 @@ class LND {
 		onDone: (res: Result<boolean, Error>) => void
 	): void {
 		try {
-			const message = lnrpc.GetTransactionsRequest.create();
-
 			// Decode the response before sending update back
 			const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
 				if (res.isErr()) {
@@ -424,6 +422,8 @@ class LND {
 
 				onUpdate(ok(lnrpc.Transaction.decode(res.value)));
 			};
+
+			const message = lnrpc.GetTransactionsRequest.create();
 
 			this.grpc.sendStreamCommand(
 				EGrpcStreamMethods.SubscribeTransactions,
@@ -638,7 +638,7 @@ class LND {
 		try {
 			const message = lnrpc.EstimateFeeRequest.create();
 			message.targetConf = targetConf;
-			// message.AddrToAmount = { [address]: amount };
+			message.AddrToAmount = { [address]: amount };
 			const serializedResponse = await this.grpc.sendCommand(
 				EGrpcSyncMethods.EstimateFee,
 				lnrpc.EstimateFeeRequest.encode(message).finish()
@@ -688,6 +688,103 @@ class LND {
 			);
 
 			return ok(lnrpc.StopResponse.decode(serializedResponse));
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * LND subscribe to any changes in backup snapshot
+	 * @param onUpdate
+	 * @param onDone
+	 */
+	subscribeToBackups(
+		onUpdate: (res: Result<lnrpc.ChanBackupSnapshot, Error>) => void,
+		onDone: (res: Result<boolean, Error>) => void
+	): void {
+		try {
+			// Decode the response before sending update back
+			const onBackupUpdate = (res: Result<Uint8Array, Error>): void => {
+				if (res.isErr()) {
+					onUpdate(err(res.error));
+					return;
+				}
+
+				onUpdate(ok(lnrpc.ChanBackupSnapshot.decode(res.value)));
+			};
+
+			const message = lnrpc.ExportChannelBackupRequest.create();
+
+			this.grpc.sendStreamCommand(
+				EGrpcStreamMethods.SubscribeChannelBackups,
+				lnrpc.ExportChannelBackupRequest.encode(message).finish(),
+				onBackupUpdate,
+				onDone
+			);
+		} catch (e) {
+			onUpdate(err(e));
+		}
+	}
+
+	/**
+	 * LND ExportAllChannelBackups
+	 * @returns {Promise<Ok<lnrpc.StopResponse, Error> | Err<unknown, any>>}
+	 */
+	async exportAllChannelBackups(): Promise<Result<lnrpc.ChanBackupSnapshot, Error>> {
+		try {
+			const message = lnrpc.ExportChannelBackupRequest.create();
+			const serializedResponse = await this.grpc.sendCommand(
+				EGrpcSyncMethods.ExportAllChannelBackups,
+				lnrpc.ExportChannelBackupRequest.encode(message).finish()
+			);
+
+			return ok(lnrpc.ChanBackupSnapshot.decode(serializedResponse));
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * LND VerifyChanBackup
+	 * Verifies a full ChanBackupSnapshot object
+	 * @param backupSnapshot
+	 * @returns {Promise<Ok<lnrpc.VerifyChanBackupResponse, Error> | Err<unknown, any>>}
+	 */
+	async verifyChannelBackupSnapshot(
+		backupSnapshot: lnrpc.ChanBackupSnapshot
+	): Promise<Result<lnrpc.VerifyChanBackupResponse, Error>> {
+		try {
+			const message = lnrpc.ChanBackupSnapshot.create();
+			message.multiChanBackup = backupSnapshot.multiChanBackup;
+			const serializedResponse = await this.grpc.sendCommand(
+				EGrpcSyncMethods.VerifyChanBackup,
+				lnrpc.ChanBackupSnapshot.encode(message).finish()
+			);
+
+			return ok(lnrpc.VerifyChanBackupResponse.decode(serializedResponse));
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * LND VerifyChanBackup
+	 * Verifies just a multiChanBackup Uint8Array
+	 * @param bytes
+	 * @returns {Promise<Ok<boolean, Error> | Err<unknown, any>>}
+	 */
+	async verifyMultiChannelBackup(bytes: Uint8Array): Promise<Result<boolean, Error>> {
+		try {
+			const message = lnrpc.ChanBackupSnapshot.create({
+				multiChanBackup: { multiChanBackup: bytes }
+			});
+
+			await this.grpc.sendCommand(
+				EGrpcSyncMethods.VerifyChanBackup,
+				lnrpc.ChanBackupSnapshot.encode(message).finish()
+			);
+
+			return ok(true);
 		} catch (e) {
 			return err(e);
 		}
