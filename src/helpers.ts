@@ -1,10 +1,39 @@
+/**
+ * Convert string to bytes
+ * @param str
+ * @returns {Uint8Array}
+ */
 export const stringToBytes = (str: string): Uint8Array => {
-	const charList = str.split('');
-	const uintArray = [];
-	for (let i = 0; i < charList.length; i++) {
-		uintArray.push(charList[i].charCodeAt(0));
-	}
-	return new Uint8Array(uintArray);
+	return Uint8Array.from(str, (x) => x.charCodeAt(0));
+};
+
+/**
+ * Converts bytes to readable string
+ * @returns {string}
+ * @param bytes
+ */
+export const bytesToString = (bytes: Uint8Array): string => {
+	const arr: number[] = [];
+	bytes.forEach((n) => arr.push(n));
+	return String.fromCharCode.apply(String, arr);
+};
+
+/**
+ * Converts bytes to hex string
+ * @param bytes
+ * @returns {string}
+ */
+export const bytesToHexString = (bytes: Uint8Array): string => {
+	return bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
+};
+
+/**
+ * Converts hex string to bytes
+ * @param hexString
+ * @returns {Uint8Array}
+ */
+export const hexStringToBytes = (hexString: string): Uint8Array => {
+	return new Uint8Array((hexString.match(/.{1,2}/g) ?? []).map((byte) => parseInt(byte, 16)));
 };
 
 /**

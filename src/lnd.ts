@@ -12,7 +12,7 @@ import {
 import { lnrpc } from './rpc';
 import { lnrpc as walletunlocker_lnrpc } from './walletunlocker';
 import LndConf from './lnd.conf';
-import { stringToBytes } from './helpers';
+import { bytesToHexString, bytesToString, hexStringToBytes, stringToBytes } from './helpers';
 import base64 from 'base64-js';
 
 class LND {
@@ -152,10 +152,22 @@ class LND {
 	 * @param password
 	 * @param seed
 	 */
-	async createWallet(password: string, seed: string[]): Promise<Result<string, Error>> {
+	async createWallet(
+		password: string,
+		seed: string[],
+		multiChanBackup?: string
+	): Promise<Result<string, Error>> {
 		const message = walletunlocker_lnrpc.InitWalletRequest.create();
 		message.cipherSeedMnemonic = seed;
 		message.walletPassword = stringToBytes(password);
+		
+		if (multiChanBackup) {
+			message.channelBackups = lnrpc.ChanBackupSnapshot.create({
+				multiChanBackup: lnrpc.MultiChanBackup.create({
+					multiChanBackup: hexStringToBytes(multiChanBackup)
+				})
+			});
+		}
 
 		try {
 			const res = await this.lnd.createWallet(
@@ -746,7 +758,7 @@ class LND {
 	 * LND ExportAllChannelBackups
 	 * @returns {Promise<Ok<lnrpc.StopResponse, Error> | Err<unknown, any>>}
 	 */
-	async exportAllChannelBackups(): Promise<Result<lnrpc.ChanBackupSnapshot, Error>> {
+	async exportAllChannelBackups(): Promise<Result<string, Error>> {
 		try {
 			const message = lnrpc.ExportChannelBackupRequest.create();
 			const serializedResponse = await this.grpc.sendCommand(
@@ -754,7 +766,12 @@ class LND {
 				lnrpc.ExportChannelBackupRequest.encode(message).finish()
 			);
 
-			return ok(lnrpc.ChanBackupSnapshot.decode(serializedResponse));
+			return ok(
+				bytesToHexString(
+					lnrpc.ChanBackupSnapshot.decode(serializedResponse).multiChanBackup?.multiChanBackup ??
+						new Uint8Array()
+				)
+			);
 		} catch (e) {
 			return err(e);
 		}
@@ -789,10 +806,12 @@ class LND {
 	 * @param bytes
 	 * @returns {Promise<Ok<boolean, Error> | Err<unknown, any>>}
 	 */
-	async verifyMultiChannelBackup(bytes: Uint8Array): Promise<Result<boolean, Error>> {
+	async verifyMultiChannelBackup(multiChanBackup: string): Promise<Result<boolean, Error>> {
 		try {
 			const message = lnrpc.ChanBackupSnapshot.create({
-				multiChanBackup: { multiChanBackup: bytes }
+				multiChanBackup: lnrpc.MultiChanBackup.create({
+					multiChanBackup: hexStringToBytes(multiChanBackup)
+				})
 			});
 
 			await this.grpc.sendCommand(
