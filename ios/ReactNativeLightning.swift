@@ -185,138 +185,119 @@ class ReactNativeLightning: NSObject {
     }
   }
 
-  @objc
-  func start(_ configContent: NSString, network: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    LightningEventEmitter.shared.send(withEvent: .logs, body: "LND Start Request")
+    @objc
+    func start(_ configContent: NSString, network: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        LightningEventEmitter.shared.send(withEvent: .logs, body: "LND Start Request")
 
-    //Delete previous config if it exists
-    try? FileManager.default.removeItem(at: confFile)
+        //Delete previous config if it exists
+        try? FileManager.default.removeItem(at: confFile)
 
-    //Write new config into LND directory
-    do {
-      try configContent.write(to: confFile, atomically: false, encoding: String.Encoding.utf8.rawValue)
-    } catch {
-        return reject("error", error.localizedDescription, error)
+        //Write new config into LND directory
+        do {
+            try configContent.write(to: confFile, atomically: false, encoding: String.Encoding.utf8.rawValue)
+        } catch {
+            return reject("error", error.localizedDescription, error)
+        }
+
+        let args = "--lnddir=\(storage.path)"
+
+        print(args)
+
+        watchLndLog(network)
+
+        LightningEventEmitter.shared.send(withEvent: .logs, body: "Starting LND with args: \(args)")
+
+        LndmobileStart(
+            args,
+            LndEmptyResponseCallback { (error) in
+                if let e = error {
+                    return reject("error", e.localizedDescription, e)
+                }
+
+                ReactNativeLightning.state.lndRunning = true
+                resolve(LightningCallbackResponses.started.rawValue)
+            },
+            LndEmptyResponseCallback { (error) in
+                //RPC is ready (only called after wallet is unlocked/created)
+                ReactNativeLightning.state.grpcReady = true
+            }
+        )
     }
 
-    let args = "--lnddir=\(storage.path)"
+    @objc
+    func genSeed(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        LightningEventEmitter.shared.send(withEvent: .logs, body: "Generating seed phrase...")
 
-    print(args)
+        LndmobileGenSeed(
+            Data(),
+            LndCallback { (resultData, error) in
+                if let e = error {
+                    return reject("error", e.localizedDescription, e)
+                }
+                
+                resolve([LightningResponseKeys.b64DataKey.rawValue: resultData.base64EncodedString()])
+            }
+        )
+    }
 
-    watchLndLog(network)
+    @objc
+    func createWallet(_ body: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        LndmobileInitWallet(
+          Data(base64Encoded: String(body)),
+          LndEmptyResponseCallback { (error) in
+            if let e = error {
+              return reject("error", e.localizedDescription, e)
+            }
 
-    LightningEventEmitter.shared.send(withEvent: .logs, body: "Starting LND with args: \(args)")
-    
-    LndmobileStart(
-      args,
-      LndEmptyResponseCallback { (error) in
+            ReactNativeLightning.state.walletUnlocked = true
+            resolve(LightningCallbackResponses.walletCreated.rawValue)
+          }
+        )
+    }
+
+    @objc
+    func unlockWallet(_ body: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        LndmobileUnlockWallet(
+            Data(base64Encoded: String(body)),
+            LndEmptyResponseCallback { (error) in
+              if let e = error {
+                return reject("error", e.localizedDescription, e)
+              }
+
+              ReactNativeLightning.state.walletUnlocked = true
+              resolve(LightningCallbackResponses.walletUnlocked.rawValue)
+            }
+        )
+    }
+
+    @objc
+    func sendCommand(_ method: NSString, body: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        let request = Data(base64Encoded: String(body))
+
+        let onResponse: (Data?, Error?) -> Void = { (res, error) in
         if let e = error {
-          return reject("error", e.localizedDescription, e)
+            return reject(LightningResponseKeys.errorKey.rawValue, e.localizedDescription, e)
         }
 
-        ReactNativeLightning.state.lndRunning = true
-        resolve(LightningCallbackResponses.started.rawValue)
-      },
-      LndEmptyResponseCallback { (error) in
-        //RPC is ready (only called after wallet is unlocked/created)
-        ReactNativeLightning.state.grpcReady = true
-      }
-    )
-  }
-
-  @objc
-  func genSeed(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    LightningEventEmitter.shared.send(withEvent: .logs, body: "Generating seed phrase...")
-
-    do {
-      LndmobileGenSeed(
-        try Lnrpc_GenSeedRequest().serializedData(),
-        LndCallback<Lnrpc_GenSeedResponse> { (response, error) in
-          if let e = error {
-            return reject("error", e.localizedDescription, e)
-          }
-
-          resolve(response.cipherSeedMnemonic)
+        let resultData = res ?? Data() //For requests like balance, if the balance is zero the response can be empty
+            resolve([LightningResponseKeys.b64DataKey.rawValue: resultData.base64EncodedString()])
         }
-      )
-    } catch {
-      return reject("error", error.localizedDescription, error)
-    }
-  }
 
-  @objc
-  func createWallet(_ password: NSString, seed: NSArray, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    var request = Lnrpc_InitWalletRequest()
-    request.cipherSeedMnemonic = seed as! [String]
-    request.walletPassword = String(password).data(using: .utf8)!
+        let completion = BlindLndCallback(onResponse)
 
-    do {
-      LndmobileInitWallet(
-        try request.serializedData(),
-        LndEmptyResponseCallback { (error) in
-          if let e = error {
-            return reject("error", e.localizedDescription, e)
-          }
-
-          ReactNativeLightning.state.walletUnlocked = true
-          resolve(LightningCallbackResponses.walletCreated.rawValue)
+        guard let lndMethod = syncMethods[method as String] else {
+            return onResponse(nil, LightningError.unknownMethod)
         }
-      )
-    } catch {
-      return reject("error", error.localizedDescription, error)
-    }
-  }
 
-  @objc
-  func unlockWallet(_ password: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    var request = Lnrpc_UnlockWalletRequest()
-    request.walletPassword = String(password).data(using: .utf8)!
+        lndMethod(request, completion)
 
-    do {
-      LndmobileUnlockWallet(
-        try request.serializedData(),
-        LndEmptyResponseCallback { (error) in
-          if let e = error {
-            return reject("error", e.localizedDescription, e)
-          }
-
-          ReactNativeLightning.state.walletUnlocked = true
-          resolve(LightningCallbackResponses.walletUnlocked.rawValue)
+        //If LND was stopped reset state
+        if method == "StopDaemon" {
+            ReactNativeLightning.state.lndRunning = false
+            ReactNativeLightning.state.grpcReady = false
+            ReactNativeLightning.state.walletUnlocked = false
         }
-      )
-    } catch {
-      return reject("error", error.localizedDescription, error)
     }
-  }
-
-  @objc
-  func sendCommand(_ method: NSString, body: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-    let request = Data(base64Encoded: String(body))
-
-    let onResponse: (Data?, Error?) -> Void = { (res, error) in
-      if let e = error {
-        return reject(LightningResponseKeys.errorKey.rawValue, e.localizedDescription, e)
-      }
-
-      let resultData = res ?? Data() //For requests like balance, if the balance is zero the response can be empty
-      resolve([LightningResponseKeys.b64DataKey.rawValue: resultData.base64EncodedString()])
-    }
-
-    let completion = BlindLndCallback(onResponse)
-    
-    guard let lndMethod = syncMethods[method as String] else {
-      return onResponse(nil, LightningError.unknownMethod)
-    }
-
-    lndMethod(request, completion)
-    
-    //If LND was stopped reset state
-    if method == "StopDaemon" {
-        ReactNativeLightning.state.lndRunning = false
-        ReactNativeLightning.state.grpcReady = false
-        ReactNativeLightning.state.walletUnlocked = false
-    }
-  }
 
   @objc
   func sendStreamCommand(_ method: NSString, streamId: NSString, body: NSString) {
@@ -365,75 +346,75 @@ class ReactNativeLightning: NSObject {
 
 //MARK: Callbacks
 extension ReactNativeLightning {
-  func getLogFile(_ network: NSString) -> String {
-    return self.storage.appendingPathComponent("logs/bitcoin/\(network)/lnd.log").path;
-  }
-
-  func watchLndLog(_ network: NSString) {
-    DispatchQueue.main.async { [weak self] in
-      guard let self = self else { return }
-
-      let logFile = self.getLogFile(network)
-      guard let fileHandle = FileHandle(forReadingAtPath: logFile) else {
-        //If the file for some reason doesn't exist (if LND has never been started) just wait a second and try again
-        return DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.watchLndLog(network) }
-      }
-
-      LightningEventEmitter.shared.send(withEvent: .logs, body: "Observing LND log: \(logFile)")
-
-      NotificationCenter.default.addObserver(forName: FileHandle.readCompletionNotification, object: fileHandle, queue: OperationQueue.main) { (notification) in
-        fileHandle.readInBackgroundAndNotify()
-
-        guard let info = notification.userInfo else { return }
-        guard let data = info[NSFileHandleNotificationDataItem] as? Data else { return }
-        guard data.count > 0 else { return }
-        guard let logLine = NSString(data: data, encoding: String.Encoding.utf8.rawValue) else { return }
-
-        LightningEventEmitter.shared.send(withEvent: .logs, body: logLine as String)
-      }
-
-      fileHandle.seekToEndOfFile()
-      fileHandle.readInBackgroundAndNotify()
+    func getLogFile(_ network: NSString) -> String {
+        return self.storage.appendingPathComponent("logs/bitcoin/\(network)/lnd.log").path;
     }
-  }
+
+    func watchLndLog(_ network: NSString) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            let logFile = self.getLogFile(network)
+            guard let fileHandle = FileHandle(forReadingAtPath: logFile) else {
+                //If the file for some reason doesn't exist (if LND has never been started) just wait a second and try again
+                return DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.watchLndLog(network) }
+            }
+
+            LightningEventEmitter.shared.send(withEvent: .logs, body: "Observing LND log: \(logFile)")
+
+            NotificationCenter.default.addObserver(forName: FileHandle.readCompletionNotification, object: fileHandle, queue: OperationQueue.main) { (notification) in
+                fileHandle.readInBackgroundAndNotify()
+
+                guard let info = notification.userInfo else { return }
+                guard let data = info[NSFileHandleNotificationDataItem] as? Data else { return }
+                guard data.count > 0 else { return }
+                guard let logLine = NSString(data: data, encoding: String.Encoding.utf8.rawValue) else { return }
+
+                LightningEventEmitter.shared.send(withEvent: .logs, body: logLine as String)
+            }
+
+            fileHandle.seekToEndOfFile()
+            fileHandle.readInBackgroundAndNotify()
+        }
+    }
 }
 
 //MARK: Singleton react native event emitter
 @objc(LightningEventEmitter)
 class LightningEventEmitter: RCTEventEmitter {
-  public static var shared: LightningEventEmitter!
+    public static var shared: LightningEventEmitter!
 
-  public enum EventTypes: String, CaseIterable {
-    case logs = "logs"
-    case streamEvent = "streamEvent"
-    case lndStateUpdate = "lndStateUpdate"
-  }
+    public enum EventTypes: String, CaseIterable {
+        case logs = "logs"
+        case streamEvent = "streamEvent"
+        case lndStateUpdate = "lndStateUpdate"
+    }
 
-  override init() {
-    super.init()
-    LightningEventEmitter.shared = self
-  }
+    override init() {
+        super.init()
+        LightningEventEmitter.shared = self
+    }
 
-  public func send(withEvent eventType: EventTypes, body: Any) {
-    sendEvent(withName: eventType.rawValue, body: body)
-  }
+    public func send(withEvent eventType: EventTypes, body: Any) {
+        sendEvent(withName: eventType.rawValue, body: body)
+    }
 
-  override func supportedEvents() -> [String] {
-    return EventTypes.allCases.map { $0.rawValue }
-  }
+    override func supportedEvents() -> [String] {
+        return EventTypes.allCases.map { $0.rawValue }
+    }
 }
 
 //MARK: Module can be initialised on main thread as LndMobile handles all it's own tasks on background threads (https://reactnative.dev/docs/native-modules-ios#implementing--requiresmainqueuesetup)
 extension ReactNativeLightning {
-  @objc
-  static func requiresMainQueueSetup() -> Bool {
-    return true
-  }
+    @objc
+    static func requiresMainQueueSetup() -> Bool {
+        return true
+    }
 }
 
 extension LightningEventEmitter {
-  @objc
-  override static func requiresMainQueueSetup() -> Bool {
-    return true
-  }
+    @objc
+    override static func requiresMainQueueSetup() -> Bool {
+        return true
+    }
 }

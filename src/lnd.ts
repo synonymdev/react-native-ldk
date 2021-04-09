@@ -10,7 +10,10 @@ import {
 	TLogListener
 } from './types';
 import { lnrpc } from './rpc';
+import { lnrpc as walletunlocker_lnrpc } from './walletunlocker';
 import LndConf from './lnd.conf';
+import { stringToBytes } from './helpers';
+import base64 from 'base64-js';
 
 class LND {
 	private readonly grpc: GrpcAction;
@@ -129,8 +132,15 @@ class LND {
 	 */
 	async genSeed(): Promise<Result<string[], Error>> {
 		try {
-			const seed = await this.lnd.genSeed();
-			return ok(seed);
+			const { data: serializedResponse } = await this.lnd.genSeed();
+			if (serializedResponse === undefined) {
+				throw new Error('Missing response');
+			}
+
+			return ok(
+				walletunlocker_lnrpc.GenSeedResponse.decode(base64.toByteArray(serializedResponse))
+					.cipherSeedMnemonic
+			);
 		} catch (e) {
 			return err(e);
 		}
@@ -143,8 +153,14 @@ class LND {
 	 * @param seed
 	 */
 	async createWallet(password: string, seed: string[]): Promise<Result<string, Error>> {
+		const message = walletunlocker_lnrpc.InitWalletRequest.create();
+		message.cipherSeedMnemonic = seed;
+		message.walletPassword = stringToBytes(password);
+
 		try {
-			const res = await this.lnd.createWallet(password, seed);
+			const res = await this.lnd.createWallet(
+				base64.fromByteArray(walletunlocker_lnrpc.InitWalletRequest.encode(message).finish())
+			);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -157,8 +173,13 @@ class LND {
 	 * @param password
 	 */
 	async unlockWallet(password: string): Promise<Result<string, Error>> {
+		const message = walletunlocker_lnrpc.UnlockWalletRequest.create();
+		message.walletPassword = stringToBytes(password);
+
 		try {
-			const res = await this.lnd.unlockWallet(password);
+			const res = await this.lnd.unlockWallet(
+				base64.fromByteArray(walletunlocker_lnrpc.InitWalletRequest.encode(message).finish())
+			);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -658,12 +679,7 @@ class LND {
 		try {
 			const message = lnrpc.SignMessageRequest.create();
 
-			const charList = msg.split('');
-			const uintArray = [];
-			for (let i = 0; i < charList.length; i++) {
-				uintArray.push(charList[i].charCodeAt(0));
-			}
-			message.msg = new Uint8Array(uintArray);
+			message.msg = stringToBytes(msg);
 			const serializedResponse = await this.grpc.sendCommand(
 				EGrpcSyncMethods.SignMessage,
 				lnrpc.SignMessageRequest.encode(message).finish()

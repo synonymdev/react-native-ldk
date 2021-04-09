@@ -24,7 +24,6 @@ Pod::Spec.new do |s|
 #  s.frameworks   = 'Lndmobile'
   s.vendored_frameworks = 'ios/Lndmobile.framework'
   s.dependency "React"
-  s.dependency 'SwiftProtobuf', '~> 1.0'
   # ...
   # s.dependency "..."
 end
