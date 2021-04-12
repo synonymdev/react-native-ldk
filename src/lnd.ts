@@ -160,7 +160,7 @@ class LND {
 		const message = walletunlocker_lnrpc.InitWalletRequest.create();
 		message.cipherSeedMnemonic = seed;
 		message.walletPassword = stringToBytes(password);
-		
+
 		if (multiChanBackup) {
 			message.channelBackups = lnrpc.ChanBackupSnapshot.create({
 				multiChanBackup: lnrpc.MultiChanBackup.create({
