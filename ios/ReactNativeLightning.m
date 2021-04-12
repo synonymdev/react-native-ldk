@@ -36,8 +36,7 @@ RCT_EXTERN_METHOD(
                   )
 
 RCT_EXTERN_METHOD(
-                  createWallet: (NSString *)password
-                  seed: (NSArray *)seed
+                  createWallet: (NSString *)body
                   resolve: (RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject
                   )
@@ -50,7 +49,7 @@ RCT_EXTERN_METHOD(
 
 RCT_EXTERN_METHOD(
                   sendCommand: (NSString *)method
-                  body: (NSString *)seed
+                  body: (NSString *)body
                   resolve: (RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject
                   )

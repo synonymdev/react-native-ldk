@@ -25,7 +25,9 @@
     "watch": "yarn run build -- -w",
     "lint": "yarn run lint:ts",
     "lint:ts": "eslint . --ext .ts,.tsx --fix",
-    "protobuf": "pbjs -t static-module -w commonjs -o dist/rpc.js src/protos/rpc.proto && pbjs -t static-module src/protos/rpc.proto | pbts -o dist/rpc.d.ts - && cp dist/rpc.d.ts ./src/",
+    "protobuf": "yarn run protobuf:rpc && yarn run protobuf:walletunlocker",
+    "protobuf:rpc": "pbjs -t static-module -w commonjs -o dist/rpc.js src/protos/rpc.proto && pbjs -t static-module src/protos/rpc.proto | pbts -o dist/rpc.d.ts - && cp dist/rpc.* ./src/",
+    "protobuf:walletunlocker": "pbjs -t static-module -w commonjs -o dist/walletunlocker.js src/protos/walletunlocker.proto && pbjs -t static-module src/protos/walletunlocker.proto | pbts -o dist/walletunlocker.d.ts - && cp dist/walletunlocker.* ./src/",
     "prepublish": "yarn lint && yarn run build && npm --no-git-tag-version version patch"
   },
   "repository": {

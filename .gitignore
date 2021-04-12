@@ -1,8 +1,7 @@
 node_modules/
 .idea/
-src/lightning/router.js
-src/lightning/autopilot.js
-src/lightning/rpc.js
+src/rpc.*
+src/walletunlocker.*
 dist/
 **.DS_Store
 android/build/
