@@ -81,7 +81,7 @@ const App = () => {
           }
 
           const backupBytes = res.value.multiChanBackup.multiChanBackup;
-          console.log('Backup required');
+          console.log(`Backup required (${backupBytes.length} bytes)`);
         },
         () => {},
       );
@@ -109,7 +109,7 @@ const App = () => {
             Wallet unlocked: {emoji(lndState.walletUnlocked)}
           </Text>
           <Text style={styles.state}>Ready: {emoji(lndState.grpcReady)}</Text>
-          <Text style={{margin: 10, textAlign: 'center'}}>{message}</Text>
+          <Text style={styles.message}>{message}</Text>
 
           {lndState.lndRunning ? (
             <Button
@@ -444,6 +444,10 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   state: {
+    textAlign: 'center',
+  },
+  message: {
+    margin: 10,
     textAlign: 'center',
   },
 });

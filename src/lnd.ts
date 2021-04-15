@@ -12,7 +12,7 @@ import {
 import { lnrpc } from './rpc';
 import { lnrpc as walletunlocker_lnrpc } from './walletunlocker';
 import LndConf from './lnd.conf';
-import { bytesToHexString, bytesToString, hexStringToBytes, stringToBytes } from './helpers';
+import { bytesToHexString, hexStringToBytes, stringToBytes } from './helpers';
 import base64 from 'base64-js';
 
 class LND {
