@@ -9,32 +9,21 @@ This library hopes to simplify the process of adding Lightning via LND's Neutrin
 ## Getting started
 
 ```bash
-yarn add react-native-lightning
+yarn add @synonymdev/react-native-lightning
+#or
+npm i -s @synonymdev/react-native-lightning
+````
+
+### iOS installation
+```bash
 cd ios && pod install && cd ../
 ````
 
-#### or build and add from local repo
-
-```bash
-#Clone, install and build project
-git clone https://github.com/synonymdev/react-native-lightning.git
-cd react-native-lightning
-yarn install && yarn build
-cd ../
-
-#Add to your app
-yarn add ../react-native-lightning #Might need to adjust path if not cloned to same directory as app
-
-# iOS installation
-
-cd ios && pod install && cd ../
-
-# Android installation
+### Android installation
 
 open `android/app/build.gradle` and add the below line to `dependencies`
 
-`implementation files("../../node_modules/react-native-lightning/android/libs/Lndmobile.aar")`
-````
+`implementation files("../../node_modules/@synonymdev/react-native-lightning/android/libs/Lndmobile.aar")`
 
 ## Running example app
 ```bash
@@ -57,7 +46,7 @@ import lnd, {
     ENetworks,
     LndConf,
     TCurrentLndState,
-} from 'react-native-lightning';
+} from '@synonymdev/react-native-lightning';
 
 const lndConf = new LndConf(ENetworks.regtest);
 ```

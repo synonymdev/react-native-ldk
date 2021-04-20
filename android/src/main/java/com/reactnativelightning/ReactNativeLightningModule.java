@@ -174,7 +174,7 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
                 Log.i(TAG, "Wallet ready to be unlocked");
                 Log.d(TAG, "Wallet ready to be unlocked");
                 state.setLndRunning(true, getReactApplicationContext());
-                promise.resolve("unlocked");
+                promise.resolve("LND started");
             }
         }
         class RPCCallback implements Callback {
