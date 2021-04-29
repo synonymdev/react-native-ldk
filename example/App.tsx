@@ -24,7 +24,7 @@ import lnd, {
   LndConf,
   lnrpc,
   TCurrentLndState,
-} from 'react-native-lightning';
+} from '@synonymdev/react-native-lightning';
 
 declare const global: {HermesInternal: null | {}};
 
