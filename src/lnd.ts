@@ -12,7 +12,7 @@ import {
 import { lnrpc } from './rpc';
 import { lnrpc as walletunlocker_lnrpc } from './walletunlocker';
 import LndConf from './lnd.conf';
-import { bytesToHexString, hexStringToBytes, stringToBytes } from './helpers';
+import { bytesToHexString, bytesToString, hexStringToBytes, stringToBytes } from './helpers';
 import base64 from 'base64-js';
 
 class LND {
@@ -381,6 +381,131 @@ class LND {
 			);
 
 			return ok(lnrpc.ChannelPoint.decode(serializedResponse));
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	private generatePendingChannelId(): Uint8Array {
+		const result = new Uint8Array(32);
+
+		const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+		const count = numbers.length;
+		for (let i = 0; i < 32; i++) {
+			result.set([Math.floor(Math.random() * count)], i);
+		}
+
+		return result;
+	}
+
+	openChannelStream(
+		fundingAmount: number,
+		nodePubkey: string,
+		closeAddress: string,
+		onUpdate: (res: Result<lnrpc.OpenStatusUpdate, Error>) => void,
+		onDone: (res: Result<boolean, Error>) => void
+	): Uint8Array {
+		const pendingChanId = this.generatePendingChannelId();
+
+		try {
+			// Decode the response before sending update back
+			const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
+				if (res.isErr()) {
+					onUpdate(err(res.error));
+					return;
+				}
+
+				onUpdate(ok(lnrpc.OpenStatusUpdate.decode(res.value)));
+			};
+
+			const message = lnrpc.OpenChannelRequest.create();
+
+			message.localFundingAmount = fundingAmount;
+			message.closeAddress = closeAddress;
+			message.nodePubkey = hexStringToBytes(nodePubkey);
+
+			message.fundingShim = lnrpc.FundingShim.create({
+				psbtShim: lnrpc.PsbtShim.create({ pendingChanId })
+			});
+
+			this.grpc.sendStreamCommand(
+				EGrpcStreamMethods.OpenChannel,
+				lnrpc.OpenChannelRequest.encode(message).finish(),
+				onStateUpdate,
+				onDone
+			);
+		} catch (e) {
+			onUpdate(err(e));
+		}
+
+		return pendingChanId;
+	}
+
+	async fundingStateStep(
+		pendingChanId: Uint8Array,
+		psbt: string,
+		step: 'register' | 'verify' | 'finalize' | 'cancel'
+	): Promise<Result<lnrpc.FundingStateStepResp, Error>> {
+		try {
+			const message = lnrpc.FundingTransitionMsg.create();
+
+			switch (step) {
+				case 'register': {
+					message.shimRegister = lnrpc.FundingShim.create({
+						psbtShim: lnrpc.PsbtShim.create({
+							pendingChanId,
+							basePsbt: base64.toByteArray(psbt)
+						})
+					});
+					break;
+				}
+				case 'verify': {
+					// const b = Buffer.from(psbt, 'base64');
+					// const arr = new Uint8Array(
+					// 	b.buffer,
+					// 	b.byteOffset,
+					// 	b.byteLength / Uint8Array.BYTES_PER_ELEMENT
+					// );
+					// console.log('\n\n*************');
+					// console.log(base64.toByteArray(psbt));
+					// // console.log('****COVERT***');
+					// console.log(arr);
+					// // console.log(psbt);
+					// console.log('*************\n\n');
+
+					message.psbtVerify = lnrpc.FundingPsbtVerify.create({
+						pendingChanId,
+						fundedPsbt: base64.toByteArray(psbt)
+					});
+
+					// message.psbtVerify = lnrpc.PsbtShim.create({
+					// 	pendingChanId
+					// 	// basePsbt: base64.toByteArray(psbt)
+					// });
+					break;
+				}
+				case 'finalize': {
+					message.trigger = 'psbtFinalize';
+					message.psbtFinalize = lnrpc.FundingPsbtFinalize.create({
+						pendingChanId,
+						signedPsbt: base64.toByteArray(psbt)
+					});
+					break;
+				}
+				case 'cancel': {
+					message.shimCancel = lnrpc.FundingShimCancel.create({
+						pendingChanId
+					});
+					break;
+				}
+			}
+
+			const serializedResponse = await this.grpc.sendCommand(
+				EGrpcSyncMethods.FundingStateStep,
+				lnrpc.FundingTransitionMsg.encode(message).finish()
+			);
+
+			return ok(lnrpc.FundingStateStepResp.decode(serializedResponse));
 		} catch (e) {
 			return err(e);
 		}

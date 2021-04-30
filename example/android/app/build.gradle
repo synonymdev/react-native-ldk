@@ -208,7 +208,7 @@ dependencies {
         implementation jscFlavor
     }
 
-    implementation files("../../node_modules/react-native-lightning/android/libs/Lndmobile.aar")
+    implementation files("../../node_modules/@synonymdev/react-native-lightning/android/libs/Lndmobile.aar")
 
 }
 
