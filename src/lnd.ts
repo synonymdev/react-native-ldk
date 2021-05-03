@@ -398,6 +398,16 @@ class LND {
 		return result;
 	}
 
+	/**
+	 * Starts the channel opening process for external channel funding.
+	 * fundingStateStep() needs to be used to progress the state.
+	 * @param fundingAmount
+	 * @param nodePubkey
+	 * @param closeAddress
+	 * @param onUpdate
+	 * @param onDone
+	 * @returns {Uint8Array}
+	 */
 	openChannelStream(
 		fundingAmount: number,
 		nodePubkey: string,
@@ -441,47 +451,29 @@ class LND {
 		return pendingChanId;
 	}
 
+	/**
+	 * Progress the state of a channel opening by providing a PSBT for
+	 * verification (containing funding input), for finalization (signed inputs) or
+	 * canceling a channel funding process.
+	 * @param pendingChanId
+	 * @param psbt
+	 * @param step
+	 * @returns {Promise<Ok<lnrpc.FundingStateStepResp, Error> | Err<unknown, any>>}
+	 */
 	async fundingStateStep(
 		pendingChanId: Uint8Array,
 		psbt: string,
-		step: 'register' | 'verify' | 'finalize' | 'cancel'
+		step: 'verify' | 'finalize' | 'cancel'
 	): Promise<Result<lnrpc.FundingStateStepResp, Error>> {
 		try {
 			const message = lnrpc.FundingTransitionMsg.create();
 
 			switch (step) {
-				case 'register': {
-					message.shimRegister = lnrpc.FundingShim.create({
-						psbtShim: lnrpc.PsbtShim.create({
-							pendingChanId,
-							basePsbt: base64.toByteArray(psbt)
-						})
-					});
-					break;
-				}
 				case 'verify': {
-					// const b = Buffer.from(psbt, 'base64');
-					// const arr = new Uint8Array(
-					// 	b.buffer,
-					// 	b.byteOffset,
-					// 	b.byteLength / Uint8Array.BYTES_PER_ELEMENT
-					// );
-					// console.log('\n\n*************');
-					// console.log(base64.toByteArray(psbt));
-					// // console.log('****COVERT***');
-					// console.log(arr);
-					// // console.log(psbt);
-					// console.log('*************\n\n');
-
 					message.psbtVerify = lnrpc.FundingPsbtVerify.create({
 						pendingChanId,
 						fundedPsbt: base64.toByteArray(psbt)
 					});
-
-					// message.psbtVerify = lnrpc.PsbtShim.create({
-					// 	pendingChanId
-					// 	// basePsbt: base64.toByteArray(psbt)
-					// });
 					break;
 				}
 				case 'finalize': {
