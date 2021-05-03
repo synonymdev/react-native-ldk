@@ -8,51 +8,25 @@
  * @format
  */
 
-import React, {useEffect, useState} from 'react';
-import {Alert, Button, StyleSheet, Text} from 'react-native';
+import React, {useState} from 'react';
+import {Button, StyleSheet, Text} from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import lnd, {
-  ENetworks,
-  LndConf,
-  lnrpc,
-  TCurrentLndState,
-} from '@synonymdev/react-native-lightning';
+import lnd from '@synonymdev/react-native-lightning';
 
 const closeAddress = 'bcrt1qll79gp5avu90rhg4x67yh6avsej9tcpeg5j0kw';
-
-// const pendingChanId = 'cdadafbe564428f7fe01602dc06b2717'; // TODO make random
 
 const PSBT = ({nodePubKey}: {nodePubKey: string}) => {
   const [streamMessage, setStreamMessage] = useState('');
   const [message, setMessage] = useState('');
   const [pendingChanId, setPendingChanId] = useState(new Uint8Array(0));
-  // const [basePsbt, setBasePsbt] = useState(new Uint8Array());
 
   return (
     <>
-      <Text style={styles.streamMessage}>
-        pendingChanId: {pendingChanId.join(' ')}
-      </Text>
-      {/*<Text style={styles.streamMessage}>StreamID: {streamId}</Text>*/}
       <Text style={styles.message}>{message}</Text>
       <Text style={styles.streamMessage}>{streamMessage}</Text>
       <Button
         title={'Open channel stream'}
         onPress={async () => {
-          //TODO register shim first
-          // const registerRes = await lnd.fundingStateStep(
-          //   pendingChanId,
-          //   '',
-          //   'register',
-          // );
-          //
-          // if (registerRes.isErr()) {
-          //   setMessage(
-          //     `Register shim step error: ${registerRes.error.message}`,
-          //   );
-          //   return;
-          // }
-
           setMessage('Opening...');
 
           const channelId = lnd.openChannelStream(
@@ -66,48 +40,26 @@ const PSBT = ({nodePubKey}: {nodePubKey: string}) => {
 
               setStreamMessage('STREAM UPDATE: ' + JSON.stringify(res.value));
 
-              const {psbtFund, update} = res.value;
+              const {psbtFund} = res.value;
 
               console.log(JSON.stringify(res.value));
 
-              // if (psbtFund?.fundingAmount) {
               const amt = Number(psbtFund?.fundingAmount ?? 1);
               const btc = amt / 100000000;
 
               const bitcoindCLI = `bitcoin-cli walletcreatefundedpsbt [] '[{"${res.value.psbtFund?.fundingAddress}":${btc}}]'`;
-              const lndCLI = `lncli wallet psbt fund --outputs='{"${res.value.psbtFund?.fundingAddress}":${amt}}'`;
+              //const lndCLI = `lncli wallet psbt fund --outputs='{"${res.value.psbtFund?.fundingAddress}":${amt}}'`;
 
               Clipboard.setString(bitcoindCLI);
-              // }
             },
             () => {
-              setStreamMessage('DONE!!!!');
+              setStreamMessage('Channel funded.');
             },
           );
 
           setPendingChanId(channelId);
         }}
       />
-
-      {/*<Button*/}
-      {/*  title={'Register step (Paste PSBT)'}*/}
-      {/*  onPress={async () => {*/}
-      {/*    const psbt = await Clipboard.getString();*/}
-
-      {/*    const res = await lnd.fundingStateStep(*/}
-      {/*      pendingChanId,*/}
-      {/*      psbt,*/}
-      {/*      'register',*/}
-      {/*    );*/}
-
-      {/*    if (res.isErr()) {*/}
-      {/*      setMessage(`Register step error: ${res.error.message}`);*/}
-      {/*      return;*/}
-      {/*    }*/}
-
-      {/*    setMessage(JSON.stringify(res.value));*/}
-      {/*  }}*/}
-      {/*/>*/}
 
       {pendingChanId ? (
         <>
@@ -135,8 +87,6 @@ const PSBT = ({nodePubKey}: {nodePubKey: string}) => {
             title={'Finalize (Paste PSBT)'}
             onPress={async () => {
               const psbt = await Clipboard.getString();
-
-              // console.log(basePsbt);
 
               const res = await lnd.fundingStateStep(
                 pendingChanId,
