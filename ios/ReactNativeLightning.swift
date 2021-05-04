@@ -135,6 +135,7 @@ class ReactNativeLightning: NSObject {
   lazy var streamMethods: [String: (Data?, BlindLndCallback) -> Void] = {
     return [
       "CloseChannel": { (req: Data?, cb: BlindLndCallback) in LndmobileCloseChannel(req, cb) },
+      "OpenChannel": { (req: Data?, cb: BlindLndCallback) in LndmobileOpenChannel(req, cb) },
 //      "ChannelAcceptor": { (req: Data?, cb: BlindLndCallback) in LndmobileChannelAcceptor(req, cb) },
       "SubscribeChannelBackups": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeChannelBackups(req, cb) },
       "SubscribePeerEvents": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribePeerEvents(req, cb) },

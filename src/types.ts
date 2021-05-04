@@ -57,6 +57,7 @@ export enum EGrpcSyncMethods {
 }
 
 export enum EGrpcStreamMethods {
+	OpenChannel = 'OpenChannel',
 	CloseChannel = 'CloseChannel',
 	ChannelAcceptor = 'ChannelAcceptor',
 	SubscribeChannelBackups = 'SubscribeChannelBackups',
