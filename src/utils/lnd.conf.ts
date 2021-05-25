@@ -44,15 +44,7 @@ const defaultTestnetBitcoindConf = {
 		'bitcoin.node': 'neutrino'
 	},
 	Neutrino: {
-		'neutrino.connect': '159.203.125.125:18333',
-		'neutrino.addpeer': [
-			'lnd.bitrefill.com:18333',
-			'faucet.lightning.community',
-			'testnet1-btcd.zaphq.io',
-			'testnet2-btcd.zaphq.io',
-			'testnet3-btcd.zaphq.io',
-			'testnet4-btcd.zaphq.io'
-		],
+		'neutrino.connect': '35.240.72.95:18333',
 		'neutrino.feeurl': 'https://nodes.lightning.computer/fees/v1/btc-fee-estimates.json'
 	}
 };

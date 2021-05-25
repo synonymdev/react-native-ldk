@@ -1,6 +1,6 @@
 import { NativeModules, NativeModulesStatic } from 'react-native';
 import GrpcAction from './grpc';
-import { err, ok, Result } from './result';
+import { err, ok, Result } from './utils/result';
 import {
 	EGrpcStreamMethods,
 	EGrpcSyncMethods,
@@ -8,11 +8,11 @@ import {
 	EStreamEventTypes,
 	TCurrentLndState,
 	TLogListener
-} from './types';
+} from './utils/types';
 import { lnrpc } from './rpc';
 import { lnrpc as walletunlocker_lnrpc } from './walletunlocker';
-import LndConf from './lnd.conf';
-import { bytesToHexString, bytesToString, hexStringToBytes, stringToBytes } from './helpers';
+import LndConf from './utils/lnd.conf';
+import { bytesToHexString, bytesToString, hexStringToBytes, stringToBytes } from './utils/helpers';
 import base64 from 'base64-js';
 
 class LND {

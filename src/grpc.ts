@@ -6,8 +6,8 @@ import {
 	EGrpcSyncMethods,
 	TNativeStreamResponse,
 	EStreamEventTypes
-} from './types';
-import { err, ok, Result } from './result';
+} from './utils/types';
+import { err, ok, Result } from './utils/result';
 
 class GrpcAction {
 	private readonly lnd: NativeModulesStatic;
