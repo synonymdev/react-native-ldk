@@ -9,10 +9,10 @@ import {
 	TCurrentLndState,
 	TLogListener
 } from './utils/types';
-import { lnrpc } from './rpc';
-import { lnrpc as walletunlocker_lnrpc } from './walletunlocker';
+import { lnrpc } from './protos/rpc';
+import { lnrpc as walletunlocker_lnrpc } from './protos/walletunlocker';
 import LndConf from './utils/lnd.conf';
-import { bytesToHexString, bytesToString, hexStringToBytes, stringToBytes } from './utils/helpers';
+import { bytesToHexString, hexStringToBytes, stringToBytes } from './utils/helpers';
 import base64 from 'base64-js';
 
 class LND {
@@ -38,10 +38,10 @@ class LND {
 
 	/**
 	 * Starts the LND service
-	 * @return {Promise<Ok<any, Error> | Err<unknown, any>>}
+	 * @return {Promise<Err<unknown> | Ok<string>>}
 	 * @param conf
 	 */
-	async start(conf: LndConf): Promise<Result<string, Error>> {
+	async start(conf: LndConf): Promise<Result<string>> {
 		const stateRes = await this.currentState();
 		if (stateRes.isErr()) {
 			return err(stateRes.error);
@@ -109,9 +109,9 @@ class LND {
 	/**
 	 * Gets LND log file content
 	 * @param limit
-	 * @returns {Promise<Ok<string[], Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<string[]>>}
 	 */
-	async getLogFileContent(limit: number = 100): Promise<Result<string[], Error>> {
+	async getLogFileContent(limit: number = 100): Promise<Result<string[]>> {
 		let network = this.currentConf?.network;
 		if (!network) {
 			// return err(new Error('Current network not set. LND must be running first.'));
@@ -128,13 +128,13 @@ class LND {
 
 	/**
 	 * Generates wallet seed phrase which can be used in createWallet
-	 * @return {Promise<Ok<any, Error> | Err<unknown, any>>}
+	 * @return {Promise<Err<unknown> | Ok<string[]>>}
 	 */
-	async genSeed(): Promise<Result<string[], Error>> {
+	async genSeed(): Promise<Result<string[]>> {
 		try {
 			const { data: serializedResponse } = await this.lnd.genSeed();
 			if (serializedResponse === undefined) {
-				throw new Error('Missing response');
+				return err('Missing response');
 			}
 
 			return ok(
@@ -148,15 +148,16 @@ class LND {
 
 	/**
 	 * Once LND is started then the wallet can be created and unlocked with this.
-	 * @return {Promise<Result<string, Error>>}
+	 * @return {Promise<Ok<any> | Err<unknown>>}
 	 * @param password
 	 * @param seed
+	 * @param multiChanBackup
 	 */
 	async createWallet(
 		password: string,
 		seed: string[],
 		multiChanBackup?: string
-	): Promise<Result<string, Error>> {
+	): Promise<Result<string>> {
 		const message = walletunlocker_lnrpc.InitWalletRequest.create();
 		message.cipherSeedMnemonic = seed;
 		message.walletPassword = stringToBytes(password);
@@ -181,10 +182,10 @@ class LND {
 
 	/**
 	 * Once LND is started then the wallet can be unlocked with this.
-	 * @return {Promise<Result<string, Error>>}
+	 * @return {Promise<Ok<string> | Err<unknown>>}
 	 * @param password
 	 */
-	async unlockWallet(password: string): Promise<Result<string, Error>> {
+	async unlockWallet(password: string): Promise<Result<string>> {
 		const message = walletunlocker_lnrpc.UnlockWalletRequest.create();
 		message.walletPassword = stringToBytes(password);
 
@@ -200,10 +201,10 @@ class LND {
 
 	/**
 	 * Determines if a wallet has already been initialized for the network specified.
-	 * @return {Promise<Result<boolean, Error>>}
+	 * @return {Promise<Ok<boolean> | Err<unknown>>}
 	 * @param network
 	 */
-	async walletExists(network: ENetworks): Promise<Result<boolean, Error>> {
+	async walletExists(network: ENetworks): Promise<Result<boolean>> {
 		try {
 			const exists = await this.lnd.walletExists(network);
 			return ok(exists);
@@ -214,9 +215,9 @@ class LND {
 
 	/**
 	 * Provides the current state of LND from the native module
-	 * @return {Promise<Result<CurrentLndState, Error>>}
+	 * @return {Promise<Result<CurrentLndState>>}
 	 */
-	async currentState(): Promise<Result<TCurrentLndState, Error>> {
+	async currentState(): Promise<Result<TCurrentLndState>> {
 		try {
 			return ok(await this.lnd.currentState());
 		} catch (e) {
@@ -242,9 +243,9 @@ class LND {
 
 	/**
 	 * LND GetInfo
-	 * @returns {Promise<Err<lnrpc.GetInfoResponse, any> | Ok<any, Error>>}
+	 * @returns {Promise<Ok<lnrpc.GetInfoResponse> | Err<unknown>>}
 	 */
-	async getInfo(): Promise<Result<lnrpc.GetInfoResponse, Error>> {
+	async getInfo(): Promise<Result<lnrpc.GetInfoResponse>> {
 		try {
 			const message = lnrpc.GetInfoRequest.create();
 			const serializedResponse = await this.grpc.sendCommand(
@@ -260,10 +261,10 @@ class LND {
 
 	/**
 	 * LND GetAddress
-	 * @returns {Promise<Ok<lnrpc.NewAddressResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Ok<lnrpc.NewAddressResponse> | Err<unknown>>}
 	 * @param type
 	 */
-	async getAddress(type?: lnrpc.AddressType): Promise<Result<lnrpc.NewAddressResponse, Error>> {
+	async getAddress(type?: lnrpc.AddressType): Promise<Result<lnrpc.NewAddressResponse>> {
 		try {
 			const message = lnrpc.NewAddressRequest.create({ type });
 			const serializedResponse = await this.grpc.sendCommand(
@@ -279,9 +280,9 @@ class LND {
 
 	/**
 	 * LND GetWalletBalance
-	 * @returns {Promise<Ok<lnrpc.WalletBalanceResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.WalletBalanceResponse>>}
 	 */
-	async getWalletBalance(): Promise<Result<lnrpc.WalletBalanceResponse, Error>> {
+	async getWalletBalance(): Promise<Result<lnrpc.WalletBalanceResponse>> {
 		try {
 			const message = lnrpc.WalletBalanceRequest.create();
 			const serializedResponse = await this.grpc.sendCommand(
@@ -297,9 +298,9 @@ class LND {
 
 	/**
 	 * LND GetChannelBalance
-	 * @returns {Promise<Ok<lnrpc.ChannelBalanceResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.ChannelBalanceResponse>>}
 	 */
-	async getChannelBalance(): Promise<Result<lnrpc.ChannelBalanceResponse, Error>> {
+	async getChannelBalance(): Promise<Result<lnrpc.ChannelBalanceResponse>> {
 		try {
 			const message = lnrpc.ChannelBalanceRequest.create();
 			const serializedResponse = await this.grpc.sendCommand(
@@ -315,14 +316,11 @@ class LND {
 
 	/**
 	 * LND ConnectPeer
-	 * @returns {Promise<Ok<lnrpc.ConnectPeerResponse, Error> | Err<unknown, any>>}
-	 * @param nodePubkey
+	 * @returns {Promise<Ok<lnrpc.ConnectPeerResponse> | Err<unknown>>}
 	 * @param host
+	 * @param pubkey
 	 */
-	async connectPeer(
-		pubkey: string,
-		host: string
-	): Promise<Result<lnrpc.ConnectPeerResponse, Error>> {
+	async connectPeer(pubkey: string, host: string): Promise<Result<lnrpc.ConnectPeerResponse>> {
 		try {
 			const message = lnrpc.ConnectPeerRequest.create();
 			message.addr = lnrpc.LightningAddress.create({ pubkey, host });
@@ -351,7 +349,7 @@ class LND {
 		fundingAmount: number,
 		nodePubkey: string,
 		closeAddress: string | undefined = undefined
-	): Promise<Result<lnrpc.ChannelPoint, Error>> {
+	): Promise<Result<lnrpc.ChannelPoint>> {
 		try {
 			const message = lnrpc.OpenChannelRequest.create();
 			message.localFundingAmount = fundingAmount;
@@ -412,14 +410,14 @@ class LND {
 		fundingAmount: number,
 		nodePubkey: string,
 		closeAddress: string,
-		onUpdate: (res: Result<lnrpc.OpenStatusUpdate, Error>) => void,
-		onDone: (res: Result<boolean, Error>) => void
+		onUpdate: (res: Result<lnrpc.OpenStatusUpdate>) => void,
+		onDone: (res: Result<boolean>) => void
 	): Uint8Array {
 		const pendingChanId = this.generatePendingChannelId();
 
 		try {
 			// Decode the response before sending update back
-			const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
+			const onStateUpdate = (res: Result<Uint8Array>): void => {
 				if (res.isErr()) {
 					onUpdate(err(res.error));
 					return;
@@ -458,13 +456,13 @@ class LND {
 	 * @param pendingChanId
 	 * @param psbt
 	 * @param step
-	 * @returns {Promise<Ok<lnrpc.FundingStateStepResp, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.FundingStateStepResp>>}
 	 */
 	async fundingStateStep(
 		pendingChanId: Uint8Array,
 		psbt: string,
 		step: 'verify' | 'finalize' | 'cancel'
-	): Promise<Result<lnrpc.FundingStateStepResp, Error>> {
+	): Promise<Result<lnrpc.FundingStateStepResp>> {
 		try {
 			const message = lnrpc.FundingTransitionMsg.create();
 
@@ -505,15 +503,15 @@ class LND {
 
 	/**
 	 * LND CloseChannel
-	 * @returns {Promise<Err<unknown, Error> | Ok<lnrpc.ClosedChannelsResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.ClosedChannelsResponse, Error>>}
 	 * @param channel
 	 * @param onUpdate
 	 * @param onDone
 	 */
 	closeChannelStream(
 		channel: lnrpc.IChannel,
-		onUpdate: (res: Result<lnrpc.ClosedChannelsResponse, Error>) => void,
-		onDone: (res: Result<boolean, Error>) => void
+		onUpdate: (res: Result<lnrpc.ClosedChannelsResponse>) => void,
+		onDone: (res: Result<boolean>) => void
 	): void {
 		const channelPoint = channel.channelPoint;
 		if (!channelPoint) {
@@ -533,7 +531,7 @@ class LND {
 			message.channelPoint = point;
 
 			// Decode the response before sending update back
-			const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
+			const onStateUpdate = (res: Result<Uint8Array>): void => {
 				if (res.isErr()) {
 					onUpdate(err(res.error));
 					return;
@@ -559,12 +557,12 @@ class LND {
 	 * @param onDone
 	 */
 	subscribeToOnChainTransactions(
-		onUpdate: (res: Result<lnrpc.Transaction, Error>) => void,
-		onDone: (res: Result<boolean, Error>) => void
+		onUpdate: (res: Result<lnrpc.Transaction>) => void,
+		onDone: (res: Result<boolean>) => void
 	): void {
 		try {
 			// Decode the response before sending update back
-			const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
+			const onStateUpdate = (res: Result<Uint8Array>): void => {
 				if (res.isErr()) {
 					onUpdate(err(res.error));
 					return;
@@ -592,14 +590,14 @@ class LND {
 	 * @param onDone
 	 */
 	subscribeToInvoices(
-		onUpdate: (res: Result<lnrpc.Invoice, Error>) => void,
-		onDone: (res: Result<boolean, Error>) => void
+		onUpdate: (res: Result<lnrpc.Invoice>) => void,
+		onDone: (res: Result<boolean>) => void
 	): void {
 		try {
 			const message = lnrpc.ListInvoiceRequest.create();
 
 			// Decode the response before sending update back
-			const onStateUpdate = (res: Result<Uint8Array, Error>): void => {
+			const onStateUpdate = (res: Result<Uint8Array>): void => {
 				if (res.isErr()) {
 					onUpdate(err(res.error));
 					return;
@@ -621,9 +619,9 @@ class LND {
 
 	/**
 	 * LND ListPayments
-	 * @returns {Promise<Err<unknown, any> | Ok<any, Error>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.ListPaymentsResponse>>}
 	 */
-	async listPayments(): Promise<Result<lnrpc.ListPaymentsResponse, Error>> {
+	async listPayments(): Promise<Result<lnrpc.ListPaymentsResponse>> {
 		try {
 			const message = lnrpc.ListPaymentsRequest.create();
 			const serializedResponse = await this.grpc.sendCommand(
@@ -639,9 +637,9 @@ class LND {
 
 	/**
 	 * LND ListChannels
-	 * @returns {Promise<Ok<lnrpc.ListChannelsResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Ok<lnrpc.ListChannelsResponse> | Err<unknown>>}
 	 */
-	async listChannels(): Promise<Result<lnrpc.ListChannelsResponse, Error>> {
+	async listChannels(): Promise<Result<lnrpc.ListChannelsResponse>> {
 		try {
 			const message = lnrpc.ListChannelsRequest.create();
 			const serializedResponse = await this.grpc.sendCommand(
@@ -658,9 +656,9 @@ class LND {
 	/**
 	 * LND DecodePaymentRequest (Invoice)
 	 * @param invoice
-	 * @returns {Promise<Ok<lnrpc.PayReq, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Ok<lnrpc.PayReq> | Err<unknown>>}
 	 */
-	async decodeInvoice(invoice: string): Promise<Result<lnrpc.PayReq, Error>> {
+	async decodeInvoice(invoice: string): Promise<Result<lnrpc.PayReq>> {
 		try {
 			const message = lnrpc.PayReqString.create();
 			message.payReq = invoice;
@@ -678,9 +676,9 @@ class LND {
 	/**
 	 * LND PayInvoice
 	 * @param invoice
-	 * @returns {Promise<Ok<lnrpc.SendResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Ok<lnrpc.SendResponse> | Err<unknown>>}
 	 */
-	async payInvoice(invoice: string): Promise<Result<lnrpc.SendResponse, Error>> {
+	async payInvoice(invoice: string): Promise<Result<lnrpc.SendResponse>> {
 		try {
 			const message = lnrpc.SendRequest.create();
 			message.paymentRequest = invoice;
@@ -700,13 +698,13 @@ class LND {
 	 * @param value
 	 * @param memo
 	 * @param expiry
-	 * @returns {Promise<Ok<lnrpc.SendResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.AddInvoiceResponse>>}
 	 */
 	async createInvoice(
 		value: number,
 		memo: string,
 		expiry: number = 172800
-	): Promise<Result<lnrpc.AddInvoiceResponse, Error>> {
+	): Promise<Result<lnrpc.AddInvoiceResponse>> {
 		try {
 			const message = lnrpc.Invoice.create();
 			message.value = value;
@@ -725,7 +723,7 @@ class LND {
 
 	/**
 	 * LND ListInvoices
-	 * @returns {Promise<Ok<lnrpc.ListInvoiceResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Ok<lnrpc.ListInvoiceResponse> | Err<unknown>>}
 	 * @param indexOffset
 	 * @param numMaxInvoices
 	 * @param pendingOnly
@@ -736,7 +734,7 @@ class LND {
 		numMaxInvoices = -1,
 		pendingOnly = false,
 		reversed = false
-	): Promise<Result<lnrpc.ListInvoiceResponse, Error>> {
+	): Promise<Result<lnrpc.ListInvoiceResponse>> {
 		try {
 			const message = lnrpc.ListInvoiceRequest.create();
 			message.indexOffset = indexOffset;
@@ -760,9 +758,9 @@ class LND {
 
 	/**
 	 * LND ListPeers
-	 * @returns {Promise<Ok<lnrpc.ListPeersResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.ListPeersResponse>>}
 	 */
-	async listPeers(): Promise<Result<lnrpc.ListPeersResponse, Error>> {
+	async listPeers(): Promise<Result<lnrpc.ListPeersResponse>> {
 		try {
 			const message = lnrpc.ListPeersRequest.create();
 			const serializedResponse = await this.grpc.sendCommand(
@@ -778,13 +776,16 @@ class LND {
 
 	/**
 	 * LND FeeEstimate
-	 * @returns {Promise<Ok<lnrpc.EstimateFeeResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.EstimateFeeResponse>>}
+	 * @param address
+	 * @param amount
+	 * @param targetConf
 	 */
 	async feeEstimate(
 		address: string,
 		amount: number,
 		targetConf = 1
-	): Promise<Result<lnrpc.EstimateFeeResponse, Error>> {
+	): Promise<Result<lnrpc.EstimateFeeResponse>> {
 		try {
 			const message = lnrpc.EstimateFeeRequest.create();
 			message.targetConf = targetConf;
@@ -802,9 +803,10 @@ class LND {
 
 	/**
 	 * LND SignMessage
-	 * @returns {Promise<Ok<lnrpc.SignMessageResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.SignMessageResponse>>}
+	 * @param msg
 	 */
-	async sign(msg: string): Promise<Result<lnrpc.SignMessageResponse, Error>> {
+	async sign(msg: string): Promise<Result<lnrpc.SignMessageResponse>> {
 		try {
 			const message = lnrpc.SignMessageRequest.create();
 
@@ -822,9 +824,9 @@ class LND {
 
 	/**
 	 * Stop the LND daemon
-	 * @returns {Promise<Ok<lnrpc.StopResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.StopResponse>>}
 	 */
-	async stop(): Promise<Result<lnrpc.StopResponse, Error>> {
+	async stop(): Promise<Result<lnrpc.StopResponse>> {
 		try {
 			const message = lnrpc.StopRequest.create();
 			const serializedResponse = await this.grpc.sendCommand(
@@ -844,12 +846,12 @@ class LND {
 	 * @param onDone
 	 */
 	subscribeToBackups(
-		onUpdate: (res: Result<lnrpc.ChanBackupSnapshot, Error>) => void,
-		onDone: (res: Result<boolean, Error>) => void
+		onUpdate: (res: Result<lnrpc.ChanBackupSnapshot>) => void,
+		onDone: (res: Result<boolean>) => void
 	): void {
 		try {
 			// Decode the response before sending update back
-			const onBackupUpdate = (res: Result<Uint8Array, Error>): void => {
+			const onBackupUpdate = (res: Result<Uint8Array>): void => {
 				if (res.isErr()) {
 					onUpdate(err(res.error));
 					return;
@@ -873,9 +875,9 @@ class LND {
 
 	/**
 	 * LND ExportAllChannelBackups
-	 * @returns {Promise<Ok<lnrpc.StopResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<string>>}
 	 */
-	async exportAllChannelBackups(): Promise<Result<string, Error>> {
+	async exportAllChannelBackups(): Promise<Result<string>> {
 		try {
 			const message = lnrpc.ExportChannelBackupRequest.create();
 			const serializedResponse = await this.grpc.sendCommand(
@@ -898,11 +900,11 @@ class LND {
 	 * LND VerifyChanBackup
 	 * Verifies a full ChanBackupSnapshot object
 	 * @param backupSnapshot
-	 * @returns {Promise<Ok<lnrpc.VerifyChanBackupResponse, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Err<unknown> | Ok<lnrpc.VerifyChanBackupResponse>>}
 	 */
 	async verifyChannelBackupSnapshot(
 		backupSnapshot: lnrpc.ChanBackupSnapshot
-	): Promise<Result<lnrpc.VerifyChanBackupResponse, Error>> {
+	): Promise<Result<lnrpc.VerifyChanBackupResponse>> {
 		try {
 			const message = lnrpc.ChanBackupSnapshot.create();
 			message.multiChanBackup = backupSnapshot.multiChanBackup;
@@ -920,10 +922,10 @@ class LND {
 	/**
 	 * LND VerifyChanBackup
 	 * Verifies just a multiChanBackup Uint8Array
-	 * @param bytes
-	 * @returns {Promise<Ok<boolean, Error> | Err<unknown, any>>}
+	 * @returns {Promise<Ok<boolean> | Err<unknown>>}
+	 * @param multiChanBackup
 	 */
-	async verifyMultiChannelBackup(multiChanBackup: string): Promise<Result<boolean, Error>> {
+	async verifyMultiChannelBackup(multiChanBackup: string): Promise<Result<boolean>> {
 		try {
 			const message = lnrpc.ChanBackupSnapshot.create({
 				multiChanBackup: lnrpc.MultiChanBackup.create({

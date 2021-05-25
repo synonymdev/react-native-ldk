@@ -3,5 +3,5 @@ import LndConf from './utils/lnd.conf';
 
 export { LndConf };
 export * from './utils/types';
-export * from './rpc';
+export * from './protos/rpc';
 export default lnd;
