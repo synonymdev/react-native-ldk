@@ -11,9 +11,11 @@
   },
   "dependencies": {
     "@react-native-clipboard/clipboard": "^1.7.0",
+    "@synonymdev/react-native-lightning": "link:../",
     "react": "16.13.1",
     "react-native": "0.63.4",
-    "@synonymdev/react-native-lightning": "link:../"
+    "react-native-fs": "^2.18.0",
+    "react-native-zip-archive": "^6.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.8.4",

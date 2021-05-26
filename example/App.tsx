@@ -22,7 +22,10 @@ import lnd, {
   ENetworks,
   LndConf,
   TCurrentLndState,
+  ICachedNeutrinoDBDownloadState,
 } from '@synonymdev/react-native-lightning';
+
+import lndCache from '@synonymdev/react-native-lightning/dist/utils/neutrino-cache';
 
 import {emoji} from './src/helpers';
 import PSBT from './src/PSBT';
@@ -57,7 +60,7 @@ const App = () => {
 
       lnd.subscribeToCurrentState(setLndState);
     })();
-  }, []);
+  }, [lndState]);
 
   useEffect(() => {
     if (lndState.walletUnlocked) {
@@ -129,24 +132,41 @@ const App = () => {
               }}
             />
           ) : (
-            <Button
-              title={'Start LND'}
-              onPress={async () => {
-                setMessage('Starting LND...');
+            <>
+              <Button
+                title={'Download cached headers then start LND'}
+                onPress={async () => {
+                  setMessage('Downloading cached headers...');
+                  setMessage(JSON.stringify(lndCache));
+                  lndCache.addStateListener(
+                    (state: ICachedNeutrinoDBDownloadState) => {
+                      setMessage(JSON.stringify(state));
+                    },
+                  );
 
-                const customFields = {};
-                const lndConf = new LndConf(network, customFields);
-                const res = await lnd.start(lndConf);
+                  await lndCache.downloadCache(ENetworks.testnet);
+                  // await startLnd();
+                }}
+              />
+              <Button
+                title={'Start LND'}
+                onPress={async () => {
+                  setMessage('Starting LND...');
 
-                if (res.isErr()) {
-                  setMessage(res.error.message);
-                  console.error(res.error);
-                  return;
-                }
+                  const customFields = {};
+                  const lndConf = new LndConf(network, customFields);
+                  const res = await lnd.start(lndConf);
 
-                setMessage(JSON.stringify(res.value));
-              }}
-            />
+                  if (res.isErr()) {
+                    setMessage(res.error.message);
+                    console.error(res.error);
+                    return;
+                  }
+
+                  setMessage(JSON.stringify(res.value));
+                }}
+              />
+            </>
           )}
 
           {showGenerateSeed ? (
