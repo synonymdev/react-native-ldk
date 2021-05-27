@@ -101,3 +101,31 @@ lnd.subscribeToOnChainTransactions(
 
 
 ```
+
+### Using neutrino headers cache
+Initial neutrino sync times can take a while for first time users. This is a trusted setup that allows the app to download a cached pre-synced archive of the neutrino headers. This speeds up the time it takes for LND to become usable as syncing doesn't need to start from scratch.
+```bash
+#Add these dependencies to your app
+yarn add react-native-fs react-native-zip-archive  
+#or
+npm i react-native-fs react-native-zip-archive -S 
+
+cd ios && pod install && cd ../
+````
+
+Using it:
+
+```javascript
+import lndCache from '@synonymdev/react-native-lightning/dist/utils/neutrino-cache';
+```
+
+```javascript
+lndCache.addStateListener(
+    (state: ICachedNeutrinoDBDownloadState) => {
+      setMessage(JSON.stringify(state));
+    },
+);
+
+await lndCache.downloadCache(ENetworks.testnet);
+await startLnd();
+```

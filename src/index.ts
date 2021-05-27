@@ -1,7 +1,7 @@
 import lnd from './lnd';
-import LndConf from './lnd.conf';
+import LndConf from './utils/lnd.conf';
 
 export { LndConf };
-export * from './types';
-export * from './rpc';
+export * from './utils/types';
+export * from './protos/rpc';
 export default lnd;

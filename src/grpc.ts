@@ -6,8 +6,8 @@ import {
 	EGrpcSyncMethods,
 	TNativeStreamResponse,
 	EStreamEventTypes
-} from './types';
-import { err, ok, Result } from './result';
+} from './utils/types';
+import { err, ok, Result } from './utils/result';
 
 class GrpcAction {
 	private readonly lnd: NativeModulesStatic;
@@ -70,8 +70,8 @@ class GrpcAction {
 	sendStreamCommand(
 		method: EGrpcStreamMethods,
 		buffer: Uint8Array,
-		onUpdate: (res: Result<Uint8Array, Error>) => void,
-		onDone: (res: Result<boolean, Error>) => void
+		onUpdate: (res: Result<Uint8Array>) => void,
+		onDone: (res: Result<boolean>) => void
 	): void {
 		try {
 			// Throws an exception if LND is not ready to be queried via grpc

@@ -1,7 +1,7 @@
 node_modules/
 .idea/
-src/rpc.*
-src/walletunlocker.*
+src/protos/*.ts
+src/protos/*.js
 dist/
 **.DS_Store
 android/build/

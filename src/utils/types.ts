@@ -108,3 +108,9 @@ export type TLogListener = {
 	id: string;
 	callback: (log: string) => void;
 };
+
+export type ICachedNeutrinoDBDownloadState = {
+	task?: undefined | 'downloading' | 'unzipping' | 'complete' | 'failed';
+	downloadProgress?: number;
+	unzipProgress?: number;
+};
