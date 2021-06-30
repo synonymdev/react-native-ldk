@@ -174,27 +174,15 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
                 Log.i(TAG, "Wallet ready to be unlocked");
                 Log.d(TAG, "Wallet ready to be unlocked");
                 state.setLndRunning(true, getReactApplicationContext());
-                promise.resolve("LND started");
-            }
-        }
-        class RPCCallback implements Callback {
-            @Override
-            public void onError(Exception e) {
-                Log.i(TAG, "RPC start err: " + e.getMessage());
-                Log.d(TAG, "RPC start err: " + e.getMessage());
-            }
-            @Override
-            public void onResponse(byte[] bytes) {
-                Log.i(TAG, "RPC ready for requests");
-                Log.d(TAG, "RPC ready for requests");
                 state.setGrpcReady(true, getReactApplicationContext());
+                promise.resolve("LND started");
             }
         }
 
         Runnable startLnd = new Runnable() {
             @Override
             public void run() {
-                Lndmobile.start(args, new StartedCallback(), new RPCCallback());
+                Lndmobile.start(args, new StartedCallback());
             }
         };
         new Thread(startLnd).start();

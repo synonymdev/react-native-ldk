@@ -221,7 +221,7 @@ const App = () => {
             />
           ) : null}
 
-          {lndState.grpcReady ? (
+          {lndState.walletUnlocked ? (
             <>
               <Options
                 nodePubKey={testNodePubkey}

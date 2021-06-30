@@ -214,13 +214,10 @@ class ReactNativeLightning: NSObject {
                 if let e = error {
                     return reject("error", e.localizedDescription, e)
                 }
-
+                
                 ReactNativeLightning.state.lndRunning = true
-                resolve(LightningCallbackResponses.started.rawValue)
-            },
-            LndEmptyResponseCallback { (error) in
-                //RPC is ready (only called after wallet is unlocked/created)
                 ReactNativeLightning.state.grpcReady = true
+                resolve(LightningCallbackResponses.started.rawValue)
             }
         )
     }
