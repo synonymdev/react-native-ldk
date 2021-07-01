@@ -189,46 +189,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void genSeed(final Promise promise) {
-        Log.i("LndNativeModule", "Generating seed...");
-
-        class SeedCallback implements Callback {
-            @Override
-            public void onError(Exception e) {
-                Log.i(TAG, "Seed err: " + e.getMessage());
-                Log.d(TAG, "Seed err: " + e.getMessage());
-                promise.reject(e);
-            }
-            @Override
-            public void onResponse(byte[] bytes) {
-                Log.i(TAG, "Seed generated successfully");
-                Log.d(TAG, "Seed generated successfully");
-
-                String b64 = "";
-                if (bytes != null && bytes.length > 0) {
-                    b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
-                }
-
-                WritableMap params = Arguments.createMap();
-                params.putString(respB64DataKey, b64);
-
-                promise.resolve(params);
-            }
-        }
-
-        class GenSeedTask implements Runnable {
-            byte[] request;
-            GenSeedTask(byte[] r) { request = r;}
-            public void run() {
-                Lndmobile.genSeed(request, new SeedCallback());
-            }
-        }
-
-        Thread t = new Thread(new GenSeedTask(new byte[0]));
-        t.start();
-    }
-
-    @ReactMethod
     public void createWallet(String msg, final Promise promise) {
         Log.i("LndNativeModule", "Initializing wallet...");
 

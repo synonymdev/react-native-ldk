@@ -60,7 +60,7 @@ const App = () => {
 
       lnd.subscribeToCurrentState(setLndState);
     })();
-  }, [lndState]);
+  }, []);
 
   useEffect(() => {
     if (lndState.walletUnlocked) {

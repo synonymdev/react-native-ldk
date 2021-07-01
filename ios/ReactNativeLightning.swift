@@ -129,6 +129,8 @@ class ReactNativeLightning: NSObject {
       "ModifyStatus": { (req: Data?, cb: BlindLndCallback) in LndmobileModifyStatus(req, cb) },
       "UpdateChannelPolicy": { (req: Data?, cb: BlindLndCallback) in LndmobileUpdateChannelPolicy(req, cb) },
       "BakeMacaroon": { (req: Data?, cb: BlindLndCallback) in LndmobileBakeMacaroon(req, cb) },
+      "GenSeed": { (req: Data?, cb: BlindLndCallback) in LndmobileGenSeed(req, cb) },
+      "GetState": { (req: Data?, cb: BlindLndCallback) in LndmobileGetState(req, cb) },
     ]
   }()
   
@@ -143,6 +145,7 @@ class ReactNativeLightning: NSObject {
       "SubscribeInvoices": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeInvoices(req, cb) },
       "SubscribeTransactions": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeTransactions(req, cb) },
       "SubscribeChannelEvents": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeChannelEvents(req, cb) },
+      "SubscribeState": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeState(req, cb) },
 //      "SendPayment": { (req: Data?, cb: BlindLndCallback) in LndmobileSendPayment(req, cb) },
 //      "SendToRoute": { (req: Data?, cb: BlindLndCallback) in LndmobileSendToRoute(req, cb) }, TODO these probably need to be passed pointers to a LndmobileSendStream
     ]
@@ -207,7 +210,7 @@ class ReactNativeLightning: NSObject {
         watchLndLog(network)
 
         LightningEventEmitter.shared.send(withEvent: .logs, body: "Starting LND with args: \(args)")
-
+        
         LndmobileStart(
             args,
             LndEmptyResponseCallback { (error) in
@@ -218,22 +221,6 @@ class ReactNativeLightning: NSObject {
                 ReactNativeLightning.state.lndRunning = true
                 ReactNativeLightning.state.grpcReady = true
                 resolve(LightningCallbackResponses.started.rawValue)
-            }
-        )
-    }
-
-    @objc
-    func genSeed(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        LightningEventEmitter.shared.send(withEvent: .logs, body: "Generating seed phrase...")
-
-        LndmobileGenSeed(
-            Data(),
-            LndCallback { (resultData, error) in
-                if let e = error {
-                    return reject("error", e.localizedDescription, e)
-                }
-                
-                resolve([LightningResponseKeys.b64DataKey.rawValue: resultData.base64EncodedString()])
             }
         )
     }

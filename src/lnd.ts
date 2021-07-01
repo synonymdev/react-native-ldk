@@ -1,4 +1,5 @@
 import { NativeModules, NativeModulesStatic } from 'react-native';
+import base64 from 'base64-js';
 import GrpcAction from './grpc';
 import { err, ok, Result } from './utils/result';
 import {
@@ -13,7 +14,6 @@ import { lnrpc } from './protos/rpc';
 import { lnrpc as walletunlocker_lnrpc } from './protos/walletunlocker';
 import LndConf from './utils/lnd.conf';
 import { bytesToHexString, hexStringToBytes, stringToBytes } from './utils/helpers';
-import base64 from 'base64-js';
 
 class LND {
 	private readonly grpc: GrpcAction;
@@ -132,15 +132,14 @@ class LND {
 	 */
 	async genSeed(): Promise<Result<string[]>> {
 		try {
-			const { data: serializedResponse } = await this.lnd.genSeed();
-			if (serializedResponse === undefined) {
-				return err('Missing response');
-			}
+			const message = walletunlocker_lnrpc.GenSeedRequest.create();
 
-			return ok(
-				walletunlocker_lnrpc.GenSeedResponse.decode(base64.toByteArray(serializedResponse))
-					.cipherSeedMnemonic
+			const serializedResponse = await this.grpc.sendCommand(
+				EGrpcSyncMethods.GenSeed,
+				walletunlocker_lnrpc.GenSeedRequest.encode(message).finish()
 			);
+
+			return ok(walletunlocker_lnrpc.GenSeedResponse.decode(serializedResponse).cipherSeedMnemonic);
 		} catch (e) {
 			return err(e);
 		}

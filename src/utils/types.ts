@@ -1,3 +1,4 @@
+// TODO remove
 export type TCurrentLndState = {
 	lndRunning: boolean;
 	walletUnlocked: boolean;
@@ -53,7 +54,9 @@ export enum EGrpcSyncMethods {
 	StopDaemon = 'StopDaemon',
 	ModifyStatus = 'ModifyStatus',
 	UpdateChannelPolicy = 'UpdateChannelPolicy',
-	BakeMacaroon = 'BakeMacaroon'
+	BakeMacaroon = 'BakeMacaroon',
+	GenSeed = 'GenSeed',
+	GetState = 'GetState'
 }
 
 export enum EGrpcStreamMethods {
@@ -67,7 +70,8 @@ export enum EGrpcStreamMethods {
 	SubscribeTransactions = 'SubscribeTransactions',
 	SubscribeChannelEvents = 'SubscribeChannelEvents',
 	SendPayment = 'SendPayment',
-	SendToRoute = 'SendToRoute'
+	SendToRoute = 'SendToRoute',
+	SubscribeState = 'SubscribeState'
 }
 
 export enum ENetworks {
