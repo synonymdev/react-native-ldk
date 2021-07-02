@@ -115,6 +115,8 @@ class ReactNativeLightning: NSObject {
       "BakeMacaroon": { (req: Data?, cb: BlindLndCallback) in LndmobileBakeMacaroon(req, cb) },
       "GenSeed": { (req: Data?, cb: BlindLndCallback) in LndmobileGenSeed(req, cb) },
       "GetState": { (req: Data?, cb: BlindLndCallback) in LndmobileGetState(req, cb) },
+      "InitWallet": { (req: Data?, cb: BlindLndCallback) in LndmobileInitWallet(req, cb) },
+      "UnlockWallet": { (req: Data?, cb: BlindLndCallback) in LndmobileUnlockWallet(req, cb) },
     ]
   }()
   
@@ -198,34 +200,6 @@ class ReactNativeLightning: NSObject {
                 }
     
                 resolve(LightningCallbackResponses.started.rawValue)
-            }
-        )
-    }
-
-    @objc
-    func createWallet(_ body: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        LndmobileInitWallet(
-          Data(base64Encoded: String(body)),
-          LndEmptyResponseCallback { (error) in
-            if let e = error {
-              return reject("error", e.localizedDescription, e)
-            }
-
-            resolve(LightningCallbackResponses.walletCreated.rawValue)
-          }
-        )
-    }
-
-    @objc
-    func unlockWallet(_ body: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        LndmobileUnlockWallet(
-            Data(base64Encoded: String(body)),
-            LndEmptyResponseCallback { (error) in
-              if let e = error {
-                return reject("error", e.localizedDescription, e)
-              }
-
-              resolve(LightningCallbackResponses.walletUnlocked.rawValue)
             }
         )
     }

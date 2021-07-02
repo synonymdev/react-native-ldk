@@ -1,4 +1,8 @@
 export enum EGrpcSyncMethods {
+	GenSeed = 'GenSeed',
+	GetState = 'GetState',
+	InitWallet = 'InitWallet',
+	UnlockWallet = 'UnlockWallet',
 	EstimateFee = 'EstimateFee',
 	PendingChannels = 'PendingChannels',
 	NewAddress = 'NewAddress',
@@ -47,9 +51,7 @@ export enum EGrpcSyncMethods {
 	StopDaemon = 'StopDaemon',
 	ModifyStatus = 'ModifyStatus',
 	UpdateChannelPolicy = 'UpdateChannelPolicy',
-	BakeMacaroon = 'BakeMacaroon',
-	GenSeed = 'GenSeed',
-	GetState = 'GetState'
+	BakeMacaroon = 'BakeMacaroon'
 }
 
 export enum EGrpcStreamMethods {
@@ -87,7 +89,7 @@ export type TNativeStreamResponse = {
 
 export enum EStreamEventTypes {
 	Logs = 'logs',
-	StreamEvent = 'streamEvent',
+	StreamEvent = 'streamEvent'
 }
 
 export type TLndConfValue = string | number | boolean | string[];

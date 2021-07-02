@@ -1,29 +1,26 @@
-import { NativeModules, NativeModulesStatic } from 'react-native';
-import GrpcAction from './grpc';
-import { err, ok, Result } from './utils/result';
-import { EGrpcStreamMethods, EGrpcSyncMethods } from './utils/types';
-import { ss_lnrpc as stateservice_lnrpc } from './protos/stateservice';
+import GrpcAction from '../grpc';
+import { err, ok, Result } from '../utils/result';
+import { EGrpcStreamMethods } from '../utils/types';
+import { ss_lnrpc } from '../protos/stateservice';
 
 class StateService {
 	private readonly grpc: GrpcAction;
-	private readonly lnd: NativeModulesStatic;
 
-	constructor() {
-		this.lnd = NativeModules.ReactNativeLightning;
-		this.grpc = new GrpcAction(this.lnd);
+	constructor(grpc: GrpcAction) {
+		this.grpc = grpc;
 	}
 
-	readableState(state: stateservice_lnrpc.WalletState): string {
+	readableState(state: ss_lnrpc.WalletState): string {
 		switch (state) {
-			case stateservice_lnrpc.WalletState.RPC_ACTIVE:
+			case ss_lnrpc.WalletState.RPC_ACTIVE:
 				return 'RPC active';
-			case stateservice_lnrpc.WalletState.NON_EXISTING:
+			case ss_lnrpc.WalletState.NON_EXISTING:
 				return 'Non existing wallet';
-			case stateservice_lnrpc.WalletState.LOCKED:
+			case ss_lnrpc.WalletState.LOCKED:
 				return 'Wallet locked';
-			case stateservice_lnrpc.WalletState.UNLOCKED:
+			case ss_lnrpc.WalletState.UNLOCKED:
 				return 'Wallet unlocked';
-			case stateservice_lnrpc.WalletState.WAITING_TO_START:
+			case ss_lnrpc.WalletState.WAITING_TO_START:
 				return 'Waiting to start';
 			default:
 				return `Unknown state (${state})`;
@@ -35,22 +32,17 @@ class StateService {
 	 * If no state is returned from LND then assumes state is WAITING_TO_START
 	 * @returns {Promise<Ok<lnrpc.WalletState> | Err<unknown>>}
 	 */
-	async getState(): Promise<Result<stateservice_lnrpc.WalletState>> {
+	async getState(): Promise<Result<ss_lnrpc.WalletState>> {
 		return await new Promise((resolve, reject) => {
 			// If there's no response from LND we assume the wallet has not been started
 			const timeout = setTimeout(() => {
-				resolve(ok(stateservice_lnrpc.WalletState.WAITING_TO_START));
+				resolve(ok(ss_lnrpc.WalletState.WAITING_TO_START));
 			}, 250);
 
 			this.grpc
-				.sendCommand(
-					EGrpcSyncMethods.GetState,
-					stateservice_lnrpc.GetStateRequest.encode(
-						stateservice_lnrpc.GetStateRequest.create()
-					).finish()
-				)
-				.then((res) => {
-					resolve(ok(stateservice_lnrpc.GetStateResponse.decode(res).state));
+				.getStateCommand()
+				.then((state) => {
+					resolve(ok(state));
 				})
 				.catch((e) => {
 					reject(err(e));
@@ -68,7 +60,7 @@ class StateService {
 	 * @param onDone
 	 */
 	subscribeToStateChanges(
-		onUpdate: (res: Result<stateservice_lnrpc.WalletState>) => void,
+		onUpdate: (res: Result<ss_lnrpc.WalletState>) => void,
 		onDone: (res: Result<boolean>) => void
 	): void {
 		try {
@@ -91,7 +83,7 @@ class StateService {
 					return;
 				}
 
-				onUpdate(ok(stateservice_lnrpc.SubscribeStateResponse.decode(res.value).state));
+				onUpdate(ok(ss_lnrpc.SubscribeStateResponse.decode(res.value).state));
 			};
 
 			// State is usually subscribed to as soon as LND is started but will
@@ -99,9 +91,7 @@ class StateService {
 			setTimeout(() => {
 				this.grpc.sendStreamCommand(
 					EGrpcStreamMethods.SubscribeState,
-					stateservice_lnrpc.GetStateRequest.encode(
-						stateservice_lnrpc.GetStateRequest.create()
-					).finish(),
+					ss_lnrpc.GetStateRequest.encode(ss_lnrpc.GetStateRequest.create()).finish(),
 					onStateUpdate,
 					(res) => {
 						// Last refresh (If lnd was stopped then we want to get one last state update)
@@ -119,4 +109,4 @@ class StateService {
 	}
 }
 
-export default new StateService();
+export default StateService;

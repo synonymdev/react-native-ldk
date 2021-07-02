@@ -26,18 +26,6 @@ RCT_EXTERN_METHOD(
                   )
 
 RCT_EXTERN_METHOD(
-                  createWallet: (NSString *)body
-                  resolve: (RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject
-                  )
-
-RCT_EXTERN_METHOD(
-                  unlockWallet: (NSString *)password
-                  resolve: (RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject
-                  )
-
-RCT_EXTERN_METHOD(
                   sendCommand: (NSString *)method
                   body: (NSString *)body
                   resolve: (RCTPromiseResolveBlock)resolve

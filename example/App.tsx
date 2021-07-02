@@ -23,7 +23,6 @@ import lnd, {
   LndConf,
   ss_lnrpc,
   lnrpc,
-  stateService,
 } from '@synonymdev/react-native-lightning';
 
 import lndCache from '@synonymdev/react-native-lightning/dist/utils/neutrino-cache';
@@ -50,7 +49,7 @@ const App = () => {
   const [seed, setSeed] = useState<string[]>([]);
 
   const startStateSubscription = () => {
-    stateService.subscribeToStateChanges(
+    lnd.stateService.subscribeToStateChanges(
       (res: Result<ss_lnrpc.WalletState>) => {
         if (res.isOk()) {
           setLndState(res.value);
@@ -62,7 +61,7 @@ const App = () => {
 
   useEffect(() => {
     (async () => {
-      const res = await stateService.getState();
+      const res = await lnd.stateService.getState();
       if (res.isOk()) {
         setLndState(res.value);
         if (res.value !== ss_lnrpc.WalletState.WAITING_TO_START) {
@@ -73,7 +72,7 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (lndState.walletUnlocked) {
+    if (lndState === ss_lnrpc.WalletState.RPC_ACTIVE) {
       lnd.subscribeToOnChainTransactions(
         (res: Result<lnrpc.Transaction>) => {
           if (res.isErr()) {
@@ -134,7 +133,7 @@ const App = () => {
           contentInsetAdjustmentBehavior="automatic"
           style={styles.scrollView}>
           <Text style={styles.state}>
-            State: {stateService.readableState(lndState)}
+            State: {lnd.stateService.readableState(lndState)}
           </Text>
 
           <Text style={styles.message}>{message}</Text>
@@ -184,7 +183,7 @@ const App = () => {
             <Button
               title={'Generate seed'}
               onPress={async () => {
-                const res = await lnd.genSeed();
+                const res = await lnd.walletUnlocker.genSeed();
 
                 if (res.isErr()) {
                   console.error(res.error);
@@ -204,30 +203,35 @@ const App = () => {
             <Button
               title={'Unlock wallet'}
               onPress={async () => {
-                const res = await lnd.unlockWallet(dummyPassword);
+                const res = await lnd.walletUnlocker.unlockWallet(
+                  dummyPassword,
+                );
 
                 if (res.isErr()) {
                   console.error(res.error);
                   return;
                 }
 
-                setMessage(JSON.stringify(res.value));
+                setMessage('Unlocked.');
               }}
             />
           ) : null}
 
           {showCreateButton ? (
             <Button
-              title={'Create wallet'}
+              title={'Init wallet'}
               onPress={async () => {
-                const res = await lnd.createWallet(dummyPassword, seed);
+                const res = await lnd.walletUnlocker.initWallet(
+                  dummyPassword,
+                  seed,
+                );
 
                 if (res.isErr()) {
                   console.error(res.error);
                   return;
                 }
 
-                setMessage(JSON.stringify(res.value));
+                setMessage('Wallet initialised');
               }}
             />
           ) : null}

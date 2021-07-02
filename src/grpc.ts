@@ -7,7 +7,7 @@ import {
 	TNativeStreamResponse
 } from './utils/types';
 import { err, ok, Result } from './utils/result';
-import { ss_lnrpc, stateService } from './index';
+import { ss_lnrpc } from './index';
 
 class GrpcAction {
 	private readonly lnd: NativeModulesStatic;
@@ -29,15 +29,34 @@ class GrpcAction {
 	 * @returns {Promise<void>}
 	 */
 	async checkGrpcReady(): Promise<void> {
-		const res = await stateService.getState();
+		try {
+			const state = await this.getStateCommand();
 
-		if (res.isErr()) {
+			if (state === ss_lnrpc.WalletState.WAITING_TO_START) {
+				throw new Error('LND not started');
+			}
+		} catch (e) {
 			throw new Error('Unable to determine LND state');
 		}
+	}
 
-		if (res.value === ss_lnrpc.WalletState.WAITING_TO_START) {
-			throw new Error('LND not started');
+	/**
+	 * Wrapper function for querying the current state of LND
+	 * @returns {Promise<ss_lnrpc.WalletState>}
+	 */
+	async getStateCommand(): Promise<ss_lnrpc.WalletState> {
+		const serialisedReq = base64.fromByteArray(
+			ss_lnrpc.GetStateRequest.encode(ss_lnrpc.GetStateRequest.create()).finish()
+		);
+		const { data: serializedResponse } = await this.lnd.sendCommand(
+			EGrpcSyncMethods.GetState,
+			serialisedReq
+		);
+		if (serializedResponse === undefined) {
+			throw new Error('Missing response');
 		}
+
+		return ss_lnrpc.GetStateResponse.decode(base64.toByteArray(serializedResponse)).state;
 	}
 
 	/**

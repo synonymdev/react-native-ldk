@@ -12,12 +12,16 @@ import {
 import { lnrpc } from './protos/rpc';
 import LndConf from './utils/lnd.conf';
 import { bytesToHexString, hexStringToBytes, stringToBytes } from './utils/helpers';
-import { wu_lnrpc, ss_lnrpc, stateService } from './index';
+import { ss_lnrpc } from './index';
+import StateService from './services/stateservice';
+import WalletUnlocker from './services/walletunlocker';
 
 class LND {
 	private readonly grpc: GrpcAction;
 	private readonly lnd: NativeModulesStatic;
 	private currentConf?: LndConf = undefined;
+	readonly stateService: StateService;
+	readonly walletUnlocker: WalletUnlocker;
 
 	/**
 	 * Array of callbacks to be fired off when a new log entry arrives.
@@ -30,6 +34,8 @@ class LND {
 	constructor() {
 		this.lnd = NativeModules.ReactNativeLightning;
 		this.grpc = new GrpcAction(this.lnd);
+		this.stateService = new StateService(this.grpc);
+		this.walletUnlocker = new WalletUnlocker(this.grpc);
 		this.logListeners = [];
 
 		this.grpc.lndEvent.addListener(EStreamEventTypes.Logs, this.processLogListeners.bind(this));
@@ -41,7 +47,7 @@ class LND {
 	 * @param conf
 	 */
 	async start(conf: LndConf): Promise<Result<string>> {
-		const stateRes = await stateService.getState();
+		const stateRes = await this.stateService.getState();
 		if (stateRes.isErr()) {
 			return err(stateRes.error);
 		}
@@ -119,78 +125,6 @@ class LND {
 		try {
 			const content: string[] = await this.lnd.logFileContent(network, limit);
 			return ok(content);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
-	 * Generates wallet seed phrase which can be used in createWallet
-	 * @return {Promise<Err<unknown> | Ok<string[]>>}
-	 */
-	async genSeed(): Promise<Result<string[]>> {
-		try {
-			const message = wu_lnrpc.GenSeedRequest.create();
-
-			const serializedResponse = await this.grpc.sendCommand(
-				EGrpcSyncMethods.GenSeed,
-				wu_lnrpc.GenSeedRequest.encode(message).finish()
-			);
-
-			return ok(wu_lnrpc.GenSeedResponse.decode(serializedResponse).cipherSeedMnemonic);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
-	 * Once LND is started then the wallet can be created and unlocked with this.
-	 * @return {Promise<Ok<any> | Err<unknown>>}
-	 * @param password
-	 * @param seed
-	 * @param multiChanBackup
-	 */
-	async createWallet(
-		password: string,
-		seed: string[],
-		multiChanBackup?: string
-	): Promise<Result<string>> {
-		const message = wu_lnrpc.InitWalletRequest.create();
-		message.cipherSeedMnemonic = seed;
-		message.walletPassword = stringToBytes(password);
-
-		if (multiChanBackup) {
-			message.channelBackups = lnrpc.ChanBackupSnapshot.create({
-				multiChanBackup: lnrpc.MultiChanBackup.create({
-					multiChanBackup: hexStringToBytes(multiChanBackup)
-				})
-			});
-		}
-
-		try {
-			const res = await this.lnd.createWallet(
-				base64.fromByteArray(wu_lnrpc.InitWalletRequest.encode(message).finish())
-			);
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
-	 * Once LND is started then the wallet can be unlocked with this.
-	 * @return {Promise<Ok<string> | Err<unknown>>}
-	 * @param password
-	 */
-	async unlockWallet(password: string): Promise<Result<string>> {
-		const message = wu_lnrpc.UnlockWalletRequest.create();
-		message.walletPassword = stringToBytes(password);
-
-		try {
-			const res = await this.lnd.unlockWallet(
-				base64.fromByteArray(wu_lnrpc.InitWalletRequest.encode(message).finish())
-			);
-			return ok(res);
 		} catch (e) {
 			return err(e);
 		}
