@@ -53,8 +53,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
 
     private FileObserver logObserver;
 
-    private static LndState state = new LndState();
-
     public ReactNativeLightningModule(ReactApplicationContext reactContext) {
         super(reactContext);
     }
@@ -173,8 +171,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "Wallet ready to be unlocked");
                 Log.d(TAG, "Wallet ready to be unlocked");
-                state.setLndRunning(true, getReactApplicationContext());
-                state.setGrpcReady(true, getReactApplicationContext());
                 promise.resolve("LND started");
             }
         }
@@ -203,7 +199,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "Wallet successfully initialized");
                 Log.d(TAG, "Wallet successfully initialized");
-                state.setWalletUnlocked(true, getReactApplicationContext());
                 promise.resolve("initialized");
             }
         }
@@ -241,7 +236,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "Wallet successfully unlocked");
                 Log.d(TAG, "Wallet successfully unlocked");
-                state.setWalletUnlocked(true, getReactApplicationContext());
                 promise.resolve("unlocked");
             }
         }
@@ -263,11 +257,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
         boolean exists = directory.exists();
         Log.d(TAG, "Wallet exists: " + exists);
         promise.resolve(exists);
-    }
-
-    @ReactMethod
-    public void currentState(final Promise promise) {
-        promise.resolve(state.formatted());
     }
 
     @ReactMethod
@@ -381,13 +370,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
 
         try {
             m.invoke(null, Base64.decode(msg, Base64.NO_WRAP), new NativeCallback(promise));
-
-            //If LND was stopped reset state
-            if (method.equals("StopDaemon")) {
-                state.setLndRunning(false, getReactApplicationContext());
-                state.setGrpcReady(false, getReactApplicationContext());
-                state.setWalletUnlocked(false, getReactApplicationContext());
-            }
         } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             promise.reject("LndNativeModule", e);
@@ -465,38 +447,5 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-}
-
-class LndState {
-    private Boolean lndRunning = false;
-    private Boolean walletUnlocked = false;
-    private Boolean grpcReady = false;
-
-    public void setLndRunning(Boolean lndRunning, ReactApplicationContext context) {
-        this.lndRunning = lndRunning;
-        updateStateStream(context);
-    }
-
-    public void setWalletUnlocked(Boolean walletUnlocked, ReactApplicationContext context) {
-        this.walletUnlocked = walletUnlocked;
-        updateStateStream(context);
-    }
-
-    public void setGrpcReady(Boolean grpcReady, ReactApplicationContext context) {
-        this.grpcReady = grpcReady;
-        updateStateStream(context);
-    }
-
-    WritableMap formatted() {
-        WritableMap params = Arguments.createMap();
-        params.putBoolean("lndRunning", lndRunning);
-        params.putBoolean("walletUnlocked", walletUnlocked);
-        params.putBoolean("grpcReady", grpcReady);
-        return params;
-    }
-
-    private void updateStateStream(ReactApplicationContext context) {
-        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("lndStateUpdate", formatted());
     }
 }

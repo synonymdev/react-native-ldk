@@ -7,13 +7,12 @@ import {
 	EGrpcSyncMethods,
 	ENetworks,
 	EStreamEventTypes,
-	TCurrentLndState,
 	TLogListener
 } from './utils/types';
 import { lnrpc } from './protos/rpc';
-import { lnrpc as walletunlocker_lnrpc } from './protos/walletunlocker';
 import LndConf from './utils/lnd.conf';
 import { bytesToHexString, hexStringToBytes, stringToBytes } from './utils/helpers';
+import { wu_lnrpc, ss_lnrpc, stateService } from './index';
 
 class LND {
 	private readonly grpc: GrpcAction;
@@ -42,13 +41,12 @@ class LND {
 	 * @param conf
 	 */
 	async start(conf: LndConf): Promise<Result<string>> {
-		const stateRes = await this.currentState();
+		const stateRes = await stateService.getState();
 		if (stateRes.isErr()) {
 			return err(stateRes.error);
 		}
 
-		const { lndRunning } = stateRes.value;
-		if (lndRunning) {
+		if (stateRes.value !== ss_lnrpc.WalletState.WAITING_TO_START) {
 			return ok('LND already running');
 		}
 
@@ -132,14 +130,14 @@ class LND {
 	 */
 	async genSeed(): Promise<Result<string[]>> {
 		try {
-			const message = walletunlocker_lnrpc.GenSeedRequest.create();
+			const message = wu_lnrpc.GenSeedRequest.create();
 
 			const serializedResponse = await this.grpc.sendCommand(
 				EGrpcSyncMethods.GenSeed,
-				walletunlocker_lnrpc.GenSeedRequest.encode(message).finish()
+				wu_lnrpc.GenSeedRequest.encode(message).finish()
 			);
 
-			return ok(walletunlocker_lnrpc.GenSeedResponse.decode(serializedResponse).cipherSeedMnemonic);
+			return ok(wu_lnrpc.GenSeedResponse.decode(serializedResponse).cipherSeedMnemonic);
 		} catch (e) {
 			return err(e);
 		}
@@ -157,7 +155,7 @@ class LND {
 		seed: string[],
 		multiChanBackup?: string
 	): Promise<Result<string>> {
-		const message = walletunlocker_lnrpc.InitWalletRequest.create();
+		const message = wu_lnrpc.InitWalletRequest.create();
 		message.cipherSeedMnemonic = seed;
 		message.walletPassword = stringToBytes(password);
 
@@ -171,7 +169,7 @@ class LND {
 
 		try {
 			const res = await this.lnd.createWallet(
-				base64.fromByteArray(walletunlocker_lnrpc.InitWalletRequest.encode(message).finish())
+				base64.fromByteArray(wu_lnrpc.InitWalletRequest.encode(message).finish())
 			);
 			return ok(res);
 		} catch (e) {
@@ -185,12 +183,12 @@ class LND {
 	 * @param password
 	 */
 	async unlockWallet(password: string): Promise<Result<string>> {
-		const message = walletunlocker_lnrpc.UnlockWalletRequest.create();
+		const message = wu_lnrpc.UnlockWalletRequest.create();
 		message.walletPassword = stringToBytes(password);
 
 		try {
 			const res = await this.lnd.unlockWallet(
-				base64.fromByteArray(walletunlocker_lnrpc.InitWalletRequest.encode(message).finish())
+				base64.fromByteArray(wu_lnrpc.InitWalletRequest.encode(message).finish())
 			);
 			return ok(res);
 		} catch (e) {
@@ -210,34 +208,6 @@ class LND {
 		} catch (e) {
 			return err(e);
 		}
-	}
-
-	/**
-	 * Provides the current state of LND from the native module
-	 * @return {Promise<Result<CurrentLndState>>}
-	 */
-	async currentState(): Promise<Result<TCurrentLndState>> {
-		try {
-			return ok(await this.lnd.currentState());
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
-	 * Subscribe to the current LND service state
-	 * @param onUpdate
-	 */
-	subscribeToCurrentState(onUpdate: (res: TCurrentLndState) => void): void {
-		this.grpc.lndEvent.addListener(EStreamEventTypes.LndStateUpdate, onUpdate);
-		// Call update at least once so callback has latest state
-		this.currentState()
-			.then((res) => {
-				if (res.isOk()) {
-					onUpdate(res.value);
-				}
-			})
-			.catch(() => {});
 	}
 
 	/**

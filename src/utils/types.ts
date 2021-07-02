@@ -1,10 +1,3 @@
-// TODO remove
-export type TCurrentLndState = {
-	lndRunning: boolean;
-	walletUnlocked: boolean;
-	grpcReady: boolean;
-};
-
 export enum EGrpcSyncMethods {
 	EstimateFee = 'EstimateFee',
 	PendingChannels = 'PendingChannels',
@@ -95,7 +88,6 @@ export type TNativeStreamResponse = {
 export enum EStreamEventTypes {
 	Logs = 'logs',
 	StreamEvent = 'streamEvent',
-	LndStateUpdate = 'lndStateUpdate'
 }
 
 export type TLndConfValue = string | number | boolean | string[];

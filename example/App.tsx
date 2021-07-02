@@ -7,7 +7,6 @@
  *
  * @format
  */
-
 import React, {useEffect, useState} from 'react';
 import {
   Button,
@@ -20,16 +19,18 @@ import {
 import Clipboard from '@react-native-clipboard/clipboard';
 import lnd, {
   ENetworks,
-  LndConf,
-  TCurrentLndState,
   ICachedNeutrinoDBDownloadState,
+  LndConf,
+  ss_lnrpc,
+  lnrpc,
+  stateService,
 } from '@synonymdev/react-native-lightning';
 
 import lndCache from '@synonymdev/react-native-lightning/dist/utils/neutrino-cache';
 
-import {emoji} from './src/helpers';
 import PSBT from './src/PSBT';
 import Options from './src/Options';
+import {Result} from '../dist/utils/result';
 
 declare const global: {HermesInternal: null | {}};
 
@@ -42,30 +43,39 @@ const network = ENetworks.testnet;
 
 const App = () => {
   const [message, setMessage] = useState('');
-  const [lndState, setLndState] = useState<TCurrentLndState>({
-    lndRunning: false,
-    walletUnlocked: false,
-    grpcReady: false,
-  });
+  const [lndState, setLndState] = useState<ss_lnrpc.WalletState>(
+    ss_lnrpc.WalletState.WAITING_TO_START,
+  );
 
-  const [walletExists, setWalletExists] = useState(false);
   const [seed, setSeed] = useState<string[]>([]);
+
+  const startStateSubscription = () => {
+    stateService.subscribeToStateChanges(
+      (res: Result<ss_lnrpc.WalletState>) => {
+        if (res.isOk()) {
+          setLndState(res.value);
+        }
+      },
+      () => {},
+    );
+  };
 
   useEffect(() => {
     (async () => {
-      const walletExistsRes = await lnd.walletExists(network);
-      if (walletExistsRes.isOk()) {
-        setWalletExists(walletExistsRes.value);
+      const res = await stateService.getState();
+      if (res.isOk()) {
+        setLndState(res.value);
+        if (res.value !== ss_lnrpc.WalletState.WAITING_TO_START) {
+          startStateSubscription();
+        }
       }
-
-      lnd.subscribeToCurrentState(setLndState);
     })();
   }, []);
 
   useEffect(() => {
     if (lndState.walletUnlocked) {
       lnd.subscribeToOnChainTransactions(
-        (res) => {
+        (res: Result<lnrpc.Transaction>) => {
           if (res.isErr()) {
             return console.error(res.error);
           }
@@ -80,7 +90,7 @@ const App = () => {
       );
 
       lnd.subscribeToBackups(
-        (res) => {
+        (res: Result<lnrpc.ChanBackupSnapshot>) => {
           if (res.isErr()) {
             return console.error(res.error);
           }
@@ -93,12 +103,28 @@ const App = () => {
     }
   }, [lndState]);
 
-  const showUnlockButton =
-    lndState.lndRunning && !lndState.walletUnlocked && walletExists;
-  const showGenerateSeed =
-    lndState.lndRunning && !lndState.walletUnlocked && !walletExists;
+  const startLnd = async (): Promise<void> => {
+    setMessage('Starting LND...');
+    const customFields = {};
+    const lndConf = new LndConf(network, customFields);
+    const res = await lnd.start(lndConf);
+
+    if (res.isErr()) {
+      setMessage(res.error.message);
+      console.error(res.error);
+      return;
+    }
+
+    startStateSubscription();
+    setMessage(JSON.stringify(res.value));
+  };
+
+  const showStartButton = lndState === ss_lnrpc.WalletState.WAITING_TO_START;
+  const showUnlockButton = lndState === ss_lnrpc.WalletState.LOCKED;
+  const showGenerateSeed = lndState === ss_lnrpc.WalletState.NON_EXISTING;
   const showCreateButton =
-    lndState.lndRunning && !lndState.walletUnlocked && !walletExists;
+    seed.length > 0 && lndState === ss_lnrpc.WalletState.NON_EXISTING;
+  const showRpcOptions = lndState === ss_lnrpc.WalletState.RPC_ACTIVE;
 
   return (
     <>
@@ -108,15 +134,36 @@ const App = () => {
           contentInsetAdjustmentBehavior="automatic"
           style={styles.scrollView}>
           <Text style={styles.state}>
-            LND running: {emoji(lndState.lndRunning)}
+            State: {stateService.readableState(lndState)}
           </Text>
-          <Text style={styles.state}>
-            Wallet unlocked: {emoji(lndState.walletUnlocked)}
-          </Text>
-          <Text style={styles.state}>Ready: {emoji(lndState.grpcReady)}</Text>
+
           <Text style={styles.message}>{message}</Text>
 
-          {lndState.lndRunning ? (
+          {showStartButton ? (
+            <>
+              <Button
+                title={'Download cached headers then start LND'}
+                onPress={async () => {
+                  setMessage('Downloading cached headers...');
+                  setMessage(JSON.stringify(lndCache));
+                  lndCache.addStateListener(
+                    (state: ICachedNeutrinoDBDownloadState) => {
+                      setMessage(JSON.stringify(state));
+                    },
+                  );
+
+                  await lndCache.downloadCache(ENetworks.testnet);
+                  await startLnd();
+                }}
+              />
+              <Button
+                title={'Start LND'}
+                onPress={async () => {
+                  await startLnd();
+                }}
+              />
+            </>
+          ) : (
             <Button
               title={'Stop LND'}
               onPress={async () => {
@@ -131,42 +178,6 @@ const App = () => {
                 setMessage(JSON.stringify(res.value));
               }}
             />
-          ) : (
-            <>
-              <Button
-                title={'Download cached headers then start LND'}
-                onPress={async () => {
-                  setMessage('Downloading cached headers...');
-                  setMessage(JSON.stringify(lndCache));
-                  lndCache.addStateListener(
-                    (state: ICachedNeutrinoDBDownloadState) => {
-                      setMessage(JSON.stringify(state));
-                    },
-                  );
-
-                  await lndCache.downloadCache(ENetworks.testnet);
-                  // await startLnd();
-                }}
-              />
-              <Button
-                title={'Start LND'}
-                onPress={async () => {
-                  setMessage('Starting LND...');
-
-                  const customFields = {};
-                  const lndConf = new LndConf(network, customFields);
-                  const res = await lnd.start(lndConf);
-
-                  if (res.isErr()) {
-                    setMessage(res.error.message);
-                    console.error(res.error);
-                    return;
-                  }
-
-                  setMessage(JSON.stringify(res.value));
-                }}
-              />
-            </>
           )}
 
           {showGenerateSeed ? (
@@ -221,7 +232,7 @@ const App = () => {
             />
           ) : null}
 
-          {lndState.walletUnlocked ? (
+          {showRpcOptions ? (
             <>
               <Options
                 nodePubKey={testNodePubkey}

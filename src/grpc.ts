@@ -1,13 +1,13 @@
 import { NativeEventEmitter, NativeModules, NativeModulesStatic, Platform } from 'react-native';
 import base64 from 'base64-js';
 import {
-	TCurrentLndState,
 	EGrpcStreamMethods,
 	EGrpcSyncMethods,
-	TNativeStreamResponse,
-	EStreamEventTypes
+	EStreamEventTypes,
+	TNativeStreamResponse
 } from './utils/types';
 import { err, ok, Result } from './utils/result';
+import { ss_lnrpc, stateService } from './index';
 
 class GrpcAction {
 	private readonly lnd: NativeModulesStatic;
@@ -29,18 +29,14 @@ class GrpcAction {
 	 * @returns {Promise<void>}
 	 */
 	async checkGrpcReady(): Promise<void> {
-		const res: TCurrentLndState = await this.lnd.currentState();
+		const res = await stateService.getState();
 
-		if (!res) {
+		if (res.isErr()) {
 			throw new Error('Unable to determine LND state');
 		}
 
-		if (!res.lndRunning) {
+		if (res.value === ss_lnrpc.WalletState.WAITING_TO_START) {
 			throw new Error('LND not started');
-		}
-
-		if (!res.grpcReady) {
-			throw new Error('GRPC not ready');
 		}
 	}
 
@@ -51,7 +47,9 @@ class GrpcAction {
 	 * @param buffer
 	 */
 	async sendCommand(method: EGrpcSyncMethods, buffer: Uint8Array): Promise<Uint8Array> {
-		await this.checkGrpcReady(); // Throws an exception if LND is not ready to be queried via grpc
+		if (method !== EGrpcSyncMethods.GetState) {
+			await this.checkGrpcReady(); // Throws an exception if LND is not ready to be queried via grpc
+		}
 
 		const serialisedReq = base64.fromByteArray(buffer);
 		const { data: serializedResponse } = await this.lnd.sendCommand(method, serialisedReq);

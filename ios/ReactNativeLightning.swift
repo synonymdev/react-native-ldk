@@ -41,24 +41,8 @@ enum LightningResponseKeys: String {
   case eventKey = "event"
 }
 
-struct LndState {
-  var lndRunning: Bool = false { didSet { updateStateStream() }}
-  var walletUnlocked: Bool = false { didSet { updateStateStream() }}
-  var grpcReady: Bool = false { didSet { updateStateStream() }}
-  
-  func formatted() -> [String: Bool] {
-    return ["lndRunning": lndRunning, "walletUnlocked": walletUnlocked, "grpcReady": grpcReady]
-  }
-  
-  func updateStateStream() {
-    LightningEventEmitter.shared.send(withEvent: .lndStateUpdate, body: formatted())
-  }
-}
-
 @objc(ReactNativeLightning)
 class ReactNativeLightning: NSObject {
-  static var state = LndState()
-  
   private var storage: URL {
     let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     let directory = documentsDirectory.appendingPathComponent("lnd")
@@ -155,12 +139,7 @@ class ReactNativeLightning: NSObject {
   func walletExists(_ network: NSString, resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
     resolve(FileManager.default.fileExists(atPath: storage.appendingPathComponent("/data/chain/bitcoin/\(network)/wallet.db").path))
   }
-  
-  @objc
-  func currentState(_ resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
-    resolve(ReactNativeLightning.state.formatted())
-  }
-
+ 
   @objc
   func logFileContent(_ network: NSString, limit: NSInteger, resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
     let logFile = self.getLogFile(network)
@@ -217,9 +196,7 @@ class ReactNativeLightning: NSObject {
                 if let e = error {
                     return reject("error", e.localizedDescription, e)
                 }
-                
-                ReactNativeLightning.state.lndRunning = true
-                ReactNativeLightning.state.grpcReady = true
+    
                 resolve(LightningCallbackResponses.started.rawValue)
             }
         )
@@ -234,7 +211,6 @@ class ReactNativeLightning: NSObject {
               return reject("error", e.localizedDescription, e)
             }
 
-            ReactNativeLightning.state.walletUnlocked = true
             resolve(LightningCallbackResponses.walletCreated.rawValue)
           }
         )
@@ -249,7 +225,6 @@ class ReactNativeLightning: NSObject {
                 return reject("error", e.localizedDescription, e)
               }
 
-              ReactNativeLightning.state.walletUnlocked = true
               resolve(LightningCallbackResponses.walletUnlocked.rawValue)
             }
         )
@@ -275,13 +250,6 @@ class ReactNativeLightning: NSObject {
         }
 
         lndMethod(request, completion)
-
-        //If LND was stopped reset state
-        if method == "StopDaemon" {
-            ReactNativeLightning.state.lndRunning = false
-            ReactNativeLightning.state.grpcReady = false
-            ReactNativeLightning.state.walletUnlocked = false
-        }
     }
 
   @objc
@@ -372,7 +340,6 @@ class LightningEventEmitter: RCTEventEmitter {
     public enum EventTypes: String, CaseIterable {
         case logs = "logs"
         case streamEvent = "streamEvent"
-        case lndStateUpdate = "lndStateUpdate"
     }
 
     override init() {
