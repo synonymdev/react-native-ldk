@@ -1,9 +1,8 @@
 import GrpcAction from '../grpc';
 import { err, ok, Result } from '../utils/result';
-import { EGrpcStreamMethods, EGrpcSyncMethods } from '../utils/types';
+import { EGrpcSyncMethods } from '../utils/types';
 import { lnrpc, wu_lnrpc } from '../';
 import { hexStringToBytes, stringToBytes } from '../utils/helpers';
-import base64 from 'base64-js';
 
 class WalletUnlocker {
 	private readonly grpc: GrpcAction;
@@ -33,7 +32,7 @@ class WalletUnlocker {
 
 	/**
 	 * Once LND is started then the wallet can be created and unlocked with this.
-	 * @return {Promise<Ok<any> | Err<unknown>>}
+	 * @return {Promise<Err<unknown> | Ok<wu_lnrpc.InitWalletResponse>>}
 	 * @param password
 	 * @param seed
 	 * @param multiChanBackup
@@ -69,7 +68,7 @@ class WalletUnlocker {
 
 	/**
 	 * Once LND is started then the wallet can be unlocked with this.
-	 * @return {Promise<Ok<string> | Err<unknown>>}
+	 * @return {Promise<Ok<wu_lnrpc.UnlockWalletResponse> | Err<unknown>>}
 	 * @param password
 	 */
 	async unlockWallet(password: string): Promise<Result<wu_lnrpc.UnlockWalletResponse>> {
