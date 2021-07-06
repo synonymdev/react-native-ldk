@@ -53,8 +53,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
 
     private FileObserver logObserver;
 
-    private static LndState state = new LndState();
-
     public ReactNativeLightningModule(ReactApplicationContext reactContext) {
         super(reactContext);
     }
@@ -173,140 +171,17 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
             public void onResponse(byte[] bytes) {
                 Log.i(TAG, "Wallet ready to be unlocked");
                 Log.d(TAG, "Wallet ready to be unlocked");
-                state.setLndRunning(true, getReactApplicationContext());
                 promise.resolve("LND started");
-            }
-        }
-        class RPCCallback implements Callback {
-            @Override
-            public void onError(Exception e) {
-                Log.i(TAG, "RPC start err: " + e.getMessage());
-                Log.d(TAG, "RPC start err: " + e.getMessage());
-            }
-            @Override
-            public void onResponse(byte[] bytes) {
-                Log.i(TAG, "RPC ready for requests");
-                Log.d(TAG, "RPC ready for requests");
-                state.setGrpcReady(true, getReactApplicationContext());
             }
         }
 
         Runnable startLnd = new Runnable() {
             @Override
             public void run() {
-                Lndmobile.start(args, new StartedCallback(), new RPCCallback());
+                Lndmobile.start(args, new StartedCallback());
             }
         };
         new Thread(startLnd).start();
-    }
-
-    @ReactMethod
-    public void genSeed(final Promise promise) {
-        Log.i("LndNativeModule", "Generating seed...");
-
-        class SeedCallback implements Callback {
-            @Override
-            public void onError(Exception e) {
-                Log.i(TAG, "Seed err: " + e.getMessage());
-                Log.d(TAG, "Seed err: " + e.getMessage());
-                promise.reject(e);
-            }
-            @Override
-            public void onResponse(byte[] bytes) {
-                Log.i(TAG, "Seed generated successfully");
-                Log.d(TAG, "Seed generated successfully");
-
-                String b64 = "";
-                if (bytes != null && bytes.length > 0) {
-                    b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
-                }
-
-                WritableMap params = Arguments.createMap();
-                params.putString(respB64DataKey, b64);
-
-                promise.resolve(params);
-            }
-        }
-
-        class GenSeedTask implements Runnable {
-            byte[] request;
-            GenSeedTask(byte[] r) { request = r;}
-            public void run() {
-                Lndmobile.genSeed(request, new SeedCallback());
-            }
-        }
-
-        Thread t = new Thread(new GenSeedTask(new byte[0]));
-        t.start();
-    }
-
-    @ReactMethod
-    public void createWallet(String msg, final Promise promise) {
-        Log.i("LndNativeModule", "Initializing wallet...");
-
-        class InitializeWalletCallback implements Callback {
-            @Override
-            public void onError(Exception e) {
-                Log.i(TAG, "init err: " + e.getMessage());
-                Log.d(TAG, "init err: " + e.getMessage());
-                promise.reject(e);
-            }
-            @Override
-            public void onResponse(byte[] bytes) {
-                Log.i(TAG, "Wallet successfully initialized");
-                Log.d(TAG, "Wallet successfully initialized");
-                state.setWalletUnlocked(true, getReactApplicationContext());
-                promise.resolve("initialized");
-            }
-        }
-
-        class InitWalletTask implements Runnable {
-            byte[] request;
-            InitWalletTask(byte[] r) { request = r;}
-            public void run() {
-                Lndmobile.initWallet(request, new InitializeWalletCallback());
-            }
-        }
-        Thread t = new Thread(new InitWalletTask(Base64.decode(msg, Base64.NO_WRAP)));
-        t.start();
-    }
-
-    @ReactMethod
-    public void unlockWallet(String msg, final Promise promise) {
-        Log.i("LndNativeModule", "Unlocking wallet...");
-
-        class UnlockWalletCallback implements Callback {
-            @Override
-            public void onError(Exception e) {
-                Log.i(TAG, "Unlock err: " + e.getMessage());
-                Log.d(TAG, "Unlock err: " + e.getMessage());
-                e.printStackTrace();
-
-                //TODO wallet still unlocked but sometimes returns an error. Error needs some investigation.
-                if (e.getMessage().contains("transport is closing")) {
-                    promise.resolve("unlocked");
-                } else {
-                    promise.reject(e);
-                }
-            }
-            @Override
-            public void onResponse(byte[] bytes) {
-                Log.i(TAG, "Wallet successfully unlocked");
-                Log.d(TAG, "Wallet successfully unlocked");
-                state.setWalletUnlocked(true, getReactApplicationContext());
-                promise.resolve("unlocked");
-            }
-        }
-
-        class UnlockWalletTask implements Runnable {
-            byte[] request;
-            UnlockWalletTask(byte[] r) { request = r;}
-            public void run() {
-                Lndmobile.unlockWallet(request, new UnlockWalletCallback());
-            }
-        }
-        Thread t = new Thread(new UnlockWalletTask(Base64.decode(msg, Base64.NO_WRAP)));
-        t.start();
     }
 
     @ReactMethod
@@ -315,11 +190,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
         boolean exists = directory.exists();
         Log.d(TAG, "Wallet exists: " + exists);
         promise.resolve(exists);
-    }
-
-    @ReactMethod
-    public void currentState(final Promise promise) {
-        promise.resolve(state.formatted());
     }
 
     @ReactMethod
@@ -433,13 +303,6 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
 
         try {
             m.invoke(null, Base64.decode(msg, Base64.NO_WRAP), new NativeCallback(promise));
-
-            //If LND was stopped reset state
-            if (method.equals("StopDaemon")) {
-                state.setLndRunning(false, getReactApplicationContext());
-                state.setGrpcReady(false, getReactApplicationContext());
-                state.setWalletUnlocked(false, getReactApplicationContext());
-            }
         } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             promise.reject("LndNativeModule", e);
@@ -517,38 +380,5 @@ public class ReactNativeLightningModule extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-}
-
-class LndState {
-    private Boolean lndRunning = false;
-    private Boolean walletUnlocked = false;
-    private Boolean grpcReady = false;
-
-    public void setLndRunning(Boolean lndRunning, ReactApplicationContext context) {
-        this.lndRunning = lndRunning;
-        updateStateStream(context);
-    }
-
-    public void setWalletUnlocked(Boolean walletUnlocked, ReactApplicationContext context) {
-        this.walletUnlocked = walletUnlocked;
-        updateStateStream(context);
-    }
-
-    public void setGrpcReady(Boolean grpcReady, ReactApplicationContext context) {
-        this.grpcReady = grpcReady;
-        updateStateStream(context);
-    }
-
-    WritableMap formatted() {
-        WritableMap params = Arguments.createMap();
-        params.putBoolean("lndRunning", lndRunning);
-        params.putBoolean("walletUnlocked", walletUnlocked);
-        params.putBoolean("grpcReady", grpcReady);
-        return params;
-    }
-
-    private void updateStateStream(ReactApplicationContext context) {
-        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("lndStateUpdate", formatted());
     }
 }

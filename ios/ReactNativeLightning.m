@@ -12,11 +12,6 @@ RCT_EXTERN_METHOD(
                   )
 
 RCT_EXTERN_METHOD(
-                  currentState: (RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject
-                  )
-
-RCT_EXTERN_METHOD(
                   logFileContent: (NSString *)network
                   limit: (NSInteger)limit
                   resolve: (RCTPromiseResolveBlock)resolve
@@ -26,23 +21,6 @@ RCT_EXTERN_METHOD(
 RCT_EXTERN_METHOD(
                   start: (NSString *)configContent
                   network: (NSString *)network
-                  resolve: (RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject
-                  )
-
-RCT_EXTERN_METHOD(
-                  genSeed: (RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject
-                  )
-
-RCT_EXTERN_METHOD(
-                  createWallet: (NSString *)body
-                  resolve: (RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject
-                  )
-
-RCT_EXTERN_METHOD(
-                  unlockWallet: (NSString *)password
                   resolve: (RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject
                   )

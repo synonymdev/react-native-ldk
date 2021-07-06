@@ -1,7 +1,7 @@
 {
   "name": "@synonymdev/react-native-lightning",
   "title": "React Native Lightning",
-  "version": "0.0.28",
+  "version": "0.0.30",
   "description": "React Native wrapper for Lndmobile",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,9 +24,10 @@
     "watch": "yarn run build -- -w",
     "lint": "yarn run lint:ts",
     "lint:ts": "eslint . --ext .ts,.tsx --fix",
-    "protobuf": "yarn run protobuf:rpc && yarn run protobuf:walletunlocker",
+    "protobuf": "yarn run protobuf:rpc && yarn run protobuf:walletunlocker &&  yarn run protobuf:stateservice",
     "protobuf:rpc": "mkdir -p dist/protos && pbjs -t static-module -w commonjs -o dist/protos/rpc.js src/protos/rpc.proto && pbjs -t static-module src/protos/rpc.proto | pbts -o dist/protos/rpc.d.ts - && cp dist/protos/rpc.* ./src/protos/",
     "protobuf:walletunlocker": "mkdir -p dist/protos && pbjs -t static-module -w commonjs -o dist/protos/walletunlocker.js src/protos/walletunlocker.proto && pbjs -t static-module src/protos/walletunlocker.proto | pbts -o dist/protos/walletunlocker.d.ts - && cp dist/protos/walletunlocker.* ./src/protos/",
+    "protobuf:stateservice": "mkdir -p dist/protos && pbjs -t static-module -w commonjs -o dist/protos/stateservice.js src/protos/stateservice.proto && pbjs -t static-module src/protos/stateservice.proto | pbts -o dist/protos/stateservice.d.ts - && cp dist/protos/stateservice.* ./src/protos/",
     "prepublish": "yarn lint && yarn run build && npm --no-git-tag-version version patch"
   },
   "repository": {

@@ -45,7 +45,7 @@ yarn android
 import lnd, {
     ENetworks,
     LndConf,
-    TCurrentLndState,
+	ss_lnrpc
 } from '@synonymdev/react-native-lightning';
 
 const lndConf = new LndConf(ENetworks.regtest);
@@ -59,11 +59,16 @@ if (res.isErr()) {
 }
 
 //LND state changes
-lnd.subscribeToCurrentState(({lndRunning, walletUnlocked, grpcReady}) => {
-    console.log(`lndRunning: ${lndRunning}`);
-    console.log(`walletUnlocked: ${walletUnlocked}`);
-    console.log(`grpcReady: ${grpcReady}`);
-});
+lnd.stateService.subscribeToStateChanges(
+	(res: Result<ss_lnrpc.WalletState>) => {
+		if (res.isOk()) {
+			setLndState(res.value);
+		}
+	},
+	() => {
+        //Subscription has ended
+    },
+);
 
 
 //Subscribe to LND logs

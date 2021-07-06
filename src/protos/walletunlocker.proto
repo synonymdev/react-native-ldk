@@ -2,7 +2,7 @@ syntax = "proto3";
 
 import "rpc.proto";
 
-package lnrpc;
+package wu_lnrpc;
 
 option go_package = "github.com/lightningnetwork/lnd/lnrpc";
 

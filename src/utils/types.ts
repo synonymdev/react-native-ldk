@@ -1,10 +1,8 @@
-export type TCurrentLndState = {
-	lndRunning: boolean;
-	walletUnlocked: boolean;
-	grpcReady: boolean;
-};
-
 export enum EGrpcSyncMethods {
+	GenSeed = 'GenSeed',
+	GetState = 'GetState',
+	InitWallet = 'InitWallet',
+	UnlockWallet = 'UnlockWallet',
 	EstimateFee = 'EstimateFee',
 	PendingChannels = 'PendingChannels',
 	NewAddress = 'NewAddress',
@@ -67,7 +65,8 @@ export enum EGrpcStreamMethods {
 	SubscribeTransactions = 'SubscribeTransactions',
 	SubscribeChannelEvents = 'SubscribeChannelEvents',
 	SendPayment = 'SendPayment',
-	SendToRoute = 'SendToRoute'
+	SendToRoute = 'SendToRoute',
+	SubscribeState = 'SubscribeState'
 }
 
 export enum ENetworks {
@@ -90,8 +89,7 @@ export type TNativeStreamResponse = {
 
 export enum EStreamEventTypes {
 	Logs = 'logs',
-	StreamEvent = 'streamEvent',
-	LndStateUpdate = 'lndStateUpdate'
+	StreamEvent = 'streamEvent'
 }
 
 export type TLndConfValue = string | number | boolean | string[];

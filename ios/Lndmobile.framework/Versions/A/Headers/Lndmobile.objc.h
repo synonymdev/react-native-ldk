@@ -245,8 +245,9 @@ FOUNDATION_EXPORT void LndmobileFeeReport(NSData* _Nullable msg, id<LndmobileCal
 /**
  * ForwardingHistory allows the caller to query the htlcswitch for a record of
 all HTLCs forwarded within the target time range, and integer offset
-within that time range. If no time-range is specified, then the first chunk
-of the past 24 hrs of forwarding history are returned.
+within that time range, for a maximum number of events. If no maximum number
+of events is specified, up to 100 events will be returned. If no time-range
+is specified, then events will be returned in the order that they occured.
 
 A list of forwarding events are returned. The size of each forwarding event
 is 40 bytes, and the max message size able to be returned in gRPC is 4 MiB.
@@ -346,6 +347,12 @@ NOTE: This method produces a single result or error, and the callback will
 be called only once.
  */
 FOUNDATION_EXPORT void LndmobileGetRecoveryInfo(NSData* _Nullable msg, id<LndmobileCallback> _Nullable callback);
+
+/**
+ * NOTE: This method produces a single result or error, and the callback will
+be called only once.
+ */
+FOUNDATION_EXPORT void LndmobileGetState(NSData* _Nullable msg, id<LndmobileCallback> _Nullable callback);
 
 /**
  * GetTransactions returns a list describing all the known transactions
@@ -530,6 +537,13 @@ be called only once.
 FOUNDATION_EXPORT void LndmobileQueryScores(NSData* _Nullable msg, id<LndmobileCallback> _Nullable callback);
 
 /**
+ * RecreateListeners will re-create the in-memory listeners that will be
+referenced by the generated mobile APIs. This has to be called if the gRPC
+server has been restarted
+ */
+FOUNDATION_EXPORT void LndmobileRecreateListeners(void);
+
+/**
  * RestoreChannelBackups accepts a set of singular channel backups, or a
 single encrypted multi-chan backup and attempts to recover any funds
 remaining within the channel. If we are able to unpack the backup, then the
@@ -543,7 +557,7 @@ FOUNDATION_EXPORT void LndmobileRestoreChannelBackups(NSData* _Nullable msg, id<
 /**
  * SendCoins executes a request to send coins to a particular address. Unlike
 SendMany, this RPC call only allows creating a single output at a time. If
-neither target_conf, or sat_per_byte are set, then the internal wallet will
+neither target_conf, or sat_per_vbyte are set, then the internal wallet will
 consult its fee model to determine a fee for the default confirmation
 target.
 
@@ -554,7 +568,7 @@ FOUNDATION_EXPORT void LndmobileSendCoins(NSData* _Nullable msg, id<LndmobileCal
 
 /**
  * SendMany handles a request for a transaction that creates multiple specified
-outputs in parallel. If neither target_conf, or sat_per_byte are set, then
+outputs in parallel. If neither target_conf, or sat_per_vbyte are set, then
 the internal wallet will consult its fee model to determine a fee for the
 default confirmation target.
 
@@ -625,15 +639,13 @@ extraArgs can be used to pass command line arguments to lnd that will
 override what is found in the config file. Example:
 	extraArgs = "--bitcoin.testnet --lnddir=\"/tmp/folder name/\" --profile=5050"
 
-The unlockerReady callback is called when the WalletUnlocker service is
-ready, and rpcReady is called after the wallet has been unlocked and lnd is
-ready to accept RPC calls.
+The rpcReady is called lnd is ready to accept RPC calls.
 
 NOTE: On mobile platforms the '--lnddir` argument should be set to the
 current app directory in order to ensure lnd has the permissions needed to
 write to it.
  */
-FOUNDATION_EXPORT void LndmobileStart(NSString* _Nullable extraArgs, id<LndmobileCallback> _Nullable unlockerReady, id<LndmobileCallback> _Nullable rpcReady);
+FOUNDATION_EXPORT void LndmobileStart(NSString* _Nullable extraArgs, id<LndmobileCallback> _Nullable rpcReady);
 
 /**
  * Status returns whether the daemon's autopilot agent is active.
@@ -720,6 +732,13 @@ be called zero or more times. After EOF error is returned, no more responses
 will be produced.
  */
 FOUNDATION_EXPORT void LndmobileSubscribePeerEvents(NSData* _Nullable msg, id<LndmobileRecvStream> _Nullable rStream);
+
+/**
+ * NOTE: This method produces a stream of responses, and the receive stream can
+be called zero or more times. After EOF error is returned, no more responses
+will be produced.
+ */
+FOUNDATION_EXPORT void LndmobileSubscribeState(NSData* _Nullable msg, id<LndmobileRecvStream> _Nullable rStream);
 
 /**
  * SubscribeTransactions creates a uni-directional stream from the server to

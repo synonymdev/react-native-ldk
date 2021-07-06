@@ -41,24 +41,8 @@ enum LightningResponseKeys: String {
   case eventKey = "event"
 }
 
-struct LndState {
-  var lndRunning: Bool = false { didSet { updateStateStream() }}
-  var walletUnlocked: Bool = false { didSet { updateStateStream() }}
-  var grpcReady: Bool = false { didSet { updateStateStream() }}
-  
-  func formatted() -> [String: Bool] {
-    return ["lndRunning": lndRunning, "walletUnlocked": walletUnlocked, "grpcReady": grpcReady]
-  }
-  
-  func updateStateStream() {
-    LightningEventEmitter.shared.send(withEvent: .lndStateUpdate, body: formatted())
-  }
-}
-
 @objc(ReactNativeLightning)
 class ReactNativeLightning: NSObject {
-  static var state = LndState()
-  
   private var storage: URL {
     let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     let directory = documentsDirectory.appendingPathComponent("lnd")
@@ -129,6 +113,10 @@ class ReactNativeLightning: NSObject {
       "ModifyStatus": { (req: Data?, cb: BlindLndCallback) in LndmobileModifyStatus(req, cb) },
       "UpdateChannelPolicy": { (req: Data?, cb: BlindLndCallback) in LndmobileUpdateChannelPolicy(req, cb) },
       "BakeMacaroon": { (req: Data?, cb: BlindLndCallback) in LndmobileBakeMacaroon(req, cb) },
+      "GenSeed": { (req: Data?, cb: BlindLndCallback) in LndmobileGenSeed(req, cb) },
+      "GetState": { (req: Data?, cb: BlindLndCallback) in LndmobileGetState(req, cb) },
+      "InitWallet": { (req: Data?, cb: BlindLndCallback) in LndmobileInitWallet(req, cb) },
+      "UnlockWallet": { (req: Data?, cb: BlindLndCallback) in LndmobileUnlockWallet(req, cb) },
     ]
   }()
   
@@ -143,6 +131,7 @@ class ReactNativeLightning: NSObject {
       "SubscribeInvoices": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeInvoices(req, cb) },
       "SubscribeTransactions": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeTransactions(req, cb) },
       "SubscribeChannelEvents": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeChannelEvents(req, cb) },
+      "SubscribeState": { (req: Data?, cb: BlindLndCallback) in LndmobileSubscribeState(req, cb) },
 //      "SendPayment": { (req: Data?, cb: BlindLndCallback) in LndmobileSendPayment(req, cb) },
 //      "SendToRoute": { (req: Data?, cb: BlindLndCallback) in LndmobileSendToRoute(req, cb) }, TODO these probably need to be passed pointers to a LndmobileSendStream
     ]
@@ -152,12 +141,7 @@ class ReactNativeLightning: NSObject {
   func walletExists(_ network: NSString, resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
     resolve(FileManager.default.fileExists(atPath: storage.appendingPathComponent("/data/chain/bitcoin/\(network)/wallet.db").path))
   }
-  
-  @objc
-  func currentState(_ resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
-    resolve(ReactNativeLightning.state.formatted())
-  }
-
+ 
   @objc
   func logFileContent(_ network: NSString, limit: NSInteger, resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
     let logFile = self.getLogFile(network)
@@ -207,66 +191,15 @@ class ReactNativeLightning: NSObject {
         watchLndLog(network)
 
         LightningEventEmitter.shared.send(withEvent: .logs, body: "Starting LND with args: \(args)")
-
+        
         LndmobileStart(
             args,
             LndEmptyResponseCallback { (error) in
                 if let e = error {
                     return reject("error", e.localizedDescription, e)
                 }
-
-                ReactNativeLightning.state.lndRunning = true
+    
                 resolve(LightningCallbackResponses.started.rawValue)
-            },
-            LndEmptyResponseCallback { (error) in
-                //RPC is ready (only called after wallet is unlocked/created)
-                ReactNativeLightning.state.grpcReady = true
-            }
-        )
-    }
-
-    @objc
-    func genSeed(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        LightningEventEmitter.shared.send(withEvent: .logs, body: "Generating seed phrase...")
-
-        LndmobileGenSeed(
-            Data(),
-            LndCallback { (resultData, error) in
-                if let e = error {
-                    return reject("error", e.localizedDescription, e)
-                }
-                
-                resolve([LightningResponseKeys.b64DataKey.rawValue: resultData.base64EncodedString()])
-            }
-        )
-    }
-
-    @objc
-    func createWallet(_ body: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        LndmobileInitWallet(
-          Data(base64Encoded: String(body)),
-          LndEmptyResponseCallback { (error) in
-            if let e = error {
-              return reject("error", e.localizedDescription, e)
-            }
-
-            ReactNativeLightning.state.walletUnlocked = true
-            resolve(LightningCallbackResponses.walletCreated.rawValue)
-          }
-        )
-    }
-
-    @objc
-    func unlockWallet(_ body: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        LndmobileUnlockWallet(
-            Data(base64Encoded: String(body)),
-            LndEmptyResponseCallback { (error) in
-              if let e = error {
-                return reject("error", e.localizedDescription, e)
-              }
-
-              ReactNativeLightning.state.walletUnlocked = true
-              resolve(LightningCallbackResponses.walletUnlocked.rawValue)
             }
         )
     }
@@ -291,13 +224,6 @@ class ReactNativeLightning: NSObject {
         }
 
         lndMethod(request, completion)
-
-        //If LND was stopped reset state
-        if method == "StopDaemon" {
-            ReactNativeLightning.state.lndRunning = false
-            ReactNativeLightning.state.grpcReady = false
-            ReactNativeLightning.state.walletUnlocked = false
-        }
     }
 
   @objc
@@ -388,7 +314,6 @@ class LightningEventEmitter: RCTEventEmitter {
     public enum EventTypes: String, CaseIterable {
         case logs = "logs"
         case streamEvent = "streamEvent"
-        case lndStateUpdate = "lndStateUpdate"
     }
 
     override init() {
