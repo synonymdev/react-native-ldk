@@ -29,14 +29,10 @@ class GrpcAction {
 	 * @returns {Promise<void>}
 	 */
 	async checkGrpcReady(): Promise<void> {
-		try {
-			const state = await this.getStateCommand();
+		const state = await this.getStateCommand();
 
-			if (state === ss_lnrpc.WalletState.WAITING_TO_START) {
-				throw new Error('LND not started');
-			}
-		} catch (e) {
-			throw new Error('Unable to determine LND state');
+		if (state === ss_lnrpc.WalletState.WAITING_TO_START) {
+			throw new Error('LND not started');
 		}
 	}
 
@@ -53,7 +49,7 @@ class GrpcAction {
 			serialisedReq
 		);
 		if (serializedResponse === undefined) {
-			throw new Error('Missing response');
+			throw new Error('Unable to determine LND state. Missing response.');
 		}
 
 		return ss_lnrpc.GetStateResponse.decode(base64.toByteArray(serializedResponse)).state;
