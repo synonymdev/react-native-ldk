@@ -218,7 +218,7 @@ class LND {
 	}
 
 	/**
-	 * LND ConnectPeer
+	 * LND ConnectPeer with pubkey and host
 	 * @returns {Promise<Ok<lnrpc.ConnectPeerResponse> | Err<unknown>>}
 	 * @param host
 	 * @param pubkey
@@ -239,6 +239,21 @@ class LND {
 		} catch (e) {
 			return err(e);
 		}
+	}
+
+	/**
+	 * LND ConnectPeer from single URI string
+	 * @returns {Promise<Ok<lnrpc.ConnectPeerResponse> | Err<unknown>>}
+	 * @param host
+	 * @param pubkey
+	 */
+	async connectPeerFromUri(uri: string): Promise<Result<lnrpc.ConnectPeerResponse>> {
+		const params = uri.split('@');
+		if (params.length !== 2) {
+			return err('Invalid URI');
+		}
+
+		return await this.connectPeer(params[0], params[1]);
 	}
 
 	/**
