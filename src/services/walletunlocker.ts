@@ -15,9 +15,12 @@ class WalletUnlocker {
 	 * Generates wallet seed phrase which can be used in createWallet
 	 * @return {Promise<Err<unknown> | Ok<string[]>>}
 	 */
-	async genSeed(): Promise<Result<string[]>> {
+	async genSeed(passphrase: string = '', entropy: string = ''): Promise<Result<string[]>> {
 		try {
-			const message = wu_lnrpc.GenSeedRequest.create();
+			const message = wu_lnrpc.GenSeedRequest.create({
+				aezeedPassphrase: passphrase ? stringToBytes(passphrase) : undefined,
+				seedEntropy: entropy ? stringToBytes(entropy) : undefined
+			});
 
 			const serializedResponse = await this.grpc.sendCommand(
 				EGrpcSyncMethods.GenSeed,
