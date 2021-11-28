@@ -1688,10 +1688,9 @@ react-is@^16.8.1:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"
   integrity sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==
 
-react-native-fs@^2.18.0:
+"react-native-fs@https://github.com/synonymdev/react-native-fs":
   version "2.18.0"
-  resolved "https://registry.yarnpkg.com/react-native-fs/-/react-native-fs-2.18.0.tgz#987b99cc90518ef26663a8d60e62104694b41c21"
-  integrity sha512-9iQhkUNnN2JNED0in06JwZy88YEVyIGKWz4KLlQYxa5Y2U0U2AZh9FUHtA04oWj+xt2LlHh0LFPCzhmNsAsUDg==
+  resolved "https://github.com/synonymdev/react-native-fs#0b1d2eb793319acb8d6864cc6e32ee0ce342afa8"
   dependencies:
     base-64 "^0.1.0"
     utf8 "^3.0.0"
