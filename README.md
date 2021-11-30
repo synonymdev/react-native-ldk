@@ -1,6 +1,6 @@
 # react-native-lightning
 
-:warning: This is pre-alpha software. Please use as your own risk.
+:warning: This is pre-alpha software. Please use at your own risk.
 
 
 ### Description
