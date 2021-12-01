@@ -31,8 +31,6 @@ import PSBT from './src/PSBT';
 import Options from './src/Options';
 import {Result} from '../dist/utils/result';
 
-declare const global: {HermesInternal: null | {}};
-
 const dummyPassword = 'shhhhhhh123';
 const testNodePubkey =
   '034ecfd567a64f06742ac300a2985676abc0b1dc6345904a08bb52d5418e685f79';
