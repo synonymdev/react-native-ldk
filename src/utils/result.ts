@@ -16,7 +16,7 @@ export class Err<T> {
 	public constructor(public readonly error: Error) {
 		// Don't console log for unit tests or if we're not in dev mode
 		if (process.env.JEST_WORKER_ID === undefined && __DEV__) {
-			console.error(error);
+			console.info(error);
 		}
 	}
 
