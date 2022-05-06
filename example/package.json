@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@react-native-clipboard/clipboard": "^1.9.0",
-    "@synonymdev/react-native-lightning": "../",
+    "@synonymdev/react-native-ldk": "../",
     "react": "17.0.2",
     "react-native": "0.66.3",
     "react-native-fs": "https://github.com/synonymdev/react-native-fs",

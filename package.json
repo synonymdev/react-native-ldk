@@ -1,23 +1,22 @@
 {
-  "name": "@synonymdev/react-native-lightning",
-  "title": "React Native Lightning",
+  "name": "@synonymdev/react-native-ldk",
+  "title": "React Native LDK",
   "version": "0.0.37",
-  "description": "React Native wrapper for Lndmobile",
+  "description": "React Native wrapper for LDK",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "README.md",
     "android",
     "ios",
-    "react-native-lightning.podspec",
+    "react-native-ldk.podspec",
     "dist"
   ],
   "keywords": [
     "javascript",
     "bitcoin",
     "lightning",
-    "lnd",
-    "neutrino"
+    "ldk"
   ],
   "scripts": {
     "build": "rm -rf dist && mkdir dist/ && yarn protobuf && tsc -p ./src",
@@ -32,8 +31,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/synonymdev/react-native-lightning.git",
-    "baseUrl": "https://github.com/synonymdev/react-native-lightning"
+    "url": "git+https://github.com/synonymdev/react-native-ldk.git",
+    "baseUrl": "https://github.com/synonymdev/react-native-ldk"
   },
   "author": "synonymdev",
   "license": "MIT",
@@ -67,9 +66,9 @@
     "react-native-zip-archive": "^6.0.3"
   },
   "bugs": {
-    "url": "https://github.com/synonymdev/react-native-lightning/issues"
+    "url": "https://github.com/synonymdev/react-native-ldk/issues"
   },
-  "homepage": "https://github.com/synonymdev/react-native-lightning#readme",
+  "homepage": "https://github.com/synonymdev/react-native-ldk#readme",
   "directories": {
     "example": "example"
   }
