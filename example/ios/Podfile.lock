@@ -272,7 +272,7 @@ PODS:
   - React-jsinspector (0.66.3)
   - React-logger (0.66.3):
     - glog
-  - react-native-lightning (0.0.37):
+  - react-native-ldk (0.0.37):
     - React
   - React-perflogger (0.66.3)
   - React-RCTActionSheet (0.66.3):
@@ -339,18 +339,6 @@ PODS:
     - React-jsi (= 0.66.3)
     - React-logger (= 0.66.3)
     - React-perflogger (= 0.66.3)
-  - RNCClipboard (1.9.0):
-    - React-Core
-  - RNFS (2.18.0):
-    - React-Core
-  - RNZipArchive (6.0.5):
-    - React-Core
-    - RNZipArchive/Core (= 6.0.5)
-    - SSZipArchive (= 2.2.3)
-  - RNZipArchive/Core (6.0.5):
-    - React-Core
-    - SSZipArchive (= 2.2.3)
-  - SSZipArchive (2.2.3)
   - Yoga (1.14.0)
   - YogaKit (1.18.1):
     - Yoga (~> 1.14)
@@ -396,7 +384,7 @@ DEPENDENCIES:
   - React-jsiexecutor (from `../node_modules/react-native/ReactCommon/jsiexecutor`)
   - React-jsinspector (from `../node_modules/react-native/ReactCommon/jsinspector`)
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
-  - "react-native-lightning (from `../node_modules/@synonymdev/react-native-lightning`)"
+  - "react-native-ldk (from `../node_modules/@synonymdev/react-native-ldk`)"
   - React-perflogger (from `../node_modules/react-native/ReactCommon/reactperflogger`)
   - React-RCTActionSheet (from `../node_modules/react-native/Libraries/ActionSheetIOS`)
   - React-RCTAnimation (from `../node_modules/react-native/Libraries/NativeAnimation`)
@@ -409,9 +397,6 @@ DEPENDENCIES:
   - React-RCTVibration (from `../node_modules/react-native/Libraries/Vibration`)
   - React-runtimeexecutor (from `../node_modules/react-native/ReactCommon/runtimeexecutor`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
-  - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
-  - RNFS (from `../node_modules/react-native-fs`)
-  - RNZipArchive (from `../node_modules/react-native-zip-archive`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -429,7 +414,6 @@ SPEC REPOS:
     - fmt
     - libevent
     - OpenSSL-Universal
-    - SSZipArchive
     - YogaKit
 
 EXTERNAL SOURCES:
@@ -467,8 +451,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/jsinspector"
   React-logger:
     :path: "../node_modules/react-native/ReactCommon/logger"
-  react-native-lightning:
-    :path: "../node_modules/@synonymdev/react-native-lightning"
+  react-native-ldk:
+    :path: "../node_modules/@synonymdev/react-native-ldk"
   React-perflogger:
     :path: "../node_modules/react-native/ReactCommon/reactperflogger"
   React-RCTActionSheet:
@@ -493,19 +477,13 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/runtimeexecutor"
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
-  RNCClipboard:
-    :path: "../node_modules/@react-native-clipboard/clipboard"
-  RNFS:
-    :path: "../node_modules/react-native-fs"
-  RNZipArchive:
-    :path: "../node_modules/react-native-zip-archive"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
   boost: a7c83b31436843459a1961bfd74b96033dc77234
   CocoaAsyncSocket: 065fd1e645c7abab64f7a6a2007a48038fdc6a99
-  DoubleConversion: 831926d9b8bf8166fd87886c4abab286c2422662
+  DoubleConversion: cde416483dac037923206447da6e1454df403714
   FBLazyVector: de148e8310b8b878db304ceea2fec13f2c02e3a0
   FBReactNativeSpec: 6192956c9e346013d5f1809ba049af720b11c6a4
   Flipper: 30e8eeeed6abdc98edaf32af0cda2f198be4b733
@@ -518,7 +496,7 @@ SPEC CHECKSUMS:
   Flipper-RSocket: d9d9ade67cbecf6ac10730304bf5607266dd2541
   FlipperKit: d8d346844eca5d9120c17d441a2f38596e8ed2b9
   fmt: ff9d55029c625d3757ed641535fd4a75fedc7ce9
-  glog: 5337263514dd6f09803962437687240c5dc39aa4
+  glog: 40a13f7840415b9a77023fbcae0f1e6f43192af3
   libevent: 4049cae6c81cdb3654a443be001fb9bdceff7913
   OpenSSL-Universal: 1aa4f6a6ee7256b83db99ec1ccdaa80d10f9af9b
   RCT-Folly: a21c126816d8025b547704b777a2ba552f3d9fa9
@@ -533,7 +511,7 @@ SPEC CHECKSUMS:
   React-jsiexecutor: 433a691aee158533a6a6ee9c86cb4a1684fa2853
   React-jsinspector: d9c8eb0b53f0da206fed56612b289fec84991157
   React-logger: e522e76fa3e9ec3e7d7115b49485cc065cf4ae06
-  react-native-lightning: c39e8d06fccbdac141ab5683750d6007e4c263ae
+  react-native-ldk: 335e53b8733850799b3feead4f2a46e09fd59122
   React-perflogger: 73732888d37d4f5065198727b167846743232882
   React-RCTActionSheet: 96c6d774fa89b1f7c59fc460adc3245ba2d7fd79
   React-RCTAnimation: 8940cfd3a8640bd6f6372150dbdb83a79bcbae6c
@@ -546,13 +524,9 @@ SPEC CHECKSUMS:
   React-RCTVibration: 50cfe7049167cfc7e83ac5542c6fff0c76791a9b
   React-runtimeexecutor: bbbdb3d8fcf327c6e2249ee71b6ef1764b7dc266
   ReactCommon: 9bac022ab71596f2b0fde1268272543184c63971
-  RNCClipboard: 99fc8ad669a376b756fbc8098ae2fd05c0ed0668
-  RNFS: 7bdbd2472eac73a7f266b43da1d1bd68b3ed7bf5
-  RNZipArchive: 1f5306ca62c06cf61f64c9d445144fba3f4fb89e
-  SSZipArchive: 62d4947b08730e4cda640473b0066d209ff033c9
   Yoga: 32a18c0e845e185f4a2a66ec76e1fd1f958f22fa
   YogaKit: f782866e155069a2cca2517aafea43200b01fd5a
 
 PODFILE CHECKSUM: b238204fde808b9d15816fe170aa2c48b884b8b0
 
-COCOAPODS: 1.11.2
+COCOAPODS: 1.11.3
