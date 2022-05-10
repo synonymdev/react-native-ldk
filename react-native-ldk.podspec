@@ -21,6 +21,6 @@ Pod::Spec.new do |s|
   s.source_files = "ios/**/*.{h,m,swift}"
   s.requires_arc = true
 
-#   s.vendored_frameworks = 'ios/Lndmobile.framework'
+  s.vendored_frameworks = 'ios/LDKFramework.xcframework'
   s.dependency "React"
 end

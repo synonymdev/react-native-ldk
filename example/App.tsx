@@ -17,7 +17,6 @@ import {
   Text,
 } from 'react-native';
 import ldk from '@synonymdev/react-native-ldk';
-//    "@synonymdev/react-native-ldk": "../",
 const testNodePubkey =
   '034ecfd567a64f06742ac300a2985676abc0b1dc6345904a08bb52d5418e685f79';
 const testNodeAddress = '35.240.72.95:9735';
@@ -28,7 +27,7 @@ const App = () => {
   const startLdk = async (): Promise<void> => {
     setMessage('Starting LDK...');
     try {
-      const res = await ldk.start();
+      const res = await ldk.version();
 
       if (res.isErr()) {
         setMessage(res.error.message);
