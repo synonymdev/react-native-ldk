@@ -27,7 +27,7 @@ const App = () => {
   const startLdk = async (): Promise<void> => {
     setMessage('Starting LDK...');
     try {
-      const res = await ldk.version();
+      const res = await ldk.startChainMonitor();
 
       if (res.isErr()) {
         setMessage(res.error.message);
@@ -52,6 +52,16 @@ const App = () => {
           <Text style={styles.message}>{message}</Text>
 
           <Button title={'Start'} onPress={startLdk} />
+
+          <Button
+            title={'Version'}
+            onPress={async () => {
+              const res = await ldk.version();
+              if (res.isOk()) {
+                alert(res.value.c_bindings_get_compiled_version);
+              }
+            }}
+          />
         </ScrollView>
       </SafeAreaView>
     </>

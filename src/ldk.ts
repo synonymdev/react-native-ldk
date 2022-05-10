@@ -33,19 +33,25 @@ class LDK {
 	}
 
 	/**
-	 * Starts the LDK service
+	 * Starts the startChainMonitor service
 	 * @return {Promise<Err<unknown> | Ok<string>>}
 	 */
-	async start(): Promise<Result<string>> {
-		// const test = await NativeLDK.multiply(2, 6);
+	async startChainMonitor(): Promise<Result<string>> {
+		const res = await NativeLDK.startChainMonitor();
 
-		return ok(`Should start`);
+		return ok(res);
 	}
 
-	async version(): Promise<Result<string>> {
-		const version = await NativeLDK.version();
-
-		return ok(version);
+	async version(): Promise<
+		Result<{ c_bindings_get_compiled_version: string; ldk_get_compiled_version: string }>
+	> {
+		try {
+			const res = await NativeLDK.version();
+			console.log(res);
+			return ok(JSON.parse(res));
+		} catch (e) {
+			return err(e);
+		}
 	}
 
 	/**
