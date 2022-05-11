@@ -27,9 +27,9 @@ export type TLogListener = {
 };
 
 export type TFeeUpdateReq = {
-	high: number,
+	highPriority: number,
 	normal: number,
-	low: number
+	background: number
 }
 
 export enum ELdkLogLevels {

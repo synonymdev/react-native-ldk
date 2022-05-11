@@ -32,6 +32,10 @@ class LDK {
 		this.logListeners = [];
 	}
 
+	/**
+	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html
+	 * @returns {Promise<Ok<any> | Err<unknown>>}
+	 */
 	async initFeeEstimator(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.inititlize('fee_estimator');
@@ -41,6 +45,10 @@ class LDK {
 		}
 	}
 
+	/**
+	 * https://docs.rs/lightning/latest/lightning/util/logger/index.html
+	 * @returns {Promise<Ok<any> | Err<unknown>>}
+	 */
 	async initLogger(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.inititlize('logger');
@@ -50,6 +58,11 @@ class LDK {
 		}
 	}
 
+	/**
+	 * persist_new_channel and update_persisted_channel events triggered when
+	 * https://docs.rs/lightning/latest/lightning/chain/chainmonitor/trait.Persist.html
+	 * @returns {Promise<Ok<any> | Err<unknown>>}
+	 */
 	async initPersister(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.inititlize('persister');
@@ -59,6 +72,11 @@ class LDK {
 		}
 	}
 
+	/**
+	 * broadcast_transaction event will be triggered when a tx needs to be sent
+	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.BroadcasterInterface.html
+	 * @returns {Promise<Ok<any> | Err<unknown>>}
+	 */
 	async initBroadcaster(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.inititlize('broadcaster');
@@ -68,6 +86,11 @@ class LDK {
 		}
 	}
 
+	/**
+	 * Connected and disconnected blocks must be provided
+	 * https://docs.rs/lightning/latest/lightning/chain/chainmonitor/struct.ChainMonitor.html
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
 	async initChainMonitor(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initChainMonitor();
@@ -92,6 +115,13 @@ class LDK {
 		}
 	}
 
+	/**
+	 * Switch different log levels on/off
+	 * https://docs.rs/lightning/latest/lightning/util/logger/enum.Level.html
+	 * @param level
+	 * @param active
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
 	async setLogLevel(level: ELdkLogLevels, active: boolean): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.setLogLevel(level, active);
@@ -101,9 +131,16 @@ class LDK {
 		}
 	}
 
-	async updateFees({ high, normal, low }: TFeeUpdateReq): Promise<Result<string>> {
+	/**
+	 * Provide fee rate information on a number of time horizons.
+	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/enum.ConfirmationTarget.html
+	 * @param high
+	 * @param normal
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async updateFees({ highPriority, normal, background }: TFeeUpdateReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.updateFees(high, normal, low);
+			const res = await NativeLDK.updateFees(highPriority, normal, background);
 			return ok(res);
 		} catch (e) {
 			return err(e);

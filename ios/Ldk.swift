@@ -127,7 +127,7 @@ class Ldk: NSObject {
         let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
         let seedBytes = String(seed).hexaBytes
         
-        guard seedBytes.count != 32 else {
+        guard seedBytes.count == 32 else {
             return handleReject(reject, .invalid_seed_hex)
         }
         

@@ -22,7 +22,6 @@ class LdkLogger: Logger {
     }
     
     func setLevel(level: UInt32, active: Bool) {
-        print("SETTING \(level) as \(active)")
         self.activeLevels[level] = active
     }
 }
