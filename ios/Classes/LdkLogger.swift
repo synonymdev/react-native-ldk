@@ -9,16 +9,21 @@ import Foundation
 import LDKFramework
 
 class LdkLogger: Logger {
+    var activeLevels: [UInt32: Bool] = [:]
+  
     override func log(record: Record) {
+        let level = record.get_level().rawValue
         
-        //TODO separate logs for:
-//        LDKLevel_Info
-//        LDKLevel_Warn
-//        LDKLevel_Debug
-//        LDKLevel_Error
-//        LDKLevel_Trace
+        //Only when the JS code has set the log level to active
+        if activeLevels[level] == true {
+            let line = "\(record.get_args())"
+            sendEvent(eventName: .log, eventBody: ["line" : line, "level": "\(level)" ])
+        }
         
-        let line = "LDK Log \(record.get_level()): \(record.get_args())"
-        sendEvent(eventName: .log, eventBody: ["line" : line])
+    }
+    
+    func setLevel(level: UInt32, active: Bool) {
+        print("SETTING \(level) as \(active)")
+        self.activeLevels[level] = active
     }
 }

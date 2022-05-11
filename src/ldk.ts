@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 import { err, ok, Result } from './utils/result';
-import { TFeeUpdateReq, TLogListener } from './utils/types';
+import { ELdkLogLevels, TFeeUpdateReq, TLogListener } from "./utils/types";
 
 const LINKING_ERROR =
 	`The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n` +
@@ -34,7 +34,7 @@ class LDK {
 
 	//TODO
 	// Step 1: Initialize the FeeEstimator ✅
-	// Step 2: Initialize the Logger
+	// Step 2: Initialize the Logger ✅
 	// Step 3: Initialize the BroadcasterInterface
 	// Step 4: Initialize Persist
 	// Step 5: Initialize the ChainMonitor
@@ -54,14 +54,39 @@ class LDK {
 	// Step 19: Background Processing
 
 	async initFeeEstimator(fees: TFeeUpdateReq): Promise<Result<string>> {
-		const res = await NativeLDK.initFeeEstimator();
-		await this.updateFees(fees);
-		return ok(res);
+		try {
+			const res = await NativeLDK.initFeeEstimator();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async initLogger(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.initLogger();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async setLogLevel(level: ELdkLogLevels, active: boolean): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.setLogLevel(level, active);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
 	}
 
 	async updateFees({ high, normal, low }: TFeeUpdateReq): Promise<Result<string>> {
-		const res = await NativeLDK.updateFees(high, normal, low);
-		return ok(res);
+		try {
+			const res = await NativeLDK.updateFees(high, normal, low);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
 	}
 
 	/**
@@ -69,17 +94,17 @@ class LDK {
 	 * @return {Promise<Err<unknown> | Ok<string>>}
 	 */
 	async startChainMonitor(): Promise<Result<string>> {
-		const res = await NativeLDK.startChainMonitor();
-
-		return ok(res);
+		try {
+			const res = await NativeLDK.startChainMonitor();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
 	}
 
-	async version(): Promise<
-		Result<{ c_bindings_get_compiled_version: string; ldk_get_compiled_version: string }>
-	> {
+	async version(): Promise<Result<{ c_bindings: string; ldk: string }>> {
 		try {
 			const res = await NativeLDK.version();
-			console.log(res);
 			return ok(JSON.parse(res));
 		} catch (e) {
 			return err(e);

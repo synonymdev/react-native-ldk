@@ -18,25 +18,18 @@ enum LdkEventNames: String {
     case update_persisted_channel = "update_persisted_channel"
 }
 
-enum LdkError: Error {
-  case unknown_error
-  case init_fee_estimator
-}
-
-extension LdkError: LocalizedError {
-  public var errorDescription: String? {
-    switch self {
-    case .unknown_error:
-      return "unknown_error"
-    case .init_fee_estimator:
-      return "init_fee_estimator"
-    }
-  }
+enum LdkErrors: String {
+    case unknown_error = "unknown_error"
+    case init_fee_estimator = "init_fee_estimator"
+    case already_initialised = "already_initialised"
+    case init_logger = "init_logger"
 }
 
 enum LdkCallbackResponses: String {
     case fee_estimator_initialised = "fee_estimator_initialised"
     case fees_updated = "fees_updated"
+    case logger_initialised = "logger_initialised"
+    case log_level_updated = "log_level_updated"
 }
 
 func handleResolve(_ resolve: RCTPromiseResolveBlock, _ res: LdkCallbackResponses) {
@@ -44,11 +37,10 @@ func handleResolve(_ resolve: RCTPromiseResolveBlock, _ res: LdkCallbackResponse
     resolve(res.rawValue)
 }
 
-func handleReject(_ reject: RCTPromiseRejectBlock, _ error: LdkError) {
+func handleReject(_ reject: RCTPromiseRejectBlock, _ error: LdkErrors) {
     //TODO log
-    reject(error.errorDescription, error.localizedDescription, error)
+    reject(error.rawValue, error.rawValue, NSError(domain: error.rawValue, code: error.hashValue))
 }
-
 
 func sendEvent(eventName: LdkEventNames, eventBody: [String: String]) {
 //    ReactEventEmitter.sharedInstance()?.sendEvent(withName: eventName, body: eventBody)

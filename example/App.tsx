@@ -57,9 +57,7 @@ const App = () => {
             title={'Version'}
             onPress={async () => {
               const res = await ldk.version();
-              if (res.isOk()) {
-                alert(res.value.c_bindings_get_compiled_version);
-              }
+              alert(JSON.stringify(res));
             }}
           />
 
@@ -71,9 +69,23 @@ const App = () => {
                 normal: 500,
                 low: 100,
               });
-              if (res.isOk()) {
-                alert(res.value);
-              }
+              alert(JSON.stringify(res));
+            }}
+          />
+
+          <Button
+            title={'initLogger'}
+            onPress={async () => {
+              const res = await ldk.initLogger();
+              alert(JSON.stringify(res));
+            }}
+          />
+
+          <Button
+            title={'setLogLevel'}
+            onPress={async () => {
+              const res = await ldk.setLogLevel(2, true);
+              alert(JSON.stringify(res));
             }}
           />
 

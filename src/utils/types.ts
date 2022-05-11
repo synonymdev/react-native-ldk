@@ -31,3 +31,11 @@ export type TFeeUpdateReq = {
 	normal: number,
 	low: number
 }
+
+export enum ELdkLogLevels {
+	trace = 1, //LDKLevel_Trace
+	debug = 2, //LDKLevel_Debug
+	info = 3, //LDKLevel_Info
+	warn = 4, //LDKLevel_Warn
+	error = 5, //LDKLevel_Error
+}
