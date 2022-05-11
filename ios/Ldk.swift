@@ -1,10 +1,13 @@
 import LDKFramework
 
-
 @objc(Ldk)
 class Ldk: NSObject {
     var feeEstimator: LdkFeeEstimator?
     var logger: LdkLogger?
+    var broadcaster: LdkBroadcaster?
+    var persister: LdkPersister?
+    var filter: LdkFilter?
+    var chainMonitor: ChainMonitor?
     
     lazy var ldkStorage: URL = {
         let docsurl = try! FileManager.default.url(for:.documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
@@ -28,23 +31,44 @@ class Ldk: NSObject {
     }
     
     @objc
-    func initFeeEstimator(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard feeEstimator == nil else {
-            return handleReject(reject, .already_initialised)
+    func inititlize(_ method: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        switch method {
+        case "fee_estimator":
+            guard feeEstimator == nil else {
+                return handleReject(reject, .already_initialised)
+            }
+            
+            feeEstimator = LdkFeeEstimator()
+            handleResolve(resolve, .fee_estimator_initialised)
+            return
+        case "logger":
+            guard logger == nil else {
+                return handleReject(reject, .already_initialised)
+            }
+            
+            logger = LdkLogger()
+            handleResolve(resolve, .logger_initialised)
+            return
+        case "broadcaster":
+            guard broadcaster == nil else {
+                return handleReject(reject, .already_initialised)
+            }
+            
+            broadcaster = LdkBroadcaster()
+            handleResolve(resolve, .broadcaster_initialised)
+            return
+        case "persister":
+            guard persister == nil else {
+                return handleReject(reject, .already_initialised)
+            }
+            
+            persister = LdkPersister()
+
+            handleResolve(resolve, .persister_initialised)
+            return
+        default:
+            return handleReject(reject, .unknown_method)
         }
-        
-        feeEstimator = LdkFeeEstimator()
-        handleResolve(resolve, .fee_estimator_initialised)
-    }
-    
-    @objc
-    func initLogger(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard logger == nil else {
-            return handleReject(reject, .already_initialised)
-        }
-        
-        logger = LdkLogger()
-        handleResolve(resolve, .logger_initialised)
     }
     
     @objc
@@ -68,7 +92,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func startChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let feeEstimator = feeEstimator else {
             return handleReject(reject, .init_fee_estimator)
         }
@@ -77,21 +101,27 @@ class Ldk: NSObject {
             return handleReject(reject, .init_logger)
         }
         
-        let filter = LdkFilter()
-        let broadcaster = LdkBroadcaster()
+        guard let broadcaster = broadcaster else {
+            return handleReject(reject, .init_broadcaster)
+        }
         
-        //TODO set these fees from the JS code. They should be able to be updated live.
-        
-        let persister = LdkPersister()
-        
-        let chainMonitor = ChainMonitor(
-            chain_source: Option_FilterZ(value: filter),
+        guard let persister = persister else {
+            return handleReject(reject, .init_persister)
+        }
+                
+        chainMonitor = ChainMonitor(
+            chain_source: Option_FilterZ(value: LdkFilter()),
             broadcaster: broadcaster,
             logger: logger,
             feeest: feeEstimator,
             persister: persister
         )
         
+        handleResolve(resolve, .chain_monitor_started)
+    }
+    
+    @objc
+    func initKeysManager(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
 //        let seed: [UInt8] = [0] //TODO
 //
 //        let seconds = UInt64(NSDate().timeIntervalSince1970)
@@ -111,6 +141,6 @@ class Ldk: NSObject {
 //            params: ChainParameters(network_arg: network, best_block_arg: BestBlock(block_hash: [], height: 0))
 //        )
         
-        resolve("Chain monitor started")
+        handleResolve(resolve, .keys_manager_started)
     }
 }

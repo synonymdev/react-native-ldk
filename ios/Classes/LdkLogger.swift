@@ -19,7 +19,6 @@ class LdkLogger: Logger {
             let line = "\(record.get_args())"
             sendEvent(eventName: .log, eventBody: ["line" : line, "level": "\(level)" ])
         }
-        
     }
     
     func setLevel(level: UInt32, active: Bool) {

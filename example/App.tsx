@@ -16,7 +16,9 @@ import {
   StyleSheet,
   Text,
 } from 'react-native';
-import ldk from '@synonymdev/react-native-ldk';
+import lm from '@synonymdev/react-native-ldk';
+import ldk from '@synonymdev/react-native-ldk/dist/ldk'; //For direct access to LDK functions
+
 const testNodePubkey =
   '034ecfd567a64f06742ac300a2985676abc0b1dc6345904a08bb52d5418e685f79';
 const testNodeAddress = '35.240.72.95:9735';
@@ -27,7 +29,7 @@ const App = () => {
   const startLdk = async (): Promise<void> => {
     setMessage('Starting LDK...');
     try {
-      const res = await ldk.startChainMonitor();
+      const res = await lm.start();
 
       if (res.isErr()) {
         setMessage(res.error.message);
@@ -57,49 +59,11 @@ const App = () => {
             title={'Version'}
             onPress={async () => {
               const res = await ldk.version();
-              alert(JSON.stringify(res));
-            }}
-          />
-
-          <Button
-            title={'initFeeEstimator'}
-            onPress={async () => {
-              const res = await ldk.initFeeEstimator({
-                high: 1000,
-                normal: 500,
-                low: 100,
-              });
-              alert(JSON.stringify(res));
-            }}
-          />
-
-          <Button
-            title={'initLogger'}
-            onPress={async () => {
-              const res = await ldk.initLogger();
-              alert(JSON.stringify(res));
-            }}
-          />
-
-          <Button
-            title={'setLogLevel'}
-            onPress={async () => {
-              const res = await ldk.setLogLevel(2, true);
-              alert(JSON.stringify(res));
-            }}
-          />
-
-          <Button
-            title={'updateFees'}
-            onPress={async () => {
-              const res = await ldk.updateFees({
-                high: 1000,
-                normal: 500,
-                low: 100,
-              });
-              if (res.isOk()) {
-                alert(res.value);
+              if (res.isErr()) {
+                return setMessage(res.error.message);
               }
+
+              setMessage(res.value.ldk);
             }}
           />
         </ScrollView>

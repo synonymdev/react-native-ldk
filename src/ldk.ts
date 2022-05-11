@@ -32,9 +32,9 @@ class LDK {
 		this.logListeners = [];
 	}
 
-	async initFeeEstimator(fees: TFeeUpdateReq): Promise<Result<string>> {
+	async initFeeEstimator(): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.initFeeEstimator();
+			const res = await NativeLDK.inititlize('fee_estimator');
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -43,7 +43,34 @@ class LDK {
 
 	async initLogger(): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.initLogger();
+			const res = await NativeLDK.inititlize('logger');
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async initPersister(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.inititlize('persister');
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async initBroadcaster(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.inititlize('broadcaster');
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async initChainMonitor(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.initChainMonitor();
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -62,19 +89,6 @@ class LDK {
 	async updateFees({ high, normal, low }: TFeeUpdateReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.updateFees(high, normal, low);
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
-	 * Starts the startChainMonitor service
-	 * @return {Promise<Err<unknown> | Ok<string>>}
-	 */
-	async startChainMonitor(): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.startChainMonitor();
 			return ok(res);
 		} catch (e) {
 			return err(e);

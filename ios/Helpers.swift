@@ -20,9 +20,13 @@ enum LdkEventNames: String {
 
 enum LdkErrors: String {
     case unknown_error = "unknown_error"
+    case unknown_method = "unknown_method"
     case init_fee_estimator = "init_fee_estimator"
     case already_initialised = "already_initialised"
     case init_logger = "init_logger"
+    case init_broadcaster = "init_broadcaster"
+    case init_persister = "init_persister"
+    case init_filter = "init_filter"
 }
 
 enum LdkCallbackResponses: String {
@@ -30,6 +34,10 @@ enum LdkCallbackResponses: String {
     case fees_updated = "fees_updated"
     case logger_initialised = "logger_initialised"
     case log_level_updated = "log_level_updated"
+    case broadcaster_initialised = "broadcaster_initialised"
+    case persister_initialised = "persister_initialised"
+    case chain_monitor_started = "chain_monitor_started"
+    case keys_manager_started = "keys_manager_started"
 }
 
 func handleResolve(_ resolve: RCTPromiseResolveBlock, _ res: LdkCallbackResponses) {
