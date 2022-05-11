@@ -9,6 +9,9 @@ RCT_EXTERN_METHOD(inititlize:(NSString *)method
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 
 //Update state methods
 RCT_EXTERN_METHOD(updateFees:(NSInteger *)high

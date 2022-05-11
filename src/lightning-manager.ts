@@ -68,6 +68,14 @@ class LightningManager {
 		}
 
 		// Step 6: Initialize the KeysManager
+		const keysManager = await ldk.initKeysManager(
+			'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+		); //TODO get stored/generated 32-byte entropy
+		if (keysManager.isErr()) {
+			return keysManager;
+		}
+
+		// Step 7: Read ChannelMonitor state from disk
 
 		return ok('Node running');
 	}

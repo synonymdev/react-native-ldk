@@ -77,6 +77,21 @@ class LDK {
 		}
 	}
 
+	/**
+	 * Private key for node. Used to derive node public key. 32-byte entropy.
+	 * https://docs.rs/lightning/latest/lightning/chain/keysinterface/struct.KeysManager.html
+	 * @param seed
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async initKeysManager(seed: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.initKeysManager(seed);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
 	async setLogLevel(level: ELdkLogLevels, active: boolean): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.setLogLevel(level, active);

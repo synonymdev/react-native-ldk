@@ -8,6 +8,7 @@ class Ldk: NSObject {
     var persister: LdkPersister?
     var filter: LdkFilter?
     var chainMonitor: ChainMonitor?
+    var keysManager: KeysManager?
     
     lazy var ldkStorage: URL = {
         let docsurl = try! FileManager.default.url(for:.documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
@@ -35,36 +36,36 @@ class Ldk: NSObject {
         switch method {
         case "fee_estimator":
             guard feeEstimator == nil else {
-                return handleReject(reject, .already_initialised)
+                return handleReject(reject, .already_init)
             }
             
             feeEstimator = LdkFeeEstimator()
-            handleResolve(resolve, .fee_estimator_initialised)
+            handleResolve(resolve, .fee_estimator_init_success)
             return
         case "logger":
             guard logger == nil else {
-                return handleReject(reject, .already_initialised)
+                return handleReject(reject, .already_init)
             }
             
             logger = LdkLogger()
-            handleResolve(resolve, .logger_initialised)
+            handleResolve(resolve, .logger_init_success)
             return
         case "broadcaster":
             guard broadcaster == nil else {
-                return handleReject(reject, .already_initialised)
+                return handleReject(reject, .already_init)
             }
             
             broadcaster = LdkBroadcaster()
-            handleResolve(resolve, .broadcaster_initialised)
+            handleResolve(resolve, .broadcaster_init_success)
             return
         case "persister":
             guard persister == nil else {
-                return handleReject(reject, .already_initialised)
+                return handleReject(reject, .already_init)
             }
             
             persister = LdkPersister()
 
-            handleResolve(resolve, .persister_initialised)
+            handleResolve(resolve, .persister_init_success)
             return
         default:
             return handleReject(reject, .unknown_method)
@@ -117,23 +118,29 @@ class Ldk: NSObject {
             persister: persister
         )
         
-        handleResolve(resolve, .chain_monitor_started)
+        handleResolve(resolve, .chain_monitor_init_success)
     }
     
     @objc
-    func initKeysManager(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-//        let seed: [UInt8] = [0] //TODO
-//
-//        let seconds = UInt64(NSDate().timeIntervalSince1970)
-//        let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
-//
-//        let keysManager = KeysManager(seed: seed, starting_time_secs: seconds, starting_time_nanos: nanoSeconds)
-//
-//        let network = LDKNetwork_Bitcoin
-//
+    func initKeysManager(_ seed: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let seconds = UInt64(NSDate().timeIntervalSince1970)
+        let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
+        let seedBytes = String(seed).hexaBytes
+        
+        guard seedBytes.count != 32 else {
+            return handleReject(reject, .invalid_seed_hex)
+        }
+        
+        keysManager = KeysManager(seed: String(seed).hexaBytes, starting_time_secs: seconds, starting_time_nanos: nanoSeconds)
+
+        handleResolve(resolve, .keys_manager_init_success)
+    }
+    
+    @objc
+    func initChannelManager(_ network: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
 //        let _ = ChannelManager(
 //            fee_est: feeEstimator,
-//            chain_monitor: Watch(),
+//            chain_monitor: chainMonitor,
 //            tx_broadcaster: broadcaster,
 //            logger: logger,
 //            keys_manager: keysManager.as_KeysInterface(),
@@ -141,6 +148,6 @@ class Ldk: NSObject {
 //            params: ChainParameters(network_arg: network, best_block_arg: BestBlock(block_hash: [], height: 0))
 //        )
         
-        handleResolve(resolve, .keys_manager_started)
+        handleResolve(resolve, .channel_manager_init_success)
     }
 }
