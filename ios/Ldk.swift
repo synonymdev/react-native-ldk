@@ -32,7 +32,7 @@ class Ldk: NSObject {
         let filter = LdkFilter()
         let broadcaster = LdkBroadcaster()
         let logger = LdkLogger()
-        //TODO set these fees from the JS code
+        //TODO set these fees from the JS code. They should be able to be updated live.
         let feeEstimator = LdkFeeEstimator(high: 1000, normal: 500, low: 100)
         let persister = LdkPersister()
         
@@ -42,6 +42,16 @@ class Ldk: NSObject {
             logger: logger,
             feeest: feeEstimator,
             persister: persister
+        )
+        
+        let _ = ChannelManager(
+            fee_est: feeEstimator,
+            chain_monitor: Watch(),
+            tx_broadcaster: broadcaster,
+            logger: logger,
+            keys_manager: KeysInterface(),
+            config: UserConfig(),
+            params: ChainParameters(network_arg: LDKNetwork_Bitcoin, best_block_arg: BestBlock(block_hash: [], height: 0))
         )
         
         resolve("Chain monitor started")

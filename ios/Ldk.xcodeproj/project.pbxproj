@@ -26,6 +26,7 @@
 /* Begin PBXFileReference section */
 		134814201AA4EA6300B7C361 /* libLdk.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libLdk.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		962C8074282A8ADF0070AF84 /* LDKFramework.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LDKFramework.xcframework; sourceTree = "<group>"; };
+		962C808D282BAF9F0070AF84 /* Classes */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Classes; sourceTree = "<group>"; };
 		B3E7B5891CC2AC0600A0062D /* Ldk.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Ldk.m; sourceTree = "<group>"; };
 		F4FF95D5245B92E700C19C63 /* Ldk-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Ldk-Bridging-Header.h"; sourceTree = "<group>"; };
 		F4FF95D6245B92E800C19C63 /* Ldk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ldk.swift; sourceTree = "<group>"; };
@@ -57,6 +58,7 @@
 				962C8074282A8ADF0070AF84 /* LDKFramework.xcframework */,
 				F4FF95D6245B92E800C19C63 /* Ldk.swift */,
 				B3E7B5891CC2AC0600A0062D /* Ldk.m */,
+				962C808D282BAF9F0070AF84 /* Classes */,
 				F4FF95D5245B92E700C19C63 /* Ldk-Bridging-Header.h */,
 				134814211AA4EA7D00B7C361 /* Products */,
 			);
