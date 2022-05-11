@@ -62,6 +62,34 @@ const App = () => {
               }
             }}
           />
+
+          <Button
+            title={'initFeeEstimator'}
+            onPress={async () => {
+              const res = await ldk.initFeeEstimator({
+                high: 1000,
+                normal: 500,
+                low: 100,
+              });
+              if (res.isOk()) {
+                alert(res.value);
+              }
+            }}
+          />
+
+          <Button
+            title={'updateFees'}
+            onPress={async () => {
+              const res = await ldk.updateFees({
+                high: 1000,
+                normal: 500,
+                low: 100,
+              });
+              if (res.isOk()) {
+                alert(res.value);
+              }
+            }}
+          />
         </ScrollView>
       </SafeAreaView>
     </>

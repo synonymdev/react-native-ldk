@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 import { err, ok, Result } from './utils/result';
-import { TLogListener } from './utils/types';
+import { TFeeUpdateReq, TLogListener } from './utils/types';
 
 const LINKING_ERROR =
 	`The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n` +
@@ -33,7 +33,7 @@ class LDK {
 	}
 
 	//TODO
-	// Step 1: Initialize the FeeEstimator
+	// Step 1: Initialize the FeeEstimator ✅
 	// Step 2: Initialize the Logger
 	// Step 3: Initialize the BroadcasterInterface
 	// Step 4: Initialize Persist
@@ -52,6 +52,17 @@ class LDK {
 	// Step 17: Create InvoicePayer
 	// Step 18: Persist ChannelManager and NetworkGraph
 	// Step 19: Background Processing
+
+	async initFeeEstimator(fees: TFeeUpdateReq): Promise<Result<string>> {
+		const res = await NativeLDK.initFeeEstimator();
+		await this.updateFees(fees);
+		return ok(res);
+	}
+
+	async updateFees({ high, normal, low }: TFeeUpdateReq): Promise<Result<string>> {
+		const res = await NativeLDK.updateFees(high, normal, low);
+		return ok(res);
+	}
 
 	/**
 	 * Starts the startChainMonitor service

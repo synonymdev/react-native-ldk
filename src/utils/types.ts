@@ -25,3 +25,9 @@ export type TLogListener = {
 	id: string;
 	callback: (log: string) => void;
 };
+
+export type TFeeUpdateReq = {
+	high: number,
+	normal: number,
+	low: number
+}
