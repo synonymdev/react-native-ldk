@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 import { err, ok, Result } from './utils/result';
-import { ELdkLogLevels, TFeeUpdateReq, TLogListener } from "./utils/types";
+import { ELdkLogLevels, TFeeUpdateReq, TLogListener } from './utils/types';
 
 const LINKING_ERROR =
 	`The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n` +
@@ -31,27 +31,6 @@ class LDK {
 	constructor() {
 		this.logListeners = [];
 	}
-
-	//TODO
-	// Step 1: Initialize the FeeEstimator ✅
-	// Step 2: Initialize the Logger ✅
-	// Step 3: Initialize the BroadcasterInterface
-	// Step 4: Initialize Persist
-	// Step 5: Initialize the ChainMonitor
-	// Step 6: Initialize the KeysManager
-	// Step 7: Read ChannelMonitor state from disk
-	// Step 8: Initialize the ChannelManager
-	// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
-	// Step 10: Give ChannelMonitors to ChainMonitor
-	// Step 11: Optional: Initialize the NetGraphMsgHandler
-	// Step 12: Initialize the PeerManager
-	// Step 13: Initialize networking
-	// Step 14: Connect and Disconnect Blocks
-	// Step 15: Handle LDK Events
-	// Step 16: Initialize routing ProbabilisticScorer
-	// Step 17: Create InvoicePayer
-	// Step 18: Persist ChannelManager and NetworkGraph
-	// Step 19: Background Processing
 
 	async initFeeEstimator(fees: TFeeUpdateReq): Promise<Result<string>> {
 		try {
