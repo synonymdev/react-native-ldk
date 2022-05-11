@@ -1,8 +1,0 @@
-framework module "Lndmobile" {
-	header "ref.h"
-    header "Lndmobile.objc.h"
-    header "Universe.objc.h"
-    header "Lndmobile.h"
-
-    export *
-}

@@ -16,233 +16,92 @@ import {
   StyleSheet,
   Text,
 } from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
-import lnd, {
-  ENetworks,
-  ICachedNeutrinoDBDownloadState,
-  LndConf,
-  ss_lnrpc,
-  lnrpc,
-} from '@synonymdev/react-native-lightning';
-
-import lndCache from '@synonymdev/react-native-lightning/dist/utils/neutrino-cache';
-
-import PSBT from './src/PSBT';
-import Options from './src/Options';
-import {Result} from '../dist/utils/result';
-
-const dummyPassword = 'shhhhhhh123';
+import ldk from '@synonymdev/react-native-ldk';
 const testNodePubkey =
   '034ecfd567a64f06742ac300a2985676abc0b1dc6345904a08bb52d5418e685f79';
 const testNodeAddress = '35.240.72.95:9735';
 
-const network = ENetworks.testnet;
-
 const App = () => {
   const [message, setMessage] = useState('');
-  const [lndState, setLndState] = useState<ss_lnrpc.WalletState>(
-    ss_lnrpc.WalletState.WAITING_TO_START,
-  );
 
-  const [seed, setSeed] = useState<string[]>([]);
+  const startLdk = async (): Promise<void> => {
+    setMessage('Starting LDK...');
+    try {
+      const res = await ldk.startChainMonitor();
 
-  const startStateSubscription = () => {
-    lnd.stateService.subscribeToStateChanges(
-      (res: Result<ss_lnrpc.WalletState>) => {
-        if (res.isOk()) {
-          setLndState(res.value);
-        }
-      },
-      () => {},
-    );
-  };
-
-  useEffect(() => {
-    (async () => {
-      const res = await lnd.stateService.getState();
-      if (res.isOk()) {
-        setLndState(res.value);
-        if (res.value !== ss_lnrpc.WalletState.WAITING_TO_START) {
-          startStateSubscription();
-        }
+      if (res.isErr()) {
+        setMessage(res.error.message);
+        console.error(res.error);
+        return;
       }
-    })();
-  }, []);
 
-  useEffect(() => {
-    if (lndState === ss_lnrpc.WalletState.RPC_ACTIVE) {
-      lnd.subscribeToOnChainTransactions(
-        (res: Result<lnrpc.Transaction>) => {
-          if (res.isErr()) {
-            return console.error(res.error);
-          }
-
-          const {amount, numConfirmations} = res.value;
-          if (amount < 0) {
-            return;
-          }
-          setMessage(`On chain tx: ${amount} sats (${numConfirmations} confs)`);
-        },
-        () => {},
-      );
-
-      lnd.subscribeToBackups(
-        (res: Result<lnrpc.ChanBackupSnapshot>) => {
-          if (res.isErr()) {
-            return console.error(res.error);
-          }
-
-          const backupBytes = res.value.multiChanBackup?.multiChanBackup;
-          console.log(`Backup required (${backupBytes?.length} bytes)`);
-        },
-        () => {},
-      );
+      setMessage(JSON.stringify(res.value));
+    } catch (e) {
+      setMessage(e.toString());
     }
-  }, [lndState]);
-
-  const startLnd = async (): Promise<void> => {
-    setMessage('Starting LND...');
-    const customFields = {};
-    const lndConf = new LndConf(network, customFields);
-    const res = await lnd.start(lndConf);
-
-    if (res.isErr()) {
-      setMessage(res.error.message);
-      console.error(res.error);
-      return;
-    }
-
-    startStateSubscription();
-    setMessage(JSON.stringify(res.value));
   };
-
-  const showStartButton = lndState === ss_lnrpc.WalletState.WAITING_TO_START;
-  const showUnlockButton = lndState === ss_lnrpc.WalletState.LOCKED;
-  const showGenerateSeed = lndState === ss_lnrpc.WalletState.NON_EXISTING;
-  const showCreateButton =
-    seed.length > 0 && lndState === ss_lnrpc.WalletState.NON_EXISTING;
-  const showRpcOptions = lndState === ss_lnrpc.WalletState.RPC_ACTIVE;
 
   return (
     <>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView>
+        <Text style={styles.title}>react-native-ldk</Text>
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           style={styles.scrollView}>
-          <Text style={styles.state}>
-            State: {lnd.stateService.readableState(lndState)}
-          </Text>
-
           <Text style={styles.message}>{message}</Text>
 
-          {showStartButton ? (
-            <>
-              <Button
-                title={'Download cached headers then start LND'}
-                onPress={async () => {
-                  setMessage('Downloading cached headers...');
-                  setMessage(JSON.stringify(lndCache));
-                  lndCache.addStateListener(
-                    (state: ICachedNeutrinoDBDownloadState) => {
-                      setMessage(JSON.stringify(state));
-                    },
-                  );
+          <Button title={'Start'} onPress={startLdk} />
 
-                  await lndCache.downloadCache(ENetworks.testnet);
-                  await startLnd();
-                }}
-              />
-              <Button
-                title={'Start LND'}
-                onPress={async () => {
-                  await startLnd();
-                }}
-              />
-            </>
-          ) : (
-            <Button
-              title={'Stop LND'}
-              onPress={async () => {
-                setMessage('Stopping LND...');
-                const res = await lnd.stop();
-                if (res.isErr()) {
-                  setMessage(res.error.message);
-                  console.error(res.error);
-                  return;
-                }
+          <Button
+            title={'Version'}
+            onPress={async () => {
+              const res = await ldk.version();
+              alert(JSON.stringify(res));
+            }}
+          />
 
-                setMessage(JSON.stringify(res.value));
-              }}
-            />
-          )}
+          <Button
+            title={'initFeeEstimator'}
+            onPress={async () => {
+              const res = await ldk.initFeeEstimator({
+                high: 1000,
+                normal: 500,
+                low: 100,
+              });
+              alert(JSON.stringify(res));
+            }}
+          />
 
-          {showGenerateSeed ? (
-            <Button
-              title={'Generate seed'}
-              onPress={async () => {
-                const res = await lnd.walletUnlocker.genSeed();
+          <Button
+            title={'initLogger'}
+            onPress={async () => {
+              const res = await ldk.initLogger();
+              alert(JSON.stringify(res));
+            }}
+          />
 
-                if (res.isErr()) {
-                  console.error(res.error);
-                  return;
-                }
+          <Button
+            title={'setLogLevel'}
+            onPress={async () => {
+              const res = await ldk.setLogLevel(2, true);
+              alert(JSON.stringify(res));
+            }}
+          />
 
-                if (res.isOk()) {
-                  setSeed(res.value);
-                  Clipboard.setString(res.value.join(' '));
-                  setMessage(res.value.join(' '));
-                }
-              }}
-            />
-          ) : null}
-
-          {showUnlockButton ? (
-            <Button
-              title={'Unlock wallet'}
-              onPress={async () => {
-                const res = await lnd.walletUnlocker.unlockWallet(
-                  dummyPassword,
-                );
-
-                if (res.isErr()) {
-                  console.error(res.error);
-                  return;
-                }
-
-                setMessage('Unlocked.');
-              }}
-            />
-          ) : null}
-
-          {showCreateButton ? (
-            <Button
-              title={'Init wallet'}
-              onPress={async () => {
-                const res = await lnd.walletUnlocker.initWallet(
-                  dummyPassword,
-                  seed,
-                );
-
-                if (res.isErr()) {
-                  console.error(res.error);
-                  return;
-                }
-
-                setMessage('Wallet initialised');
-              }}
-            />
-          ) : null}
-
-          {showRpcOptions ? (
-            <>
-              <Options
-                nodePubKey={testNodePubkey}
-                nodeAddress={testNodeAddress}
-              />
-              <PSBT nodePubKey={testNodePubkey} />
-            </>
-          ) : null}
+          <Button
+            title={'updateFees'}
+            onPress={async () => {
+              const res = await ldk.updateFees({
+                high: 1000,
+                normal: 500,
+                low: 100,
+              });
+              if (res.isOk()) {
+                alert(res.value);
+              }
+            }}
+          />
         </ScrollView>
       </SafeAreaView>
     </>
@@ -253,7 +112,8 @@ const styles = StyleSheet.create({
   scrollView: {
     height: '100%',
   },
-  state: {
+  title: {
+    fontSize: 18,
     textAlign: 'center',
   },
   message: {

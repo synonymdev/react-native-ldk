@@ -23,9 +23,9 @@ export const bytesToString = (bytes: Uint8Array): string => {
  * @param bytes
  * @returns {string}
  */
-export const bytesToHexString = (bytes: Uint8Array): string => {
-	return bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
-};
+// export const bytesToHexString = (bytes: Uint8Array): string => {
+// 	return bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
+// };
 
 /**
  * Converts hex string to bytes
