@@ -24,6 +24,10 @@ enum LdkErrors: String {
     case init_persister = "init_persister"
     case init_filter = "init_filter"
     case invalid_seed_hex = "invalid_seed_hex"
+    case init_chain_monitor = "init_chain_monitor"
+    case init_keys_manager = "init_keys_manager"
+    case invalid_network = "invalid_network"
+    case load_channel_monitors = "load_channel_monitors"
 }
 
 enum LdkCallbackResponses: String {
@@ -36,6 +40,7 @@ enum LdkCallbackResponses: String {
     case chain_monitor_init_success = "chain_monitor_init_success"
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
+    case load_channel_monitors_success = "load_channel_monitors_success"
 }
 
 @objc(Ldk)
@@ -47,7 +52,9 @@ class Ldk: NSObject {
     var filter: LdkFilter?
     var chainMonitor: ChainMonitor?
     var keysManager: KeysManager?
-    
+    var channelManager: ChannelManager?
+    var channelMonitors: Array<[UInt8]>?
+        
     lazy var ldkStorage: URL = {
         let docsurl = try! FileManager.default.url(for:.documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
         let ldkPath = docsurl.appendingPathComponent("ldk")
@@ -132,6 +139,10 @@ class Ldk: NSObject {
     
     @objc
     func initChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard chainMonitor == nil else {
+            return handleReject(reject, .already_init)
+        }
+        
         guard let feeEstimator = feeEstimator else {
             return handleReject(reject, .init_fee_estimator)
         }
@@ -161,6 +172,10 @@ class Ldk: NSObject {
     
     @objc
     func initKeysManager(_ seed: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard keysManager == nil else {
+            return handleReject(reject, .already_init)
+        }
+        
         let seconds = UInt64(NSDate().timeIntervalSince1970)
         let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
         let seedBytes = String(seed).hexaBytes
@@ -175,17 +190,98 @@ class Ldk: NSObject {
     }
     
     @objc
-    func initChannelManager(_ network: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-//        let _ = ChannelManager(
-//            fee_est: feeEstimator,
-//            chain_monitor: chainMonitor,
-//            tx_broadcaster: broadcaster,
-//            logger: logger,
-//            keys_manager: keysManager.as_KeysInterface(),
-//            config: UserConfig(),
-//            params: ChainParameters(network_arg: network, best_block_arg: BestBlock(block_hash: [], height: 0))
-//        )
+    func loadChannelMonitors(_ channelMonitorStrings: NSArray, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        channelMonitors = Array<[UInt8]>()
+        for monitor in channelMonitorStrings {
+            channelMonitors?.append((monitor as! String).hexaBytes)
+        }
         
+        LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Loaded channel monitors: \(channelMonitors!.count)")
+        handleResolve(resolve, .load_channel_monitors_success)
+    }
+    
+    @objc
+    func initChannelManager(_ network: NSString, serializedChannelManager: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        print("initChannelManagerinitChannelManagerinitChannelManagerinitChannelManagerinitChannelManager")
+        
+        guard channelManager == nil else {
+            return handleReject(reject, .already_init)
+        }
+        
+        guard let feeEstimator = feeEstimator else {
+            return handleReject(reject, .init_fee_estimator)
+        }
+        
+        guard let chainMonitor = chainMonitor else {
+            return handleReject(reject, .init_chain_monitor)
+        }
+        
+        guard let broadcaster = broadcaster else {
+            return handleReject(reject, .init_broadcaster)
+        }
+        
+        guard let logger = logger else {
+            return handleReject(reject, .init_logger)
+        }
+        
+        guard let keysManager = keysManager else {
+            return handleReject(reject, .init_keys_manager)
+        }
+        
+        guard let channelMonitors = channelMonitors else {
+            return handleReject(reject, .load_channel_monitors)
+        }
+        
+        let bestBlock = BestBlock(block_hash: String(blockHash).hexaBytes, height: UInt32(blockHeight))
+        
+        let ldkNetwork: LDKNetwork!
+        switch network {
+        case "regtest":
+            ldkNetwork = LDKNetwork_Regtest
+        case "testnet":
+            ldkNetwork = LDKNetwork_Testnet
+        case "mainnet":
+            ldkNetwork = LDKNetwork_Bitcoin
+        default:
+            return handleReject(reject, .invalid_network)
+        }
+        
+        let chainParams = ChainParameters(
+            network_arg: ldkNetwork,
+            best_block_arg: bestBlock
+        )
+        
+        if channelMonitors.count == 0 {
+            //New node
+            channelManager = ChannelManager(
+                fee_est: feeEstimator,
+                chain_monitor: chainMonitor.as_Watch(),
+                tx_broadcaster: broadcaster,
+                logger: logger,
+                keys_manager: keysManager.as_KeysInterface(),
+                config: UserConfig(),
+                params: chainParams
+            )
+        } else {
+            //Restoring node
+            // MARK: Untested code
+            do {
+                channelManager = try ChannelManagerConstructor(
+                    channel_manager_serialized: String(serializedChannelManager).hexaBytes,
+                    channel_monitors_serialized: channelMonitors,
+                    keys_interface: keysManager.as_KeysInterface(),
+                    fee_estimator: feeEstimator,
+                    chain_monitor: chainMonitor,
+                    filter: filter,
+                    net_graph_serialized: nil, //TODO
+                    tx_broadcaster: broadcaster,
+                    logger: logger
+                ).channelManager
+            } catch {
+                return reject(error.localizedDescription, error.localizedDescription, error)
+            }
+        }
+                
         handleResolve(resolve, .channel_manager_init_success)
     }
 }

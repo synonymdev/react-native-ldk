@@ -33,7 +33,6 @@ const App = () => {
 
       if (res.isErr()) {
         setMessage(res.error.message);
-        console.error(res.error);
         return;
       }
 

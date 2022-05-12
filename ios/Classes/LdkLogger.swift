@@ -23,7 +23,5 @@ class LdkLogger: Logger {
     
     func setLevel(level: UInt32, active: Bool) {
         self.activeLevels[level] = active
-        
-        LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Log level \(level) set to \(active)")
     }
 }

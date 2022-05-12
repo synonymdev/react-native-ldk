@@ -1,6 +1,13 @@
 import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import { err, ok, Result } from './utils/result';
-import { EEventTypes, ELdkLogLevels, TFeeUpdateReq, TLogListener } from "./utils/types";
+import {
+	EEventTypes,
+	ELdkLogLevels,
+	ENetworks,
+	TFeeUpdateReq,
+	TInitChannelManagerReq,
+	TLogListener
+} from './utils/types';
 
 const LINKING_ERROR =
 	`The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n` +
@@ -105,6 +112,46 @@ class LDK {
 	async initKeysManager(seed: string): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initKeysManager(seed);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Starts channel manager for current network and best block
+	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/index.html
+	 * @param network
+	 * @param bestBlock
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async initChannelManager({
+		network,
+		serializedChannelManager,
+		bestBlock
+	}: TInitChannelManagerReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.initChannelManager(
+				network,
+				serializedChannelManager,
+				bestBlock.hash,
+				bestBlock.height
+			);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Accepts array of hex encoded channel monitors from storage.
+	 * If blank array is set then initChannelManager will init new channelManager.
+	 * @param channelMonitors
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async loadChannelMonitors(channelMonitors: string[]): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.loadChannelMonitors(channelMonitors);
 			return ok(res);
 		} catch (e) {
 			return err(e);

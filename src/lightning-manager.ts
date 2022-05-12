@@ -1,6 +1,6 @@
 import ldk from './ldk';
 import { ok, Result } from './utils/result';
-import { EEventTypes, ELdkLogLevels } from './utils/types';
+import { EEventTypes, ELdkLogLevels, ENetworks } from './utils/types';
 
 //TODO startup steps
 // Step 0: Listen for events ✅
@@ -11,7 +11,7 @@ import { EEventTypes, ELdkLogLevels } from './utils/types';
 // Step 5: Initialize the ChainMonitor ✅
 // Step 6: Initialize the KeysManager
 // Step 7: Read ChannelMonitor state from disk
-// Step 8: Initialize the ChannelManager
+// Step 8: Initialize the ChannelManager ✅
 // Step 9: Sync ChannelMonitors and ChannelManager to chain tip
 // Step 10: Give ChannelMonitors to ChainMonitor
 // Step 11: Optional: Initialize the NetGraphMsgHandler
@@ -25,7 +25,7 @@ import { EEventTypes, ELdkLogLevels } from './utils/types';
 // Step 19: Background Processing
 
 class LightningManager {
-	async start(): Promise<Result<string>> {
+	constructor() {
 		// Step 0: Subscribe to all events
 		ldk.onEvent(EEventTypes.swift_log, console.info);
 		ldk.onEvent(EEventTypes.ldk_log, console.info);
@@ -36,7 +36,9 @@ class LightningManager {
 		ldk.onEvent(EEventTypes.persist_new_channel, this.onPersistNewChannel.bind(this));
 		ldk.onEvent(EEventTypes.channel_manager_event, this.onChannelManagerEvent.bind(this));
 		ldk.onEvent(EEventTypes.update_persisted_channel, this.onUpdatePersistedChannel.bind(this));
+	}
 
+	async start(): Promise<Result<string>> {
 		// Step 1: Initialize the FeeEstimator
 		const feeRes = await ldk.initFeeEstimator();
 		if (feeRes.isErr()) {
@@ -86,7 +88,26 @@ class LightningManager {
 			return keysManager;
 		}
 
-		// Step 7: Read ChannelMonitor state from disk
+		// Step 7: Read ChannelMonitors state from disk
+		const channelMonitorsRes = await ldk.loadChannelMonitors([]);
+		if (channelMonitorsRes.isErr()) {
+			return channelMonitorsRes;
+		}
+
+		// Step 8: Initialize the ChannelManager
+		const channelManagerRes = await ldk.initChannelManager({
+			network: ENetworks.regtest,
+			serializedChannelManager: '', //TODO this should also probably be restored from storage
+			bestBlock: {
+				hash: '23a17def8c7b3e66c4f05e66d3f2da3a6adbd112a70a3e5508120f8132b750a0',
+				height: 736
+			}
+		});
+		if (channelManagerRes.isErr()) {
+			return channelManagerRes;
+		}
+
+		// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
 
 		return ok('Node running');
 	}

@@ -27,6 +27,15 @@ export type TFeeUpdateReq = {
 	background: number;
 };
 
+export type TInitChannelManagerReq = {
+	network: ENetworks;
+	serializedChannelManager: string;
+	bestBlock: {
+		hash: string;
+		height: number;
+	};
+};
+
 export enum ELdkLogLevels {
 	trace = 1, //LDKLevel_Trace
 	debug = 2, //LDKLevel_Debug
