@@ -1,4 +1,5 @@
 #import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
 
 @interface RCT_EXTERN_MODULE(Ldk, NSObject)
 
@@ -23,5 +24,12 @@ RCT_EXTERN_METHOD(setLogLevel:(NSInteger *)high
                   active:(BOOL *)active
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+
+@end
+
+//MARK: Events
+@interface RCT_EXTERN_MODULE(LdkEventEmitter, RCTEventEmitter)
+
+RCT_EXTERN_METHOD(supportedEvents)
 
 @end

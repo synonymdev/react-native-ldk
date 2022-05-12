@@ -4,21 +4,16 @@ export enum ENetworks {
 	mainnet = 'mainnet'
 }
 
-export enum EStreamEventType {
-	data = 'data',
-	error = 'error'
-}
-
-export type TNativeStreamResponse = {
-	data: string | undefined;
-	event: EStreamEventType;
-	streamId: string;
-	error: string | undefined;
-};
-
-export enum EStreamEventTypes {
-	Logs = 'logs',
-	StreamEvent = 'streamEvent'
+export enum EEventTypes {
+	ldk_log = 'ldk_log',
+	swift_log = 'swift_log',
+	register_tx = 'register_tx',
+	register_output = 'register_output',
+	broadcast_transaction = 'broadcast_transaction',
+	persist_manager = 'persist_manager',
+	persist_new_channel = 'persist_new_channel',
+	channel_manager_event = 'channel_manager_event',
+	update_persisted_channel = 'update_persisted_channel'
 }
 
 export type TLogListener = {
@@ -27,15 +22,15 @@ export type TLogListener = {
 };
 
 export type TFeeUpdateReq = {
-	highPriority: number,
-	normal: number,
-	background: number
-}
+	highPriority: number;
+	normal: number;
+	background: number;
+};
 
 export enum ELdkLogLevels {
 	trace = 1, //LDKLevel_Trace
 	debug = 2, //LDKLevel_Debug
 	info = 3, //LDKLevel_Info
 	warn = 4, //LDKLevel_Warn
-	error = 5, //LDKLevel_Error
+	error = 5 //LDKLevel_Error
 }

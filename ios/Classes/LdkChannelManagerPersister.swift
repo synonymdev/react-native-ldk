@@ -10,12 +10,17 @@ import LDKFramework
 
 class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     func handle_event(event: Event) {
-        //TODO handle in swift or RN?
+        //TODO pass back all relevent info to RN
+        let body = [
+            "event": "TODO"
+        ]
+        
+        LdkEventEmitter.shared.send(withEvent: .channel_manager_event, body: body)
     }
     
     override func persist_manager(channel_manager: ChannelManager) -> Result_NoneErrorZ {
-        let channelManagerHex = Data(channel_manager.write()).hexEncodedString()
-        sendEvent(eventName: .persist_manager, eventBody: ["channel_manager": channelManagerHex])
+        LdkEventEmitter.shared.send(withEvent: .persist_manager, body: ["channel_manager": Data(channel_manager.write()).hexEncodedString()])
+        
         return Result_NoneErrorZ.ok()
     }
     

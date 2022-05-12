@@ -1,6 +1,6 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import { err, ok, Result } from './utils/result';
-import { ELdkLogLevels, TFeeUpdateReq, TLogListener } from './utils/types';
+import { EEventTypes, ELdkLogLevels, TFeeUpdateReq, TLogListener } from "./utils/types";
 
 const LINKING_ERROR =
 	`The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n` +
@@ -20,16 +20,12 @@ const NativeLDK = NativeModules.Ldk
 	  );
 
 class LDK {
-	/**
-	 * Array of callbacks to be fired off when a new log entry arrives.
-	 * Developers are responsible for adding and removing listeners.
-	 *
-	 * @type {TLogListener[]}
-	 */
 	private readonly logListeners: TLogListener[];
+	private readonly ldkEvent: NativeEventEmitter;
 
 	constructor() {
 		this.logListeners = [];
+		this.ldkEvent = new NativeEventEmitter(NativeModules.LdkEventEmitter);
 	}
 
 	/**
@@ -145,6 +141,10 @@ class LDK {
 		} catch (e) {
 			return err(e);
 		}
+	}
+
+	onEvent(event: EEventTypes, callback: (res: any) => void) {
+		this.ldkEvent.addListener(event, callback);
 	}
 
 	async version(): Promise<Result<{ c_bindings: string; ldk: string }>> {

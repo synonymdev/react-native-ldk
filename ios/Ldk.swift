@@ -1,5 +1,43 @@
 import LDKFramework
 
+//MARK: ************Replicate in typescript and kotlin************
+enum EventTypes: String, CaseIterable {
+    case ldk_log = "ldk_log"
+    case swift_log = "swift_log"
+    case register_tx = "register_tx"
+    case register_output = "register_output"
+    case broadcast_transaction = "broadcast_transaction"
+    case persist_manager = "persist_manager"
+    case persist_new_channel = "persist_new_channel"
+    case channel_manager_event = "channel_manager_event"
+    case update_persisted_channel = "update_persisted_channel"
+}
+//*****************************************************************
+
+enum LdkErrors: String {
+    case unknown_error = "unknown_error"
+    case unknown_method = "unknown_method"
+    case init_fee_estimator = "init_fee_estimator"
+    case already_init = "already_init"
+    case init_logger = "init_logger"
+    case init_broadcaster = "init_broadcaster"
+    case init_persister = "init_persister"
+    case init_filter = "init_filter"
+    case invalid_seed_hex = "invalid_seed_hex"
+}
+
+enum LdkCallbackResponses: String {
+    case fee_estimator_init_success = "fee_estimator_init_success"
+    case fees_updated = "fees_updated"
+    case logger_init_success = "logger_init_success"
+    case log_level_updated = "log_level_updated"
+    case broadcaster_init_success = "broadcaster_init_success"
+    case persister_init_success = "persister_init_success"
+    case chain_monitor_init_success = "chain_monitor_init_success"
+    case keys_manager_init_success = "keys_manager_init_success"
+    case channel_manager_init_success = "channel_manager_init_success"
+}
+
 @objc(Ldk)
 class Ldk: NSObject {
     var feeEstimator: LdkFeeEstimator?
@@ -149,5 +187,25 @@ class Ldk: NSObject {
 //        )
         
         handleResolve(resolve, .channel_manager_init_success)
+    }
+}
+
+//MARK: Singleton react native event emitter
+@objc(LdkEventEmitter)
+class LdkEventEmitter: RCTEventEmitter {
+    public static var shared: LdkEventEmitter!
+
+    override init() {
+        super.init()
+        LdkEventEmitter.shared = self
+    }
+
+    public func send(withEvent eventType: EventTypes, body: Any) {
+        //TODO convert all bytes to hex here
+        sendEvent(withName: eventType.rawValue, body: body)
+    }
+
+    override func supportedEvents() -> [String] {
+        return EventTypes.allCases.map { $0.rawValue }
     }
 }

@@ -1,8 +1,9 @@
 import ldk from './ldk';
 import { ok, Result } from './utils/result';
-import { ELdkLogLevels } from './utils/types';
+import { EEventTypes, ELdkLogLevels } from './utils/types';
 
 //TODO startup steps
+// Step 0: Listen for events ✅
 // Step 1: Initialize the FeeEstimator ✅
 // Step 2: Initialize the Logger ✅
 // Step 3: Initialize the BroadcasterInterface ✅
@@ -25,6 +26,17 @@ import { ELdkLogLevels } from './utils/types';
 
 class LightningManager {
 	async start(): Promise<Result<string>> {
+		// Step 0: Subscribe to all events
+		ldk.onEvent(EEventTypes.swift_log, console.info);
+		ldk.onEvent(EEventTypes.ldk_log, console.info);
+		ldk.onEvent(EEventTypes.register_tx, this.onRegisterTx.bind(this));
+		ldk.onEvent(EEventTypes.register_output, this.onRegisterOutput.bind(this));
+		ldk.onEvent(EEventTypes.broadcast_transaction, this.onBroadcastTransaction.bind(this));
+		ldk.onEvent(EEventTypes.persist_manager, this.onPersistManager.bind(this));
+		ldk.onEvent(EEventTypes.persist_new_channel, this.onPersistNewChannel.bind(this));
+		ldk.onEvent(EEventTypes.channel_manager_event, this.onChannelManagerEvent.bind(this));
+		ldk.onEvent(EEventTypes.update_persisted_channel, this.onUpdatePersistedChannel.bind(this));
+
 		// Step 1: Initialize the FeeEstimator
 		const feeRes = await ldk.initFeeEstimator();
 		if (feeRes.isErr()) {
@@ -59,7 +71,6 @@ class LightningManager {
 		if (persisterRes.isErr()) {
 			return persisterRes;
 		}
-		//TODO add listeners to persist events
 
 		// Step 5: Initialize the ChainMonitor
 		const chainMonitorRes = await ldk.initChainMonitor();
@@ -78,6 +89,35 @@ class LightningManager {
 		// Step 7: Read ChannelMonitor state from disk
 
 		return ok('Node running');
+	}
+
+	//TODO do proper types instead of 'any'
+	private onRegisterTx(data: any) {
+		console.log(`onRegisterTx: ${data}`); //TODO
+	}
+
+	private onRegisterOutput(data: any) {
+		console.log(`onRegisterOutput: ${data}`); //TODO
+	}
+
+	private onBroadcastTransaction(data: any) {
+		console.log(`onBroadcastTransaction: ${data}`); //TODO
+	}
+
+	private onPersistManager(data: any) {
+		console.log(`onPersistManager: ${data}`); //TODO
+	}
+
+	private onPersistNewChannel(data: any) {
+		console.log(`onPersistNewChannel: ${data}`); //TODO
+	}
+
+	private onChannelManagerEvent(data: any) {
+		console.log(`onChannelManagerEvent: ${data}`); //TODO
+	}
+
+	private onUpdatePersistedChannel(data: any) {
+		console.log(`onUpdatePersistedChannel: ${data}`); //TODO
 	}
 }
 

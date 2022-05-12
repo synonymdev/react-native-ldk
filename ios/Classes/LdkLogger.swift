@@ -16,12 +16,14 @@ class LdkLogger: Logger {
         
         //Only when the JS code has set the log level to active
         if activeLevels[level] == true {
-            let line = "\(record.get_args())"
-            sendEvent(eventName: .log, eventBody: ["line" : line, "level": "\(level)" ])
+            let line = "LDK: \(record.get_args())"
+            LdkEventEmitter.shared.send(withEvent: .ldk_log, body: line)
         }
     }
     
     func setLevel(level: UInt32, active: Bool) {
         self.activeLevels[level] = active
+        
+        LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Log level \(level) set to \(active)")
     }
 }
