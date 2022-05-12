@@ -3,9 +3,7 @@
 
 @interface RCT_EXTERN_MODULE(Ldk, NSObject)
 
-RCT_EXTERN_METHOD(version:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
-
-//Startup methods
+//MARK: Startup methods
 RCT_EXTERN_METHOD(inititlize:(NSString *)method
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
@@ -23,12 +21,7 @@ RCT_EXTERN_METHOD(initChannelManager:(NSString *)network
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
-
-//func (_ channelMonitors: NSArray, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-
-
-
-//Update state methods
+//MARK: Update methods
 RCT_EXTERN_METHOD(updateFees:(NSInteger *)high
                   normal:(NSInteger *)normal
                   low:(NSInteger *)low
@@ -38,6 +31,10 @@ RCT_EXTERN_METHOD(setLogLevel:(NSInteger *)high
                   active:(BOOL *)active
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+
+//MARK: Fetch methods
+RCT_EXTERN_METHOD(version:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(nodeId:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
 @end
 

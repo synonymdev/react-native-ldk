@@ -55,7 +55,7 @@ const App = () => {
           <Button title={'Start'} onPress={startLdk} />
 
           <Button
-            title={'Version'}
+            title={'Show version'}
             onPress={async () => {
               const res = await ldk.version();
               if (res.isErr()) {
@@ -63,6 +63,18 @@ const App = () => {
               }
 
               setMessage(res.value.ldk);
+            }}
+          />
+
+          <Button
+            title={'Get info'}
+            onPress={async () => {
+              const nodeIdRes = await ldk.nodeId();
+              if (nodeIdRes.isErr()) {
+                return setMessage(nodeIdRes.error.message);
+              }
+
+              setMessage(`Node ID: ${nodeIdRes.value}`);
             }}
           />
         </ScrollView>

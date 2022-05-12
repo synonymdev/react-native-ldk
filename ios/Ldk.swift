@@ -41,6 +41,7 @@ enum LdkCallbackResponses: String {
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
     case load_channel_monitors_success = "load_channel_monitors_success"
+    case chain_monitor_updated = "chain_monitor_updated"
 }
 
 @objc(Ldk)
@@ -54,6 +55,7 @@ class Ldk: NSObject {
     var keysManager: KeysManager?
     var channelManager: ChannelManager?
     var channelMonitors: Array<[UInt8]>?
+    var networkGraph: NetworkGraph?
         
     lazy var ldkStorage: URL = {
         let docsurl = try! FileManager.default.url(for:.documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
@@ -66,15 +68,7 @@ class Ldk: NSObject {
         return ldkPath
     }()
     
-    @objc
-    func version(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        let res: [String: String] = [
-            "c_bindings": Bindings.swift_ldk_c_bindings_get_compiled_version(),
-            "ldk": Bindings.swift_ldk_get_compiled_version(),
-        ]
-               
-        resolve(String(data: try! JSONEncoder().encode(res), encoding: .utf8)!)
-    }
+    //MARK: Startup methods
     
     @objc
     func inititlize(_ method: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -115,26 +109,6 @@ class Ldk: NSObject {
         default:
             return handleReject(reject, .unknown_method)
         }
-    }
-    
-    @objc
-    func updateFees(_ high: NSInteger, normal: NSInteger, low: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let feeEstimator = feeEstimator else {
-            return handleReject(reject, .init_fee_estimator)
-        }
-        
-        feeEstimator.update(high: UInt32(high), normal: UInt32(normal), low: UInt32(low))
-        handleResolve(resolve, .fees_updated)
-    }
-    
-    @objc
-    func setLogLevel(_ level: NSInteger, active: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let logger = logger else {
-            return handleReject(reject, .init_logger)
-        }
-        
-        logger.setLevel(level: UInt32(level), active: active)
-        handleResolve(resolve, .log_level_updated)
     }
     
     @objc
@@ -200,10 +174,13 @@ class Ldk: NSObject {
         handleResolve(resolve, .load_channel_monitors_success)
     }
     
+    //    @objc
+    //    func initNetworkGraph(_ graph: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    //        let router = NetworkGraph(genesis_hash: [])
+    //    }
+    
     @objc
     func initChannelManager(_ network: NSString, serializedChannelManager: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        print("initChannelManagerinitChannelManagerinitChannelManagerinitChannelManagerinitChannelManager")
-        
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
         }
@@ -259,7 +236,7 @@ class Ldk: NSObject {
                 tx_broadcaster: broadcaster,
                 logger: logger,
                 keys_manager: keysManager.as_KeysInterface(),
-                config: UserConfig(),
+                config: UserConfig(), //TODO customise from JS
                 params: chainParams
             )
         } else {
@@ -283,6 +260,70 @@ class Ldk: NSObject {
         }
                 
         handleResolve(resolve, .channel_manager_init_success)
+    }
+    
+    //MARK: Update methods
+    
+    @objc
+    func updateFees(_ high: NSInteger, normal: NSInteger, low: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let feeEstimator = feeEstimator else {
+            return handleReject(reject, .init_fee_estimator)
+        }
+        
+        feeEstimator.update(high: UInt32(high), normal: UInt32(normal), low: UInt32(low))
+        handleResolve(resolve, .fees_updated)
+    }
+    
+    @objc
+    func setLogLevel(_ level: NSInteger, active: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let logger = logger else {
+            return handleReject(reject, .init_logger)
+        }
+        
+        logger.setLevel(level: UInt32(level), active: active)
+        handleResolve(resolve, .log_level_updated)
+    }
+    
+    @objc
+    func syncToTip(_ blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        //Sync ChannelMonitors and ChannelManager to chain tip
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .load_channel_monitors)
+        }
+        
+        //TODO
+    }
+    
+    @objc
+    func syncChainMonitorWithChannelMonitor(_ blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let chainMonitor = chainMonitor else {
+            return handleReject(reject, .init_chain_monitor)
+        }
+        
+        //TODO figure out how to read channel monitors and pass to chain monitor
+        //chainMonitor.as_Watch().watch_channel(funding_txo: T##OutPoint, monitor: channelMonitors)
+        
+        handleResolve(resolve, .chain_monitor_updated)
+    }
+    
+    //MARK: Fetch methods
+    @objc
+    func version(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let res: [String: String] = [
+            "c_bindings": Bindings.swift_ldk_c_bindings_get_compiled_version(),
+            "ldk": Bindings.swift_ldk_get_compiled_version(),
+        ]
+               
+        resolve(String(data: try! JSONEncoder().encode(res), encoding: .utf8)!)
+    }
+    
+    @objc
+    func nodeId(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .load_channel_monitors)
+        }
+        
+        resolve(Data(channelManager.get_our_node_id()).hexEncodedString())
     }
 }
 

@@ -9,8 +9,8 @@ import { EEventTypes, ELdkLogLevels, ENetworks } from './utils/types';
 // Step 3: Initialize the BroadcasterInterface ✅
 // Step 4: Initialize Persist ✅
 // Step 5: Initialize the ChainMonitor ✅
-// Step 6: Initialize the KeysManager
-// Step 7: Read ChannelMonitor state from disk
+// Step 6: Initialize the KeysManager ✅
+// Step 7: Read ChannelMonitor state from disk ✅
 // Step 8: Initialize the ChannelManager ✅
 // Step 9: Sync ChannelMonitors and ChannelManager to chain tip
 // Step 10: Give ChannelMonitors to ChainMonitor
@@ -38,7 +38,13 @@ class LightningManager {
 		ldk.onEvent(EEventTypes.update_persisted_channel, this.onUpdatePersistedChannel.bind(this));
 	}
 
+	/**
+	 * Spins up and syncs all processes
+	 * @returns {Promise<Err<string> | Ok<string>>}
+	 */
 	async start(): Promise<Result<string>> {
+		const isExistingNode = false;
+
 		// Step 1: Initialize the FeeEstimator
 		const feeRes = await ldk.initFeeEstimator();
 		if (feeRes.isErr()) {
@@ -94,10 +100,12 @@ class LightningManager {
 			return channelMonitorsRes;
 		}
 
+		//TODO setup UserConfig
+
 		// Step 8: Initialize the ChannelManager
 		const channelManagerRes = await ldk.initChannelManager({
 			network: ENetworks.regtest,
-			serializedChannelManager: '', //TODO this should also probably be restored from storage
+			serializedChannelManager: '', //TODO [UNTESTED]
 			bestBlock: {
 				hash: '23a17def8c7b3e66c4f05e66d3f2da3a6adbd112a70a3e5508120f8132b750a0',
 				height: 736
@@ -108,6 +116,12 @@ class LightningManager {
 		}
 
 		// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
+		if (!isExistingNode) {
+			// https://github.com/lightningdevkit/ldk-sample/blob/c0a722430b8fbcb30310d64487a32aae839da3e8/src/main.rs#L479
+			// Sample app only syncs when restarting an existing node
+		}
+
+		// Step 10: Give ChannelMonitors to ChainMonitor
 
 		return ok('Node running');
 	}

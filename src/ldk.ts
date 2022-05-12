@@ -119,6 +119,21 @@ class LDK {
 	}
 
 	/**
+	 * Accepts array of hex encoded channel monitors from storage.
+	 * If blank array is set then initChannelManager will init new channelManager.
+	 * @param channelMonitors
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async loadChannelMonitors(channelMonitors: string[]): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.loadChannelMonitors(channelMonitors);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
 	 * Starts channel manager for current network and best block
 	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/index.html
 	 * @param network
@@ -137,21 +152,6 @@ class LDK {
 				bestBlock.hash,
 				bestBlock.height
 			);
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
-	 * Accepts array of hex encoded channel monitors from storage.
-	 * If blank array is set then initChannelManager will init new channelManager.
-	 * @param channelMonitors
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
-	 */
-	async loadChannelMonitors(channelMonitors: string[]): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.loadChannelMonitors(channelMonitors);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -194,10 +194,23 @@ class LDK {
 		this.ldkEvent.addListener(event, callback);
 	}
 
+	/**
+	 * Fetches LDK and c bindings version
+	 * @returns {Promise<Ok<any> | Err<unknown>>}
+	 */
 	async version(): Promise<Result<{ c_bindings: string; ldk: string }>> {
 		try {
 			const res = await NativeLDK.version();
 			return ok(JSON.parse(res));
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async nodeId(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.nodeId();
+			return ok(res);
 		} catch (e) {
 			return err(e);
 		}
