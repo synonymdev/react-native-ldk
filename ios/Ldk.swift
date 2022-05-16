@@ -29,6 +29,8 @@ enum LdkErrors: String {
     case init_user_config = "init_user_config"
     case invalid_network = "invalid_network"
     case load_channel_monitors = "load_channel_monitors"
+    case init_channel_monitor = "init_channel_monitor"
+    case init_network_graph = "init_network_graph"
 }
 
 enum LdkCallbackResponses: String {
@@ -42,7 +44,10 @@ enum LdkCallbackResponses: String {
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
     case load_channel_monitors_success = "load_channel_monitors_success"
+    case config_init_success = "config_init_success"
+    case net_graph_msg_handler_init_success = "net_graph_msg_handler_init_success"
     case chain_monitor_updated = "chain_monitor_updated"
+    case network_graph_init_success = "network_graph_init_success"
 }
 
 @objc(Ldk)
@@ -58,7 +63,9 @@ class Ldk: NSObject {
     var userConfig: UserConfig?
     var channelMonitors: Array<[UInt8]>?
     var networkGraph: NetworkGraph?
-        
+    var networkGossip: NetGraphMsgHandler?
+    var peerManager: PeerManager?
+    
     lazy var ldkStorage: URL = {
         let docsurl = try! FileManager.default.url(for:.documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
         let ldkPath = docsurl.appendingPathComponent("ldk")
@@ -176,11 +183,6 @@ class Ldk: NSObject {
         handleResolve(resolve, .load_channel_monitors_success)
     }
     
-    //    @objc
-    //    func initNetworkGraph(_ graph: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    //        let router = NetworkGraph(genesis_hash: [])
-    //    }
-    
     @objc
     func initConfig(_ acceptInboundChannels: Bool, manuallyAcceptInboundChannels: Bool, announcedChannels: Bool, minChannelHandshakeDepth: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard userConfig == nil else {
@@ -201,6 +203,8 @@ class Ldk: NSObject {
         let channelHandshakeLimits = ChannelHandshakeLimits()
         channelHandshakeLimits.set_force_announced_channel_preference(val: announcedChannels)
         userConfig!.set_peer_channel_config_limits(val: channelHandshakeLimits)
+        
+        handleResolve(resolve, .config_init_success)
     }
     
     @objc
@@ -283,12 +287,77 @@ class Ldk: NSObject {
                     logger: logger
                 ).channelManager
             } catch {
-                return reject(error.localizedDescription, error.localizedDescription, error)
+                return handleReject(reject, .init_channel_monitor, error)
             }
         }
                 
         handleResolve(resolve, .channel_manager_init_success)
     }
+    
+    @objc
+    func syncChainMonitorWithChannelMonitor(_ blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let chainMonitor = chainMonitor else {
+            return handleReject(reject, .init_chain_monitor)
+        }
+        
+        //TODO figure out how to read channel monitors and pass to chain monitor
+        //chainMonitor.as_Watch().watch_channel(funding_txo: T##OutPoint, monitor: channelMonitors)
+        
+        handleResolve(resolve, .chain_monitor_updated)
+    }
+    
+    @objc
+    func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
+        //TODO load cached version if exists instead
+        handleResolve(resolve, .network_graph_init_success)
+    }
+    
+    @objc
+    func initNetGraphMsgHandler(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard networkGossip == nil else {
+            return handleReject(reject, .already_init)
+        }
+        
+        guard let networkGraph = networkGraph else {
+            return handleReject(reject, .init_network_graph)
+        }
+        
+        guard let logger = logger else {
+            return handleReject(reject, .init_logger)
+        }
+    
+        let chainAccess = Access() //TODO extend and override get_utxo()
+        
+        networkGossip = NetGraphMsgHandler(
+            network_graph: networkGraph,
+            chain_access: Option_AccessZ(value: chainAccess),
+            logger: logger
+        )
+        
+        handleResolve(resolve, .net_graph_msg_handler_init_success)
+    }
+    
+    
+//    @objc
+//    func initPeerManager(_ blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+//        guard peerManager == nil else {
+//            return handleReject(reject, .already_init)
+//        }
+//
+//        let messageHandler = MessageHandler(
+//            chan_handler_arg: channelManager!.as_ChannelMessageHandler(),
+//            route_handler_arg: NetGraphMsgHandler().
+//        )
+//
+//        peerManager = PeerManager(
+//            message_handler: <#T##MessageHandler#>,
+//            our_node_secret: <#T##[UInt8]#>,
+//            ephemeral_random_data: <#T##[UInt8]#>,
+//            logger: <#T##Logger#>,
+//            custom_message_handler: IgnoringMessageHandler().as_CustomMessageHandler()
+//        )
+//    }
     
     //MARK: Update methods
     
@@ -320,18 +389,6 @@ class Ldk: NSObject {
         }
         
         //TODO
-    }
-    
-    @objc
-    func syncChainMonitorWithChannelMonitor(_ blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let chainMonitor = chainMonitor else {
-            return handleReject(reject, .init_chain_monitor)
-        }
-        
-        //TODO figure out how to read channel monitors and pass to chain monitor
-        //chainMonitor.as_Watch().watch_channel(funding_txo: T##OutPoint, monitor: channelMonitors)
-        
-        handleResolve(resolve, .chain_monitor_updated)
     }
     
     //MARK: Fetch methods

@@ -135,6 +135,20 @@ class LDK {
 	}
 
 	/**
+	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetworkGraph.html
+	 * @param genesisHash
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async initNetworkGraph(genesisHash: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.initNetworkGraph(genesisHash);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
 	 * Builds UserConfig, ChannelConfig, ChannelHandshakeConfig and ChannelHandshakeLimits.
 	 * More settings can be added to configure the below structs.
 	 * https://docs.rs/lightning/latest/lightning/util/config/struct.UserConfig.html
@@ -186,6 +200,19 @@ class LDK {
 				bestBlock.hash,
 				bestBlock.height
 			);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetGraphMsgHandler.html
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async initNetGraphMsgHandler(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.initNetGraphMsgHandler();
 			return ok(res);
 		} catch (e) {
 			return err(e);

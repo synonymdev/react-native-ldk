@@ -12,7 +12,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     func handle_event(event: Event) {
         //TODO pass back all relevent info to RN
         let body = [
-            "event": "TODO"
+            "event": "TODO implement handle_event correctly"
         ]
         
         LdkEventEmitter.shared.send(withEvent: .channel_manager_event, body: body)
@@ -25,6 +25,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     }
     
     override func persist_graph(network_graph: NetworkGraph) -> Result_NoneErrorZ {
+        //TODO persist and then load in initNetworkGraph instead of passing genesis hash each time
         
         return Result_NoneErrorZ.ok()
     }

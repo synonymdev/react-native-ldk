@@ -130,8 +130,21 @@ class LightningManager {
 		}
 
 		// Step 10: Give ChannelMonitors to ChainMonitor
+		// TODO Pass these pointers through when we have test channels to restore
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
+		const networkGraph = await ldk.initNetworkGraph(
+			'0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206'
+			//TODO load a cached version once persisted
+		);
+		if (networkGraph.isErr()) {
+			return networkGraph;
+		}
+
+		const netGraphMsgHandler = await ldk.initNetGraphMsgHandler();
+		if (netGraphMsgHandler.isErr()) {
+			return netGraphMsgHandler;
+		}
 
 		// Step 12: Initialize the PeerManager
 

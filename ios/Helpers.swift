@@ -12,9 +12,15 @@ func handleResolve(_ resolve: RCTPromiseResolveBlock, _ res: LdkCallbackResponse
     resolve(res.rawValue)
 }
 
-func handleReject(_ reject: RCTPromiseRejectBlock, _ error: LdkErrors) {
-    LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Error: \(error.rawValue)")
-    reject(error.rawValue, error.rawValue, NSError(domain: error.rawValue, code: error.hashValue))
+func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ error: Error? = nil) {
+    if let error = error as? NSError {
+        LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Error: \(error.localizedDescription)")
+        reject(ldkError.rawValue, error.localizedDescription, error)
+        return
+    }
+    
+    LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Error: \(ldkError.rawValue)")
+    reject(ldkError.rawValue, ldkError.rawValue, NSError(domain: ldkError.rawValue, code: ldkError.hashValue))
 }
 
 extension Data {
