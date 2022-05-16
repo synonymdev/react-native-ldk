@@ -7,13 +7,20 @@
 RCT_EXTERN_METHOD(inititlize:(NSString *)method
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(loadChannelMonitors:(NSArray *)channelMonitors
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(initConfig:(BOOL *)acceptInboundChannels
+                  manuallyAcceptInboundChannels:(BOOL *)manuallyAcceptInboundChannels
+                  announcedChannels:(BOOL *)announcedChannels
+                  minChannelHandshakeDepth:(NSInteger *)minChannelHandshakeDepth
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)    
 RCT_EXTERN_METHOD(initChannelManager:(NSString *)network
                   serializedChannelManager:(NSString *)serializedChannelManager
                   blockHash:(NSString *)blockHash
@@ -33,8 +40,10 @@ RCT_EXTERN_METHOD(setLogLevel:(NSInteger *)high
                   reject:(RCTPromiseRejectBlock)reject)
 
 //MARK: Fetch methods
-RCT_EXTERN_METHOD(version:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(nodeId:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(version:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(nodeId:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 
 @end
 

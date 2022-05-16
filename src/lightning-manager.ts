@@ -100,9 +100,17 @@ class LightningManager {
 			return channelMonitorsRes;
 		}
 
-		//TODO setup UserConfig
+		// Step 8: Initialize the UserConfig ChannelManager
+		const confRes = await ldk.initConfig({
+			acceptInboundChannels: true,
+			manuallyAcceptInboundChannels: false, //TODO might need to be true if we want to set closing address when blocktank opens with us
+			announcedChannels: false,
+			minChannelHandshakeDepth: 1 //TODO Verify correct min
+		});
+		if (confRes.isErr()) {
+			return confRes;
+		}
 
-		// Step 8: Initialize the ChannelManager
 		const channelManagerRes = await ldk.initChannelManager({
 			network: ENetworks.regtest,
 			serializedChannelManager: '', //TODO [UNTESTED]
@@ -122,6 +130,12 @@ class LightningManager {
 		}
 
 		// Step 10: Give ChannelMonitors to ChainMonitor
+
+		// Step 11: Optional: Initialize the NetGraphMsgHandler
+
+		// Step 12: Initialize the PeerManager
+
+		// Step 13: Initialize networking
 
 		return ok('Node running');
 	}

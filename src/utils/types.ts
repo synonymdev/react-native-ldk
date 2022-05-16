@@ -36,6 +36,13 @@ export type TInitChannelManagerReq = {
 	};
 };
 
+export type TInitConfig = {
+	acceptInboundChannels: boolean;
+	manuallyAcceptInboundChannels: boolean;
+	announcedChannels: boolean;
+	minChannelHandshakeDepth: number;
+};
+
 export enum ELdkLogLevels {
 	trace = 1, //LDKLevel_Trace
 	debug = 2, //LDKLevel_Debug

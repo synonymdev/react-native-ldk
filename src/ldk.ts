@@ -6,6 +6,7 @@ import {
 	ENetworks,
 	TFeeUpdateReq,
 	TInitChannelManagerReq,
+	TInitConfig,
 	TLogListener
 } from './utils/types';
 
@@ -127,6 +128,39 @@ class LDK {
 	async loadChannelMonitors(channelMonitors: string[]): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.loadChannelMonitors(channelMonitors);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Builds UserConfig, ChannelConfig, ChannelHandshakeConfig and ChannelHandshakeLimits.
+	 * More settings can be added to configure the below structs.
+	 * https://docs.rs/lightning/latest/lightning/util/config/struct.UserConfig.html
+	 * https://docs.rs/lightning/latest/lightning/util/config/struct.ChannelConfig.html
+	 * https://docs.rs/lightning/latest/lightning/util/config/struct.ChannelHandshakeConfig.html
+	 * https://docs.rs/lightning/latest/lightning/util/config/struct.ChannelHandshakeLimits.html
+	 *
+	 * @param acceptInboundChannels
+	 * @param manuallyAcceptInboundChannels
+	 * @param announcedChannels
+	 * @param minChannelHandshakeDepth
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async initConfig({
+		acceptInboundChannels,
+		manuallyAcceptInboundChannels,
+		announcedChannels,
+		minChannelHandshakeDepth
+	}: TInitConfig): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.initConfig(
+				acceptInboundChannels,
+				manuallyAcceptInboundChannels,
+				announcedChannels,
+				minChannelHandshakeDepth
+			);
 			return ok(res);
 		} catch (e) {
 			return err(e);

@@ -26,6 +26,7 @@ enum LdkErrors: String {
     case invalid_seed_hex = "invalid_seed_hex"
     case init_chain_monitor = "init_chain_monitor"
     case init_keys_manager = "init_keys_manager"
+    case init_user_config = "init_user_config"
     case invalid_network = "invalid_network"
     case load_channel_monitors = "load_channel_monitors"
 }
@@ -54,6 +55,7 @@ class Ldk: NSObject {
     var chainMonitor: ChainMonitor?
     var keysManager: KeysManager?
     var channelManager: ChannelManager?
+    var userConfig: UserConfig?
     var channelMonitors: Array<[UInt8]>?
     var networkGraph: NetworkGraph?
         
@@ -180,6 +182,28 @@ class Ldk: NSObject {
     //    }
     
     @objc
+    func initConfig(_ acceptInboundChannels: Bool, manuallyAcceptInboundChannels: Bool, announcedChannels: Bool, minChannelHandshakeDepth: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard userConfig == nil else {
+            return handleReject(reject, .already_init)
+        }
+    
+        userConfig = UserConfig()
+        userConfig!.set_accept_inbound_channels(val: acceptInboundChannels)
+        userConfig!.set_manually_accept_inbound_channels(val: manuallyAcceptInboundChannels)
+        
+        let channelConfig = ChannelConfig()
+        channelConfig.set_announced_channel(val: announcedChannels)
+        
+        let channelHandshakeConfig = ChannelHandshakeConfig()
+        channelHandshakeConfig.set_minimum_depth(val: UInt32(minChannelHandshakeDepth))
+        userConfig!.set_own_channel_config(val: channelHandshakeConfig)
+        
+        let channelHandshakeLimits = ChannelHandshakeLimits()
+        channelHandshakeLimits.set_force_announced_channel_preference(val: announcedChannels)
+        userConfig!.set_peer_channel_config_limits(val: channelHandshakeLimits)
+    }
+    
+    @objc
     func initChannelManager(_ network: NSString, serializedChannelManager: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
@@ -203,6 +227,10 @@ class Ldk: NSObject {
         
         guard let keysManager = keysManager else {
             return handleReject(reject, .init_keys_manager)
+        }
+        
+        guard let userConfig = userConfig else {
+            return handleReject(reject, .init_user_config)
         }
         
         guard let channelMonitors = channelMonitors else {
@@ -236,7 +264,7 @@ class Ldk: NSObject {
                 tx_broadcaster: broadcaster,
                 logger: logger,
                 keys_manager: keysManager.as_KeysInterface(),
-                config: UserConfig(), //TODO customise from JS
+                config: userConfig,
                 params: chainParams
             )
         } else {
