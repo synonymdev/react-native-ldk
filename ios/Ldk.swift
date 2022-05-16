@@ -65,6 +65,7 @@ class Ldk: NSObject {
     var networkGraph: NetworkGraph?
     var networkGossip: NetGraphMsgHandler?
     var peerManager: PeerManager?
+    var peerHandler: TCPPeerHandler?
     
     lazy var ldkStorage: URL = {
         let docsurl = try! FileManager.default.url(for:.documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
@@ -208,6 +209,13 @@ class Ldk: NSObject {
     }
     
     @objc
+    func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
+        //TODO load cached version if exists instead
+        handleResolve(resolve, .network_graph_init_success)
+    }
+    
+    @objc
     func initChannelManager(_ network: NSString, serializedChannelManager: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
@@ -241,7 +249,9 @@ class Ldk: NSObject {
             return handleReject(reject, .load_channel_monitors)
         }
         
-        let bestBlock = BestBlock(block_hash: String(blockHash).hexaBytes, height: UInt32(blockHeight))
+        guard let networkGraph = networkGraph else {
+            return handleReject(reject, .init_network_graph)
+        }
         
         let ldkNetwork: LDKNetwork!
         switch network {
@@ -255,27 +265,45 @@ class Ldk: NSObject {
             return handleReject(reject, .invalid_network)
         }
         
-        let chainParams = ChainParameters(
-            network_arg: ldkNetwork,
-            best_block_arg: bestBlock
-        )
+        let constructor: ChannelManagerConstructor!
         
-        if channelMonitors.count == 0 {
-            //New node
-            channelManager = ChannelManager(
-                fee_est: feeEstimator,
-                chain_monitor: chainMonitor.as_Watch(),
-                tx_broadcaster: broadcaster,
-                logger: logger,
-                keys_manager: keysManager.as_KeysInterface(),
-                config: userConfig,
-                params: chainParams
-            )
-        } else {
-            //Restoring node
-            // MARK: Untested code
-            do {
-                channelManager = try ChannelManagerConstructor(
+        do {
+            if channelMonitors.count == 0 {
+                //New node
+//                let bestBlock = BestBlock(block_hash: String(blockHash).hexaBytes, height: UInt32(blockHeight))
+
+//                let chainParams = ChainParameters(
+//                    network_arg: ldkNetwork,
+//                    best_block_arg: bestBlock
+//                )
+                
+//                channelManager = ChannelManager(
+//                    fee_est: feeEstimator,
+//                    chain_monitor: chainMonitor.as_Watch(),
+//                    tx_broadcaster: broadcaster,
+//                    logger: logger,
+//                    keys_manager: keysManager.as_KeysInterface(),
+//                    config: userConfig,
+//                    params: chainParams
+//                )
+                
+                constructor = ChannelManagerConstructor(
+                    network: ldkNetwork,
+                    config: userConfig,
+                    current_blockchain_tip_hash: String(blockHash).hexaBytes,
+                    current_blockchain_tip_height: UInt32(blockHeight),
+                    keys_interface: keysManager.as_KeysInterface(),
+                    fee_estimator: feeEstimator,
+                    chain_monitor: chainMonitor,
+                    net_graph: networkGraph,
+                    tx_broadcaster: broadcaster,
+                    logger: logger
+                )
+            } else {
+                //Restoring node
+                // MARK: Untested code
+                print("Untested node restore:")
+                constructor = try ChannelManagerConstructor(
                     channel_manager_serialized: String(serializedChannelManager).hexaBytes,
                     channel_monitors_serialized: channelMonitors,
                     keys_interface: keysManager.as_KeysInterface(),
@@ -285,12 +313,19 @@ class Ldk: NSObject {
                     net_graph_serialized: nil, //TODO
                     tx_broadcaster: broadcaster,
                     logger: logger
-                ).channelManager
-            } catch {
-                return handleReject(reject, .init_channel_monitor, error)
+                )
             }
+        } catch {
+            return handleReject(reject, .init_channel_monitor, error)
         }
-                
+        
+        peerManager = constructor.peerManager
+        
+        //TODOP
+        networkGraph = constructor.net_graph
+    
+        peerHandler = constructor.getTCPPeerHandler()
+        
         handleResolve(resolve, .channel_manager_init_success)
     }
     
@@ -304,13 +339,6 @@ class Ldk: NSObject {
         //chainMonitor.as_Watch().watch_channel(funding_txo: T##OutPoint, monitor: channelMonitors)
         
         handleResolve(resolve, .chain_monitor_updated)
-    }
-    
-    @objc
-    func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
-        //TODO load cached version if exists instead
-        handleResolve(resolve, .network_graph_init_success)
     }
     
     @objc
@@ -340,18 +368,23 @@ class Ldk: NSObject {
     
     
 //    @objc
-//    func initPeerManager(_ blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+//    func initPeerManager(_ ourNodeSecret: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+//        //TODO maybe peerManager should be gotten from ChannelManagerConstructor
 //        guard peerManager == nil else {
 //            return handleReject(reject, .already_init)
 //        }
 //
+//        guard let networkGossip = networkGossip else {
+//            return handleReject(reject, .init_fee_estimator)
+//        }
+//
 //        let messageHandler = MessageHandler(
 //            chan_handler_arg: channelManager!.as_ChannelMessageHandler(),
-//            route_handler_arg: NetGraphMsgHandler().
+//            route_handler_arg: networkGossip.as_RoutingMessageHandler()
 //        )
 //
 //        peerManager = PeerManager(
-//            message_handler: <#T##MessageHandler#>,
+//            message_handler: messageHandler,
 //            our_node_secret: <#T##[UInt8]#>,
 //            ephemeral_random_data: <#T##[UInt8]#>,
 //            logger: <#T##Logger#>,

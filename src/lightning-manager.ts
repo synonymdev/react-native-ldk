@@ -100,6 +100,15 @@ class LightningManager {
 			return channelMonitorsRes;
 		}
 
+		// Step 11: Optional: Initialize the NetGraphMsgHandler [Needs to happen first before ChannelManagerConstructor inside initChannelManager() can be called 🤷️]
+		const networkGraph = await ldk.initNetworkGraph(
+			'0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206' //bitcoin-cli getblockhash 0
+			//TODO load a cached version once persisted
+		);
+		if (networkGraph.isErr()) {
+			return networkGraph;
+		}
+
 		// Step 8: Initialize the UserConfig ChannelManager
 		const confRes = await ldk.initConfig({
 			acceptInboundChannels: true,
@@ -115,8 +124,9 @@ class LightningManager {
 			network: ENetworks.regtest,
 			serializedChannelManager: '', //TODO [UNTESTED]
 			bestBlock: {
-				hash: '23a17def8c7b3e66c4f05e66d3f2da3a6adbd112a70a3e5508120f8132b750a0',
-				height: 736
+				//bitcoin-cli getblockchaininfo
+				hash: '4ee2e32e0e07b9b38e4c647d2cf8c0dd31d25749d3eedf59a3ae93be13da024a',
+				height: 5
 			}
 		});
 		if (channelManagerRes.isErr()) {
@@ -131,15 +141,6 @@ class LightningManager {
 
 		// Step 10: Give ChannelMonitors to ChainMonitor
 		// TODO Pass these pointers through when we have test channels to restore
-
-		// Step 11: Optional: Initialize the NetGraphMsgHandler
-		const networkGraph = await ldk.initNetworkGraph(
-			'0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206'
-			//TODO load a cached version once persisted
-		);
-		if (networkGraph.isErr()) {
-			return networkGraph;
-		}
 
 		const netGraphMsgHandler = await ldk.initNetGraphMsgHandler();
 		if (netGraphMsgHandler.isErr()) {

@@ -21,13 +21,13 @@ RCT_EXTERN_METHOD(initConfig:(BOOL *)acceptInboundChannels
                   minChannelHandshakeDepth:(NSInteger *)minChannelHandshakeDepth
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)genesisHash
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChannelManager:(NSString *)network
                   serializedChannelManager:(NSString *)serializedChannelManager
                   blockHash:(NSString *)blockHash
                   blockHeight:(NSInteger *)blockHeight
-                  resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)genesisHash
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initNetGraphMsgHandler:(RCTPromiseResolveBlock)resolve

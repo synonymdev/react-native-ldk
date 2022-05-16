@@ -15,6 +15,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             "event": "TODO implement handle_event correctly"
         ]
         
+        // https://github.com/lightningdevkit/ldk-sample/blob/c0a722430b8fbcb30310d64487a32aae839da3e8/src/main.rs#L600
+        
         LdkEventEmitter.shared.send(withEvent: .channel_manager_event, body: body)
     }
     
