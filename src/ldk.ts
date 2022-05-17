@@ -4,6 +4,7 @@ import {
 	EEventTypes,
 	ELdkLogLevels,
 	ENetworks,
+	TAddPeerReq,
 	TFeeUpdateReq,
 	TInitChannelManagerReq,
 	TInitConfig,
@@ -251,6 +252,15 @@ class LDK {
 		}
 	}
 
+	async addPeer({ pubKey, address, port }: TAddPeerReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.addPeer(address, port, pubKey);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
 	onEvent(event: EEventTypes, callback: (res: any) => void) {
 		this.ldkEvent.addListener(event, callback);
 	}
@@ -271,6 +281,15 @@ class LDK {
 	async nodeId(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.nodeId();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async listPeers(): Promise<Result<string[]>> {
+		try {
+			const res = await NativeLDK.listPeers();
 			return ok(res);
 		} catch (e) {
 			return err(e);

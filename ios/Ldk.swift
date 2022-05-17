@@ -1,4 +1,5 @@
 import LDKFramework
+import Darwin
 
 //MARK: ************Replicate in typescript and kotlin************
 enum EventTypes: String, CaseIterable {
@@ -27,10 +28,13 @@ enum LdkErrors: String {
     case init_chain_monitor = "init_chain_monitor"
     case init_keys_manager = "init_keys_manager"
     case init_user_config = "init_user_config"
+    case init_peer_manager = "init_peer_manager"
     case invalid_network = "invalid_network"
     case load_channel_monitors = "load_channel_monitors"
     case init_channel_monitor = "init_channel_monitor"
     case init_network_graph = "init_network_graph"
+    case init_peer_handler = "init_peer_handler"
+    case add_peer_fail = "add_peer_fail"
 }
 
 enum LdkCallbackResponses: String {
@@ -48,6 +52,7 @@ enum LdkCallbackResponses: String {
     case net_graph_msg_handler_init_success = "net_graph_msg_handler_init_success"
     case chain_monitor_updated = "chain_monitor_updated"
     case network_graph_init_success = "network_graph_init_success"
+    case add_peer_success = "add_peer_success"
 }
 
 @objc(Ldk)
@@ -56,7 +61,7 @@ class Ldk: NSObject {
     var logger: LdkLogger?
     var broadcaster: LdkBroadcaster?
     var persister: LdkPersister?
-    var filter: LdkFilter?
+    let filter = LdkFilter()
     var chainMonitor: ChainMonitor?
     var keysManager: KeysManager?
     var channelManager: ChannelManager?
@@ -66,6 +71,9 @@ class Ldk: NSObject {
     var networkGossip: NetGraphMsgHandler?
     var peerManager: PeerManager?
     var peerHandler: TCPPeerHandler?
+    let channelManagerPersister = LdkChannelManagerPersister()
+    let scorer = MultiThreadedLockableScore(score: Scorer().as_Score())
+    var channelManagerConstructor: ChannelManagerConstructor?
     
     lazy var ldkStorage: URL = {
         let docsurl = try! FileManager.default.url(for:.documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
@@ -82,6 +90,7 @@ class Ldk: NSObject {
     
     @objc
     func inititlize(_ method: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        //TODO some of these can be init at the top of class automatically
         switch method {
         case "fee_estimator":
             guard feeEstimator == nil else {
@@ -142,9 +151,9 @@ class Ldk: NSObject {
         guard let persister = persister else {
             return handleReject(reject, .init_persister)
         }
-                
+                        
         chainMonitor = ChainMonitor(
-            chain_source: Option_FilterZ(value: LdkFilter()),
+            chain_source: Option_FilterZ(value: filter),
             broadcaster: broadcaster,
             logger: logger,
             feeest: feeEstimator,
@@ -210,8 +219,9 @@ class Ldk: NSObject {
     
     @objc
     func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
-        //TODO load cached version if exists instead
+        networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes.reversed())
+        //TODO load cached version if exists instead. NetworkGraph.read(ser: serialized_backup)
+        
         handleResolve(resolve, .network_graph_init_success)
     }
     
@@ -253,6 +263,10 @@ class Ldk: NSObject {
             return handleReject(reject, .init_network_graph)
         }
         
+        guard let persister = persister else {
+            return handleReject(reject, .init_persister)
+        }
+        
         let ldkNetwork: LDKNetwork!
         switch network {
         case "regtest":
@@ -265,29 +279,10 @@ class Ldk: NSObject {
             return handleReject(reject, .invalid_network)
         }
         
-        let constructor: ChannelManagerConstructor!
-        
         do {
             if channelMonitors.count == 0 {
                 //New node
-//                let bestBlock = BestBlock(block_hash: String(blockHash).hexaBytes, height: UInt32(blockHeight))
-
-//                let chainParams = ChainParameters(
-//                    network_arg: ldkNetwork,
-//                    best_block_arg: bestBlock
-//                )
-                
-//                channelManager = ChannelManager(
-//                    fee_est: feeEstimator,
-//                    chain_monitor: chainMonitor.as_Watch(),
-//                    tx_broadcaster: broadcaster,
-//                    logger: logger,
-//                    keys_manager: keysManager.as_KeysInterface(),
-//                    config: userConfig,
-//                    params: chainParams
-//                )
-                
-                constructor = ChannelManagerConstructor(
+                channelManagerConstructor = ChannelManagerConstructor(
                     network: ldkNetwork,
                     config: userConfig,
                     current_blockchain_tip_hash: String(blockHash).hexaBytes,
@@ -303,7 +298,7 @@ class Ldk: NSObject {
                 //Restoring node
                 // MARK: Untested code
                 print("Untested node restore:")
-                constructor = try ChannelManagerConstructor(
+                channelManagerConstructor = try ChannelManagerConstructor(
                     channel_manager_serialized: String(serializedChannelManager).hexaBytes,
                     channel_monitors_serialized: channelMonitors,
                     keys_interface: keysManager.as_KeysInterface(),
@@ -319,13 +314,13 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_monitor, error)
         }
         
-        peerManager = constructor.peerManager
-        
-        //TODOP
-        networkGraph = constructor.net_graph
-    
-        peerHandler = constructor.getTCPPeerHandler()
-        
+        channelManager = channelManagerConstructor!.channelManager
+        self.networkGraph = channelManagerConstructor!.net_graph
+
+        channelManagerConstructor!.chain_sync_completed(persister: channelManagerPersister, scorer: scorer)
+        peerManager = channelManagerConstructor!.peerManager
+
+        peerHandler = channelManagerConstructor!.getTCPPeerHandler()
         handleResolve(resolve, .channel_manager_init_success)
     }
     
@@ -424,6 +419,21 @@ class Ldk: NSObject {
         //TODO
     }
     
+    @objc
+    func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        //Sync ChannelMonitors and ChannelManager to chain tip
+        guard let peerHandler = peerHandler else {
+            return handleReject(reject, .init_peer_handler)
+        }
+               
+        let res = peerHandler.connect(address: String(address), port: UInt16(port), theirNodeId: String(pubKey).hexaBytes)
+        if !res {
+            return handleReject(reject, .add_peer_fail)
+        }
+        
+        handleResolve(resolve, .add_peer_success)
+    }
+    
     //MARK: Fetch methods
     @objc
     func version(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -442,6 +452,16 @@ class Ldk: NSObject {
         }
         
         resolve(Data(channelManager.get_our_node_id()).hexEncodedString())
+    }
+    
+    @objc
+    func listPeers(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        //Sync ChannelMonitors and ChannelManager to chain tip
+        guard let peerManager = peerManager else {
+            return handleReject(reject, .init_peer_manager)
+        }
+        
+        resolve(peerManager.get_peer_node_ids().map { Data($0).hexEncodedString() })
     }
 }
 

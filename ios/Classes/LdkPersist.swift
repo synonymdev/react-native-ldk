@@ -9,6 +9,10 @@ import Foundation
 import LDKFramework
 
 class LdkPersister: Persist {
+    override func free() {
+        //TODO find out what this is for
+    }
+    
     override func persist_new_channel(channel_id: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId) -> Result_NoneChannelMonitorUpdateErrZ {
         LdkEventEmitter.shared.send(
             withEvent: .persist_new_channel,

@@ -27,6 +27,12 @@ export type TFeeUpdateReq = {
 	background: number;
 };
 
+export type TAddPeerReq = {
+	address: string;
+	port: number;
+	pubKey: string;
+};
+
 export type TInitChannelManagerReq = {
 	network: ENetworks;
 	serializedChannelManager: string;

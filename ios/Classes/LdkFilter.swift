@@ -9,6 +9,10 @@ import Foundation
 import LDKFramework
 
 class LdkFilter: Filter {
+    override func free() {
+        //TODO find out what this is for
+    }
+    
     override func register_tx(txid: [UInt8]?, script_pubkey: [UInt8]) {
         LdkEventEmitter.shared.send(
             withEvent: .register_tx,

@@ -14,7 +14,7 @@ import { EEventTypes, ELdkLogLevels, ENetworks } from './utils/types';
 // Step 8: Initialize the ChannelManager ✅
 // Step 9: Sync ChannelMonitors and ChannelManager to chain tip
 // Step 10: Give ChannelMonitors to ChainMonitor
-// Step 11: Optional: Initialize the NetGraphMsgHandler
+// Step 11: Optional: Initialize the NetGraphMsgHandler [Not required for a non routing node]
 // Step 12: Initialize the PeerManager
 // Step 13: Initialize networking
 // Step 14: Connect and Disconnect Blocks
@@ -27,8 +27,8 @@ import { EEventTypes, ELdkLogLevels, ENetworks } from './utils/types';
 class LightningManager {
 	constructor() {
 		// Step 0: Subscribe to all events
-		ldk.onEvent(EEventTypes.swift_log, console.info);
-		ldk.onEvent(EEventTypes.ldk_log, console.info);
+		// ldk.onEvent(EEventTypes.swift_log, (line) => console.log(`SWIFT: ${line}`));
+		ldk.onEvent(EEventTypes.ldk_log, (line) => console.log(`LDK: ${line}`));
 		ldk.onEvent(EEventTypes.register_tx, this.onRegisterTx.bind(this));
 		ldk.onEvent(EEventTypes.register_output, this.onRegisterOutput.bind(this));
 		ldk.onEvent(EEventTypes.broadcast_transaction, this.onBroadcastTransaction.bind(this));
@@ -68,6 +68,10 @@ class LightningManager {
 		await ldk.setLogLevel(ELdkLogLevels.warn, true);
 		await ldk.setLogLevel(ELdkLogLevels.error, true);
 
+		//TODO might not always need these ones
+		await ldk.setLogLevel(ELdkLogLevels.trace, true);
+		await ldk.setLogLevel(ELdkLogLevels.debug, true);
+
 		// Step 3: Initialize the BroadcasterInterface
 		const broadcasterRes = await ldk.initBroadcaster();
 		if (broadcasterRes.isErr()) {
@@ -100,7 +104,8 @@ class LightningManager {
 			return channelMonitorsRes;
 		}
 
-		// Step 11: Optional: Initialize the NetGraphMsgHandler [Needs to happen first before ChannelManagerConstructor inside initChannelManager() can be called 🤷️]
+		// Step 11: Optional: Initialize the NetGraphMsgHandler
+		// [Needs to happen first before ChannelManagerConstructor inside initChannelManager() can be called 🤷️]
 		const networkGraph = await ldk.initNetworkGraph(
 			'0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206' //bitcoin-cli getblockhash 0
 			//TODO load a cached version once persisted
@@ -125,8 +130,8 @@ class LightningManager {
 			serializedChannelManager: '', //TODO [UNTESTED]
 			bestBlock: {
 				//bitcoin-cli getblockchaininfo
-				hash: '4ee2e32e0e07b9b38e4c647d2cf8c0dd31d25749d3eedf59a3ae93be13da024a',
-				height: 5
+				hash: '2da7ce158365b304c0cf11604bc8f7a15e2c9cf56758651a7fdc76f40739a290',
+				height: 9
 			}
 		});
 		if (channelManagerRes.isErr()) {
@@ -168,7 +173,7 @@ class LightningManager {
 	}
 
 	private onPersistManager(data: any) {
-		console.log(`onPersistManager: ${data}`); //TODO
+		console.log(`onPersistManager: ${JSON.stringify(data)}`); //TODO
 	}
 
 	private onPersistNewChannel(data: any) {
