@@ -11,6 +11,7 @@ enum EventTypes: String, CaseIterable {
     case persist_manager = "persist_manager"
     case persist_new_channel = "persist_new_channel"
     case channel_manager_event = "channel_manager_event"
+    case persist_graph = "persist_graph"
     case update_persisted_channel = "update_persisted_channel"
 }
 //*****************************************************************

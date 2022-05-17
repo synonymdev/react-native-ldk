@@ -40,6 +40,7 @@ class LightningManager {
 		ldk.onEvent(EEventTypes.persist_manager, this.onPersistManager.bind(this));
 		ldk.onEvent(EEventTypes.persist_new_channel, this.onPersistNewChannel.bind(this));
 		ldk.onEvent(EEventTypes.channel_manager_event, this.onChannelManagerEvent.bind(this));
+		ldk.onEvent(EEventTypes.persist_graph, this.onPersistGraph.bind(this));
 		ldk.onEvent(EEventTypes.update_persisted_channel, this.onUpdatePersistedChannel.bind(this));
 	}
 
@@ -164,8 +165,8 @@ class LightningManager {
 		console.log(`onBroadcastTransaction: ${data}`); //TODO
 	}
 
-	private onPersistManager(data: any) {
-		console.log(`onPersistManager: ${JSON.stringify(data)}`); //TODO
+	private onPersistManager(data: { channel_manager: string }) {
+		console.log(`onPersistManager: ${data.channel_manager}`); //TODO
 	}
 
 	private onPersistNewChannel(data: any) {
@@ -174,6 +175,10 @@ class LightningManager {
 
 	private onChannelManagerEvent(data: any) {
 		console.log(`onChannelManagerEvent: ${data}`); //TODO
+	}
+
+	private onPersistGraph(data: { network_graph: string }) {
+		console.log(`onPersistGraph: ${data.network_graph}`); //TODO
 	}
 
 	private onUpdatePersistedChannel(data: any) {

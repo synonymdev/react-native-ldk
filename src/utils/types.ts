@@ -13,6 +13,7 @@ export enum EEventTypes {
 	persist_manager = 'persist_manager',
 	persist_new_channel = 'persist_new_channel',
 	channel_manager_event = 'channel_manager_event',
+	persist_graph = 'persist_graph',
 	update_persisted_channel = 'update_persisted_channel'
 }
 

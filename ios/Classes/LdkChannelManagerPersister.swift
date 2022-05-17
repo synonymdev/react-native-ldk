@@ -33,10 +33,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     }
     
     override func persist_graph(network_graph: NetworkGraph) -> Result_NoneErrorZ {
-        //TODO persist and then load in initNetworkGraph instead of passing genesis hash each time
-        
-        print("**TODO persist graph \(Data(network_graph.write()).hexEncodedString())")
-        
+        LdkEventEmitter.shared.send(withEvent: .persist_graph, body: ["network_graph": Data(network_graph.write()).hexEncodedString()])
+
         return Result_NoneErrorZ.ok()
     }
 }
