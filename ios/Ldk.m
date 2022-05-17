@@ -30,8 +30,6 @@ RCT_EXTERN_METHOD(initChannelManager:(NSString *)network
                   blockHeight:(NSInteger *)blockHeight
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(initNetGraphMsgHandler:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
 
 //MARK: Update methods
 RCT_EXTERN_METHOD(updateFees:(NSInteger *)high

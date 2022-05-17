@@ -208,19 +208,6 @@ class LDK {
 	}
 
 	/**
-	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetGraphMsgHandler.html
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
-	 */
-	async initNetGraphMsgHandler(): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.initNetGraphMsgHandler();
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
 	 * Switch different log levels on/off
 	 * https://docs.rs/lightning/latest/lightning/util/logger/enum.Level.html
 	 * @param level

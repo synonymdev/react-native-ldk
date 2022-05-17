@@ -68,7 +68,6 @@ class Ldk: NSObject {
     var userConfig: UserConfig?
     var channelMonitors: Array<[UInt8]>?
     var networkGraph: NetworkGraph?
-    var networkGossip: NetGraphMsgHandler?
     var peerManager: PeerManager?
     var peerHandler: TCPPeerHandler?
     let channelManagerPersister = LdkChannelManagerPersister()
@@ -335,32 +334,6 @@ class Ldk: NSObject {
         
         handleResolve(resolve, .chain_monitor_updated)
     }
-    
-    @objc
-    func initNetGraphMsgHandler(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard networkGossip == nil else {
-            return handleReject(reject, .already_init)
-        }
-        
-        guard let networkGraph = networkGraph else {
-            return handleReject(reject, .init_network_graph)
-        }
-        
-        guard let logger = logger else {
-            return handleReject(reject, .init_logger)
-        }
-    
-        let chainAccess = Access() //TODO extend and override get_utxo()
-        
-        networkGossip = NetGraphMsgHandler(
-            network_graph: networkGraph,
-            chain_access: Option_AccessZ(value: chainAccess),
-            logger: logger
-        )
-        
-        handleResolve(resolve, .net_graph_msg_handler_init_success)
-    }
-    
     
 //    @objc
 //    func initPeerManager(_ ourNodeSecret: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {

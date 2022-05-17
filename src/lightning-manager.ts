@@ -15,8 +15,8 @@ import { EEventTypes, ELdkLogLevels, ENetworks } from './utils/types';
 // Step 9: Sync ChannelMonitors and ChannelManager to chain tip
 // Step 10: Give ChannelMonitors to ChainMonitor
 // Step 11: Optional: Initialize the NetGraphMsgHandler [Not required for a non routing node]
-// Step 12: Initialize the PeerManager
-// Step 13: Initialize networking
+// Step 12: Initialize the PeerManager ✅
+// Step 13: Initialize networking ✅
 // Step 14: Connect and Disconnect Blocks
 // Step 15: Handle LDK Events
 // Step 16: Initialize routing ProbabilisticScorer
@@ -146,11 +146,6 @@ class LightningManager {
 
 		// Step 10: Give ChannelMonitors to ChainMonitor
 		// TODO Pass these pointers through when we have test channels to restore
-
-		const netGraphMsgHandler = await ldk.initNetGraphMsgHandler();
-		if (netGraphMsgHandler.isErr()) {
-			return netGraphMsgHandler;
-		}
 
 		// Step 12: Initialize the PeerManager
 
