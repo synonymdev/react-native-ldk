@@ -1,6 +1,11 @@
 import ldk from './ldk';
 import { ok, Result } from './utils/result';
 import { EEventTypes, ELdkLogLevels, ENetworks } from './utils/types';
+import {
+	dummyRandomSeed,
+	regtestBestBlock,
+	regtestGenesisBlockHash
+} from './utils/regtest-dev-tools';
 
 //TODO startup steps
 // Step 0: Listen for events ✅
@@ -43,6 +48,7 @@ class LightningManager {
 	 * @returns {Promise<Err<string> | Ok<string>>}
 	 */
 	async start(): Promise<Result<string>> {
+		const bestBlock = await regtestBestBlock();
 		const isExistingNode = false;
 
 		// Step 1: Initialize the FeeEstimator
@@ -83,9 +89,7 @@ class LightningManager {
 		}
 
 		// Step 6: Initialize the KeysManager
-		const keysManager = await ldk.initKeysManager(
-			'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
-		); //TODO get stored/generated 32-byte entropy
+		const keysManager = await ldk.initKeysManager(dummyRandomSeed()); //TODO get real stored/generated 32-byte entropy
 		if (keysManager.isErr()) {
 			return keysManager;
 		}
@@ -98,9 +102,10 @@ class LightningManager {
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
 		// [Needs to happen first before ChannelManagerConstructor inside initChannelManager() can be called 🤷️]
+		const genesisHash = await regtestGenesisBlockHash();
 		const networkGraph = await ldk.initNetworkGraph(
-			'0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206' //bitcoin-cli getblockhash 0
 			//TODO load a cached version once persisted
+			genesisHash
 		);
 		if (networkGraph.isErr()) {
 			return networkGraph;
@@ -121,9 +126,8 @@ class LightningManager {
 			network: ENetworks.regtest,
 			serializedChannelManager: '', //TODO [UNTESTED]
 			bestBlock: {
-				//bitcoin-cli getblockchaininfo
-				hash: '2da7ce158365b304c0cf11604bc8f7a15e2c9cf56758651a7fdc76f40739a290',
-				height: 9
+				hash: bestBlock.bestblockhash,
+				height: bestBlock.blocks
 			}
 		});
 		if (channelManagerRes.isErr()) {
@@ -140,8 +144,9 @@ class LightningManager {
 		// TODO Pass these pointers through when we have test channels to restore
 
 		// Step 12: Initialize the PeerManager
-
+		// Done with initChannelManager
 		// Step 13: Initialize networking
+		// Done with initChannelManager
 
 		return ok('Node running');
 	}
