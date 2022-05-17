@@ -4,6 +4,7 @@ import { EEventTypes, ELdkLogLevels, ENetworks } from './utils/types';
 import {
 	dummyRandomSeed,
 	regtestBestBlock,
+	regtestBlockHeaderHex,
 	regtestGenesisBlockHash
 } from './utils/regtest-dev-tools';
 
@@ -17,7 +18,7 @@ import {
 // Step 6: Initialize the KeysManager ✅
 // Step 7: Read ChannelMonitor state from disk ✅
 // Step 8: Initialize the ChannelManager ✅
-// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
+// Step 9: Sync ChannelMonitors and ChannelManager to chain tip ✅
 // Step 10: Give ChannelMonitors to ChainMonitor
 // Step 11: Optional: Initialize the NetGraphMsgHandler [Not required for a non routing node]
 // Step 12: Initialize the PeerManager ✅
@@ -139,6 +140,7 @@ class LightningManager {
 		if (!isExistingNode) {
 			// https://github.com/lightningdevkit/ldk-sample/blob/c0a722430b8fbcb30310d64487a32aae839da3e8/src/main.rs#L479
 			// Sample app only syncs when restarting an existing node
+			await this.syncToChain();
 		}
 
 		// Step 10: Give ChannelMonitors to ChainMonitor
@@ -149,7 +151,37 @@ class LightningManager {
 		// Step 13: Initialize networking
 		// Done with initChannelManager
 
+		this.keepBlockchainInSync();
+
 		return ok('Node running');
+	}
+
+	/**
+	 * Keeps polling for best block.
+	 * TODO this should subscribe (electrum?) somewhere instead of polling.
+	 * @returns {Promise<void>}
+	 */
+	keepBlockchainInSync() {
+		setInterval(this.syncToChain, 15000);
+	}
+
+	/**
+	 * Fetches current best block and sends to LDK.
+	 * Updates both channelManager and chainMonitor.
+	 * @returns {Promise<Err<string> | Ok<string>>}
+	 */
+	async syncToChain() {
+		const { bestblockhash, blocks } = await regtestBestBlock();
+		const header = await regtestBlockHeaderHex(bestblockhash);
+		const syncToTip = await ldk.syncToTip({
+			header,
+			height: blocks
+		});
+		if (syncToTip.isErr()) {
+			return syncToTip;
+		}
+
+		return ok(`Synced to block ${blocks}`);
 	}
 
 	//TODO do proper types instead of 'any'

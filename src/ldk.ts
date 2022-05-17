@@ -8,7 +8,8 @@ import {
 	TFeeUpdateReq,
 	TInitChannelManagerReq,
 	TInitConfig,
-	TLogListener
+	TLogListener,
+	TSyncTipReq
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -179,6 +180,15 @@ class LDK {
 	async updateFees({ highPriority, normal, background }: TFeeUpdateReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.updateFees(highPriority, normal, background);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async syncToTip({ header, height }: TSyncTipReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.syncToTip(header, height);
 			return ok(res);
 		} catch (e) {
 			return err(e);

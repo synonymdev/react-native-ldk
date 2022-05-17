@@ -57,6 +57,10 @@ export const regtestGenesisBlockHash = async (): Promise<string> => {
 	return hash;
 };
 
+export const regtestBlockHeaderHex = async (blockHash: string): Promise<string> => {
+	return await bitcoinRPC('getblock', [blockHash, false]);
+};
+
 const shuffle = (array: string[]) => {
 	let currentIndex = array.length,
 		randomIndex;

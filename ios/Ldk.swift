@@ -30,6 +30,7 @@ enum LdkErrors: String {
     case init_network_graph = "init_network_graph"
     case init_peer_handler = "init_peer_handler"
     case add_peer_fail = "add_peer_fail"
+    case init_channel_manager = "init_channel_manager"
 }
 
 enum LdkCallbackResponses: String {
@@ -44,6 +45,7 @@ enum LdkCallbackResponses: String {
     case chain_monitor_updated = "chain_monitor_updated"
     case network_graph_init_success = "network_graph_init_success"
     case add_peer_success = "add_peer_success"
+    case chain_sync_success = "chain_sync_success"
 }
 
 @objc(Ldk)
@@ -270,14 +272,22 @@ class Ldk: NSObject {
     }
     
     @objc
-    func syncToTip(_ blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func syncToTip(_ header: NSString, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         //Sync ChannelMonitors and ChannelManager to chain tip
         guard let channelManager = channelManager else {
-            return handleReject(reject, .load_channel_monitors)
+            return handleReject(reject, .init_channel_manager)
         }
         
-        //TODO
+        guard let chainMonitor = chainMonitor else {
+            return handleReject(reject, .init_chain_monitor)
+        }
+        
+        channelManager.as_Confirm().best_block_updated(header: String(header).hexaBytes, height: UInt32(height))
+        chainMonitor.as_Confirm().best_block_updated(header: String(header).hexaBytes, height: UInt32(height))
+        
+        handleResolve(resolve, .chain_sync_success)
     }
+    
     
     @objc
     func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
