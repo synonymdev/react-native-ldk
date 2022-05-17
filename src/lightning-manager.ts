@@ -46,10 +46,8 @@ class LightningManager {
 		const isExistingNode = false;
 
 		// Step 1: Initialize the FeeEstimator
-		const feeRes = await ldk.initFeeEstimator();
-		if (feeRes.isErr()) {
-			return feeRes;
-		}
+		// Lazy loaded in native code
+		// https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html
 
 		// Set fee estimates
 		const feeUpdateRes = await ldk.updateFees({ highPriority: 1000, normal: 500, background: 250 });
@@ -58,10 +56,8 @@ class LightningManager {
 		}
 
 		// Step 2: Initialize the Logger
-		const loggerRes = await ldk.initLogger();
-		if (loggerRes.isErr()) {
-			return loggerRes;
-		}
+		// Lazy loaded in native code
+		// https://docs.rs/lightning/latest/lightning/util/logger/index.html
 
 		//Switch on log levels we're interested in
 		await ldk.setLogLevel(ELdkLogLevels.info, true);
@@ -73,16 +69,12 @@ class LightningManager {
 		await ldk.setLogLevel(ELdkLogLevels.debug, true);
 
 		// Step 3: Initialize the BroadcasterInterface
-		const broadcasterRes = await ldk.initBroadcaster();
-		if (broadcasterRes.isErr()) {
-			return broadcasterRes;
-		}
+		// Lazy loaded in native code
+		// https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.BroadcasterInterface.html
 
 		// Step 4: Initialize Persist
-		const persisterRes = await ldk.initPersister();
-		if (persisterRes.isErr()) {
-			return persisterRes;
-		}
+		// Lazy loaded in native code
+		// https://docs.rs/lightning/latest/lightning/chain/chainmonitor/trait.Persist.html
 
 		// Step 5: Initialize the ChainMonitor
 		const chainMonitorRes = await ldk.initChainMonitor();

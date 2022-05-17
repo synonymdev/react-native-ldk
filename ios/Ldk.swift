@@ -17,13 +17,7 @@ enum EventTypes: String, CaseIterable {
 
 enum LdkErrors: String {
     case unknown_error = "unknown_error"
-    case unknown_method = "unknown_method"
-    case init_fee_estimator = "init_fee_estimator"
     case already_init = "already_init"
-    case init_logger = "init_logger"
-    case init_broadcaster = "init_broadcaster"
-    case init_persister = "init_persister"
-    case init_filter = "init_filter"
     case invalid_seed_hex = "invalid_seed_hex"
     case init_chain_monitor = "init_chain_monitor"
     case init_keys_manager = "init_keys_manager"
@@ -38,12 +32,8 @@ enum LdkErrors: String {
 }
 
 enum LdkCallbackResponses: String {
-    case fee_estimator_init_success = "fee_estimator_init_success"
     case fees_updated = "fees_updated"
-    case logger_init_success = "logger_init_success"
     case log_level_updated = "log_level_updated"
-    case broadcaster_init_success = "broadcaster_init_success"
-    case persister_init_success = "persister_init_success"
     case chain_monitor_init_success = "chain_monitor_init_success"
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
@@ -57,11 +47,16 @@ enum LdkCallbackResponses: String {
 
 @objc(Ldk)
 class Ldk: NSObject {
-    var feeEstimator: LdkFeeEstimator?
-    var logger: LdkLogger?
-    var broadcaster: LdkBroadcaster?
-    var persister: LdkPersister?
-    let filter = LdkFilter()
+    //Zero config objects lazy loaded into memory when required
+    lazy var feeEstimator = {LdkFeeEstimator()}()
+    lazy var logger = {LdkLogger()}()
+    lazy var broadcaster = {LdkBroadcaster()}()
+    lazy var persister = {LdkPersister()}()
+    lazy var filter = {LdkFilter()}()
+    lazy var channelManagerPersister = {LdkChannelManagerPersister()}()
+    lazy var scorer = {MultiThreadedLockableScore(score: Scorer().as_Score())}()
+    
+    //Config required to setup below objects
     var chainMonitor: ChainMonitor?
     var keysManager: KeysManager?
     var channelManager: ChannelManager?
@@ -70,8 +65,6 @@ class Ldk: NSObject {
     var networkGraph: NetworkGraph?
     var peerManager: PeerManager?
     var peerHandler: TCPPeerHandler?
-    let channelManagerPersister = LdkChannelManagerPersister()
-    let scorer = MultiThreadedLockableScore(score: Scorer().as_Score())
     var channelManagerConstructor: ChannelManagerConstructor?
     
     lazy var ldkStorage: URL = {
@@ -88,69 +81,11 @@ class Ldk: NSObject {
     //MARK: Startup methods
     
     @objc
-    func inititlize(_ method: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        //TODO some of these can be init at the top of class automatically
-        switch method {
-        case "fee_estimator":
-            guard feeEstimator == nil else {
-                return handleReject(reject, .already_init)
-            }
-            
-            feeEstimator = LdkFeeEstimator()
-            handleResolve(resolve, .fee_estimator_init_success)
-            return
-        case "logger":
-            guard logger == nil else {
-                return handleReject(reject, .already_init)
-            }
-            
-            logger = LdkLogger()
-            handleResolve(resolve, .logger_init_success)
-            return
-        case "broadcaster":
-            guard broadcaster == nil else {
-                return handleReject(reject, .already_init)
-            }
-            
-            broadcaster = LdkBroadcaster()
-            handleResolve(resolve, .broadcaster_init_success)
-            return
-        case "persister":
-            guard persister == nil else {
-                return handleReject(reject, .already_init)
-            }
-            
-            persister = LdkPersister()
-
-            handleResolve(resolve, .persister_init_success)
-            return
-        default:
-            return handleReject(reject, .unknown_method)
-        }
-    }
-    
-    @objc
     func initChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard chainMonitor == nil else {
             return handleReject(reject, .already_init)
         }
         
-        guard let feeEstimator = feeEstimator else {
-            return handleReject(reject, .init_fee_estimator)
-        }
-        
-        guard let logger = logger else {
-            return handleReject(reject, .init_logger)
-        }
-        
-        guard let broadcaster = broadcaster else {
-            return handleReject(reject, .init_broadcaster)
-        }
-        
-        guard let persister = persister else {
-            return handleReject(reject, .init_persister)
-        }
-                        
         chainMonitor = ChainMonitor(
             chain_source: Option_FilterZ(value: filter),
             broadcaster: broadcaster,
@@ -230,22 +165,10 @@ class Ldk: NSObject {
             return handleReject(reject, .already_init)
         }
         
-        guard let feeEstimator = feeEstimator else {
-            return handleReject(reject, .init_fee_estimator)
-        }
-        
         guard let chainMonitor = chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
-        
-        guard let broadcaster = broadcaster else {
-            return handleReject(reject, .init_broadcaster)
-        }
-        
-        guard let logger = logger else {
-            return handleReject(reject, .init_logger)
-        }
-        
+
         guard let keysManager = keysManager else {
             return handleReject(reject, .init_keys_manager)
         }
@@ -260,10 +183,6 @@ class Ldk: NSObject {
         
         guard let networkGraph = networkGraph else {
             return handleReject(reject, .init_network_graph)
-        }
-        
-        guard let persister = persister else {
-            return handleReject(reject, .init_persister)
         }
         
         let ldkNetwork: LDKNetwork!
@@ -335,49 +254,16 @@ class Ldk: NSObject {
         handleResolve(resolve, .chain_monitor_updated)
     }
     
-//    @objc
-//    func initPeerManager(_ ourNodeSecret: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-//        //TODO maybe peerManager should be gotten from ChannelManagerConstructor
-//        guard peerManager == nil else {
-//            return handleReject(reject, .already_init)
-//        }
-//
-//        guard let networkGossip = networkGossip else {
-//            return handleReject(reject, .init_fee_estimator)
-//        }
-//
-//        let messageHandler = MessageHandler(
-//            chan_handler_arg: channelManager!.as_ChannelMessageHandler(),
-//            route_handler_arg: networkGossip.as_RoutingMessageHandler()
-//        )
-//
-//        peerManager = PeerManager(
-//            message_handler: messageHandler,
-//            our_node_secret: <#T##[UInt8]#>,
-//            ephemeral_random_data: <#T##[UInt8]#>,
-//            logger: <#T##Logger#>,
-//            custom_message_handler: IgnoringMessageHandler().as_CustomMessageHandler()
-//        )
-//    }
-    
     //MARK: Update methods
     
     @objc
     func updateFees(_ high: NSInteger, normal: NSInteger, low: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let feeEstimator = feeEstimator else {
-            return handleReject(reject, .init_fee_estimator)
-        }
-        
         feeEstimator.update(high: UInt32(high), normal: UInt32(normal), low: UInt32(low))
         handleResolve(resolve, .fees_updated)
     }
     
     @objc
     func setLogLevel(_ level: NSInteger, active: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let logger = logger else {
-            return handleReject(reject, .init_logger)
-        }
-        
         logger.setLevel(level: UInt32(level), active: active)
         handleResolve(resolve, .log_level_updated)
     }

@@ -38,60 +38,6 @@ class LDK {
 	}
 
 	/**
-	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html
-	 * @returns {Promise<Ok<any> | Err<unknown>>}
-	 */
-	async initFeeEstimator(): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.inititlize('fee_estimator');
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
-	 * https://docs.rs/lightning/latest/lightning/util/logger/index.html
-	 * @returns {Promise<Ok<any> | Err<unknown>>}
-	 */
-	async initLogger(): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.inititlize('logger');
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
-	 * persist_new_channel and update_persisted_channel events triggered when
-	 * https://docs.rs/lightning/latest/lightning/chain/chainmonitor/trait.Persist.html
-	 * @returns {Promise<Ok<any> | Err<unknown>>}
-	 */
-	async initPersister(): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.inititlize('persister');
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
-	 * broadcast_transaction event will be triggered when a tx needs to be sent
-	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.BroadcasterInterface.html
-	 * @returns {Promise<Ok<any> | Err<unknown>>}
-	 */
-	async initBroadcaster(): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.inititlize('broadcaster');
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
 	 * Connected and disconnected blocks must be provided
 	 * https://docs.rs/lightning/latest/lightning/chain/chainmonitor/struct.ChainMonitor.html
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}

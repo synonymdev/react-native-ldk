@@ -4,9 +4,6 @@
 @interface RCT_EXTERN_MODULE(Ldk, NSObject)
 
 //MARK: Startup methods
-RCT_EXTERN_METHOD(inititlize:(NSString *)method
-                  resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed

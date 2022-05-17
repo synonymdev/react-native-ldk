@@ -12,7 +12,7 @@ class LdkFeeEstimator: FeeEstimator {
     private var high: UInt32 = 0
     private var normal: UInt32 = 0
     private var low: UInt32 = 0
-    
+   
     override func free() {
         //TODO find out what this is for
     }
