@@ -28,7 +28,7 @@ class LdkFilter: Filter {
             withEvent: .register_output,
             body: [
                 "block_hash": Data(output.get_block_hash()).hexEncodedString(),
-                "index": String(output.get_outpoint()!.get_index()),
+                "index": output.get_outpoint()!.get_index(),
                 "script_pubkey": Data(output.get_script_pubkey()).hexEncodedString()
             ]
         )

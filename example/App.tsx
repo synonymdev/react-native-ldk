@@ -63,9 +63,9 @@ const App = () => {
               try {
                 const res = await ldk.addPeer({
                   pubKey:
-                    '02a09c46b94a3c0c54ac56a4b2706f3bd4b703b8d54bfa084fff15acfcce79f3ea',
+                    '02b96088e17dd53a4297d0769e8166a64c25ff47b143cbd6615723cc2a49efbb65',
                   address: '127.0.0.1',
-                  port: 9836,
+                  port: 9837,
                 });
 
                 if (res.isErr()) {

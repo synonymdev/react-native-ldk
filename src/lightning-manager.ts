@@ -1,6 +1,17 @@
 import ldk from './ldk';
 import { ok, Result } from './utils/result';
-import { EEventTypes, ELdkLogLevels, ENetworks } from './utils/types';
+import {
+	EEventTypes,
+	ELdkLogLevels,
+	ENetworks,
+	TBroadcastTransactionEvent,
+	TChannelBackupEvent,
+	TChannelManagerEvent,
+	TPersistGraphEvent,
+	TPersistManagerEvent,
+	TRegisterOutputEvent,
+	TRegisterTxEvent
+} from './utils/types';
 import {
 	dummyRandomSeed,
 	regtestBestBlock,
@@ -31,6 +42,8 @@ import {
 // Step 19: Background Processing
 
 class LightningManager {
+	currentBlockHash = '';
+
 	constructor() {
 		// Step 0: Subscribe to all events
 		// ldk.onEvent(EEventTypes.swift_log, (line) => console.log(`SWIFT: ${line}`));
@@ -72,9 +85,9 @@ class LightningManager {
 		await ldk.setLogLevel(ELdkLogLevels.warn, true);
 		await ldk.setLogLevel(ELdkLogLevels.error, true);
 
-		//TODO might not always need these ones
-		await ldk.setLogLevel(ELdkLogLevels.trace, true);
-		await ldk.setLogLevel(ELdkLogLevels.debug, true);
+		//TODO might not always need these ones as they make the logs a little noisy
+		// await ldk.setLogLevel(ELdkLogLevels.trace, true);
+		// await ldk.setLogLevel(ELdkLogLevels.debug, true);
 
 		// Step 3: Initialize the BroadcasterInterface
 		// Lazy loaded in native code
@@ -162,7 +175,7 @@ class LightningManager {
 	 * @returns {Promise<void>}
 	 */
 	keepBlockchainInSync() {
-		setInterval(this.syncToChain, 15000);
+		setInterval(this.syncToChain, 2500);
 	}
 
 	/**
@@ -172,6 +185,11 @@ class LightningManager {
 	 */
 	async syncToChain() {
 		const { bestblockhash, blocks } = await regtestBestBlock();
+
+		if (this.currentBlockHash === bestblockhash) {
+			return; //No need to update
+		}
+
 		const header = await regtestBlockHeaderHex(bestblockhash);
 		const syncToTip = await ldk.syncToTip({
 			header,
@@ -181,40 +199,43 @@ class LightningManager {
 			return syncToTip;
 		}
 
+		this.currentBlockHash = bestblockhash;
+
 		return ok(`Synced to block ${blocks}`);
 	}
 
-	//TODO do proper types instead of 'any'
-	private onRegisterTx(data: any) {
-		console.log(`onRegisterTx: ${data}`); //TODO
+	private onRegisterTx(res: TRegisterTxEvent) {
+		console.log(`onRegisterTx: ${res.txid} = ${res.script_pubkey}`); //TODO
 	}
 
-	private onRegisterOutput(data: any) {
-		console.log(`onRegisterOutput: ${data}`); //TODO
+	private onRegisterOutput(res: TRegisterOutputEvent) {
+		console.log(`onRegisterOutput: ${res.script_pubkey}`); //TODO
 	}
 
-	private onBroadcastTransaction(data: any) {
-		console.log(`onBroadcastTransaction: ${data}`); //TODO
+	private onBroadcastTransaction(res: TBroadcastTransactionEvent) {
+		console.log(`onBroadcastTransaction: ${res.tx}`); //TODO
 	}
 
-	private onPersistManager(data: { channel_manager: string }) {
-		console.log(`onPersistManager: ${data.channel_manager}`); //TODO
+	private onPersistManager(res: TPersistManagerEvent) {
+		//Around 8kb for one channel backup stored as a hex string
+		console.log(`onPersistManager channel_manager: ${res.channel_manager}`); //TODO
 	}
 
-	private onPersistNewChannel(data: any) {
-		console.log(`onPersistNewChannel: ${data}`); //TODO
+	private onPersistNewChannel(res: TChannelBackupEvent) {
+		console.log(`onPersistNewChannel: ${res.id} = ${res.data}`); //TODO
 	}
 
-	private onChannelManagerEvent(data: any) {
-		console.log(`onChannelManagerEvent: ${data}`); //TODO
+	private onUpdatePersistedChannel(res: TChannelBackupEvent) {
+		console.log(`onUpdatePersistedChannel: ${res.id} = ${res.data}`); //TODO
 	}
 
-	private onPersistGraph(data: { network_graph: string }) {
-		console.log(`onPersistGraph: ${data.network_graph}`); //TODO
+	private onChannelManagerEvent(res: TChannelManagerEvent) {
+		//Where all channel events and decisions should be handled
+		console.log(`onChannelManagerEvent: ${res.event}`); //TODO
 	}
 
-	private onUpdatePersistedChannel(data: any) {
-		console.log(`onUpdatePersistedChannel: ${data}`); //TODO
+	private onPersistGraph(res: TPersistGraphEvent) {
+		console.log(`onPersistGraph network_graph: ${res.network_graph}`); //TODO
 	}
 }
 

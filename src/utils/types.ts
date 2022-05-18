@@ -17,6 +17,15 @@ export enum EEventTypes {
 	update_persisted_channel = 'update_persisted_channel'
 }
 
+//LDK event responses
+export type TChannelBackupEvent = { id: string; data: string };
+export type TRegisterTxEvent = { txid: string; script_pubkey: string };
+export type TRegisterOutputEvent = { block_hash: string; index: number; script_pubkey: string };
+export type TPersistManagerEvent = { channel_manager: string };
+export type TPersistGraphEvent = { network_graph: string };
+export type TBroadcastTransactionEvent = { tx: string };
+export type TChannelManagerEvent = { event: string };
+
 export type TLogListener = {
 	id: string;
 	callback: (log: string) => void;
