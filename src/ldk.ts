@@ -291,7 +291,7 @@ class LDK {
 	 */
 	async getLogFileContent(limit: number = 100): Promise<Result<string[]>> {
 		// try {
-		// 	const content: string[] = await this.lnd.logFileContent(network, limit);
+		// 	const content: string[] = await this.ldk.logFileContent(network, limit);
 		// 	return ok(content);
 		// } catch (e) {
 		// 	return err(e);

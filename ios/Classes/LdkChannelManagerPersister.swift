@@ -13,17 +13,177 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         //TODO find out what this is for
     }
     
+    //Custom function to manage any unlikely missing info from the event object
+    func handleEventError(_ event: Event) {
+        LdkEventEmitter.shared.send(
+            withEvent: .swift_log,
+            body: "Error missing details for handle_event of type \(event.getValueType().debugDescription)"
+        )
+    }
+    
     func handle_event(event: Event) {
-        //TODO pass back all relevent info to RN
-        let body = [
-            "event": "TODO implement handle_event correctly"
-        ]
-        
+        // Follows ldk-sample event handling structure
         // https://github.com/lightningdevkit/ldk-sample/blob/c0a722430b8fbcb30310d64487a32aae839da3e8/src/main.rs#L600
-        
-        print("TODO handle_event")
-        
-        LdkEventEmitter.shared.send(withEvent: .channel_manager_event, body: body)
+        switch event.getValueType() {
+        case .FundingGenerationReady:
+            guard let fundingGeneration = event.getValueAsFundingGenerationReady() else {
+                return handleEventError(event)
+            }
+            
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_funding_generation_ready,
+                body: [
+                    "temp_channel_id": Data(fundingGeneration.getTemporary_channel_id()).hexEncodedString(),
+                    "output_script": Data(fundingGeneration.getOutput_script()).hexEncodedString(),
+                    "user_channel_id": fundingGeneration.getUser_channel_id(),
+                    "value_satoshis": fundingGeneration.getChannel_value_satoshis(),
+                ]
+            )
+            return
+        case .PaymentReceived:
+            guard let paymentReceived = event.getValueAsPaymentReceived() else {
+                return handleEventError(event)
+            }
+            
+            let paymentPreimage = paymentReceived.getPurpose().getValueAsInvoicePayment()?.getPayment_preimage()
+            let paymentSecret = paymentReceived.getPurpose().getValueAsInvoicePayment()?.getPayment_secret()
+            let spontaneousPayment = paymentReceived.getPurpose().getValueAsSpontaneousPayment()
+            
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_payment_received,
+                body: [
+                    "payment_hash": Data(paymentReceived.getPayment_hash()).hexEncodedString(),
+                    "amount": paymentReceived.getAmt(),
+                    "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
+                    "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
+                    "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
+                ]
+            )
+            return
+        case .PaymentSent:
+            guard let paymentSent = event.getValueAsPaymentSent() else {
+                return handleEventError(event)
+            }
+            
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_payment_sent,
+                body: [
+                    "payment_id": Data(paymentSent.getPayment_id()).hexEncodedString(),
+                    "payment_preimage": Data(paymentSent.getPayment_preimage()).hexEncodedString(),
+                    "payment_hash": Data(paymentSent.getPayment_hash()).hexEncodedString(),
+                    "fee_paid_msat": paymentSent.getFee_paid_msat(),
+                ]
+            )
+            return
+        case .OpenChannelRequest:
+            guard let openChannelRequest = event.getValueAsOpenChannelRequest() else {
+                return handleEventError(event)
+            }
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_open_channel_request,
+                body: [
+                    "temp_channel_id": Data(openChannelRequest.getTemporary_channel_id()).hexEncodedString(),
+                    "counterparty_node_id": Data(openChannelRequest.getCounterparty_node_id()).hexEncodedString(),
+                    "push_msat": openChannelRequest.getPush_msat(),
+                    "funding_satoshis": openChannelRequest.getFunding_satoshis(),
+                    "channel_type": Data(openChannelRequest.getChannel_type().write()).hexEncodedString()
+                ]
+            )
+            //Use if we ever manually accept inbound channels. Setting in initConfig.
+            return
+        case .PaymentPathSuccessful:
+            guard let paymentPathSuccessful = event.getValueAsPaymentPathSuccessful() else {
+                return handleEventError(event)
+            }
+            
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_payment_path_successful,
+                body: [
+                    "payment_id": Data(paymentPathSuccessful.getPayment_id()).hexEncodedString(),
+                    "payment_hash": Data(paymentPathSuccessful.getPayment_hash()).hexEncodedString(),
+                    "path": paymentPathSuccessful.getPath().map { [ "pubkey": $0.get_pubkey(), "fee_msat": $0.get_fee_msat() ] },
+                ]
+            )
+            return
+        case .PaymentPathFailed:
+            guard let paymentPathFailed = event.getValueAsPaymentPathFailed() else {
+                return handleEventError(event)
+            }
+            
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_payment_path_failed,
+                body: [
+                    "payment_id": Data(paymentPathFailed.getPayment_id()).hexEncodedString(),
+                    "payment_hash": Data(paymentPathFailed.getPayment_hash()).hexEncodedString(),
+                    "rejected_by_dest": paymentPathFailed.getRejected_by_dest(),
+                    "channel_id": paymentPathFailed.getShort_channel_id(),
+                    "path": paymentPathFailed.getPath().map { [ "pubkey": $0.get_pubkey(), "fee_msat": $0.get_fee_msat() ] },
+                    "network_update": paymentPathFailed.getNetwork_update().getValue().debugDescription
+                ]
+            )
+            return
+        case .PaymentFailed:
+            guard let paymentFailed = event.getValueAsPaymentFailed() else {
+                return handleEventError(event)
+            }
+            
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_payment_failed,
+                body: [
+                    "payment_id": Data(paymentFailed.getPayment_id()).hexEncodedString(),
+                    "payment_hash": Data(paymentFailed.getPayment_hash()).hexEncodedString(),
+                ]
+            )
+            return
+        case .PaymentForwarded:
+            //Unused on mobile
+            return
+        case .PendingHTLCsForwardable:
+            //TODO not sure if required.
+            return
+        case .SpendableOutputs:
+            guard let spendableOutputs = event.getValueAsSpendableOutputs() else {
+                return handleEventError(event)
+            }
+                        
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_spendable_outputs,
+                body: [
+                    "outputs": spendableOutputs.getOutputs().map { Data($0.write()).hexEncodedString() },
+                ]
+            )
+            return
+        case .ChannelClosed:
+            guard let channelClosed = event.getValueAsChannelClosed() else {
+                return handleEventError(event)
+            }
+            
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_channel_closed,
+                body: [
+                    "user_channel_id": channelClosed.getUser_channel_id(),
+                    "channel_id": Data(channelClosed.getChannel_id()).hexEncodedString(),
+                    "reason": Data(channelClosed.getReason().write()).hexEncodedString()
+                ]
+            )
+            return
+        case .DiscardFunding:
+            guard let discardFunding = event.getValueAsDiscardFunding() else {
+                return handleEventError(event)
+            }
+            
+            //Wallet should probably "lock" the UTXOs spent in funding transactions until the funding transaction either confirms, or this event is generated.
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_discard_funding,
+                body: [
+                    "channel_id": Data(discardFunding.getChannel_id()).hexEncodedString(),
+                    "tx": Data(discardFunding.getTransaction()).hexEncodedString()
+                ]
+            )
+            return
+        default:
+            LdkEventEmitter.shared.send(withEvent: .swift_log, body: "ERROR: unknown LdkChannelManagerPersister.handle_event type")
+        }
     }
     
     override func persist_manager(channel_manager: ChannelManager) -> Result_NoneErrorZ {

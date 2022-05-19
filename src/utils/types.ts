@@ -12,9 +12,20 @@ export enum EEventTypes {
 	broadcast_transaction = 'broadcast_transaction',
 	persist_manager = 'persist_manager',
 	persist_new_channel = 'persist_new_channel',
-	channel_manager_event = 'channel_manager_event',
 	persist_graph = 'persist_graph',
-	update_persisted_channel = 'update_persisted_channel'
+	update_persisted_channel = 'update_persisted_channel',
+	//>>LdkChannelManagerPersister.handle_event()
+	channel_manager_funding_generation_ready = 'channel_manager_funding_generation_ready',
+	channel_manager_payment_received = 'channel_manager_payment_received',
+	channel_manager_payment_sent = 'channel_manager_payment_sent',
+	channel_manager_open_channel_request = 'channel_manager_open_channel_request',
+	channel_manager_payment_path_successful = 'channel_manager_payment_path_successful',
+	channel_manager_payment_path_failed = 'channel_manager_payment_path_failed',
+	channel_manager_payment_failed = 'channel_manager_payment_failed',
+	channel_manager_spendable_outputs = 'channel_manager_spendable_outputs',
+	channel_manager_channel_closed = 'channel_manager_channel_closed',
+	channel_manager_discard_funding = 'channel_manager_discard_funding'
+	//<<
 }
 
 //LDK event responses
@@ -24,7 +35,69 @@ export type TRegisterOutputEvent = { block_hash: string; index: number; script_p
 export type TPersistManagerEvent = { channel_manager: string };
 export type TPersistGraphEvent = { network_graph: string };
 export type TBroadcastTransactionEvent = { tx: string };
-export type TChannelManagerEvent = { event: string };
+
+//LDK channel manager event responses
+export type TChannelManagerFundingGenerationReady = {
+	temp_channel_id: string;
+	output_script: string;
+	user_channel_id: number;
+	value_satoshis: number;
+};
+export type TChannelManagerPaymentReceived = {
+	payment_hash: string;
+	amount: number;
+	payment_preimage: string;
+	payment_secret: string;
+	spontaneous_payment_preimage: string;
+};
+export type TChannelManagerPaymentSent = {
+	payment_id: string;
+	payment_preimage: string;
+	payment_hash: string;
+	fee_paid_msat: number;
+};
+export type TChannelManagerOpenChannelRequest = {
+	temp_channel_id: string;
+	counterparty_node_id: string;
+	push_msat: number;
+	funding_satoshis: number;
+	channel_type: string;
+};
+export type TChannelManagerPaymentPathSuccessful = {
+	payment_id: string;
+	payment_hash: string;
+	path: {
+		pubkey: string;
+		fee_msat: number;
+	}[];
+};
+export type TChannelManagerPaymentPathFailed = {
+	payment_id: string;
+	payment_hash: string;
+	rejected_by_dest: boolean;
+	channel_id: string;
+	path: {
+		pubkey: string;
+		fee_msat: number;
+	}[];
+	network_update: string;
+};
+export type TChannelManagerPaymentFailed = {
+	payment_id: string;
+	payment_hash: string;
+};
+export type TChannelManagerSpendableOutputs = {
+	outputs: string[];
+};
+export type TChannelManagerChannelClosed = {
+	user_channel_id: number;
+	channel_id: string;
+	reason: string;
+};
+export type TonChannelManagerDiscardFunding = {
+	channel_id: string;
+	tx: string;
+};
 
 export type TLogListener = {
 	id: string;

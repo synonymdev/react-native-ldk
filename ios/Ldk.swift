@@ -10,9 +10,21 @@ enum EventTypes: String, CaseIterable {
     case broadcast_transaction = "broadcast_transaction"
     case persist_manager = "persist_manager"
     case persist_new_channel = "persist_new_channel"
-    case channel_manager_event = "channel_manager_event"
     case persist_graph = "persist_graph"
     case update_persisted_channel = "update_persisted_channel"
+    
+    //>>LdkChannelManagerPersister.handle_event()
+    case channel_manager_funding_generation_ready = "channel_manager_funding_generation_ready"
+    case channel_manager_payment_received = "channel_manager_payment_received"
+    case channel_manager_payment_sent = "channel_manager_payment_sent"
+    case channel_manager_open_channel_request = "channel_manager_open_channel_request"
+    case channel_manager_payment_path_successful = "channel_manager_payment_path_successful"
+    case channel_manager_payment_path_failed = "channel_manager_payment_path_failed"
+    case channel_manager_payment_failed = "channel_manager_payment_failed"
+    case channel_manager_spendable_outputs = "channel_manager_spendable_outputs"
+    case channel_manager_channel_closed = "channel_manager_channel_closed"
+    case channel_manager_discard_funding = "channel_manager_discard_funding"
+    //<<
 }
 //*****************************************************************
 
