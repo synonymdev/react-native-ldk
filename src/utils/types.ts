@@ -94,9 +94,31 @@ export type TChannelManagerChannelClosed = {
 	channel_id: string;
 	reason: string;
 };
-export type TonChannelManagerDiscardFunding = {
+export type TChannelManagerDiscardFunding = {
 	channel_id: string;
 	tx: string;
+};
+
+export type TChannel = {
+	channel_id: string;
+	is_public: boolean;
+	is_usable: boolean;
+	is_outbound: boolean;
+	balance_msat: number;
+	counterparty: string;
+	funding_txo: string;
+	channel_type: string;
+	user_channel_id: number;
+	confirmations_required?: number;
+	short_channel_id?: number;
+	is_funding_locked: boolean;
+	inbound_scid_alias?: number;
+	get_inbound_payment_scid?: number;
+	inbound_capacity_msat: number;
+	channel_value_satoshis: number;
+	outbound_capacity_msat: number;
+	force_close_spend_delay?: number;
+	unspendable_punishment_reserve?: number;
 };
 
 export type TLogListener = {

@@ -3,8 +3,8 @@ import { err, ok, Result } from './utils/result';
 import {
 	EEventTypes,
 	ELdkLogLevels,
-	ENetworks,
 	TAddPeerReq,
+	TChannel,
 	TFeeUpdateReq,
 	TInitChannelManagerReq,
 	TInitConfig,
@@ -186,6 +186,12 @@ class LDK {
 		}
 	}
 
+	/**
+	 * Sets current best block on channelManager and chainMonitor
+	 * @param header
+	 * @param height
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
 	async syncToTip({ header, height }: TSyncTipReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.syncToTip(header, height);
@@ -204,6 +210,11 @@ class LDK {
 		}
 	}
 
+	/**
+	 * Listen on LDK events
+	 * @param event
+	 * @param callback
+	 */
 	onEvent(event: EEventTypes, callback: (res: any) => void) {
 		this.ldkEvent.addListener(event, callback);
 	}
@@ -221,6 +232,10 @@ class LDK {
 		}
 	}
 
+	/**
+	 * Node public key
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
 	async nodeId(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.nodeId();
@@ -230,9 +245,27 @@ class LDK {
 		}
 	}
 
+	/**
+	 * List of peer node IDs
+	 * @returns {Promise<Ok<Ok<string[]> | Err<string[]>> | Err<unknown>>}
+	 */
 	async listPeers(): Promise<Result<string[]>> {
 		try {
 			const res = await NativeLDK.listPeers();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Returns array of channels
+	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/struct.ChannelDetails.html
+	 * @returns {Promise<Ok<Ok<TChannel[]> | Err<TChannel[]>> | Err<unknown>>}
+	 */
+	async listChannels(): Promise<Result<TChannel[]>> {
+		try {
+			const res = await NativeLDK.listChannels();
 			return ok(res);
 		} catch (e) {
 			return err(e);

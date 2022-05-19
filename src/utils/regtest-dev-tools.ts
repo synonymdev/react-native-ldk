@@ -47,7 +47,6 @@ export const regtestBestBlock = async (): Promise<{
 	bestblockhash: string;
 	blocks: number;
 }> => {
-	await regtestGenesisBlockHash();
 	const { bestblockhash, blocks } = await bitcoinRPC('getblockchaininfo', []);
 	return { bestblockhash, blocks };
 };

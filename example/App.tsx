@@ -99,6 +99,32 @@ const App = () => {
           />
 
           <Button
+            title={'List channels'}
+            onPress={async () => {
+              try {
+                const res = await ldk.listChannels();
+
+                if (res.isErr()) {
+                  setMessage(res.error.message);
+                  return;
+                }
+
+                let msg = '';
+                res.value.forEach((channel) => {
+                  Object.keys(channel).forEach((key) => {
+                    // @ts-ignore
+                    msg += `${key}: ${channel[key]}\n`;
+                  });
+                });
+
+                setMessage(msg);
+              } catch (e) {
+                setMessage(e.toString());
+              }
+            }}
+          />
+
+          <Button
             title={'Show version'}
             onPress={async () => {
               const res = await ldk.version();

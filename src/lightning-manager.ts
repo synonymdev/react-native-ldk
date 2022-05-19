@@ -15,7 +15,7 @@ import {
 	TChannelManagerPaymentReceived,
 	TChannelManagerPaymentSent,
 	TChannelManagerSpendableOutputs,
-	TonChannelManagerDiscardFunding,
+	TChannelManagerDiscardFunding,
 	TPersistGraphEvent,
 	TPersistManagerEvent,
 	TRegisterOutputEvent,
@@ -43,7 +43,7 @@ import {
 // Step 11: Optional: Initialize the NetGraphMsgHandler [Not required for a non routing node]
 // Step 12: Initialize the PeerManager ✅
 // Step 13: Initialize networking ✅
-// Step 14: Connect and Disconnect Blocks
+// Step 14: Connect and Disconnect Blocks ✅
 // Step 15: Handle LDK Events [WIP]
 // Step 16: Initialize routing ProbabilisticScorer
 // Step 17: Create InvoicePayer
@@ -331,7 +331,7 @@ class LightningManager {
 		console.log(`onChannelManagerChannelClosed: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerDiscardFunding(res: TonChannelManagerDiscardFunding) {
+	private onChannelManagerDiscardFunding(res: TChannelManagerDiscardFunding) {
 		//Wallet should probably "lock" the UTXOs spent in funding transactions until the funding transaction either confirms, or this event is generated.
 		console.log(`onChannelManagerDiscardFunding: ${JSON.stringify(res)}`); //TODO
 	}
