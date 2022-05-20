@@ -9,6 +9,7 @@
  */
 import React, {useEffect, useState} from 'react';
 import {
+  Alert,
   Button,
   SafeAreaView,
   ScrollView,
@@ -121,6 +122,38 @@ const App = () => {
               } catch (e) {
                 setMessage(e.toString());
               }
+            }}
+          />
+
+          <Button
+            title={'Pay invoice'}
+            onPress={async () => {
+              const paymentRequest =
+                'lnbcrt100u1p3gw4lmpp5g8nn2m856gwmc2rxlsgacw9746tyrzz5nh8svq6s6usmqqwdkn9qdp92phkcctjypykuan0d93k2grxdaezqcmpwfhkcxqyjw5qcqp2sp5csqwsteyyfeg6l0pfa6x6cwh88aklqzy0g7s5ndrg55h5fanwajq9qy9qsqtvfuzpl3w00tfvfgwt0waxsl9fe4z6eu4cwttulx5c5p5fl442vynngr9w0un3janvcr68a3vtlyn3js0j332wzdry5wneat6f2365gp6xstn6';
+              const res = await ldk.decode({paymentRequest});
+              if (res.isErr()) {
+                return setMessage(res.error.message);
+              }
+
+              const {recover_payee_pub_key, amount_milli_satoshis} = res.value;
+
+              Alert.alert(
+                `Pay ${amount_milli_satoshis ?? 0}`,
+                `To pubkey: ${recover_payee_pub_key}`,
+                [
+                  {
+                    text: 'Cancel',
+                    onPress: () => console.log('Cancel Pressed'),
+                    style: 'cancel',
+                  },
+                  {
+                    text: 'Pay',
+                    onPress: () => {
+                      setMessage(JSON.stringify(res.value));
+                    },
+                  },
+                ],
+              );
             }}
           />
 

@@ -12,16 +12,17 @@ func handleResolve(_ resolve: RCTPromiseResolveBlock, _ res: LdkCallbackResponse
     resolve(res.rawValue)
 }
 
-func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ error: Error? = nil) {
+func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ error: Error? = nil, _ message: String? = nil) {
     if let error = error as? NSError {
-        LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Error: \(error.localizedDescription)")
-        reject(ldkError.rawValue, error.localizedDescription, error)
+        LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Error: \(error.localizedDescription). Message: '\(message ?? "")'")
+        reject(ldkError.rawValue, message ?? error.localizedDescription, error)
         return
     }
     
-    LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Error: \(ldkError.rawValue)")
-    reject(ldkError.rawValue, ldkError.rawValue, NSError(domain: ldkError.rawValue, code: ldkError.hashValue))
+    LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Error: \(ldkError.rawValue). Message: '\(message ?? "")'")
+    reject(ldkError.rawValue, message ?? ldkError.rawValue, NSError(domain: ldkError.rawValue, code: ldkError.hashValue))
 }
+
 
 extension Data {
     struct HexEncodingOptions: OptionSet {

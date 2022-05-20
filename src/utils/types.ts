@@ -121,6 +121,22 @@ export type TChannel = {
 	unspendable_punishment_reserve?: number;
 };
 
+export type TDecodedPaymentRequest = {
+	amount_milli_satoshis?: number;
+	check_signature: boolean;
+	is_expired: boolean;
+	duration_since_epoch: number;
+	expiry_time: number;
+	min_final_cltv_expiry: number;
+	payee_pub_key: string;
+	recover_payee_pub_key: string;
+	payment_hash: string;
+	payment_secret: string;
+	timestamp: number;
+	features: string;
+	currency: number;
+};
+
 export type TLogListener = {
 	id: string;
 	callback: (log: string) => void;
@@ -141,6 +157,10 @@ export type TAddPeerReq = {
 	address: string;
 	port: number;
 	pubKey: string;
+};
+
+export type TPaymentReq = {
+	paymentRequest: string;
 };
 
 export type TInitChannelManagerReq = {

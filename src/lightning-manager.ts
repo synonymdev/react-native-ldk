@@ -52,6 +52,8 @@ import {
 
 class LightningManager {
 	currentBlockHash = '';
+	watchTxs: TRegisterTxEvent[] = [];
+	watchOutputs: TRegisterOutputEvent[] = [];
 
 	constructor() {
 		// Step 0: Subscribe to all events
@@ -257,11 +259,13 @@ class LightningManager {
 	//LDK events
 
 	private onRegisterTx(res: TRegisterTxEvent) {
-		console.log(`onRegisterTx: ${res.txid} = ${res.script_pubkey}`); //TODO
+		//lightning-manager needs to keep check these and updating LDK using transactions_confirmed()
+		this.watchTxs.push(res);
 	}
 
 	private onRegisterOutput(res: TRegisterOutputEvent) {
-		console.log(`onRegisterOutput: ${res.script_pubkey}`); //TODO
+		//lightning-manager needs to keep check these and updating LDK using transactions_confirmed()
+		this.watchOutputs.push(res);
 	}
 
 	private onBroadcastTransaction(res: TBroadcastTransactionEvent) {

@@ -43,6 +43,7 @@ enum LdkErrors: String {
     case init_peer_handler = "init_peer_handler"
     case add_peer_fail = "add_peer_fail"
     case init_channel_manager = "init_channel_manager"
+    case decode_invoice_fail = "decode_invoice_fail"
 }
 
 enum LdkCallbackResponses: String {
@@ -81,6 +82,7 @@ class Ldk: NSObject {
     var peerManager: PeerManager?
     var peerHandler: TCPPeerHandler?
     var channelManagerConstructor: ChannelManagerConstructor?
+    var invoicePayer: InvoicePayer?
     
     lazy var ldkStorage: URL = {
         let docsurl = try! FileManager.default.url(for:.documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
@@ -108,7 +110,7 @@ class Ldk: NSObject {
             feeest: feeEstimator,
             persister: persister
         )
-        
+                
         handleResolve(resolve, .chain_monitor_init_success)
     }
     
@@ -254,6 +256,8 @@ class Ldk: NSObject {
         peerManager = channelManagerConstructor!.peerManager
 
         peerHandler = channelManagerConstructor!.getTCPPeerHandler()
+        invoicePayer = channelManagerConstructor!.payer
+        
         handleResolve(resolve, .channel_manager_init_success)
     }
     
@@ -314,6 +318,40 @@ class Ldk: NSObject {
         }
         
         handleResolve(resolve, .add_peer_success)
+    }
+    
+    //MARK: Payments
+    @objc
+    func decode(_ paymentRequest: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+      
+        let parsedInvoice = Invoice.from_str(s: String(paymentRequest))
+        guard parsedInvoice.isOk(), let invoice = parsedInvoice.getValue()  else {
+            let error = parsedInvoice.getError()?.getValueAsParseError()
+            return handleReject(reject, .decode_invoice_fail, nil, error?.to_str())
+        }
+        
+        
+        resolve([
+            "amount_milli_satoshis": invoice.amount_milli_satoshis().getValue() as Any,
+            "check_signature": invoice.check_signature().isOk(),
+            "is_expired": invoice.is_expired(),
+            "duration_since_epoch": invoice.duration_since_epoch(),
+            "expiry_time": invoice.expiry_time(),
+            "min_final_cltv_expiry": invoice.min_final_cltv_expiry(),
+            "payee_pub_key": Data(invoice.payee_pub_key()).hexEncodedString(),
+            "recover_payee_pub_key": Data(invoice.recover_payee_pub_key()).hexEncodedString(),
+            "payment_hash": Data(invoice.payment_hash()).hexEncodedString(),
+            "payment_secret": Data(invoice.payment_secret()).hexEncodedString(),
+            "timestamp": invoice.timestamp(),
+            "features": Data(invoice.features().write()).hexEncodedString(),
+            "currency": invoice.currency().rawValue
+        ])
+    }
+    
+    @objc
+    func pay(_ paymentRequest: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        
+        resolve("TODO")
     }
     
     //MARK: Fetch methods

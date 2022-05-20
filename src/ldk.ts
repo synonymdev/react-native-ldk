@@ -4,13 +4,14 @@ import {
 	EEventTypes,
 	ELdkLogLevels,
 	TAddPeerReq,
-	TChannel,
+	TChannel, TDecodedPaymentRequest,
 	TFeeUpdateReq,
 	TInitChannelManagerReq,
 	TInitConfig,
 	TLogListener,
+	TPaymentReq,
 	TSyncTipReq
-} from './utils/types';
+} from "./utils/types";
 
 const LINKING_ERROR =
 	`The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n` +
@@ -204,6 +205,24 @@ class LDK {
 	async addPeer({ pubKey, address, port }: TAddPeerReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.addPeer(address, port, pubKey);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async decode({ paymentRequest }: TPaymentReq): Promise<Result<TDecodedPaymentRequest>> {
+		try {
+			const res = await NativeLDK.decode(paymentRequest);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async pay({ paymentRequest }: TPaymentReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.pay(paymentRequest);
 			return ok(res);
 		} catch (e) {
 			return err(e);
