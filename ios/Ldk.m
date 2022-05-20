@@ -47,6 +47,16 @@ RCT_EXTERN_METHOD(addPeer:(NSString *)address
                   pubKey:(NSString *)pubKey
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(setTxConfirmed:(NSString *)header
+                  transaction:(NSString *)transaction
+                  pos:(NSInteger *)pos
+                  height:(NSInteger *)height
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(setTxUnconfirmed:(NSString *)txId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+
 //MARK: Fetch methods
 RCT_EXTERN_METHOD(version:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)

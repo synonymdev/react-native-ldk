@@ -12,7 +12,9 @@ import {
 	TLogListener,
 	TPaymentReq,
 	TSyncTipReq,
-	TCreatePaymentReq
+	TCreatePaymentReq,
+	TSetTxConfirmedReq,
+	TSetTxUnconfirmedReq
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -204,9 +206,52 @@ class LDK {
 		}
 	}
 
+	/**
+	 * Connect to remote peer
+	 * @param pubKey
+	 * @param address
+	 * @param port
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
 	async addPeer({ pubKey, address, port }: TAddPeerReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.addPeer(address, port, pubKey);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Updates a watched transaction as confirmed
+	 * @param txId
+	 * @param transaction
+	 * @param height
+	 * @param pos
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async setTxConfirmed({
+		header,
+		transaction,
+		height,
+		pos
+	}: TSetTxConfirmedReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.setTxConfirmed(header, transaction, pos, height);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Updates a watched transaction as unconfirmed in the event of a reorg
+	 * @param txId
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async setTxUnconfirmed({ txId }: TSetTxUnconfirmedReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.setTxUnconfirmed(txId);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -244,7 +289,6 @@ class LDK {
 			return err(e);
 		}
 	}
-	//createPaymentRequest
 
 	/**
 	 * Pays a bolt11 payment request
@@ -261,6 +305,9 @@ class LDK {
 			return err(e);
 		}
 	}
+
+	//TODO pay_zero_value_invoice
+	//TODO pay_pubkey
 
 	/**
 	 * Listen on LDK events
@@ -389,6 +436,7 @@ class LDK {
 	 * @returns {Promise<Err<unknown> | Ok<string[]>>}
 	 */
 	async getLogFileContent(limit: number = 100): Promise<Result<string[]>> {
+		//TODO
 		// try {
 		// 	const content: string[] = await this.ldk.logFileContent(network, limit);
 		// 	return ok(content);

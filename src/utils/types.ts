@@ -160,6 +160,17 @@ export type TAddPeerReq = {
 	pubKey: string;
 };
 
+export type TSetTxConfirmedReq = {
+	header: string;
+	transaction: string;
+	pos: number;
+	height: number;
+};
+
+export type TSetTxUnconfirmedReq = {
+	txId: string;
+};
+
 export type TPaymentReq = {
 	paymentRequest: string;
 };

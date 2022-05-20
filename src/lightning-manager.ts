@@ -45,7 +45,7 @@ import {
 // Step 13: Initialize networking ✅
 // Step 14: Connect and Disconnect Blocks ✅
 // Step 15: Handle LDK Events [WIP]
-// Step 16: Initialize routing ProbabilisticScorer
+// Step 16: Initialize routing ProbabilisticScorer [Not sure if required]
 // Step 17: Create InvoicePayer ✅
 // Step 18: Persist ChannelManager and NetworkGraph
 // Step 19: Background Processing
@@ -231,29 +231,35 @@ class LightningManager {
 	}
 
 	/**
-	 * Fetches current best block and sends to LDK.
-	 * Updates both channelManager and chainMonitor.
+	 * Fetches current best block and sends to LDK to update both channelManager and chainMonitor.
+	 * Also watches transactions and outputs for confirmed and unconfirmed transactions and updated LDK.
 	 * @returns {Promise<Err<string> | Ok<string>>}
 	 */
 	async syncLdk() {
 		const { bestblockhash, blocks } = await regtestBestBlock();
 
-		if (this.currentBlockHash === bestblockhash) {
-			return; //No need to update
+		//Don't update unnecessarily
+		if (this.currentBlockHash !== bestblockhash) {
+			const header = await regtestBlockHeaderHex(bestblockhash);
+			const syncToTip = await ldk.syncToTip({
+				header,
+				height: blocks
+			});
+			if (syncToTip.isErr()) {
+				return syncToTip;
+			}
+
+			this.currentBlockHash = bestblockhash;
 		}
 
-		const header = await regtestBlockHeaderHex(bestblockhash);
-		const syncToTip = await ldk.syncToTip({
-			header,
-			height: blocks
-		});
-		if (syncToTip.isErr()) {
-			return syncToTip;
-		}
-
-		this.currentBlockHash = bestblockhash;
-
-		//TODO fetch latest data for watchTxs and watchOutputs. Feed to transactions_confirmed() and transactions_confirmed()
+		//TODO fetch latest data for watchTxs and watchOutputs. Feed any updates to LDK.
+		// const setRes = await ldk.setTxConfirmed({
+		// 	header: 'hex_encoded_header',
+		// 	height: 1,
+		// 	transaction: 'hex_encoded_tx',
+		// 	pos: 1
+		// });
+		// const unsetRes = await ldk.setTxUnconfirmed({ txId: 'set_me' });
 
 		return ok(`Synced to block ${blocks}`);
 	}
@@ -314,7 +320,7 @@ class LightningManager {
 	}
 
 	private onChannelManagerPaymentPathSuccessful(res: TChannelManagerPaymentPathSuccessful) {
-		//Nothing to here. Optionally notify user?
+		//Nothing to do here. Optionally notify user?
 		console.log(`onChannelManagerPaymentPathSuccessful: ${JSON.stringify(res)}`); //TODO
 	}
 

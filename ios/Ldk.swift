@@ -64,6 +64,8 @@ enum LdkCallbackResponses: String {
     case add_peer_success = "add_peer_success"
     case chain_sync_success = "chain_sync_success"
     case invoice_payment_success = "invoice_payment_success"
+    case tx_set_confirmed = "tx_set_confirmed"
+    case tx_set_unconfirmed = "tx_set_unconfirmed"
 }
 
 @objc(Ldk)
@@ -327,6 +329,48 @@ class Ldk: NSObject {
         }
         
         handleResolve(resolve, .add_peer_success)
+    }
+    
+    @objc
+    func setTxConfirmed(_ header: NSString, transaction: NSString, pos: NSInteger, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        guard let chainMonitor = chainMonitor else {
+            return handleReject(reject, .init_chain_monitor)
+        }
+        
+        let txData = [C2Tuple_usizeTransactionZ.new(a: UInt(pos), b: String(transaction).hexaBytes)]
+        
+        channelManager.as_Confirm().transactions_confirmed(
+            header: String(header).hexaBytes,
+            txdata: txData,
+            height: UInt32(height)
+        )
+        chainMonitor.as_Confirm().transactions_confirmed(
+            header: String(header).hexaBytes,
+            txdata: txData,
+            height: UInt32(height)
+        )
+        
+        handleResolve(resolve, .tx_set_confirmed)
+    }
+    
+    @objc
+    func setTxUnconfirmed(_ txId: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        guard let chainMonitor = chainMonitor else {
+            return handleReject(reject, .init_chain_monitor)
+        }
+        
+        channelManager.as_Confirm().transaction_unconfirmed(txid: String(txId).hexaBytes)
+        chainMonitor.as_Confirm().transaction_unconfirmed(txid: String(txId).hexaBytes)
+        
+        handleResolve(resolve, .tx_set_unconfirmed)
     }
     
     //MARK: Payments
