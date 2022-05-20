@@ -121,7 +121,7 @@ export type TChannel = {
 	unspendable_punishment_reserve?: number;
 };
 
-export type TDecodedPaymentRequest = {
+export type TInvoice = {
 	amount_milli_satoshis?: number;
 	check_signature: boolean;
 	is_expired: boolean;
@@ -135,6 +135,7 @@ export type TDecodedPaymentRequest = {
 	timestamp: number;
 	features: string;
 	currency: number;
+	to_str: string; //Actual bolt11 invoice string
 };
 
 export type TLogListener = {
@@ -161,6 +162,11 @@ export type TAddPeerReq = {
 
 export type TPaymentReq = {
 	paymentRequest: string;
+};
+
+export type TCreatePaymentReq = {
+	amountSats: number;
+	description: string;
 };
 
 export type TInitChannelManagerReq = {

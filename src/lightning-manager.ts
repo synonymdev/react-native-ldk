@@ -205,7 +205,7 @@ class LightningManager {
 		if (!isExistingNode) {
 			// https://github.com/lightningdevkit/ldk-sample/blob/c0a722430b8fbcb30310d64487a32aae839da3e8/src/main.rs#L479
 			// Sample app only syncs when restarting an existing node
-			await this.syncToChain();
+			await this.syncLdk();
 		}
 
 		// Step 10: Give ChannelMonitors to ChainMonitor
@@ -227,7 +227,7 @@ class LightningManager {
 	 * @returns {Promise<void>}
 	 */
 	keepBlockchainInSync() {
-		setInterval(this.syncToChain, 2500);
+		setInterval(this.syncLdk, 2500);
 	}
 
 	/**
@@ -235,7 +235,7 @@ class LightningManager {
 	 * Updates both channelManager and chainMonitor.
 	 * @returns {Promise<Err<string> | Ok<string>>}
 	 */
-	async syncToChain() {
+	async syncLdk() {
 		const { bestblockhash, blocks } = await regtestBestBlock();
 
 		if (this.currentBlockHash === bestblockhash) {
@@ -253,18 +253,18 @@ class LightningManager {
 
 		this.currentBlockHash = bestblockhash;
 
+		//TODO fetch latest data for watchTxs and watchOutputs. Feed to transactions_confirmed() and transactions_confirmed()
+
 		return ok(`Synced to block ${blocks}`);
 	}
 
 	//LDK events
 
 	private onRegisterTx(res: TRegisterTxEvent) {
-		//lightning-manager needs to keep check these and updating LDK using transactions_confirmed()
 		this.watchTxs.push(res);
 	}
 
 	private onRegisterOutput(res: TRegisterOutputEvent) {
-		//lightning-manager needs to keep check these and updating LDK using transactions_confirmed()
 		this.watchOutputs.push(res);
 	}
 

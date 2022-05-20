@@ -46,6 +46,8 @@ enum LdkErrors: String {
     case decode_invoice_fail = "decode_invoice_fail"
     case init_invoice_payer = "init_invoice_payer"
     case invoice_payment_fail = "invoice_payment_fail"
+    case init_ldk_currency = "init_ldk_currency"
+    case invoice_create_failed = "invoice_create_failed"
 }
 
 enum LdkCallbackResponses: String {
@@ -86,6 +88,8 @@ class Ldk: NSObject {
     var peerHandler: TCPPeerHandler?
     var channelManagerConstructor: ChannelManagerConstructor?
     var invoicePayer: InvoicePayer?
+    var ldkNetwork: LDKNetwork?
+    var ldkCurrency: LDKCurrency?
     
     lazy var ldkStorage: URL = {
         let docsurl = try! FileManager.default.url(for:.documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
@@ -205,14 +209,16 @@ class Ldk: NSObject {
             return handleReject(reject, .init_network_graph)
         }
         
-        let ldkNetwork: LDKNetwork!
         switch network {
         case "regtest":
             ldkNetwork = LDKNetwork_Regtest
+            ldkCurrency = LDKCurrency_Regtest
         case "testnet":
             ldkNetwork = LDKNetwork_Testnet
+            ldkCurrency = LDKCurrency_BitcoinTestnet
         case "mainnet":
             ldkNetwork = LDKNetwork_Bitcoin
+            ldkCurrency = LDKCurrency_Bitcoin
         default:
             return handleReject(reject, .invalid_network)
         }
@@ -221,7 +227,7 @@ class Ldk: NSObject {
             if channelMonitors.count == 0 {
                 //New node
                 channelManagerConstructor = ChannelManagerConstructor(
-                    network: ldkNetwork,
+                    network: ldkNetwork!,
                     config: userConfig,
                     current_blockchain_tip_hash: String(blockHash).hexaBytes,
                     current_blockchain_tip_height: UInt32(blockHeight),
@@ -331,23 +337,8 @@ class Ldk: NSObject {
             let error = parsedInvoice.getError()?.getValueAsParseError()
             return handleReject(reject, .decode_invoice_fail, nil, error?.to_str())
         }
-        
-        
-        resolve([
-            "amount_milli_satoshis": invoice.amount_milli_satoshis().getValue() as Any,
-            "check_signature": invoice.check_signature().isOk(),
-            "is_expired": invoice.is_expired(),
-            "duration_since_epoch": invoice.duration_since_epoch(),
-            "expiry_time": invoice.expiry_time(),
-            "min_final_cltv_expiry": invoice.min_final_cltv_expiry(),
-            "payee_pub_key": Data(invoice.payee_pub_key()).hexEncodedString(),
-            "recover_payee_pub_key": Data(invoice.recover_payee_pub_key()).hexEncodedString(),
-            "payment_hash": Data(invoice.payment_hash()).hexEncodedString(),
-            "payment_secret": Data(invoice.payment_secret()).hexEncodedString(),
-            "timestamp": invoice.timestamp(),
-            "features": Data(invoice.features().write()).hexEncodedString(),
-            "currency": invoice.currency().rawValue
-        ])
+                        
+        resolve(invoice.asJson) //Invoice class extended in Helpers file
     }
     
     @objc
@@ -393,7 +384,43 @@ class Ldk: NSObject {
         default:
             return handleReject(reject, .invoice_payment_fail, nil, res.getError().debugDescription)
         }
+    }
+    
+    @objc
+    func createPaymentRequest(_ amountSats: NSInteger, description: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
         
+        guard let keysManager = keysManager else {
+            return handleReject(reject, .init_keys_manager)
+        }
+        
+        guard let ldkCurrency = ldkCurrency else {
+            return handleReject(reject, .init_ldk_currency)
+        }
+        
+        let res = Bindings.createInvoiceFromChannelManager(
+            channelManager: channelManager,
+            keysManager: keysManager.as_KeysInterface(),
+            network: ldkCurrency,
+            amountMsat: UInt64(amountSats),
+            description: String(description)
+        )
+        
+        if res.isOk() {
+            guard let invoice = res.getValue() else {
+                return handleReject(reject, .invoice_create_failed)
+            }
+            
+            return resolve(invoice.asJson) //Invoice class extended in Helpers file
+        }
+        
+        guard let error = res.getError(), let creationError = error.getValueAsCreationError()  else {
+            return handleReject(reject, .invoice_create_failed)
+        }
+    
+        return handleReject(reject, .invoice_create_failed, nil, "Invoice creation error: \(creationError.rawValue)")
     }
     
     //MARK: Fetch methods
@@ -410,7 +437,7 @@ class Ldk: NSObject {
     @objc
     func nodeId(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
-            return handleReject(reject, .load_channel_monitors)
+            return handleReject(reject, .init_channel_manager)
         }
         
         resolve(Data(channelManager.get_our_node_id()).hexEncodedString())

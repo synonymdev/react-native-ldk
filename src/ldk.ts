@@ -5,13 +5,14 @@ import {
 	ELdkLogLevels,
 	TAddPeerReq,
 	TChannel,
-	TDecodedPaymentRequest,
+	TInvoice,
 	TFeeUpdateReq,
 	TInitChannelManagerReq,
 	TInitConfig,
 	TLogListener,
 	TPaymentReq,
-	TSyncTipReq
+	TSyncTipReq,
+	TCreatePaymentReq
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -217,7 +218,7 @@ class LDK {
 	 * @param paymentRequest
 	 * @returns {Promise<Ok<any> | Err<unknown>>}
 	 */
-	async decode({ paymentRequest }: TPaymentReq): Promise<Result<TDecodedPaymentRequest>> {
+	async decode({ paymentRequest }: TPaymentReq): Promise<Result<TInvoice>> {
 		try {
 			const res = await NativeLDK.decode(paymentRequest);
 			return ok(res);
@@ -225,6 +226,25 @@ class LDK {
 			return err(e);
 		}
 	}
+
+	/**
+	 * Creates bolt11 payment request
+	 * @param amountSats
+	 * @param description
+	 * @returns {Promise<Ok<Ok<TInvoice> | Err<TInvoice>> | Err<unknown>>}
+	 */
+	async createPaymentRequest({
+		amountSats,
+		description
+	}: TCreatePaymentReq): Promise<Result<TInvoice>> {
+		try {
+			const res = await NativeLDK.createPaymentRequest(amountSats, description);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+	//createPaymentRequest
 
 	/**
 	 * Pays a bolt11 payment request

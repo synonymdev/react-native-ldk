@@ -64,6 +64,10 @@ RCT_EXTERN_METHOD(decode:(NSString *)paymentRequest
 RCT_EXTERN_METHOD(pay:(NSString *)paymentRequest
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(createPaymentRequest:(NSInteger *)amountSats
+                  description:(NSString *)description
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 @end
 
 //MARK: Events

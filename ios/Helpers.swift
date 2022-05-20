@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import LDKFramework
 
 func handleResolve(_ resolve: RCTPromiseResolveBlock, _ res: LdkCallbackResponses) {
     LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Success: \(res.rawValue)")
@@ -23,6 +24,26 @@ func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ erro
     reject(ldkError.rawValue, message ?? ldkError.rawValue, NSError(domain: ldkError.rawValue, code: ldkError.hashValue))
 }
 
+extension Invoice {
+    var asJson: Any {
+        return [
+            "amount_milli_satoshis": self.amount_milli_satoshis().getValue() as Any,
+            "check_signature": self.check_signature().isOk(),
+            "is_expired": self.is_expired(),
+            "duration_since_epoch": self.duration_since_epoch(),
+            "expiry_time": self.expiry_time(),
+            "min_final_cltv_expiry": self.min_final_cltv_expiry(),
+            "payee_pub_key": Data(self.payee_pub_key()).hexEncodedString(),
+            "recover_payee_pub_key": Data(self.recover_payee_pub_key()).hexEncodedString(),
+            "payment_hash": Data(self.payment_hash()).hexEncodedString(),
+            "payment_secret": Data(self.payment_secret()).hexEncodedString(),
+            "timestamp": self.timestamp(),
+            "features": Data(self.features().write()).hexEncodedString(),
+            "currency": self.currency().rawValue,
+            "to_str": self.to_str()
+        ]
+    }
+}
 
 extension Data {
     struct HexEncodingOptions: OptionSet {

@@ -163,14 +163,25 @@ const App = () => {
           />
 
           <Button
-            title={'Show version'}
+            title={'Create invoice'}
             onPress={async () => {
-              const res = await ldk.version();
-              if (res.isErr()) {
-                return setMessage(res.error.message);
-              }
+              try {
+                const res = await ldk.createPaymentRequest({
+                  amountSats: 1234,
+                  description: 'paymeplz',
+                });
 
-              setMessage(res.value.ldk);
+                if (res.isErr()) {
+                  setMessage(res.error.message);
+                  return;
+                }
+
+                const {to_str} = res.value;
+
+                setMessage(to_str);
+              } catch (e) {
+                setMessage(e.toString());
+              }
             }}
           />
 
@@ -185,6 +196,18 @@ const App = () => {
               console.log(nodeIdRes.value);
 
               setMessage(`Node ID: ${nodeIdRes.value}`);
+            }}
+          />
+
+          <Button
+            title={'Show version'}
+            onPress={async () => {
+              const res = await ldk.version();
+              if (res.isErr()) {
+                return setMessage(res.error.message);
+              }
+
+              setMessage(res.value.ldk);
             }}
           />
         </ScrollView>
