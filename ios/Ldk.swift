@@ -44,6 +44,8 @@ enum LdkErrors: String {
     case add_peer_fail = "add_peer_fail"
     case init_channel_manager = "init_channel_manager"
     case decode_invoice_fail = "decode_invoice_fail"
+    case init_invoice_payer = "init_invoice_payer"
+    case invoice_payment_fail = "invoice_payment_fail"
 }
 
 enum LdkCallbackResponses: String {
@@ -59,6 +61,7 @@ enum LdkCallbackResponses: String {
     case network_graph_init_success = "network_graph_init_success"
     case add_peer_success = "add_peer_success"
     case chain_sync_success = "chain_sync_success"
+    case invoice_payment_success = "invoice_payment_success"
 }
 
 @objc(Ldk)
@@ -323,7 +326,6 @@ class Ldk: NSObject {
     //MARK: Payments
     @objc
     func decode(_ paymentRequest: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-      
         let parsedInvoice = Invoice.from_str(s: String(paymentRequest))
         guard parsedInvoice.isOk(), let invoice = parsedInvoice.getValue()  else {
             let error = parsedInvoice.getError()?.getValueAsParseError()
@@ -350,8 +352,48 @@ class Ldk: NSObject {
     
     @objc
     func pay(_ paymentRequest: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let invoicePayer = invoicePayer else {
+            return handleReject(reject, .init_invoice_payer)
+        }
         
-        resolve("TODO")
+        guard let invoice = Invoice.from_str(s: String(paymentRequest)).getValue() else {
+            return handleReject(reject, .decode_invoice_fail)
+        }
+        
+        let res = invoicePayer.pay_invoice(invoice: invoice)
+        if res.isOk() {
+            handleResolve(resolve, .invoice_payment_success)
+        }
+        
+        guard let error = res.getError() else {
+            return handleReject(reject, .invoice_payment_fail)
+        }
+        
+        switch error.getValueType() {
+        case .Invoice:
+            return handleReject(reject, .invoice_payment_fail, nil, error.getValueAsInvoice())
+        case .Routing:
+            return handleReject(reject, .invoice_payment_fail, nil, error.getValueAsRouting()?.get_err())
+        case .Sending:
+            //Multiple sending errors
+            guard let sendingError = error.getValueAsSending() else {
+                return handleReject(reject, .invoice_payment_fail)
+            }
+            
+            switch sendingError.getValueType() {
+            case .AllFailedRetrySafe:
+                return handleReject(reject, .invoice_payment_fail, nil, sendingError.getValueAsAllFailedRetrySafe().map { $0.description } )
+            case .ParameterError:
+                return handleReject(reject, .invoice_payment_fail, nil, sendingError.getValueAsParameterError().debugDescription)
+            case .PartialFailure:
+                return handleReject(reject, .invoice_payment_fail, nil, sendingError.getValueAsPartialFailure().debugDescription)
+            default:
+                return handleReject(reject, .invoice_payment_fail)
+            }
+        default:
+            return handleReject(reject, .invoice_payment_fail, nil, res.getError().debugDescription)
+        }
+        
     }
     
     //MARK: Fetch methods

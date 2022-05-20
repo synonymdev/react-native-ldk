@@ -46,7 +46,7 @@ import {
 // Step 14: Connect and Disconnect Blocks ✅
 // Step 15: Handle LDK Events [WIP]
 // Step 16: Initialize routing ProbabilisticScorer
-// Step 17: Create InvoicePayer
+// Step 17: Create InvoicePayer ✅
 // Step 18: Persist ChannelManager and NetworkGraph
 // Step 19: Background Processing
 

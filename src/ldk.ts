@@ -4,14 +4,15 @@ import {
 	EEventTypes,
 	ELdkLogLevels,
 	TAddPeerReq,
-	TChannel, TDecodedPaymentRequest,
+	TChannel,
+	TDecodedPaymentRequest,
 	TFeeUpdateReq,
 	TInitChannelManagerReq,
 	TInitConfig,
 	TLogListener,
 	TPaymentReq,
 	TSyncTipReq
-} from "./utils/types";
+} from './utils/types';
 
 const LINKING_ERROR =
 	`The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n` +
@@ -211,6 +212,11 @@ class LDK {
 		}
 	}
 
+	/**
+	 * Decodes a bolt11 payment request
+	 * @param paymentRequest
+	 * @returns {Promise<Ok<any> | Err<unknown>>}
+	 */
 	async decode({ paymentRequest }: TPaymentReq): Promise<Result<TDecodedPaymentRequest>> {
 		try {
 			const res = await NativeLDK.decode(paymentRequest);
@@ -220,11 +226,18 @@ class LDK {
 		}
 	}
 
+	/**
+	 * Pays a bolt11 payment request
+	 * @param paymentRequest
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
 	async pay({ paymentRequest }: TPaymentReq): Promise<Result<string>> {
+		//TODO allow for setting amount if invoice amount is zero
 		try {
 			const res = await NativeLDK.pay(paymentRequest);
 			return ok(res);
 		} catch (e) {
+			//TODO error can be drilled down in native code to provide better feedback and/or retry options.
 			return err(e);
 		}
 	}

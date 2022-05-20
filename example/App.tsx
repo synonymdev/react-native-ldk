@@ -148,8 +148,13 @@ const App = () => {
                   },
                   {
                     text: 'Pay',
-                    onPress: () => {
-                      setMessage(JSON.stringify(res.value));
+                    onPress: async () => {
+                      const pay = await ldk.pay({paymentRequest});
+                      if (pay.isErr()) {
+                        return setMessage(pay.error.message);
+                      }
+
+                      setMessage(pay.value);
                     },
                   },
                 ],
