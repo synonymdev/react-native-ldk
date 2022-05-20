@@ -325,6 +325,20 @@ class LDK {
 	}
 
 	/**
+	 * Returns array of usable channels
+	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/struct.ChannelDetails.html
+	 * @returns {Promise<Ok<Ok<TChannel[]> | Err<TChannel[]>> | Err<unknown>>}
+	 */
+	async listUsableChannels(): Promise<Result<TChannel[]>> {
+		try {
+			const res = await NativeLDK.listUsableChannels();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
 	 * Callback passed though will get triggered for each LND log item
 	 * @param callback
 	 * @returns {string}

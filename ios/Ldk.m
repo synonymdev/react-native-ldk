@@ -56,6 +56,8 @@ RCT_EXTERN_METHOD(listPeers:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(listChannels:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(listUsableChannels:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 
 //MARK: Payments
 RCT_EXTERN_METHOD(decode:(NSString *)paymentRequest

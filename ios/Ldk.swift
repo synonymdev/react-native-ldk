@@ -460,27 +460,17 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
                 
-        resolve(channelManager.list_channels().map { [
-            "channel_id": Data($0.get_channel_id()).hexEncodedString(),
-            "is_public": $0.get_is_public(),
-            "is_usable": $0.get_is_usable(),
-            "is_outbound": $0.get_is_outbound(),
-            "balance_msat": $0.get_balance_msat(),
-            "counterparty": Data($0.get_counterparty().write()).hexEncodedString(),
-            "funding_txo": Data($0.get_funding_txo()?.write() ?? []).hexEncodedString(),
-            "channel_type": Data($0.get_channel_type().write()).hexEncodedString(),
-            "user_channel_id": $0.get_user_channel_id(), //Number
-            "confirmations_required": $0.get_confirmations_required().getValue() as Any, // Optional number
-            "short_channel_id": $0.get_short_channel_id().getValue() as Any, //Optional number
-            "is_funding_locked": $0.get_is_funding_locked(), //Bool
-            "inbound_scid_alias": $0.get_inbound_scid_alias().getValue() as Any, //Optional number
-            "get_inbound_payment_scid": $0.get_inbound_payment_scid().getValue() as Any, //Optional number,
-            "inbound_capacity_msat": $0.get_inbound_capacity_msat(),
-            "channel_value_satoshis": $0.get_channel_value_satoshis(),
-            "outbound_capacity_msat": $0.get_outbound_capacity_msat(),
-            "force_close_spend_delay": $0.get_force_close_spend_delay().getValue() as Any, //Optional number
-            "unspendable_punishment_reserve": $0.get_unspendable_punishment_reserve().getValue() as Any //Optional number
-        ] })
+        resolve(channelManager.list_channels().map { $0.asJson })
+    }
+    
+    @objc
+    func listUsableChannels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        //Sync ChannelMonitors and ChannelManager to chain tip
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+                
+        resolve(channelManager.list_usable_channels().map { $0.asJson })
     }
 }
 
