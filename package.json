@@ -24,7 +24,7 @@
     "lint": "yarn run lint:ts",
     "lint:ts": "eslint . --ext .ts,.tsx --fix",
     "prepublish": "yarn lint && yarn run build && npm --no-git-tag-version version patch",
-    "dev:save-native-updates": "cp example/node_modules/@synonymdev/react-native-ldk/ios/*.{m,swift} ./ios && cp example/node_modules/@synonymdev/react-native-ldk/ios/Classes/*.swift ./ios/Classes/",
+    "dev:save-native-updates": "cp example/node_modules/@synonymdev/react-native-ldk/ios/*.{m,swift,h} ./ios && cp example/node_modules/@synonymdev/react-native-ldk/ios/Classes/*.swift ./ios/Classes/",
     "dev:update-example-dist": "yarn build && cp -R dist example/node_modules/@synonymdev/react-native-ldk",
     "dev:example": "yarn dev:save-native-updates && yarn dev:update-example-dist"
   },

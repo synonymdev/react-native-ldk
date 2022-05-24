@@ -1,15 +1,34 @@
 #import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
 
 @interface RCT_EXTERN_MODULE(Ldk, NSObject)
 
-RCT_EXTERN_METHOD(version:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+//MARK: Startup methods
+RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(loadChannelMonitors:(NSArray *)channelMonitors
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(initConfig:(BOOL *)acceptInboundChannels
+                  manuallyAcceptInboundChannels:(BOOL *)manuallyAcceptInboundChannels
+                  announcedChannels:(BOOL *)announcedChannels
+                  minChannelHandshakeDepth:(NSInteger *)minChannelHandshakeDepth
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)genesisHash
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(initChannelManager:(NSString *)network
+                  serializedChannelManager:(NSString *)serializedChannelManager
+                  blockHash:(NSString *)blockHash
+                  blockHeight:(NSInteger *)blockHeight
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 
-//Startup methods
-RCT_EXTERN_METHOD(initFeeEstimator:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(initLogger:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(startChainMonitor:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
-
-//Update state methods
+//MARK: Update methods
 RCT_EXTERN_METHOD(updateFees:(NSInteger *)high
                   normal:(NSInteger *)normal
                   low:(NSInteger *)low
@@ -19,5 +38,53 @@ RCT_EXTERN_METHOD(setLogLevel:(NSInteger *)high
                   active:(BOOL *)active
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(syncToTip:(NSString *)header
+                  height:(NSInteger *)height
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(addPeer:(NSString *)address
+                  port:(NSInteger *)port
+                  pubKey:(NSString *)pubKey
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(setTxConfirmed:(NSString *)header
+                  transaction:(NSString *)transaction
+                  pos:(NSInteger *)pos
+                  height:(NSInteger *)height
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(setTxUnconfirmed:(NSString *)txId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+
+//MARK: Fetch methods
+RCT_EXTERN_METHOD(version:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(nodeId:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(listPeers:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(listChannels:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(listUsableChannels:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+
+//MARK: Payments
+RCT_EXTERN_METHOD(decode:(NSString *)paymentRequest
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(pay:(NSString *)paymentRequest
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(createPaymentRequest:(NSInteger *)amountSats
+                  description:(NSString *)description
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+@end
+
+//MARK: Events
+@interface RCT_EXTERN_MODULE(LdkEventEmitter, RCTEventEmitter)
+
+RCT_EXTERN_METHOD(supportedEvents)
 
 @end

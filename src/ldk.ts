@@ -1,6 +1,21 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import { err, ok, Result } from './utils/result';
-import { ELdkLogLevels, TFeeUpdateReq, TLogListener } from "./utils/types";
+import {
+	EEventTypes,
+	ELdkLogLevels,
+	TAddPeerReq,
+	TChannel,
+	TInvoice,
+	TFeeUpdateReq,
+	TInitChannelManagerReq,
+	TInitConfig,
+	TLogListener,
+	TPaymentReq,
+	TSyncTipReq,
+	TCreatePaymentReq,
+	TSetTxConfirmedReq,
+	TSetTxUnconfirmedReq
+} from './utils/types';
 
 const LINKING_ERROR =
 	`The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n` +
@@ -20,57 +35,137 @@ const NativeLDK = NativeModules.Ldk
 	  );
 
 class LDK {
-	/**
-	 * Array of callbacks to be fired off when a new log entry arrives.
-	 * Developers are responsible for adding and removing listeners.
-	 *
-	 * @type {TLogListener[]}
-	 */
 	private readonly logListeners: TLogListener[];
+	private readonly ldkEvent: NativeEventEmitter;
 
 	constructor() {
 		this.logListeners = [];
+		this.ldkEvent = new NativeEventEmitter(NativeModules.LdkEventEmitter);
 	}
 
-	//TODO
-	// Step 1: Initialize the FeeEstimator ✅
-	// Step 2: Initialize the Logger ✅
-	// Step 3: Initialize the BroadcasterInterface
-	// Step 4: Initialize Persist
-	// Step 5: Initialize the ChainMonitor
-	// Step 6: Initialize the KeysManager
-	// Step 7: Read ChannelMonitor state from disk
-	// Step 8: Initialize the ChannelManager
-	// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
-	// Step 10: Give ChannelMonitors to ChainMonitor
-	// Step 11: Optional: Initialize the NetGraphMsgHandler
-	// Step 12: Initialize the PeerManager
-	// Step 13: Initialize networking
-	// Step 14: Connect and Disconnect Blocks
-	// Step 15: Handle LDK Events
-	// Step 16: Initialize routing ProbabilisticScorer
-	// Step 17: Create InvoicePayer
-	// Step 18: Persist ChannelManager and NetworkGraph
-	// Step 19: Background Processing
-
-	async initFeeEstimator(fees: TFeeUpdateReq): Promise<Result<string>> {
+	/**
+	 * Connected and disconnected blocks must be provided
+	 * https://docs.rs/lightning/latest/lightning/chain/chainmonitor/struct.ChainMonitor.html
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async initChainMonitor(): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.initFeeEstimator();
+			const res = await NativeLDK.initChainMonitor();
 			return ok(res);
 		} catch (e) {
 			return err(e);
 		}
 	}
 
-	async initLogger(): Promise<Result<string>> {
+	/**
+	 * Private key for node. Used to derive node public key. 32-byte entropy.
+	 * https://docs.rs/lightning/latest/lightning/chain/keysinterface/struct.KeysManager.html
+	 * @param seed
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async initKeysManager(seed: string): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.initLogger();
+			const res = await NativeLDK.initKeysManager(seed);
 			return ok(res);
 		} catch (e) {
 			return err(e);
 		}
 	}
 
+	/**
+	 * Accepts array of hex encoded channel monitors from storage.
+	 * If blank array is set then initChannelManager will init new channelManager.
+	 * @param channelMonitors
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async loadChannelMonitors(channelMonitors: string[]): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.loadChannelMonitors(channelMonitors);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetworkGraph.html
+	 * @param genesisHash
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async initNetworkGraph(genesisHash: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.initNetworkGraph(genesisHash);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Builds UserConfig, ChannelConfig, ChannelHandshakeConfig and ChannelHandshakeLimits.
+	 * More settings can be added to configure the below structs.
+	 * https://docs.rs/lightning/latest/lightning/util/config/struct.UserConfig.html
+	 * https://docs.rs/lightning/latest/lightning/util/config/struct.ChannelConfig.html
+	 * https://docs.rs/lightning/latest/lightning/util/config/struct.ChannelHandshakeConfig.html
+	 * https://docs.rs/lightning/latest/lightning/util/config/struct.ChannelHandshakeLimits.html
+	 *
+	 * @param acceptInboundChannels
+	 * @param manuallyAcceptInboundChannels
+	 * @param announcedChannels
+	 * @param minChannelHandshakeDepth
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async initConfig({
+		acceptInboundChannels,
+		manuallyAcceptInboundChannels,
+		announcedChannels,
+		minChannelHandshakeDepth
+	}: TInitConfig): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.initConfig(
+				acceptInboundChannels,
+				manuallyAcceptInboundChannels,
+				announcedChannels,
+				minChannelHandshakeDepth
+			);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Starts channel manager for current network and best block
+	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/index.html
+	 * @param network
+	 * @param bestBlock
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async initChannelManager({
+		network,
+		serializedChannelManager,
+		bestBlock
+	}: TInitChannelManagerReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.initChannelManager(
+				network,
+				serializedChannelManager,
+				bestBlock.hash,
+				bestBlock.height
+			);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Switch different log levels on/off
+	 * https://docs.rs/lightning/latest/lightning/util/logger/enum.Level.html
+	 * @param level
+	 * @param active
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
 	async setLogLevel(level: ELdkLogLevels, active: boolean): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.setLogLevel(level, active);
@@ -80,9 +175,16 @@ class LDK {
 		}
 	}
 
-	async updateFees({ high, normal, low }: TFeeUpdateReq): Promise<Result<string>> {
+	/**
+	 * Provide fee rate information on a number of time horizons.
+	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/enum.ConfirmationTarget.html
+	 * @param high
+	 * @param normal
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async updateFees({ highPriority, normal, background }: TFeeUpdateReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.updateFees(high, normal, low);
+			const res = await NativeLDK.updateFees(highPriority, normal, background);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -90,22 +192,194 @@ class LDK {
 	}
 
 	/**
-	 * Starts the startChainMonitor service
-	 * @return {Promise<Err<unknown> | Ok<string>>}
+	 * Sets current best block on channelManager and chainMonitor
+	 * @param header
+	 * @param height
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async startChainMonitor(): Promise<Result<string>> {
+	async syncToTip({ header, height }: TSyncTipReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.startChainMonitor();
+			const res = await NativeLDK.syncToTip(header, height);
 			return ok(res);
 		} catch (e) {
 			return err(e);
 		}
 	}
 
+	/**
+	 * Connect to remote peer
+	 * @param pubKey
+	 * @param address
+	 * @param port
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async addPeer({ pubKey, address, port }: TAddPeerReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.addPeer(address, port, pubKey);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Updates a watched transaction as confirmed
+	 * @param txId
+	 * @param transaction
+	 * @param height
+	 * @param pos
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async setTxConfirmed({
+		header,
+		transaction,
+		height,
+		pos
+	}: TSetTxConfirmedReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.setTxConfirmed(header, transaction, pos, height);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Updates a watched transaction as unconfirmed in the event of a reorg
+	 * @param txId
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async setTxUnconfirmed({ txId }: TSetTxUnconfirmedReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.setTxUnconfirmed(txId);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Decodes a bolt11 payment request
+	 * @param paymentRequest
+	 * @returns {Promise<Ok<any> | Err<unknown>>}
+	 */
+	async decode({ paymentRequest }: TPaymentReq): Promise<Result<TInvoice>> {
+		try {
+			const res = await NativeLDK.decode(paymentRequest);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Creates bolt11 payment request
+	 * @param amountSats
+	 * @param description
+	 * @returns {Promise<Ok<Ok<TInvoice> | Err<TInvoice>> | Err<unknown>>}
+	 */
+	async createPaymentRequest({
+		amountSats,
+		description
+	}: TCreatePaymentReq): Promise<Result<TInvoice>> {
+		try {
+			const res = await NativeLDK.createPaymentRequest(amountSats, description);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Pays a bolt11 payment request
+	 * @param paymentRequest
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async pay({ paymentRequest }: TPaymentReq): Promise<Result<string>> {
+		//TODO allow for setting amount if invoice amount is zero
+		try {
+			const res = await NativeLDK.pay(paymentRequest);
+			return ok(res);
+		} catch (e) {
+			//TODO error can be drilled down in native code to provide better feedback and/or retry options.
+			return err(e);
+		}
+	}
+
+	//TODO pay_zero_value_invoice
+	//TODO pay_pubkey
+
+	/**
+	 * Listen on LDK events
+	 * @param event
+	 * @param callback
+	 */
+	onEvent(event: EEventTypes, callback: (res: any) => void) {
+		this.ldkEvent.addListener(event, callback);
+	}
+
+	/**
+	 * Fetches LDK and c bindings version
+	 * @returns {Promise<Ok<any> | Err<unknown>>}
+	 */
 	async version(): Promise<Result<{ c_bindings: string; ldk: string }>> {
 		try {
 			const res = await NativeLDK.version();
 			return ok(JSON.parse(res));
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Node public key
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async nodeId(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.nodeId();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * List of peer node IDs
+	 * @returns {Promise<Ok<Ok<string[]> | Err<string[]>> | Err<unknown>>}
+	 */
+	async listPeers(): Promise<Result<string[]>> {
+		try {
+			const res = await NativeLDK.listPeers();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Returns array of channels
+	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/struct.ChannelDetails.html
+	 * @returns {Promise<Ok<Ok<TChannel[]> | Err<TChannel[]>> | Err<unknown>>}
+	 */
+	async listChannels(): Promise<Result<TChannel[]>> {
+		try {
+			const res = await NativeLDK.listChannels();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Returns array of usable channels
+	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/struct.ChannelDetails.html
+	 * @returns {Promise<Ok<Ok<TChannel[]> | Err<TChannel[]>> | Err<unknown>>}
+	 */
+	async listUsableChannels(): Promise<Result<TChannel[]>> {
+		try {
+			const res = await NativeLDK.listUsableChannels();
+			return ok(res);
 		} catch (e) {
 			return err(e);
 		}
@@ -162,8 +436,9 @@ class LDK {
 	 * @returns {Promise<Err<unknown> | Ok<string[]>>}
 	 */
 	async getLogFileContent(limit: number = 100): Promise<Result<string[]>> {
+		//TODO
 		// try {
-		// 	const content: string[] = await this.lnd.logFileContent(network, limit);
+		// 	const content: string[] = await this.ldk.logFileContent(network, limit);
 		// 	return ok(content);
 		// } catch (e) {
 		// 	return err(e);

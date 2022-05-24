@@ -9,7 +9,11 @@ import Foundation
 import LDKFramework
 
 class LdkBroadcaster: BroadcasterInterface {
+    override func free() {
+        //TODO find out what this is for
+    }
+    
     override func broadcast_transaction(tx: [UInt8]) {
-        sendEvent(eventName: .broadcast_transaction, eventBody: ["txhex": Data(tx).hexEncodedString()])
+        LdkEventEmitter.shared.send(withEvent: .broadcast_transaction, body: ["tx": Data(tx).hexEncodedString()])
     }
 }

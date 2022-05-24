@@ -6,46 +6,69 @@
 //
 
 import Foundation
-
-//TODO replicate in typescript and kotlin
-enum LdkEventNames: String {
-    case register_tx = "register_tx"
-    case register_output = "register_output"
-    case broadcast_transaction = "broadcast_transaction"
-    case log = "log"
-    case persist_manager = "persist_manager"
-    case persist_new_channel = "persist_new_channel"
-    case update_persisted_channel = "update_persisted_channel"
-}
-
-enum LdkErrors: String {
-    case unknown_error = "unknown_error"
-    case init_fee_estimator = "init_fee_estimator"
-    case already_initialised = "already_initialised"
-    case init_logger = "init_logger"
-}
-
-enum LdkCallbackResponses: String {
-    case fee_estimator_initialised = "fee_estimator_initialised"
-    case fees_updated = "fees_updated"
-    case logger_initialised = "logger_initialised"
-    case log_level_updated = "log_level_updated"
-}
+import LDKFramework
 
 func handleResolve(_ resolve: RCTPromiseResolveBlock, _ res: LdkCallbackResponses) {
-    //TODO log
+    LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Success: \(res.rawValue)")
     resolve(res.rawValue)
 }
 
-func handleReject(_ reject: RCTPromiseRejectBlock, _ error: LdkErrors) {
-    //TODO log
-    reject(error.rawValue, error.rawValue, NSError(domain: error.rawValue, code: error.hashValue))
+func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ error: Error? = nil, _ message: String? = nil) {
+    if let error = error as? NSError {
+        LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Error: \(error.localizedDescription). Message: '\(message ?? "")'")
+        reject(ldkError.rawValue, message ?? error.localizedDescription, error)
+        return
+    }
+    
+    LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Error: \(ldkError.rawValue). Message: '\(message ?? "")'")
+    reject(ldkError.rawValue, message ?? ldkError.rawValue, NSError(domain: ldkError.rawValue, code: ldkError.hashValue))
 }
 
-func sendEvent(eventName: LdkEventNames, eventBody: [String: String]) {
-//    ReactEventEmitter.sharedInstance()?.sendEvent(withName: eventName, body: eventBody)
-    print("\(eventName)")
-    print(eventBody)
+extension Invoice {
+    var asJson: Any {
+        return [
+            "amount_milli_satoshis": self.amount_milli_satoshis().getValue() as Any,
+            "check_signature": self.check_signature().isOk(),
+            "is_expired": self.is_expired(),
+            "duration_since_epoch": self.duration_since_epoch(),
+            "expiry_time": self.expiry_time(),
+            "min_final_cltv_expiry": self.min_final_cltv_expiry(),
+            "payee_pub_key": Data(self.payee_pub_key()).hexEncodedString(),
+            "recover_payee_pub_key": Data(self.recover_payee_pub_key()).hexEncodedString(),
+            "payment_hash": Data(self.payment_hash()).hexEncodedString(),
+            "payment_secret": Data(self.payment_secret()).hexEncodedString(),
+            "timestamp": self.timestamp(),
+            "features": Data(self.features().write()).hexEncodedString(),
+            "currency": self.currency().rawValue,
+            "to_str": self.to_str()
+        ]
+    }
+}
+
+extension ChannelDetails {
+    var asJson: Any {
+        return [
+            "channel_id": Data(self.get_channel_id()).hexEncodedString(),
+            "is_public": self.get_is_public(),
+            "is_usable": self.get_is_usable(),
+            "is_outbound": self.get_is_outbound(),
+            "balance_msat": self.get_balance_msat(),
+            "counterparty": Data(self.get_counterparty().write()).hexEncodedString(),
+            "funding_txo": Data(self.get_funding_txo()?.write() ?? []).hexEncodedString(),
+            "channel_type": Data(self.get_channel_type().write()).hexEncodedString(),
+            "user_channel_id": self.get_user_channel_id(), //Number
+            "confirmations_required": self.get_confirmations_required().getValue() as Any, // Optional number
+            "short_channel_id": self.get_short_channel_id().getValue() as Any, //Optional number
+            "is_funding_locked": self.get_is_funding_locked(), //Bool
+            "inbound_scid_alias": self.get_inbound_scid_alias().getValue() as Any, //Optional number
+            "get_inbound_payment_scid": self.get_inbound_payment_scid().getValue() as Any, //Optional number,
+            "inbound_capacity_msat": self.get_inbound_capacity_msat(),
+            "channel_value_satoshis": self.get_channel_value_satoshis(),
+            "outbound_capacity_msat": self.get_outbound_capacity_msat(),
+            "force_close_spend_delay": self.get_force_close_spend_delay().getValue() as Any, //Optional number
+            "unspendable_punishment_reserve": self.get_unspendable_punishment_reserve().getValue() as Any //Optional number
+        ]
+    }
 }
 
 extension Data {
@@ -60,10 +83,30 @@ extension Data {
     }
 }
 
+extension StringProtocol {
+    var hexaData: Data { .init(hexa) }
+    var hexaBytes: [UInt8] { .init(hexa) }
+    private var hexa: UnfoldSequence<UInt8, Index> {
+        sequence(state: startIndex) { startIndex in
+            guard startIndex < self.endIndex else { return nil }
+            let endIndex = self.index(startIndex, offsetBy: 2, limitedBy: self.endIndex) ?? self.endIndex
+            defer { startIndex = endIndex }
+            return UInt8(self[startIndex..<endIndex], radix: 16)
+        }
+    }
+}
 
+//MARK: Module can be initialised on main thread as LDK handles all it's own tasks on background threads  (https://reactnative.dev/docs/native-modules-ios#implementing--requiresmainqueuesetup)
 extension Ldk {
     @objc
     static func requiresMainQueueSetup() -> Bool {
+        return true
+    }
+}
+
+extension LdkEventEmitter {
+    @objc
+    override static func requiresMainQueueSetup() -> Bool {
         return true
     }
 }
