@@ -33,7 +33,7 @@ const App = () => {
 						onPress={async () => {
 							setMessage('Starting LDK...');
 							try {
-								const res = await lm.start();
+								const res = await lm.start({});
 
 								if (res.isErr()) {
 									setMessage(res.error.message);
@@ -42,6 +42,7 @@ const App = () => {
 
 								setMessage(JSON.stringify(res.value));
 							} catch (e) {
+								console.error(e);
 								setMessage(e.toString());
 							}
 						}}
