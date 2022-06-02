@@ -25,15 +25,15 @@ export const dummyRandomSeed = (): string => {
  * @param params
  * @returns {Promise<any>}
  */
-const bitcoinRPC = async (method: string, params: any[]) => {
+const bitcoinRPC = async (method: string, params: any[]): Promise<any> => {
 	const data = { jsonrpc: '1.0', id: 'todo', method, params };
 	const res = await fetch(`http://${POLAR_USER}:${POLAR_PASS}@${POLAR_HOST}/`, {
 		method: 'POST',
 		headers: {
 			Accept: 'application/json',
-			'Content-Type': 'application/json'
+			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify(data)
+		body: JSON.stringify(data),
 	});
 	const json = await res.json();
 	if (json.error) {
@@ -56,17 +56,22 @@ export const regtestGenesisBlockHash = async (): Promise<string> => {
 	return hash;
 };
 
-export const regtestBlockHeaderHex = async (blockHash: string): Promise<string> => {
+export const regtestBlockHeaderHex = async (
+	blockHash: string,
+): Promise<string> => {
 	return await bitcoinRPC('getblock', [blockHash, false]);
 };
 
-const shuffle = (array: string[]) => {
+const shuffle = (array: string[]): string[] => {
 	let currentIndex = array.length,
 		randomIndex;
-	while (currentIndex != 0) {
+	while (currentIndex !== 0) {
 		randomIndex = Math.floor(Math.random() * currentIndex);
 		currentIndex--;
-		[array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+		[array[currentIndex], array[randomIndex]] = [
+			array[randomIndex],
+			array[currentIndex],
+		];
 	}
 
 	return array;

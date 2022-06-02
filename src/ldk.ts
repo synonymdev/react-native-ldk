@@ -14,25 +14,25 @@ import {
 	TSyncTipReq,
 	TCreatePaymentReq,
 	TSetTxConfirmedReq,
-	TSetTxUnconfirmedReq
+	TSetTxUnconfirmedReq,
 } from './utils/types';
 
 const LINKING_ERROR =
-	`The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n` +
+	"The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n" +
 	Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
 	'- You rebuilt the app after installing the package\n' +
 	'- You are not using Expo managed workflow\n';
 
-const NativeLDK = NativeModules.Ldk
-	? NativeModules.Ldk
-	: new Proxy(
-			{},
-			{
-				get() {
-					throw new Error(LINKING_ERROR);
-				}
-			}
-	  );
+const NativeLDK =
+	NativeModules?.Ldk ??
+	new Proxy(
+		{},
+		{
+			get(): void {
+				throw new Error(LINKING_ERROR);
+			},
+		},
+	);
 
 class LDK {
 	private readonly logListeners: TLogListener[];
@@ -78,7 +78,9 @@ class LDK {
 	 * @param channelMonitors
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async loadChannelMonitors(channelMonitors: string[]): Promise<Result<string>> {
+	async loadChannelMonitors(
+		channelMonitors: string[],
+	): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.loadChannelMonitors(channelMonitors);
 			return ok(res);
@@ -119,14 +121,14 @@ class LDK {
 		acceptInboundChannels,
 		manuallyAcceptInboundChannels,
 		announcedChannels,
-		minChannelHandshakeDepth
+		minChannelHandshakeDepth,
 	}: TInitConfig): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initConfig(
 				acceptInboundChannels,
 				manuallyAcceptInboundChannels,
 				announcedChannels,
-				minChannelHandshakeDepth
+				minChannelHandshakeDepth,
 			);
 			return ok(res);
 		} catch (e) {
@@ -144,14 +146,14 @@ class LDK {
 	async initChannelManager({
 		network,
 		serializedChannelManager,
-		bestBlock
+		bestBlock,
 	}: TInitChannelManagerReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initChannelManager(
 				network,
 				serializedChannelManager,
 				bestBlock.hash,
-				bestBlock.height
+				bestBlock.height,
 			);
 			return ok(res);
 		} catch (e) {
@@ -166,7 +168,10 @@ class LDK {
 	 * @param active
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async setLogLevel(level: ELdkLogLevels, active: boolean): Promise<Result<string>> {
+	async setLogLevel(
+		level: ELdkLogLevels,
+		active: boolean,
+	): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.setLogLevel(level, active);
 			return ok(res);
@@ -182,7 +187,11 @@ class LDK {
 	 * @param normal
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async updateFees({ highPriority, normal, background }: TFeeUpdateReq): Promise<Result<string>> {
+	async updateFees({
+		highPriority,
+		normal,
+		background,
+	}: TFeeUpdateReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.updateFees(highPriority, normal, background);
 			return ok(res);
@@ -213,7 +222,11 @@ class LDK {
 	 * @param port
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async addPeer({ pubKey, address, port }: TAddPeerReq): Promise<Result<string>> {
+	async addPeer({
+		pubKey,
+		address,
+		port,
+	}: TAddPeerReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.addPeer(address, port, pubKey);
 			return ok(res);
@@ -234,10 +247,15 @@ class LDK {
 		header,
 		transaction,
 		height,
-		pos
+		pos,
 	}: TSetTxConfirmedReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.setTxConfirmed(header, transaction, pos, height);
+			const res = await NativeLDK.setTxConfirmed(
+				header,
+				transaction,
+				pos,
+				height,
+			);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -249,7 +267,9 @@ class LDK {
 	 * @param txId
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async setTxUnconfirmed({ txId }: TSetTxUnconfirmedReq): Promise<Result<string>> {
+	async setTxUnconfirmed({
+		txId,
+	}: TSetTxUnconfirmedReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.setTxUnconfirmed(txId);
 			return ok(res);
@@ -280,7 +300,7 @@ class LDK {
 	 */
 	async createPaymentRequest({
 		amountSats,
-		description
+		description,
 	}: TCreatePaymentReq): Promise<Result<TInvoice>> {
 		try {
 			const res = await NativeLDK.createPaymentRequest(amountSats, description);
@@ -314,7 +334,7 @@ class LDK {
 	 * @param event
 	 * @param callback
 	 */
-	onEvent(event: EEventTypes, callback: (res: any) => void) {
+	onEvent(event: EEventTypes, callback: (res: any) => void): void {
 		this.ldkEvent.addListener(event, callback);
 	}
 
@@ -443,6 +463,9 @@ class LDK {
 		// } catch (e) {
 		// 	return err(e);
 		// }
+		if (__DEV__) {
+			console.log(limit);
+		}
 
 		return ok([]);
 	}

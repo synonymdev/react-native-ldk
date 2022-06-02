@@ -1,5 +1,5 @@
 import ldk from './ldk';
-import { ok, Result } from './utils/result';
+import { err, ok, Result } from './utils/result';
 import {
 	EEventTypes,
 	ELdkLogLevels,
@@ -19,13 +19,13 @@ import {
 	TPersistGraphEvent,
 	TPersistManagerEvent,
 	TRegisterOutputEvent,
-	TRegisterTxEvent
+	TRegisterTxEvent,
 } from './utils/types';
 import {
 	dummyRandomSeed,
 	regtestBestBlock,
 	regtestBlockHeaderHex,
-	regtestGenesisBlockHash
+	regtestGenesisBlockHash,
 } from './utils/regtest-dev-tools';
 
 //TODO startup steps
@@ -61,52 +61,61 @@ class LightningManager {
 		ldk.onEvent(EEventTypes.ldk_log, (line) => console.log(`LDK: ${line}`));
 		ldk.onEvent(EEventTypes.register_tx, this.onRegisterTx.bind(this));
 		ldk.onEvent(EEventTypes.register_output, this.onRegisterOutput.bind(this));
-		ldk.onEvent(EEventTypes.broadcast_transaction, this.onBroadcastTransaction.bind(this));
+		ldk.onEvent(
+			EEventTypes.broadcast_transaction,
+			this.onBroadcastTransaction.bind(this),
+		);
 		ldk.onEvent(EEventTypes.persist_manager, this.onPersistManager.bind(this));
-		ldk.onEvent(EEventTypes.persist_new_channel, this.onPersistNewChannel.bind(this));
+		ldk.onEvent(
+			EEventTypes.persist_new_channel,
+			this.onPersistNewChannel.bind(this),
+		);
 		ldk.onEvent(EEventTypes.persist_graph, this.onPersistGraph.bind(this));
-		ldk.onEvent(EEventTypes.update_persisted_channel, this.onUpdatePersistedChannel.bind(this));
+		ldk.onEvent(
+			EEventTypes.update_persisted_channel,
+			this.onUpdatePersistedChannel.bind(this),
+		);
 
 		//Channel manager handle events:
 		ldk.onEvent(
 			EEventTypes.channel_manager_funding_generation_ready,
-			this.onChannelManagerFundingGenerationReady.bind(this)
+			this.onChannelManagerFundingGenerationReady.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_received,
-			this.onChannelManagerPaymentReceived.bind(this)
+			this.onChannelManagerPaymentReceived.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_sent,
-			this.onChannelManagerPaymentSent.bind(this)
+			this.onChannelManagerPaymentSent.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_open_channel_request,
-			this.onChannelManagerOpenChannelRequest.bind(this)
+			this.onChannelManagerOpenChannelRequest.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_path_successful,
-			this.onChannelManagerPaymentPathSuccessful.bind(this)
+			this.onChannelManagerPaymentPathSuccessful.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_path_failed,
-			this.onChannelManagerPaymentPathFailed.bind(this)
+			this.onChannelManagerPaymentPathFailed.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_failed,
-			this.onChannelManagerPaymentFailed.bind(this)
+			this.onChannelManagerPaymentFailed.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_spendable_outputs,
-			this.onChannelManagerSpendableOutputs.bind(this)
+			this.onChannelManagerSpendableOutputs.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_channel_closed,
-			this.onChannelManagerChannelClosed.bind(this)
+			this.onChannelManagerChannelClosed.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_discard_funding,
-			this.onChannelManagerDiscardFunding.bind(this)
+			this.onChannelManagerDiscardFunding.bind(this),
 		);
 	}
 
@@ -114,7 +123,15 @@ class LightningManager {
 	 * Spins up and syncs all processes
 	 * @returns {Promise<Err<string> | Ok<string>>}
 	 */
-	async start(): Promise<Result<string>> {
+	async start({ seed }: { seed?: string }): Promise<Result<string>> {
+		if (__DEV__ && !seed) {
+			seed = dummyRandomSeed();
+		}
+		if (!seed) {
+			return err(
+				'No seed provided. Please pass a seed to the start method and try again.',
+			);
+		}
 		const bestBlock = await regtestBestBlock();
 		const isExistingNode = false;
 
@@ -123,7 +140,11 @@ class LightningManager {
 		// https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html
 
 		// Set fee estimates
-		const feeUpdateRes = await ldk.updateFees({ highPriority: 1000, normal: 500, background: 250 });
+		const feeUpdateRes = await ldk.updateFees({
+			highPriority: 1000,
+			normal: 500,
+			background: 250,
+		});
 		if (feeUpdateRes.isErr()) {
 			return feeUpdateRes;
 		}
@@ -156,7 +177,7 @@ class LightningManager {
 		}
 
 		// Step 6: Initialize the KeysManager
-		const keysManager = await ldk.initKeysManager(dummyRandomSeed()); //TODO get real stored/generated 32-byte entropy
+		const keysManager = await ldk.initKeysManager(seed); //TODO get real stored/generated 32-byte entropy
 		if (keysManager.isErr()) {
 			return keysManager;
 		}
@@ -172,7 +193,7 @@ class LightningManager {
 		const genesisHash = await regtestGenesisBlockHash();
 		const networkGraph = await ldk.initNetworkGraph(
 			//TODO load a cached version once persisted
-			genesisHash
+			genesisHash,
 		);
 		if (networkGraph.isErr()) {
 			return networkGraph;
@@ -183,7 +204,7 @@ class LightningManager {
 			acceptInboundChannels: true,
 			manuallyAcceptInboundChannels: false, //TODO might need to be true if we want to set closing address when blocktank opens with us
 			announcedChannels: false,
-			minChannelHandshakeDepth: 1 //TODO Verify correct min
+			minChannelHandshakeDepth: 1, //TODO Verify correct min
 		});
 		if (confRes.isErr()) {
 			return confRes;
@@ -194,8 +215,8 @@ class LightningManager {
 			serializedChannelManager: '', //TODO [UNTESTED]
 			bestBlock: {
 				hash: bestBlock.bestblockhash,
-				height: bestBlock.blocks
-			}
+				height: bestBlock.blocks,
+			},
 		});
 		if (channelManagerRes.isErr()) {
 			return channelManagerRes;
@@ -226,7 +247,7 @@ class LightningManager {
 	 * TODO this should subscribe (electrum?) somewhere instead of polling.
 	 * @returns {Promise<void>}
 	 */
-	keepBlockchainInSync() {
+	keepBlockchainInSync(): void {
 		setInterval(this.syncLdk, 2500);
 	}
 
@@ -235,7 +256,7 @@ class LightningManager {
 	 * Also watches transactions and outputs for confirmed and unconfirmed transactions and updated LDK.
 	 * @returns {Promise<Err<string> | Ok<string>>}
 	 */
-	async syncLdk() {
+	async syncLdk(): Promise<Result<string>> {
 		const { bestblockhash, blocks } = await regtestBestBlock();
 
 		//Don't update unnecessarily
@@ -243,7 +264,7 @@ class LightningManager {
 			const header = await regtestBlockHeaderHex(bestblockhash);
 			const syncToTip = await ldk.syncToTip({
 				header,
-				height: blocks
+				height: blocks,
 			});
 			if (syncToTip.isErr()) {
 				return syncToTip;
@@ -266,82 +287,104 @@ class LightningManager {
 
 	//LDK events
 
-	private onRegisterTx(res: TRegisterTxEvent) {
+	private onRegisterTx(res: TRegisterTxEvent): void {
 		this.watchTxs.push(res);
 	}
 
-	private onRegisterOutput(res: TRegisterOutputEvent) {
+	private onRegisterOutput(res: TRegisterOutputEvent): void {
 		this.watchOutputs.push(res);
 	}
 
-	private onBroadcastTransaction(res: TBroadcastTransactionEvent) {
+	private onBroadcastTransaction(res: TBroadcastTransactionEvent): void {
 		console.log(`onBroadcastTransaction: ${res.tx}`); //TODO
 	}
 
-	private onPersistManager(res: TPersistManagerEvent) {
+	private onPersistManager(res: TPersistManagerEvent): void {
 		//Around 8kb for one channel backup stored as a hex string
 		console.log(`onPersistManager channel_manager: ${res.channel_manager}`); //TODO
 	}
 
-	private onPersistNewChannel(res: TChannelBackupEvent) {
+	private onPersistNewChannel(res: TChannelBackupEvent): void {
 		console.log(`onPersistNewChannel: ${res.id} = ${res.data}`); //TODO
 	}
 
-	private onUpdatePersistedChannel(res: TChannelBackupEvent) {
+	private onUpdatePersistedChannel(res: TChannelBackupEvent): void {
 		console.log(`onUpdatePersistedChannel: ${res.id} = ${res.data}`); //TODO
 	}
 
-	private onPersistGraph(res: TPersistGraphEvent) {
+	private onPersistGraph(res: TPersistGraphEvent): void {
 		console.log(`onPersistGraph network_graph: ${res.network_graph}`); //TODO
 	}
 
 	//LDK channel manager events
 	//All events and their values: https://docs.rs/lightning/latest/lightning/util/events/enum.Event.html
 	//Sample node for examples on how to handle events: https://github.com/lightningdevkit/ldk-sample/blob/c0a722430b8fbcb30310d64487a32aae839da3e8/src/main.rs#L600
-	private onChannelManagerFundingGenerationReady(res: TChannelManagerFundingGenerationReady) {
-		console.log(`onChannelManagerFundingGenerationReady: ${JSON.stringify(res)}`); //TODO
+	private onChannelManagerFundingGenerationReady(
+		res: TChannelManagerFundingGenerationReady,
+	): void {
+		console.log(
+			`onChannelManagerFundingGenerationReady: ${JSON.stringify(res)}`,
+		); //TODO
 	}
 
-	private onChannelManagerPaymentReceived(res: TChannelManagerPaymentReceived) {
+	private onChannelManagerPaymentReceived(
+		res: TChannelManagerPaymentReceived,
+	): void {
 		//TODO call channelManager.claim_funds(payment_preimage: paymentPreimage) if spontaneous_payment_preimage is not a blank string as
 		//https://docs.rs/lightning/latest/lightning/util/events/enum.PaymentPurpose.html#variant.SpontaneousPayment
 		//If not a spontaneous payment then nothing to do but notify user invoice was paid
 		console.log(`onChannelManagerPaymentReceived: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerPaymentSent(res: TChannelManagerPaymentSent) {
+	private onChannelManagerPaymentSent(res: TChannelManagerPaymentSent): void {
 		//Nothing to do but notify user
 		console.log(`onChannelManagerPaymentSent: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerOpenChannelRequest(res: TChannelManagerOpenChannelRequest) {
+	private onChannelManagerOpenChannelRequest(
+		res: TChannelManagerOpenChannelRequest,
+	): void {
 		//Nothing to do here unless manuallyAcceptInboundChannels:true in initConfig() above
 		console.log(`onChannelManagerOpenChannelRequest: ${JSON.stringify(res)}`);
 	}
 
-	private onChannelManagerPaymentPathSuccessful(res: TChannelManagerPaymentPathSuccessful) {
+	private onChannelManagerPaymentPathSuccessful(
+		res: TChannelManagerPaymentPathSuccessful,
+	): void {
 		//Nothing to do here. Optionally notify user?
-		console.log(`onChannelManagerPaymentPathSuccessful: ${JSON.stringify(res)}`); //TODO
+		console.log(
+			`onChannelManagerPaymentPathSuccessful: ${JSON.stringify(res)}`,
+		); //TODO
 	}
 
-	private onChannelManagerPaymentPathFailed(res: TChannelManagerPaymentPathFailed) {
+	private onChannelManagerPaymentPathFailed(
+		res: TChannelManagerPaymentPathFailed,
+	): void {
 		console.log(`onChannelManagerPaymentPathFailed: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerPaymentFailed(res: TChannelManagerPaymentFailed) {
+	private onChannelManagerPaymentFailed(
+		res: TChannelManagerPaymentFailed,
+	): void {
 		console.log(`onChannelManagerPaymentFailed: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerSpendableOutputs(res: TChannelManagerSpendableOutputs) {
+	private onChannelManagerSpendableOutputs(
+		res: TChannelManagerSpendableOutputs,
+	): void {
 		//Needs to call keysManager.spend_spendable_outputs to send to change address or on chain wallet could keep output and use in its own tx? I don't know
 		console.log(`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerChannelClosed(res: TChannelManagerChannelClosed) {
+	private onChannelManagerChannelClosed(
+		res: TChannelManagerChannelClosed,
+	): void {
 		console.log(`onChannelManagerChannelClosed: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerDiscardFunding(res: TChannelManagerDiscardFunding) {
+	private onChannelManagerDiscardFunding(
+		res: TChannelManagerDiscardFunding,
+	): void {
 		//Wallet should probably "lock" the UTXOs spent in funding transactions until the funding transaction either confirms, or this event is generated.
 		console.log(`onChannelManagerDiscardFunding: ${JSON.stringify(res)}`); //TODO
 	}

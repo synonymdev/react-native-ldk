@@ -1,7 +1,7 @@
 export enum ENetworks {
 	regtest = 'regtest',
 	testnet = 'testnet',
-	mainnet = 'mainnet'
+	mainnet = 'mainnet',
 }
 
 export enum EEventTypes {
@@ -24,14 +24,17 @@ export enum EEventTypes {
 	channel_manager_payment_failed = 'channel_manager_payment_failed',
 	channel_manager_spendable_outputs = 'channel_manager_spendable_outputs',
 	channel_manager_channel_closed = 'channel_manager_channel_closed',
-	channel_manager_discard_funding = 'channel_manager_discard_funding'
-	//<<
+	channel_manager_discard_funding = 'channel_manager_discard_funding',
 }
 
 //LDK event responses
 export type TChannelBackupEvent = { id: string; data: string };
 export type TRegisterTxEvent = { txid: string; script_pubkey: string };
-export type TRegisterOutputEvent = { block_hash: string; index: number; script_pubkey: string };
+export type TRegisterOutputEvent = {
+	block_hash: string;
+	index: number;
+	script_pubkey: string;
+};
 export type TPersistManagerEvent = { channel_manager: string };
 export type TPersistGraphEvent = { network_graph: string };
 export type TBroadcastTransactionEvent = { tx: string };
@@ -201,5 +204,5 @@ export enum ELdkLogLevels {
 	debug = 2, //LDKLevel_Debug
 	info = 3, //LDKLevel_Info
 	warn = 4, //LDKLevel_Warn
-	error = 5 //LDKLevel_Error
+	error = 5, //LDKLevel_Error
 }

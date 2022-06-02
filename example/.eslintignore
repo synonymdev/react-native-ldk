@@ -1,0 +1,11 @@
+node_modules
+nodejs-assets/*
+ios/*
+android/*
+!.eslintrc.js
+metro.config.js
+postinstall.js
+__mocks__/**
+coverage
+
+src/utils/backup/protos

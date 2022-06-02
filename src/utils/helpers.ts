@@ -33,7 +33,9 @@ export const bytesToString = (bytes: Uint8Array): string => {
  * @returns {Uint8Array}
  */
 export const hexStringToBytes = (hexString: string): Uint8Array => {
-	return new Uint8Array((hexString.match(/.{1,2}/g) ?? []).map((byte) => parseInt(byte, 16)));
+	return new Uint8Array(
+		(hexString.match(/.{1,2}/g) ?? []).map((byte) => parseInt(byte, 16)),
+	);
 };
 
 /**
@@ -46,7 +48,7 @@ export const hexStringToBytes = (hexString: string): Uint8Array => {
 export const toCaps = (
 	value: string = '',
 	separator: string = ' ',
-	split: string = '-'
+	split: string = '-',
 ): string => {
 	return value
 		.split(split)
