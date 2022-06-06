@@ -228,6 +228,18 @@ const App = () => {
 							setMessage(res.value.ldk);
 						}}
 					/>
+
+					<Button
+						title={'Test'}
+						onPress={async () => {
+							const res = await ldk.test();
+							if (res.isErr()) {
+								return setMessage(res.error.message);
+							}
+
+							setMessage(res.value.ldk);
+						}}
+					/>
 				</ScrollView>
 			</SafeAreaView>
 		</>
