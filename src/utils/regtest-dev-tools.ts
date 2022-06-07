@@ -1,6 +1,8 @@
+import { btoa } from './helpers';
+
 const POLAR_USER = 'polaruser';
 const POLAR_PASS = 'polarpass';
-const POLAR_HOST = '127.0.0.1:18443';
+const POLAR_HOST = 'http://10.0.0.103:18443/';
 
 //NOTE: all of these functions should be replaced
 
@@ -27,15 +29,18 @@ export const dummyRandomSeed = (): string => {
  */
 const bitcoinRPC = async (method: string, params: any[]): Promise<any> => {
 	const data = { jsonrpc: '1.0', id: 'todo', method, params };
-	const res = await fetch(`http://${POLAR_USER}:${POLAR_PASS}@${POLAR_HOST}/`, {
+	const res = await fetch(POLAR_HOST, {
 		method: 'POST',
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
+			Authorization: `Basic ${btoa(`${POLAR_USER}:${POLAR_PASS}`)}`,
 		},
 		body: JSON.stringify(data),
 	});
+
 	const json = await res.json();
+
 	if (json.error) {
 		throw new Error(json.error);
 	}
