@@ -141,7 +141,6 @@ android {
         versionCode 1
         versionName "1.0"
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
-        multiDexEnabled true
 
         if (isNewArchitectureEnabled()) {
             // We configure the NDK build only if you decide to opt-in for the New Architecture.
@@ -262,7 +261,6 @@ android {
 
 dependencies {
     implementation files("../../node_modules/@synonymdev/react-native-ldk/android/libs/LDK-release.aar")
-    implementation("androidx.multidex:multidex:2.0.1")
     implementation fileTree(dir: "libs", include: ["*.jar"])
 
     //noinspection GradleDynamicVersion

@@ -1,9 +1,7 @@
 package com.reactnativeldk
 
-import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReactContextBaseJavaModule
-import com.facebook.react.bridge.ReactMethod
-import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.*
+import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 import org.json.JSONObject
 import org.ldk.impl.version.*
 import org.ldk.impl.bindings.*
@@ -77,12 +75,35 @@ enum class LdkCallbackResponses {
     tx_set_unconfirmed
 }
 
-//TODO move it helpers file
-fun handleResolve(promise: Promise, response: LdkCallbackResponses) {
+//enum class LdkCallbackResponses(val slug : String) {
+//    fees_updated("fees_updated"),
+//    log_level_updated("log_level_updated"),
+//    chain_monitor_init_success("chain_monitor_init_success"),
+//    keys_manager_init_success("keys_manager_init_success"),
+//    channel_manager_init_success("channel_manager_init_success"),
+//    load_channel_monitors_success("load_channel_monitors_success"),
+//    config_init_success("config_init_success"),
+//    net_graph_msg_handler_init_success("net_graph_msg_handler_init_success"),
+//    chain_monitor_updated("chain_monitor_updated"),
+//    network_graph_init_success("network_graph_init_success"),
+//    add_peer_success("add_peer_success"),
+//    chain_sync_success("chain_sync_success"),
+//    invoice_payment_success("invoice_payment_success"),
+//    tx_set_confirmed("tx_set_confirmed"),
+//    tx_set_unconfirmed("tx_set_unconfirmed")
+//}
 
+//TODO move to helper
+fun handleResolve(promise: Promise, res: LdkCallbackResponses) {
+    //TODO log
+    LdkEventEmitter.send(EventTypes.swift_log, "Success: ${res}")
+    promise.resolve(res.toString());
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+    init {
+        LdkEventEmitter.setContext(reactContext)
+    }
 
     override fun getName(): String {
         return "Ldk"
@@ -102,13 +123,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun loadChannelMonitors(channelMonitorStrings: Array<String>, promise: Promise) {
+    fun loadChannelMonitors(channelMonitorStrings: ReadableArray, promise: Promise) {
         //TODO
         handleResolve(promise, LdkCallbackResponses.load_channel_monitors_success)
     }
 
     @ReactMethod
-    fun initConfig(acceptInboundChannels: Boolean, manuallyAcceptInboundChannels: Boolean, announcedChannels: Boolean, minChannelHandshakeDepth: Boolean, promise: Promise) {
+    fun initConfig(acceptInboundChannels: Boolean, manuallyAcceptInboundChannels: Boolean, announcedChannels: Boolean, minChannelHandshakeDepth: Double, promise: Promise) {
         //TODO
         handleResolve(promise, LdkCallbackResponses.config_init_success)
     }
@@ -120,13 +141,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initChannelManager(network: String, serializedChannelManager: String, blockHash: String, blockHeight: Int, promise: Promise) {
+    fun initChannelManager(network: String, serializedChannelManager: String, blockHash: String, blockHeight: Double, promise: Promise) {
         //TODO
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
     }
 
     @ReactMethod
-    fun syncChainMonitorWithChannelMonitor(blockHash: String, blockHeight: Int, promise: Promise) {
+    fun syncChainMonitorWithChannelMonitor(blockHash: String, blockHeight: Double, promise: Promise) {
         //TODO
         handleResolve(promise, LdkCallbackResponses.chain_monitor_updated)
     }
@@ -134,31 +155,31 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     //MARK: Update methods
 
     @ReactMethod
-    fun updateFees(high: Int, normal: Int, low: Int, promise: Promise) {
+    fun updateFees(high: Double, normal: Double, low: Double, promise: Promise) {
         //TODO
         handleResolve(promise, LdkCallbackResponses.fees_updated)
     }
 
     @ReactMethod
-    fun setLogLevel(level: Int, active: Boolean, promise: Promise) {
+    fun setLogLevel(level: Double, active: Boolean, promise: Promise) {
         //TODO
         handleResolve(promise, LdkCallbackResponses.log_level_updated)
     }
 
     @ReactMethod
-    fun syncToTip(header: String, height: Int, promise: Promise) {
+    fun syncToTip(header: String, height: Double, promise: Promise) {
         //TODO
         handleResolve(promise, LdkCallbackResponses.chain_sync_success)
     }
 
     @ReactMethod
-    fun addPeer(address: String, port: Int, pubKey: String, promise: Promise) {
+    fun addPeer(address: String, port: Double, pubKey: String, promise: Promise) {
         //TODO
         handleResolve(promise, LdkCallbackResponses.add_peer_success)
     }
 
     @ReactMethod
-    fun setTxConfirmed(header: String, transaction: String, pos: Int, height: Int, promise: Promise) {
+    fun setTxConfirmed(header: String, transaction: String, pos: Double, height: Double, promise: Promise) {
         //TODO
         handleResolve(promise, LdkCallbackResponses.tx_set_confirmed)
     }
@@ -170,6 +191,27 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     //MARK: Payments
+    @ReactMethod
+    fun decode(paymentRequest: String, promise: Promise) {
+        //TODO
+        val response = Arguments.createMap().apply {
+            putString("todo", "val")
+        }
+
+        promise.resolve(response) //TODO test
+    }
+
+    @ReactMethod
+    fun pay(paymentRequest: String, promise: Promise) {
+        //TODO
+        handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
+    }
+
+    @ReactMethod
+    fun createPaymentRequest(amountSats: Double, description: String, promise: Promise) {
+        //TODO
+        handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
+    }
 
     //MARK: Fetch methods
 
@@ -182,21 +224,43 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun test(promise: Promise) {
-        val res = JSONObject()
-        res.put("c_bindings", "get_ldk_c_bindings_version()")
-        res.put("ldk", "feeEstimator.toString()")
+    fun nodeId(promise: Promise) {
+        //TODO
+        promise.resolve("TODO nodeid")
+    }
 
-        try {
-            val feeEstimator = FeeEstimator.new_impl { confirmation_target: ConfirmationTarget? ->
-                1000;
-            }
+    @ReactMethod
+    fun listPeers(promise: Promise) {
+        //TODO
+        promise.resolve("[]")
+    }
 
-            res.put("ldk", feeEstimator.get_est_sat_per_1000_weight(ConfirmationTarget.LDKConfirmationTarget_Background))
+    @ReactMethod
+    fun listChannels(promise: Promise) {
+        //TODO
+        promise.resolve("[]")
+    }
 
-            promise.resolve(res.toString())
-        } catch (e: Exception) {
-            promise.resolve(res.toString())
+    @ReactMethod
+    fun listUsableChannels(promise: Promise) {
+        //TODO
+        promise.resolve("[]")
+    }
+}
+
+object LdkEventEmitter {
+    private var reactContext: ReactContext? = null
+
+    fun setContext(reactContext: ReactContext) {
+        this.reactContext = reactContext
+    }
+
+    //body could also become WritableMap for more data in events
+    fun send(eventType: EventTypes, body: String) {
+        if (this.reactContext === null) {
+            return
         }
+
+        this.reactContext!!.getJSModule(RCTDeviceEventEmitter::class.java).emit(eventType.toString(), body)
     }
 }

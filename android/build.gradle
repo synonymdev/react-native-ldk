@@ -33,7 +33,6 @@ android {
     targetSdkVersion getExtOrIntegerDefault('targetSdkVersion')
     versionCode 1
     versionName "1.0"
-    multiDexEnabled true
   }
 
   buildTypes {
@@ -128,5 +127,4 @@ dependencies {
   api 'com.facebook.react:react-native:+'
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
   compileOnly files('libs/LDK-release.aar')
-  implementation("androidx.multidex:multidex:2.0.1")
 }
