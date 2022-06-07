@@ -2,6 +2,7 @@ package com.reactnativeldk
 
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
+import com.reactnativeldk.classes.LdkFeeEstimator
 import org.json.JSONObject
 import org.ldk.impl.version.*
 import org.ldk.impl.bindings.*
@@ -75,31 +76,6 @@ enum class LdkCallbackResponses {
     tx_set_unconfirmed
 }
 
-//enum class LdkCallbackResponses(val slug : String) {
-//    fees_updated("fees_updated"),
-//    log_level_updated("log_level_updated"),
-//    chain_monitor_init_success("chain_monitor_init_success"),
-//    keys_manager_init_success("keys_manager_init_success"),
-//    channel_manager_init_success("channel_manager_init_success"),
-//    load_channel_monitors_success("load_channel_monitors_success"),
-//    config_init_success("config_init_success"),
-//    net_graph_msg_handler_init_success("net_graph_msg_handler_init_success"),
-//    chain_monitor_updated("chain_monitor_updated"),
-//    network_graph_init_success("network_graph_init_success"),
-//    add_peer_success("add_peer_success"),
-//    chain_sync_success("chain_sync_success"),
-//    invoice_payment_success("invoice_payment_success"),
-//    tx_set_confirmed("tx_set_confirmed"),
-//    tx_set_unconfirmed("tx_set_unconfirmed")
-//}
-
-//TODO move to helper
-fun handleResolve(promise: Promise, res: LdkCallbackResponses) {
-    //TODO log
-    LdkEventEmitter.send(EventTypes.swift_log, "Success: ${res}")
-    promise.resolve(res.toString());
-}
-
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     init {
         LdkEventEmitter.setContext(reactContext)
@@ -107,6 +83,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     override fun getName(): String {
         return "Ldk"
+    }
+
+    val feeEstimator: LdkFeeEstimator by lazy {
+        LdkFeeEstimator()
     }
 
     //Startup methods
@@ -156,7 +136,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun updateFees(high: Double, normal: Double, low: Double, promise: Promise) {
-        //TODO
+        feeEstimator.update(high.toInt(), normal.toInt(), low.toInt())
         handleResolve(promise, LdkCallbackResponses.fees_updated)
     }
 

@@ -25,7 +25,7 @@
     "lint:ts": "eslint . --ext .ts,.tsx --fix",
     "prepublish": "yarn lint && yarn run build && npm --no-git-tag-version version patch",
     "dev:save-ios-updates": "cp example/node_modules/@synonymdev/react-native-ldk/ios/*.{m,swift,h} ./ios && cp example/node_modules/@synonymdev/react-native-ldk/ios/Classes/*.swift ./ios/Classes/",
-    "dev:save-android-updates": "cp example/node_modules/@synonymdev/react-native-ldk/android/src/main/java/com/reactnativeldk/*.kt ./android/src/main/java/com/reactnativeldk/ && cp example/node_modules/@synonymdev/react-native-ldk/android/build.gradle ./android/",
+    "dev:save-android-updates": "cp example/node_modules/@synonymdev/react-native-ldk/android/src/main/java/com/reactnativeldk/*.kt ./android/src/main/java/com/reactnativeldk/ && cp example/node_modules/@synonymdev/react-native-ldk/android/src/main/java/com/reactnativeldk/classes/*.kt ./android/src/main/java/com/reactnativeldk/classes/ && cp example/node_modules/@synonymdev/react-native-ldk/android/build.gradle ./android/",
     "dev:update-example-dist": "yarn build && cp -R dist example/node_modules/@synonymdev/react-native-ldk",
     "dev:example": "yarn dev:save-ios-updates && yarn dev:save-android-updates && yarn dev:update-example-dist"
   },
