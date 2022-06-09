@@ -2,12 +2,12 @@ package com.reactnativeldk
 
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
-import com.reactnativeldk.classes.LdkFeeEstimator
+import com.reactnativeldk.classes.*
 import org.json.JSONObject
 import org.ldk.impl.version.*
 import org.ldk.impl.bindings.*
-import org.ldk.structs.FeeEstimator
-import org.ldk.enums.ConfirmationTarget
+import org.ldk.structs.ChainMonitor
+import org.ldk.structs.Option_FilterZ
 import java.util.*
 
 //var channel_manager: ChannelManager? = null;
@@ -85,14 +85,31 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         return "Ldk"
     }
 
-    val feeEstimator: LdkFeeEstimator by lazy {
-        LdkFeeEstimator()
-    }
+    //Zero config objects lazy loaded into memory when required
+    private val feeEstimator: LdkFeeEstimator by lazy { LdkFeeEstimator() }
+    private val logger: LdkLogger by lazy { LdkLogger() }
+    private val broadcaster: LdkBroadcaster by lazy { LdkBroadcaster() }
+    private val persister: LdkPersister by lazy { LdkPersister() }
+    private val filter: LdkFilter by lazy { LdkFilter() }
+
+    //Config required to setup below objects
+    private var chainMonitor: ChainMonitor? = null
 
     //Startup methods
     @ReactMethod
     fun initChainMonitor(promise: Promise) {
-        //TODO
+        if (chainMonitor !== null) {
+            return handleReject(promise, LdkErrors.already_init)
+        }
+
+        chainMonitor = ChainMonitor.of(
+            Option_FilterZ.some(filter.filter),
+            broadcaster.broadcaster,
+            logger.logger,
+            feeEstimator.feeEstimator,
+            persister.persister
+        )
+
         handleResolve(promise, LdkCallbackResponses.chain_monitor_init_success)
     }
 
@@ -235,8 +252,7 @@ object LdkEventEmitter {
         this.reactContext = reactContext
     }
 
-    //body could also become WritableMap for more data in events
-    fun send(eventType: EventTypes, body: String) {
+    fun send(eventType: EventTypes, body: Any) {
         if (this.reactContext === null) {
             return
         }
