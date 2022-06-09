@@ -7,6 +7,7 @@ import org.json.JSONObject
 import org.ldk.impl.version.*
 import org.ldk.impl.bindings.*
 import org.ldk.structs.ChainMonitor
+import org.ldk.structs.KeysManager
 import org.ldk.structs.Option_FilterZ
 import java.util.*
 
@@ -94,6 +95,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     //Config required to setup below objects
     private var chainMonitor: ChainMonitor? = null
+    private var keysManager: KeysManager? = null
 
     //Startup methods
     @ReactMethod
@@ -115,7 +117,20 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun initKeysManager(seed: String, promise: Promise) {
-        //TODO
+        if (keysManager !== null) {
+            return handleReject(promise, LdkErrors.already_init)
+        }
+
+        val nanoSeconds = System.currentTimeMillis() * 1000
+        val seconds = nanoSeconds / 1000 / 1000
+        val seedBytes = seed.hexa()
+
+        if (seedBytes.count() != 32) {
+            return handleReject(promise, LdkErrors.invalid_seed_hex)
+        }
+
+        keysManager = KeysManager.of(seedBytes, seconds, nanoSeconds.toInt())
+
         handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
     }
 

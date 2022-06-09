@@ -4,15 +4,15 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
 import com.reactnativeldk.EventTypes
 import com.reactnativeldk.LdkEventEmitter
-import com.reactnativeldk.bytesToHex
+import com.reactnativeldk.hexEncodedString
 import org.ldk.structs.*
 import org.ldk.structs.Persist.PersistInterface
 
 class LdkPersister {
     fun getResponseBody(id: OutPoint, data: ChannelMonitor): WritableMap {
         val body = Arguments.createMap()
-        body.putString("id", bytesToHex(id.write()))
-        body.putString("data", bytesToHex(data.write()))
+        body.putString("id", id.write().hexEncodedString())
+        body.putString("data", data.write().hexEncodedString())
         return body
     }
 

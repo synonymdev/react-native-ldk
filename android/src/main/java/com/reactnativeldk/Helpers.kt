@@ -16,11 +16,13 @@ fun handleReject(promise: Promise, ldkError: LdkErrors, error: Error? = null) {
     }
 }
 
-fun bytesToHex(bytes: ByteArray): String {
-    val hex = ""
-    for (b in bytes) {
-        hex.plus(String.format("%02X", b))
-    }
+fun ByteArray.hexEncodedString(): String {
+    return joinToString("") { "%02x".format(it) }
+}
 
-    return hex
+fun String.hexa(): ByteArray {
+    check(length % 2 == 0) { "Must have an even length" }
+    return chunked(2)
+        .map { it.toInt(16).toByte() }
+        .toByteArray()
 }
