@@ -6,9 +6,7 @@ import com.reactnativeldk.classes.*
 import org.json.JSONObject
 import org.ldk.impl.version.*
 import org.ldk.impl.bindings.*
-import org.ldk.structs.ChainMonitor
-import org.ldk.structs.KeysManager
-import org.ldk.structs.Option_FilterZ
+import org.ldk.structs.*
 import java.util.*
 
 //var channel_manager: ChannelManager? = null;
@@ -96,6 +94,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     //Config required to setup below objects
     private var chainMonitor: ChainMonitor? = null
     private var keysManager: KeysManager? = null
+    private var userConfig: UserConfig? = null
+    private var networkGraph: NetworkGraph? = null
 
     //Startup methods
     @ReactMethod
@@ -136,19 +136,41 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun loadChannelMonitors(channelMonitorStrings: ReadableArray, promise: Promise) {
-        //TODO
+        //TODO remove this in favour of passing channel monitors through in initChannelManager
         handleResolve(promise, LdkCallbackResponses.load_channel_monitors_success)
     }
 
     @ReactMethod
     fun initConfig(acceptInboundChannels: Boolean, manuallyAcceptInboundChannels: Boolean, announcedChannels: Boolean, minChannelHandshakeDepth: Double, promise: Promise) {
-        //TODO
+        if (userConfig !== null) {
+            return handleReject(promise, LdkErrors.already_init)
+        }
+
+        userConfig = UserConfig.with_default()
+        userConfig!!._accept_inbound_channels = acceptInboundChannels
+        userConfig!!._manually_accept_inbound_channels = manuallyAcceptInboundChannels
+
+        val newChannelConfig = ChannelConfig.with_default()
+        newChannelConfig._announced_channel = announcedChannels
+
+        val channelHandshake = ChannelHandshakeConfig.with_default()
+        channelHandshake._minimum_depth = minChannelHandshakeDepth.toInt()
+        userConfig!!._own_channel_config = channelHandshake
+
+        val channelHandshakeLimits = ChannelHandshakeLimits.with_default()
+        channelHandshakeLimits._force_announced_channel_preference = announcedChannels
+        userConfig!!._peer_channel_config_limits = channelHandshakeLimits
+
         handleResolve(promise, LdkCallbackResponses.config_init_success)
     }
 
     @ReactMethod
     fun initNetworkGraph(genesisHash: String, promise: Promise) {
-        //TODO
+        if (networkGraph !== null) {
+            return handleReject(promise, LdkErrors.already_init)
+        }
+        
+        networkGraph = NetworkGraph.of(genesisHash.hexa())
         handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
     }
 
