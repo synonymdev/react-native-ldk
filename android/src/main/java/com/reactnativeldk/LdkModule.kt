@@ -12,6 +12,7 @@ import org.ldk.impl.version.*
 import org.ldk.impl.bindings.*
 import org.ldk.structs.*
 import java.lang.Error
+import java.net.InetSocketAddress
 import java.util.*
 
 //MARK: ************Replicate in typescript and swift************
@@ -286,7 +287,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun syncToTip(header: String, height: Double, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
         chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
-        
+
         try {
             channelManager!!.as_Confirm().best_block_updated(header.hexa(), height.toInt())
             chainMonitor!!.as_Confirm().best_block_updated(header.hexa(), height.toInt())
@@ -298,8 +299,15 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun addPeer(address: String, port: Double, pubKey: String, promise: Promise) {
-        //TODO
+    fun addPeer(address: String, port: Double, pubKey: String, timeout: Double, promise: Promise) {
+        peerHandler ?: return handleReject(promise, LdkErrors.init_peer_handler)
+
+        try {
+            peerHandler!!.connect(pubKey.hexa(), InetSocketAddress(address, port.toInt()), timeout.toInt())
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.add_peer_fail, Error(e))
+        }
+
         handleResolve(promise, LdkCallbackResponses.add_peer_success)
     }
 
@@ -356,8 +364,15 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun listPeers(promise: Promise) {
-        //TODO
-        promise.resolve("[]")
+        peerManager ?: return handleReject(promise, LdkErrors.init_peer_manager)
+
+        val res = Arguments.createArray()
+        val list = peerManager!!._peer_node_ids
+        list.iterator().forEach {
+            res.pushString(it.hexEncodedString())
+        }
+
+        promise.resolve(res)
     }
 
     @ReactMethod

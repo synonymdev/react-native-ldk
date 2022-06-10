@@ -161,6 +161,7 @@ export type TAddPeerReq = {
 	address: string;
 	port: number;
 	pubKey: string;
+	timeout: number;
 };
 
 export type TSetTxConfirmedReq = {

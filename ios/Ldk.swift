@@ -303,7 +303,9 @@ class Ldk: NSObject {
     }
 
     @objc
-    func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, timeout: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        //timeout param not used. Only for android.
+        
         //Sync ChannelMonitors and ChannelManager to chain tip
         guard let peerHandler = peerHandler else {
             return handleReject(reject, .init_peer_handler)

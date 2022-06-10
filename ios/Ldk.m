@@ -45,6 +45,7 @@ RCT_EXTERN_METHOD(syncToTip:(NSString *)header
 RCT_EXTERN_METHOD(addPeer:(NSString *)address
                   port:(NSInteger *)port
                   pubKey:(NSString *)pubKey
+                  timeout:(NSInteger *)timeout
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setTxConfirmed:(NSString *)header

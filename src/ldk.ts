@@ -220,15 +220,17 @@ class LDK {
 	 * @param pubKey
 	 * @param address
 	 * @param port
+	 * @param timeout (Android only)
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async addPeer({
 		pubKey,
 		address,
 		port,
+		timeout
 	}: TAddPeerReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.addPeer(address, port, pubKey);
+			const res = await NativeLDK.addPeer(address, port, pubKey, timeout);
 			return ok(res);
 		} catch (e) {
 			return err(e);
