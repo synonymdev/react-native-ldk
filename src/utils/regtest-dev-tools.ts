@@ -64,7 +64,7 @@ export const regtestGenesisBlockHash = async (): Promise<string> => {
 export const regtestBlockHeaderHex = async (
 	blockHash: string,
 ): Promise<string> => {
-	return await bitcoinRPC('getblock', [blockHash, false]);
+	return await bitcoinRPC('getblockheader', [blockHash, false]);
 };
 
 const shuffle = (array: string[]): string[] => {

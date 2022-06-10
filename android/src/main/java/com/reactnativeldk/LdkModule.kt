@@ -247,8 +247,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 )
             }
         } catch (e: Exception) {
-            println(e.toString())
-            println(e.message)
             return handleReject(promise, LdkErrors.unknown_error, Error(e))
         }
 
@@ -280,13 +278,22 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun setLogLevel(level: Double, active: Boolean, promise: Promise) {
-        //TODO
+        logger.setLevel(level.toInt(), active)
         handleResolve(promise, LdkCallbackResponses.log_level_updated)
     }
 
     @ReactMethod
     fun syncToTip(header: String, height: Double, promise: Promise) {
-        //TODO
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
+        
+        try {
+            channelManager!!.as_Confirm().best_block_updated(header.hexa(), height.toInt())
+            chainMonitor!!.as_Confirm().best_block_updated(header.hexa(), height.toInt())
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.unknown_error, Error(e))
+        }
+
         handleResolve(promise, LdkCallbackResponses.chain_sync_success)
     }
 

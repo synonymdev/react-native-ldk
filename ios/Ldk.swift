@@ -302,7 +302,6 @@ class Ldk: NSObject {
         handleResolve(resolve, .chain_sync_success)
     }
 
-
     @objc
     func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         //Sync ChannelMonitors and ChannelManager to chain tip
