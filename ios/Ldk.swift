@@ -82,7 +82,7 @@ class Ldk: NSObject {
     var keysManager: KeysManager?
     var channelManager: ChannelManager?
     var userConfig: UserConfig?
-    var channelMonitors: Array<[UInt8]>?
+    var channelMonitors: Array<[UInt8]>? //TODO don't keep this, just add it from initChannelManager
     var networkGraph: NetworkGraph?
     var peerManager: PeerManager?
     var peerHandler: TCPPeerHandler?
@@ -90,7 +90,7 @@ class Ldk: NSObject {
     var invoicePayer: InvoicePayer?
     var ldkNetwork: LDKNetwork?
     var ldkCurrency: LDKCurrency?
-    
+
     //MARK: Startup methods
 
     @objc
@@ -238,13 +238,13 @@ class Ldk: NSObject {
                     fee_estimator: feeEstimator,
                     chain_monitor: chainMonitor,
                     filter: filter,
-                    net_graph_serialized: nil, //TODO
+                    net_graph_serialized: networkGraph.write(),
                     tx_broadcaster: broadcaster,
                     logger: logger
                 )
             }
         } catch {
-            return handleReject(reject, .init_channel_monitor, error)
+            return handleReject(reject, .unknown_error, error)
         }
 
         channelManager = channelManagerConstructor!.channelManager
@@ -476,7 +476,6 @@ class Ldk: NSObject {
 
     @objc
     func listPeers(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        //Sync ChannelMonitors and ChannelManager to chain tip
         guard let peerManager = peerManager else {
             return handleReject(reject, .init_peer_manager)
         }
@@ -486,7 +485,6 @@ class Ldk: NSObject {
 
     @objc
     func listChannels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        //Sync ChannelMonitors and ChannelManager to chain tip
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
@@ -496,7 +494,6 @@ class Ldk: NSObject {
 
     @objc
     func listUsableChannels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        //Sync ChannelMonitors and ChannelManager to chain tip
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }

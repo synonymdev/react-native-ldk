@@ -4,12 +4,15 @@ import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 import com.reactnativeldk.classes.*
 import org.json.JSONObject
+import org.ldk.batteries.ChannelManagerConstructor
+import org.ldk.batteries.NioPeerHandler
+import org.ldk.enums.Currency
+import org.ldk.enums.Network
 import org.ldk.impl.version.*
 import org.ldk.impl.bindings.*
 import org.ldk.structs.*
+import java.lang.Error
 import java.util.*
-
-//var channel_manager: ChannelManager? = null;
 
 //MARK: ************Replicate in typescript and swift************
 enum class EventTypes {
@@ -90,12 +93,22 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private val broadcaster: LdkBroadcaster by lazy { LdkBroadcaster() }
     private val persister: LdkPersister by lazy { LdkPersister() }
     private val filter: LdkFilter by lazy { LdkFilter() }
+    private val channelManagerPersister: LdkChannelManagerPersister by lazy { LdkChannelManagerPersister() }
+    private val scorer: MultiThreadedLockableScore by lazy { MultiThreadedLockableScore.of(Scorer.with_default().as_Score()) }
 
     //Config required to setup below objects
     private var chainMonitor: ChainMonitor? = null
     private var keysManager: KeysManager? = null
+    private var channelManager: ChannelManager? = null
     private var userConfig: UserConfig? = null
+    private var channelMonitors: Array<ByteArray>? = null //TODO don't keep this, just add it from initChannelManager
     private var networkGraph: NetworkGraph? = null
+    private var peerManager: PeerManager? = null
+    private var peerHandler: NioPeerHandler? = null
+    private var channelManagerConstructor: ChannelManagerConstructor? = null
+    private var invoicePayer: InvoicePayer? = null
+    private var ldkNetwork: Network? = null
+    private var ldkCurrency: Currency? = null
 
     //Startup methods
     @ReactMethod
@@ -169,14 +182,85 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         if (networkGraph !== null) {
             return handleReject(promise, LdkErrors.already_init)
         }
-        
+
         networkGraph = NetworkGraph.of(genesisHash.hexa())
         handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
     }
 
     @ReactMethod
     fun initChannelManager(network: String, serializedChannelManager: String, blockHash: String, blockHeight: Double, promise: Promise) {
-        //TODO
+        if (channelManager !== null) {
+            return handleReject(promise, LdkErrors.already_init)
+        }
+
+        chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
+        keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
+        userConfig ?: return handleReject(promise, LdkErrors.init_user_config)
+//        channelMonitors ?: return handleReject(promise, LdkErrors.load_channel_monitors) //TODO remove when passed into this function
+        networkGraph ?: return handleReject(promise, LdkErrors.init_network_graph)
+
+        when (network) {
+            "regtest" -> {
+                ldkNetwork = Network.LDKNetwork_Regtest
+                ldkCurrency = Currency.LDKCurrency_Regtest
+            }
+            "testnet" -> {
+                ldkNetwork = Network.LDKNetwork_Testnet
+                ldkCurrency = Currency.LDKCurrency_BitcoinTestnet
+            }
+            "mainnet" -> {
+                ldkNetwork = Network.LDKNetwork_Bitcoin
+                ldkCurrency = Currency.LDKCurrency_Bitcoin
+            }
+            else -> { // Note the block
+                return handleReject(promise, LdkErrors.invalid_network)
+            }
+        }
+
+        try {
+            if (channelMonitors == null || channelMonitors!!.isEmpty()) {
+                channelManagerConstructor = ChannelManagerConstructor(
+                    ldkNetwork,
+                    userConfig,
+                    blockHash.hexa(),
+                    blockHeight.toInt(),
+                    keysManager!!.as_KeysInterface(),
+                    feeEstimator.feeEstimator,
+                    chainMonitor,
+                    networkGraph,
+                    broadcaster.broadcaster,
+                    logger.logger
+                )
+            } else {
+                println("Untested node restore")
+                channelManagerConstructor = ChannelManagerConstructor(
+                    serializedChannelManager.hexa(),
+                    channelMonitors,
+                    userConfig,
+                    keysManager!!.as_KeysInterface(),
+                    feeEstimator.feeEstimator,
+                    chainMonitor,
+                    filter.filter,
+                    networkGraph!!.write(),
+                    broadcaster.broadcaster,
+                    logger.logger
+                )
+            }
+        } catch (e: Exception) {
+            println(e.toString())
+            println(e.message)
+            return handleReject(promise, LdkErrors.unknown_error, Error(e))
+        }
+
+        channelManager = channelManagerConstructor!!.channel_manager
+        this.networkGraph = channelManagerConstructor!!.net_graph
+
+        channelManagerConstructor!!.chain_sync_completed(channelManagerPersister.channelManagerPersister, scorer)
+        peerManager = channelManagerConstructor!!.peer_manager
+
+        peerHandler = channelManagerConstructor!!.nio_peer_handler
+        invoicePayer = channelManagerConstructor!!.payer
+
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
     }
 
