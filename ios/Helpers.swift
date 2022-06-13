@@ -28,6 +28,7 @@ extension Invoice {
     var asJson: Any {
         return [
             "amount_milli_satoshis": self.amount_milli_satoshis().getValue() as Any,
+            "description": self.into_signed_raw().raw_invoice().description(),
             "check_signature": self.check_signature().isOk(),
             "is_expired": self.is_expired(),
             "duration_since_epoch": self.duration_since_epoch(),

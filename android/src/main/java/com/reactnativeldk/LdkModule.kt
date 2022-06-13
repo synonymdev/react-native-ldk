@@ -8,12 +8,13 @@ import org.ldk.batteries.ChannelManagerConstructor
 import org.ldk.batteries.NioPeerHandler
 import org.ldk.enums.Currency
 import org.ldk.enums.Network
-import org.ldk.impl.version.*
-import org.ldk.impl.bindings.*
+import org.ldk.impl.bindings.get_ldk_c_bindings_version
+import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
-import java.lang.Error
+import org.ldk.structs.Result_InvoiceParseOrSemanticErrorZ.Result_InvoiceParseOrSemanticErrorZ_OK
+import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCreationErrorZ_OK
 import java.net.InetSocketAddress
-import java.util.*
+
 
 //MARK: ************Replicate in typescript and swift************
 enum class EventTypes {
@@ -326,12 +327,55 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     //MARK: Payments
     @ReactMethod
     fun decode(paymentRequest: String, promise: Promise) {
-        //TODO
-        val response = Arguments.createMap().apply {
-            putString("todo", "val")
+        val parsed = Invoice.from_str(paymentRequest)
+        if (!parsed.is_ok) {
+            return handleReject(promise, LdkErrors.decode_invoice_fail)
         }
 
-        promise.resolve(response) //TODO test
+//        val parsed_invoice = Invoice.from_str(paymentRequest).toString()
+
+
+//        val parsed_invoice =
+//            Invoice.from_str((parsed as Result_InvoiceSignOrCreationErrorZ_OK).res.to_str())
+
+
+        val parsedInvoice = parsed as Result_InvoiceParseOrSemanticErrorZ_OK
+//        val signedInv = parsedInvoice.res.into_signed_raw()
+//        val rawInv = signedInv.raw_invoice()
+//        val rawInvoice = signedRaw.raw_invoice()
+//        val desc = rawInv.description()!!.into_inner()
+
+//        signedInv.check_signature()
+
+//        signedInv.raw_invoice().description()
+//        println("parsed_invoice: " + desc)
+
+//        val response = Arguments.createMap()
+//
+//        response.putDouble("amount_milli_satoshis", (parsed.res.amount_milli_satoshis() as Option_u64Z.Some).some.toDouble())
+////            response.putDouble("amount_milli_satoshis",  (signedInv.amount_pico_btc() as Option_u64Z.Some).some.toDouble() / 10 / 10)
+//        response.putBoolean("check_signature",  signedInv.check_signature())
+
+
+//            amount_milli_satoshis?: number;
+//        descriptio
+//            check_signature: boolean;
+//            is_expired: boolean;
+//            duration_since_epoch: number;
+//            expiry_time: number;
+//            min_final_cltv_expiry: number;
+//            payee_pub_key: string;
+//            recover_payee_pub_key: string;
+//            payment_hash: string;
+//            payment_secret: string;
+//            timestamp: number;
+//            features: string;
+//            currency: number;
+//            to_str: string; //Actual bolt11 invoice string
+
+        println(parsedInvoice.json().toString())
+
+        promise.resolve(parsedInvoice.json())
     }
 
     @ReactMethod
@@ -358,8 +402,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun nodeId(promise: Promise) {
-        //TODO
-        promise.resolve("TODO nodeid")
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        promise.resolve(channelManager!!._our_node_id.hexEncodedString())
     }
 
     @ReactMethod

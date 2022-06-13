@@ -370,6 +370,8 @@ class Ldk: NSObject {
             return handleReject(reject, .decode_invoice_fail, nil, error?.to_str())
         }
 
+        
+//        invoice.into_signed_raw().raw_invoice().description()
         resolve(invoice.asJson) //Invoice class extended in Helpers file
     }
 

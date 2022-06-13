@@ -126,6 +126,7 @@ export type TChannel = {
 
 export type TInvoice = {
 	amount_milli_satoshis?: number;
+	description: string,
 	check_signature: boolean;
 	is_expired: boolean;
 	duration_since_epoch: number;
