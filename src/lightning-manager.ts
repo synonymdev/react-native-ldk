@@ -20,6 +20,7 @@ import {
 	TPersistManagerEvent,
 	TRegisterOutputEvent,
 	TRegisterTxEvent,
+	TChannelManagerPendingHtlcsForwardable,
 } from './utils/types';
 import {
 	dummyRandomSeed,
@@ -104,6 +105,10 @@ class LightningManager {
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_failed,
 			this.onChannelManagerPaymentFailed.bind(this),
+		);
+		ldk.onEvent(
+			EEventTypes.channel_manager_pending_htlcs_forwardable,
+			this.onChannelManagerPendingHtlcsForwardable.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_spendable_outputs,
@@ -367,6 +372,12 @@ class LightningManager {
 		res: TChannelManagerPaymentFailed,
 	): void {
 		console.log(`onChannelManagerPaymentFailed: ${JSON.stringify(res)}`); //TODO
+	}
+
+	private onChannelManagerPendingHtlcsForwardable(
+		res: TChannelManagerPendingHtlcsForwardable,
+	): void {
+		ldk.processPendingHtlcForwards().catch(console.error);
 	}
 
 	private onChannelManagerSpendableOutputs(

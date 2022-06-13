@@ -22,6 +22,7 @@ export enum EEventTypes {
 	channel_manager_payment_path_successful = 'channel_manager_payment_path_successful',
 	channel_manager_payment_path_failed = 'channel_manager_payment_path_failed',
 	channel_manager_payment_failed = 'channel_manager_payment_failed',
+	channel_manager_pending_htlcs_forwardable = 'channel_manager_pending_htlcs_forwardable',
 	channel_manager_spendable_outputs = 'channel_manager_spendable_outputs',
 	channel_manager_channel_closed = 'channel_manager_channel_closed',
 	channel_manager_discard_funding = 'channel_manager_discard_funding',
@@ -88,6 +89,9 @@ export type TChannelManagerPaymentPathFailed = {
 export type TChannelManagerPaymentFailed = {
 	payment_id: string;
 	payment_hash: string;
+};
+export type TChannelManagerPendingHtlcsForwardable = {
+	time_forwardable: number;
 };
 export type TChannelManagerSpendableOutputs = {
 	outputs: string[];

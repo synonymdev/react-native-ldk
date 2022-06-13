@@ -311,6 +311,19 @@ class LDK {
 	}
 
 	/**
+	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/struct.ChannelManager.html#method.process_pending_htlc_forwards
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async processPendingHtlcForwards(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.processPendingHtlcForwards();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
 	 * Pays a bolt11 payment request
 	 * @param paymentRequest
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}

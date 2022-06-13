@@ -21,6 +21,7 @@ enum EventTypes: String, CaseIterable {
     case channel_manager_payment_path_successful = "channel_manager_payment_path_successful"
     case channel_manager_payment_path_failed = "channel_manager_payment_path_failed"
     case channel_manager_payment_failed = "channel_manager_payment_failed"
+    case channel_manager_pending_htlcs_forwardable = "channel_manager_pending_htlcs_forwardable"
     case channel_manager_spendable_outputs = "channel_manager_spendable_outputs"
     case channel_manager_channel_closed = "channel_manager_channel_closed"
     case channel_manager_discard_funding = "channel_manager_discard_funding"
@@ -66,6 +67,7 @@ enum LdkCallbackResponses: String {
     case invoice_payment_success = "invoice_payment_success"
     case tx_set_confirmed = "tx_set_confirmed"
     case tx_set_unconfirmed = "tx_set_unconfirmed"
+    case process_pending_htlc_forwards_success = "process_pending_htlc_forwards_success"
 }
 
 @objc(Ldk)
@@ -465,6 +467,17 @@ class Ldk: NSObject {
         }
     
         return handleReject(reject, .invoice_create_failed, nil, "Invoice creation error: \(creationError.rawValue)")
+    }
+    
+    @objc
+    func processPendingHtlcForwards(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        channelManager.process_pending_htlc_forwards()
+        
+        handleResolve(resolve, .process_pending_htlc_forwards_success)
     }
     
     //MARK: Fetch methods

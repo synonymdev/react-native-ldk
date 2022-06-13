@@ -80,6 +80,8 @@ RCT_EXTERN_METHOD(createPaymentRequest:(NSInteger *)amountSats
                   description:(NSString *)description
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(processPendingHtlcForwards:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 @end
 
 //MARK: Events
