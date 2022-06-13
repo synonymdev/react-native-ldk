@@ -183,9 +183,8 @@ class Ldk: NSObject {
     
     @objc
     func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes.reversed())
+        networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
         //TODO load cached version if exists instead. NetworkGraph.read(ser: serialized_backup)
-        
         handleResolve(resolve, .network_graph_init_success)
     }
     
@@ -255,7 +254,7 @@ class Ldk: NSObject {
                     fee_estimator: feeEstimator,
                     chain_monitor: chainMonitor,
                     filter: filter,
-                    net_graph_serialized: nil, //TODO
+                    net_graph_serialized: networkGraph.write(),
                     tx_broadcaster: broadcaster,
                     logger: logger
                 )
