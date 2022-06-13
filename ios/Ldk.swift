@@ -49,6 +49,7 @@ enum LdkErrors: String {
     case invoice_payment_fail = "invoice_payment_fail"
     case init_ldk_currency = "init_ldk_currency"
     case invoice_create_failed = "invoice_create_failed"
+    case claim_funds_failed = "claim_funds_failed"
 }
 
 enum LdkCallbackResponses: String {
@@ -68,6 +69,7 @@ enum LdkCallbackResponses: String {
     case tx_set_confirmed = "tx_set_confirmed"
     case tx_set_unconfirmed = "tx_set_unconfirmed"
     case process_pending_htlc_forwards_success = "process_pending_htlc_forwards_success"
+    case claim_funds_success = "claim_funds_success"
 }
 
 @objc(Ldk)
@@ -478,6 +480,20 @@ class Ldk: NSObject {
         channelManager.process_pending_htlc_forwards()
         
         handleResolve(resolve, .process_pending_htlc_forwards_success)
+    }
+    
+    @objc
+    func claimFunds(_ paymentPreimage: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        let res = channelManager.claim_funds(payment_preimage: String(paymentPreimage).hexaBytes)
+        if res == false {
+            handleReject(reject, .claim_funds_failed)
+        }
+        
+        handleResolve(resolve, .claim_funds_success)
     }
     
     //MARK: Fetch methods

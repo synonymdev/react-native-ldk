@@ -335,10 +335,12 @@ class LightningManager {
 	private onChannelManagerPaymentReceived(
 		res: TChannelManagerPaymentReceived,
 	): void {
-		//TODO call channelManager.claim_funds(payment_preimage: paymentPreimage) if spontaneous_payment_preimage is not a blank string as
-		//https://docs.rs/lightning/latest/lightning/util/events/enum.PaymentPurpose.html#variant.SpontaneousPayment
-		//If not a spontaneous payment then nothing to do but notify user invoice was paid
-		console.log(`onChannelManagerPaymentReceived: ${JSON.stringify(res)}`); //TODO
+		if (res.spontaneous_payment_preimage) {
+			//https://docs.rs/lightning/latest/lightning/util/events/enum.PaymentPurpose.html#variant.SpontaneousPayment
+			ldk.claimFunds(res.spontaneous_payment_preimage).catch(console.error);
+		} else {
+			ldk.claimFunds(res.payment_preimage).catch(console.error);
+		}
 	}
 
 	private onChannelManagerPaymentSent(res: TChannelManagerPaymentSent): void {
