@@ -400,7 +400,7 @@ class Ldk: NSObject {
         
         let res = invoicePayer.pay_invoice(invoice: invoice)
         if res.isOk() {
-            handleResolve(resolve, .invoice_payment_success)
+            return handleResolve(resolve, .invoice_payment_success)
         }
         
         guard let error = res.getError() else {
