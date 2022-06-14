@@ -139,7 +139,16 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             //Unused on mobile
             return
         case .PendingHTLCsForwardable:
-            //TODO not sure if required.
+            guard let pendingHTLCsForwardable = event.getValueAsPendingHTLCsForwardable() else {
+                return handleEventError(event)
+            }
+                        
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_pending_htlcs_forwardable,
+                body: [
+                    "time_forwardable": pendingHTLCsForwardable.getTime_forwardable(),
+                ]
+            )
             return
         case .SpendableOutputs:
             guard let spendableOutputs = event.getValueAsSpendableOutputs() else {
