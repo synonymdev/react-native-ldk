@@ -346,7 +346,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val parsedInvoice = parsed as Result_InvoiceParseOrSemanticErrorZ_OK
 
-        promise.resolve(parsedInvoice.json())
+        promise.resolve(parsedInvoice.res.json())
     }
 
     @ReactMethod
@@ -372,8 +372,24 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun createPaymentRequest(amountSats: Double, description: String, promise: Promise) {
-        //TODO
-        handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
+        ldkCurrency ?: return handleReject(promise, LdkErrors.init_ldk_currency)
+
+        val res = UtilMethods.create_invoice_from_channelmanager(
+            channelManager,
+            keysManager!!.as_KeysInterface(),
+            Currency.LDKCurrency_Bitcoin,
+            Option_u64Z.some(amountSats.toLong()),
+            description
+        );
+
+        if (res.is_ok) {
+            return promise.resolve((res as Result_InvoiceSignOrCreationErrorZ_OK).res.json())
+        }
+
+        val error = res as Result_InvoiceSignOrCreationErrorZ
+        return handleReject(promise, LdkErrors.invoice_create_failed, Error(error.toString()))
     }
 
     //MARK: Fetch methods

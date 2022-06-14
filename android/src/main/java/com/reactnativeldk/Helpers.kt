@@ -2,8 +2,8 @@ package com.reactnativeldk
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.WritableMap
+import org.ldk.structs.Invoice
 import org.ldk.structs.Option_u64Z
-import org.ldk.structs.Result_InvoiceParseOrSemanticErrorZ.Result_InvoiceParseOrSemanticErrorZ_OK
 
 fun handleResolve(promise: Promise, res: LdkCallbackResponses) {
     LdkEventEmitter.send(EventTypes.swift_log, "Success: ${res}")
@@ -30,27 +30,26 @@ fun String.hexa(): ByteArray {
         .map { it.toInt(16).toByte() }
         .toByteArray()
 }
-fun Result_InvoiceParseOrSemanticErrorZ_OK.json(): WritableMap {
+fun Invoice.json(): WritableMap {
     val result = Arguments.createMap()
-    val inv = this.res
-    val signedInv = inv.into_signed_raw()
+    val signedInv = this.into_signed_raw()
     val rawInvoice = signedInv.raw_invoice()
 
-    result.putDouble("amount_milli_satoshis", (this.res.amount_milli_satoshis() as Option_u64Z.Some).some.toDouble())
+    result.putDouble("amount_milli_satoshis", (this.amount_milli_satoshis() as Option_u64Z.Some).some.toDouble())
     result.putString("description", rawInvoice.description()?.into_inner())
     result.putBoolean("check_signature",  signedInv.check_signature())
-    result.putBoolean("is_expired",  inv.is_expired)
-    result.putInt("duration_since_epoch",  inv.duration_since_epoch().toInt())
-    result.putInt("expiry_time",  inv.expiry_time().toInt())
-    result.putInt("min_final_cltv_expiry",  inv.min_final_cltv_expiry().toInt())
+    result.putBoolean("is_expired",  this.is_expired)
+    result.putInt("duration_since_epoch",  this.duration_since_epoch().toInt())
+    result.putInt("expiry_time",  this.expiry_time().toInt())
+    result.putInt("min_final_cltv_expiry",  this.min_final_cltv_expiry().toInt())
     result.putString("payee_pub_key", rawInvoice.payee_pub_key()?._a?.hexEncodedString())
-    result.putString("recover_payee_pub_key", inv.recover_payee_pub_key().hexEncodedString())
-    result.putString("payment_hash", inv.payment_hash().hexEncodedString())
-    result.putString("payment_secret", inv.payment_secret().hexEncodedString())
-    result.putInt("timestamp", inv.timestamp().toInt())
-    result.putString("features", inv.features()?.write()?.hexEncodedString())
-    result.putInt("currency", inv.currency().ordinal)
-    result.putString("features", signedInv.to_str())
+    result.putString("recover_payee_pub_key", this.recover_payee_pub_key().hexEncodedString())
+    result.putString("payment_hash", this.payment_hash().hexEncodedString())
+    result.putString("payment_secret", this.payment_secret().hexEncodedString())
+    result.putInt("timestamp", this.timestamp().toInt())
+    result.putString("features", this.features()?.write()?.hexEncodedString())
+    result.putInt("currency", this.currency().ordinal)
+    result.putString("to_str", signedInv.to_str())
 
     return result
 }
