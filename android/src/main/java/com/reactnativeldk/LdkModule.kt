@@ -314,13 +314,25 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun setTxConfirmed(header: String, transaction: String, pos: Double, height: Double, promise: Promise) {
-        //TODO
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
+
+        val txData = arrayOf(TwoTuple_usizeTransactionZ.of(pos.toLong(), transaction.hexa()))
+
+        channelManager!!.as_Confirm().transactions_confirmed(header.hexa(), txData, height.toInt())
+        chainMonitor!!.as_Confirm().transactions_confirmed(header.hexa(), txData, height.toInt())
+
         handleResolve(promise, LdkCallbackResponses.tx_set_confirmed)
     }
 
     @ReactMethod
     fun setTxUnconfirmed(txId: String, promise: Promise) {
-        //TODO
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
+
+        channelManager!!.as_Confirm().transaction_unconfirmed(txId.hexa())
+        chainMonitor!!.as_Confirm().transaction_unconfirmed(txId.hexa())
+
         handleResolve(promise, LdkCallbackResponses.tx_set_unconfirmed)
     }
 
@@ -332,48 +344,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.decode_invoice_fail)
         }
 
-//        val parsed_invoice = Invoice.from_str(paymentRequest).toString()
-
-
-//        val parsed_invoice =
-//            Invoice.from_str((parsed as Result_InvoiceSignOrCreationErrorZ_OK).res.to_str())
-
-
         val parsedInvoice = parsed as Result_InvoiceParseOrSemanticErrorZ_OK
-//        val signedInv = parsedInvoice.res.into_signed_raw()
-//        val rawInv = signedInv.raw_invoice()
-//        val rawInvoice = signedRaw.raw_invoice()
-//        val desc = rawInv.description()!!.into_inner()
-
-//        signedInv.check_signature()
-
-//        signedInv.raw_invoice().description()
-//        println("parsed_invoice: " + desc)
-
-//        val response = Arguments.createMap()
-//
-//        response.putDouble("amount_milli_satoshis", (parsed.res.amount_milli_satoshis() as Option_u64Z.Some).some.toDouble())
-////            response.putDouble("amount_milli_satoshis",  (signedInv.amount_pico_btc() as Option_u64Z.Some).some.toDouble() / 10 / 10)
-//        response.putBoolean("check_signature",  signedInv.check_signature())
-
-
-//            amount_milli_satoshis?: number;
-//        descriptio
-//            check_signature: boolean;
-//            is_expired: boolean;
-//            duration_since_epoch: number;
-//            expiry_time: number;
-//            min_final_cltv_expiry: number;
-//            payee_pub_key: string;
-//            recover_payee_pub_key: string;
-//            payment_hash: string;
-//            payment_secret: string;
-//            timestamp: number;
-//            features: string;
-//            currency: number;
-//            to_str: string; //Actual bolt11 invoice string
-
-        println(parsedInvoice.json().toString())
 
         promise.resolve(parsedInvoice.json())
     }
