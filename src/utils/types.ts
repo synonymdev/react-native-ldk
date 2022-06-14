@@ -137,7 +137,7 @@ export type TInvoice = {
 	payment_hash: string;
 	payment_secret: string;
 	timestamp: number;
-	features: string;
+	features?: string;
 	currency: number;
 	to_str: string; //Actual bolt11 invoice string
 };

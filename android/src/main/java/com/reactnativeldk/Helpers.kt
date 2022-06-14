@@ -44,15 +44,13 @@ fun Result_InvoiceParseOrSemanticErrorZ_OK.json(): WritableMap {
     result.putInt("expiry_time",  inv.expiry_time().toInt())
     result.putInt("min_final_cltv_expiry",  inv.min_final_cltv_expiry().toInt())
     result.putString("payee_pub_key", rawInvoice.payee_pub_key()?._a?.hexEncodedString())
-
-//            recover_payee_pub_key: string;
-//            payment_hash: string;
-//            payment_secret: string;
-//            timestamp: number;
-//            features: string;
-//            currency: number;
-//            to_str: string; //Actual bolt11 invoice string
-
+    result.putString("recover_payee_pub_key", inv.recover_payee_pub_key().hexEncodedString())
+    result.putString("payment_hash", inv.payment_hash().hexEncodedString())
+    result.putString("payment_secret", inv.payment_secret().hexEncodedString())
+    result.putInt("timestamp", inv.timestamp().toInt())
+    result.putString("features", inv.features()?.write()?.hexEncodedString())
+    result.putInt("currency", inv.currency().ordinal)
+    result.putString("features", signedInv.to_str())
 
     return result
 }
