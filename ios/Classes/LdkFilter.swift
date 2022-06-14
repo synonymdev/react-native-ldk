@@ -17,7 +17,7 @@ class LdkFilter: Filter {
         LdkEventEmitter.shared.send(
             withEvent: .register_tx,
             body: [
-                "txid": Data(txid ?? []).hexEncodedString(),
+                "txid": Data(Data(txid ?? []).reversed()).hexEncodedString(),
                 "script_pubkey": Data(script_pubkey).hexEncodedString()
             ]
         )

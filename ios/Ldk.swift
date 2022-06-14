@@ -19,6 +19,7 @@ enum EventTypes: String, CaseIterable {
     case channel_manager_payment_path_successful = "channel_manager_payment_path_successful"
     case channel_manager_payment_path_failed = "channel_manager_payment_path_failed"
     case channel_manager_payment_failed = "channel_manager_payment_failed"
+    case channel_manager_pending_htlcs_forwardable = "channel_manager_pending_htlcs_forwardable"
     case channel_manager_spendable_outputs = "channel_manager_spendable_outputs"
     case channel_manager_channel_closed = "channel_manager_channel_closed"
     case channel_manager_discard_funding = "channel_manager_discard_funding"
@@ -46,6 +47,7 @@ enum LdkErrors: String {
     case invoice_payment_fail = "invoice_payment_fail"
     case init_ldk_currency = "init_ldk_currency"
     case invoice_create_failed = "invoice_create_failed"
+    case claim_funds_failed = "claim_funds_failed"
 }
 
 enum LdkCallbackResponses: String {
@@ -64,6 +66,8 @@ enum LdkCallbackResponses: String {
     case invoice_payment_success = "invoice_payment_success"
     case tx_set_confirmed = "tx_set_confirmed"
     case tx_set_unconfirmed = "tx_set_unconfirmed"
+    case process_pending_htlc_forwards_success = "process_pending_htlc_forwards_success"
+    case claim_funds_success = "claim_funds_success"
 }
 
 @objc(Ldk)
@@ -166,9 +170,8 @@ class Ldk: NSObject {
 
     @objc
     func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes.reversed())
+        networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
         //TODO load cached version if exists instead. NetworkGraph.read(ser: serialized_backup)
-
         handleResolve(resolve, .network_graph_init_success)
     }
 
@@ -305,7 +308,7 @@ class Ldk: NSObject {
     @objc
     func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, timeout: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         //timeout param not used. Only for android.
-        
+
         //Sync ChannelMonitors and ChannelManager to chain tip
         guard let peerHandler = peerHandler else {
             return handleReject(reject, .init_peer_handler)
@@ -370,7 +373,7 @@ class Ldk: NSObject {
             return handleReject(reject, .decode_invoice_fail, nil, error?.to_str())
         }
 
-        
+
 //        invoice.into_signed_raw().raw_invoice().description()
         resolve(invoice.asJson) //Invoice class extended in Helpers file
     }
@@ -387,7 +390,7 @@ class Ldk: NSObject {
 
         let res = invoicePayer.pay_invoice(invoice: invoice)
         if res.isOk() {
-            handleResolve(resolve, .invoice_payment_success)
+            return handleResolve(resolve, .invoice_payment_success)
         }
 
         guard let error = res.getError() else {
@@ -455,6 +458,31 @@ class Ldk: NSObject {
         }
 
         return handleReject(reject, .invoice_create_failed, nil, "Invoice creation error: \(creationError.rawValue)")
+    }
+
+    @objc
+    func processPendingHtlcForwards(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+
+        channelManager.process_pending_htlc_forwards()
+
+        handleResolve(resolve, .process_pending_htlc_forwards_success)
+    }
+
+    @objc
+    func claimFunds(_ paymentPreimage: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+
+        let res = channelManager.claim_funds(payment_preimage: String(paymentPreimage).hexaBytes)
+        if res == false {
+            handleReject(reject, .claim_funds_failed)
+        }
+
+        handleResolve(resolve, .claim_funds_success)
     }
 
     //MARK: Fetch methods
