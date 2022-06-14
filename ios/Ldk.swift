@@ -44,7 +44,14 @@ enum LdkErrors: String {
     case init_channel_manager = "init_channel_manager"
     case decode_invoice_fail = "decode_invoice_fail"
     case init_invoice_payer = "init_invoice_payer"
-    case invoice_payment_fail = "invoice_payment_fail"
+    case invoice_payment_fail_unknown = "invoice_payment_fail_unknown"
+    case invoice_payment_fail_invoice = "invoice_payment_fail_invoice"
+    case invoice_payment_fail_routing = "invoice_payment_fail_routing"
+    case invoice_payment_fail_sending = "invoice_payment_fail_sending"
+    case invoice_payment_fail_retry_safe = "invoice_payment_fail_retry_safe"
+    case invoice_payment_fail_parameter_error = "invoice_payment_fail_parameter_error"
+    case invoice_payment_fail_partial = "invoice_payment_fail_partial"
+    case invoice_payment_fail_path_parameter_error = "invoice_payment_fail_path_parameter_error"
     case init_ldk_currency = "init_ldk_currency"
     case invoice_create_failed = "invoice_create_failed"
     case claim_funds_failed = "claim_funds_failed"
@@ -392,33 +399,37 @@ class Ldk: NSObject {
         }
 
         guard let error = res.getError() else {
-            return handleReject(reject, .invoice_payment_fail)
+            return handleReject(reject, .invoice_payment_fail_unknown)
         }
 
         switch error.getValueType() {
         case .Invoice:
-            return handleReject(reject, .invoice_payment_fail, nil, error.getValueAsInvoice())
+            return handleReject(reject, .invoice_payment_fail_invoice, nil, error.getValueAsInvoice())
         case .Routing:
-            return handleReject(reject, .invoice_payment_fail, nil, error.getValueAsRouting()?.get_err())
+            return handleReject(reject, .invoice_payment_fail_routing, nil, error.getValueAsRouting()?.get_err())
         case .Sending:
             //Multiple sending errors
             guard let sendingError = error.getValueAsSending() else {
-                return handleReject(reject, .invoice_payment_fail)
+                return handleReject(reject, .invoice_payment_fail_sending)
             }
 
             switch sendingError.getValueType() {
             case .AllFailedRetrySafe:
-                return handleReject(reject, .invoice_payment_fail, nil, sendingError.getValueAsAllFailedRetrySafe().map { $0.description } )
+                return handleReject(reject, .invoice_payment_fail_retry_safe, nil, sendingError.getValueAsAllFailedRetrySafe().map { $0.description } )
             case .ParameterError:
-                return handleReject(reject, .invoice_payment_fail, nil, sendingError.getValueAsParameterError().debugDescription)
+                return handleReject(reject, .invoice_payment_fail_parameter_error, nil, sendingError.getValueAsParameterError().debugDescription)
             case .PartialFailure:
-                return handleReject(reject, .invoice_payment_fail, nil, sendingError.getValueAsPartialFailure().debugDescription)
+                return handleReject(reject, .invoice_payment_fail_partial, nil, sendingError.getValueAsPartialFailure().debugDescription)
+            case .PathParameterError:
+                return handleReject(reject, .invoice_payment_fail_path_parameter_error, nil, sendingError.getValueAsPartialFailure().debugDescription)
             default:
-                return handleReject(reject, .invoice_payment_fail)
+                return handleReject(reject, .invoice_payment_fail_sending)
             }
         default:
-            return handleReject(reject, .invoice_payment_fail, nil, res.getError().debugDescription)
+            return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
         }
+        
+        return handleReject(reject, .invoice_payment_fail_unknown, nil)
     }
 
     @objc

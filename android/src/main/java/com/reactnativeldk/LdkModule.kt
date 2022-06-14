@@ -57,7 +57,14 @@ enum class LdkErrors {
     init_channel_manager,
     decode_invoice_fail,
     init_invoice_payer,
-    invoice_payment_fail,
+    invoice_payment_fail_unknown,
+    invoice_payment_fail_invoice,
+    invoice_payment_fail_routing,
+    invoice_payment_fail_sending,
+    invoice_payment_fail_retry_safe,
+    invoice_payment_fail_parameter_error,
+    invoice_payment_fail_partial,
+    invoice_payment_fail_path_parameter_error,
     init_ldk_currency,
     invoice_create_failed
 }
@@ -361,13 +368,47 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val res = invoicePayer!!.pay_invoice((invoice as Result_InvoiceParseOrSemanticErrorZ_OK).res)
 
         if (res.is_ok) {
-            handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
+            return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
         }
 
-        val error = res as Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_Err // ?: return return handleReject(promise, LdkErrors.invoice_payment_fail)
+        val error = res as? Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_Err // ?: return return handleReject(promise, LdkErrors.invoice_payment_fail)
 
-        //TODO check payment fail options like in swift
-        handleReject(promise, LdkErrors.invoice_payment_fail, Error(error.err.toString()))
+        val invoiceError = error?.err as? PaymentError.Invoice
+        if (invoiceError != null) {
+            return handleReject(promise, LdkErrors.invoice_payment_fail_invoice, Error(invoiceError.invoice))
+        }
+
+        val routingError = error?.err as? PaymentError.Routing
+        if (routingError != null) {
+            return handleReject(promise, LdkErrors.invoice_payment_fail_routing, Error(routingError.routing._err))
+        }
+
+        val sendingError = error?.err as? PaymentError.Sending
+        if (sendingError != null) {
+            val paymentAllFailedRetrySafe = sendingError.sending as? PaymentSendFailure.AllFailedRetrySafe
+            if (paymentAllFailedRetrySafe != null) {
+                return handleReject(promise, LdkErrors.invoice_payment_fail_retry_safe, Error(paymentAllFailedRetrySafe.all_failed_retry_safe.map { it.toString() }.toString()))
+            }
+
+            val paymentParameterError = sendingError.sending as? PaymentSendFailure.ParameterError
+            if (paymentParameterError != null) {
+                return handleReject(promise, LdkErrors.invoice_payment_fail_parameter_error, Error(paymentParameterError.parameter_error.toString()))
+            }
+
+            val paymentPartialFailure = sendingError.sending as? PaymentSendFailure.PartialFailure
+            if (paymentPartialFailure != null) {
+                return handleReject(promise, LdkErrors.invoice_payment_fail_partial, Error(paymentPartialFailure.toString()))
+            }
+
+            val paymentPathParameterError = sendingError.sending as? PaymentSendFailure.PathParameterError
+            if (paymentPathParameterError != null) {
+                return handleReject(promise, LdkErrors.invoice_payment_fail_path_parameter_error, Error(paymentPartialFailure.toString()))
+            }
+
+            return handleReject(promise, LdkErrors.invoice_payment_fail_sending, Error("PaymentError.Sending"))
+        }
+
+        return handleReject(promise, LdkErrors.invoice_payment_fail_unknown)
     }
 
     @ReactMethod
