@@ -113,24 +113,24 @@ export type TChannel = {
 	is_outbound: boolean;
 	balance_msat: number;
 	counterparty: string;
-	funding_txo: string;
-	channel_type: string;
+	funding_txo?: string;
+	channel_type?: string;
 	user_channel_id: number;
 	confirmations_required?: number;
 	short_channel_id?: number;
 	is_funding_locked: boolean;
 	inbound_scid_alias?: number;
-	get_inbound_payment_scid?: number;
+	inbound_payment_scid?: number;
 	inbound_capacity_msat: number;
-	channel_value_satoshis: number;
 	outbound_capacity_msat: number;
+	channel_value_satoshis: number;
 	force_close_spend_delay?: number;
 	unspendable_punishment_reserve?: number;
 };
 
 export type TInvoice = {
 	amount_milli_satoshis?: number;
-	description: string,
+	description?: string,
 	check_signature: boolean;
 	is_expired: boolean;
 	duration_since_epoch: number;

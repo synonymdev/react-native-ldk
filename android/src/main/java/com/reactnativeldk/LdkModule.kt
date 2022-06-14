@@ -346,7 +346,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val parsedInvoice = parsed as Result_InvoiceParseOrSemanticErrorZ_OK
 
-        promise.resolve(parsedInvoice.res.json())
+        promise.resolve(parsedInvoice.res.asJson)
     }
 
     @ReactMethod
@@ -385,7 +385,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         );
 
         if (res.is_ok) {
-            return promise.resolve((res as Result_InvoiceSignOrCreationErrorZ_OK).res.json())
+            return promise.resolve((res as Result_InvoiceSignOrCreationErrorZ_OK).res.asJson)
         }
 
         val error = res as Result_InvoiceSignOrCreationErrorZ
@@ -424,14 +424,22 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun listChannels(promise: Promise) {
-        //TODO
-        promise.resolve("[]")
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        val list = Arguments.createArray()
+        channelManager!!.list_channels().iterator().forEach { list.pushMap(it.asJson) }
+
+        promise.resolve(list)
     }
 
     @ReactMethod
     fun listUsableChannels(promise: Promise) {
-        //TODO
-        promise.resolve("[]")
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        val list = Arguments.createArray()
+        channelManager!!.list_usable_channels().iterator().forEach { list.pushMap(it.asJson) }
+
+        promise.resolve(list)
     }
 }
 
