@@ -351,8 +351,23 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun pay(paymentRequest: String, promise: Promise) {
-        //TODO
-        handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
+        invoicePayer ?: return handleReject(promise, LdkErrors.init_invoice_payer)
+
+        val invoice = Invoice.from_str(paymentRequest)
+        if (!invoice.is_ok) {
+            return handleReject(promise, LdkErrors.decode_invoice_fail)
+        }
+
+        val res = invoicePayer!!.pay_invoice((invoice as Result_InvoiceParseOrSemanticErrorZ_OK).res)
+
+        if (res.is_ok) {
+            handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
+        }
+
+        val error = res as Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_Err // ?: return return handleReject(promise, LdkErrors.invoice_payment_fail)
+
+        //TODO check payment fail options like in swift
+        handleReject(promise, LdkErrors.invoice_payment_fail, Error(error.err.toString()))
     }
 
     @ReactMethod
