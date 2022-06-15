@@ -65,7 +65,6 @@ enum LdkCallbackResponses: String {
     case channel_manager_init_success = "channel_manager_init_success"
     case load_channel_monitors_success = "load_channel_monitors_success"
     case config_init_success = "config_init_success"
-    case net_graph_msg_handler_init_success = "net_graph_msg_handler_init_success"
     case chain_monitor_updated = "chain_monitor_updated"
     case network_graph_init_success = "network_graph_init_success"
     case add_peer_success = "add_peer_success"

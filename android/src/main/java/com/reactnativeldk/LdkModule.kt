@@ -15,7 +15,6 @@ import org.ldk.structs.Result_InvoiceParseOrSemanticErrorZ.Result_InvoiceParseOr
 import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCreationErrorZ_OK
 import java.net.InetSocketAddress
 
-
 //MARK: ************Replicate in typescript and swift************
 enum class EventTypes {
     ldk_log,
@@ -34,6 +33,7 @@ enum class EventTypes {
     channel_manager_payment_path_successful,
     channel_manager_payment_path_failed,
     channel_manager_payment_failed,
+    channel_manager_pending_htlcs_forwardable,
     channel_manager_spendable_outputs,
     channel_manager_channel_closed,
     channel_manager_discard_funding
@@ -77,7 +77,6 @@ enum class LdkCallbackResponses {
     channel_manager_init_success,
     load_channel_monitors_success,
     config_init_success,
-    net_graph_msg_handler_init_success,
     chain_monitor_updated,
     network_graph_init_success,
     add_peer_success,

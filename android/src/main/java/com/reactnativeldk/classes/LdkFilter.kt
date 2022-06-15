@@ -25,7 +25,7 @@ class LdkFilter {
             }
             body.putInt("index", output._outpoint._index.toInt())
             body.putString("script_pubkey", output._script_pubkey.hexEncodedString())
-            LdkEventEmitter.send(EventTypes.register_tx, body)
+            LdkEventEmitter.send(EventTypes.register_output, body)
             return Option_C2Tuple_usizeTransactionZZ.none();
         }
     })

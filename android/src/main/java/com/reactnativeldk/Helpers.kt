@@ -1,6 +1,7 @@
 package com.reactnativeldk
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import org.ldk.structs.*
 
@@ -36,7 +37,7 @@ val Invoice.asJson: WritableMap
         val signedInv = into_signed_raw()
         val rawInvoice = signedInv.raw_invoice()
 
-        result.putDouble("amount_milli_satoshis", (amount_milli_satoshis() as Option_u64Z.Some).some.toDouble())
+        result.putInt("amount_milli_satoshis", (amount_milli_satoshis() as Option_u64Z.Some).some.toInt())
         result.putString("description", rawInvoice.description()?.into_inner())
         result.putBoolean("check_signature",  signedInv.check_signature())
         result.putBoolean("is_expired",  is_expired)
@@ -85,3 +86,23 @@ val ChannelDetails.asJson: WritableMap
 
         return result
     }
+
+val RouteHop.asJson: WritableMap
+    get() {
+        val hop = Arguments.createMap()
+        hop.putHexString("pubkey", _pubkey)
+        hop.putInt("fee_msat", _fee_msat.toInt())
+        return hop
+    }
+
+fun WritableMap.putHexString(key: String, bytes: ByteArray?) {
+    if (bytes != null) {
+        putString(key, bytes.hexEncodedString())
+    } else {
+        putString(key, null)
+    }
+}
+
+fun WritableArray.pushHexString(bytes: ByteArray) {
+    pushString(bytes.hexEncodedString())
+}

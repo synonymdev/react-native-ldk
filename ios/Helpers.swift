@@ -72,6 +72,17 @@ extension ChannelDetails {
     }
 }
 
+extension LDKFramework.RouteHop {
+    var asJson: Any {
+        return [
+            "pubkey": get_pubkey(),
+            "fee_msat": get_fee_msat(),
+            "short_channel_id": get_short_channel_id(),
+            "cltv_expiry_delta": get_cltv_expiry_delta()
+        ]
+    }
+}
+
 extension Data {
     struct HexEncodingOptions: OptionSet {
         let rawValue: Int

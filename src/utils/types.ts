@@ -67,23 +67,25 @@ export type TChannelManagerOpenChannelRequest = {
 	funding_satoshis: number;
 	channel_type: string;
 };
+
+type TPath = {
+	pubkey: string;
+	fee_msat: number;
+	short_channel_id: number;
+	cltv_expiry_delta: number;
+};
+
 export type TChannelManagerPaymentPathSuccessful = {
 	payment_id: string;
 	payment_hash: string;
-	path: {
-		pubkey: string;
-		fee_msat: number;
-	}[];
+	path: TPath[];
 };
 export type TChannelManagerPaymentPathFailed = {
 	payment_id: string;
 	payment_hash: string;
 	rejected_by_dest: boolean;
-	channel_id: string;
-	path: {
-		pubkey: string;
-		fee_msat: number;
-	}[];
+	short_channel_id: string;
+	path: TPath[];
 	network_update: string;
 };
 export type TChannelManagerPaymentFailed = {
@@ -130,7 +132,7 @@ export type TChannel = {
 
 export type TInvoice = {
 	amount_milli_satoshis?: number;
-	description?: string,
+	description?: string;
 	check_signature: boolean;
 	is_expired: boolean;
 	duration_since_epoch: number;
