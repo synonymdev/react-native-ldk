@@ -117,7 +117,7 @@ class Ldk: NSObject {
             persister: persister
         )
 
-        handleResolve(resolve, .chain_monitor_init_success)
+        return handleResolve(resolve, .chain_monitor_init_success)
     }
 
     @objc
@@ -136,7 +136,7 @@ class Ldk: NSObject {
 
         keysManager = KeysManager(seed: String(seed).hexaBytes, starting_time_secs: seconds, starting_time_nanos: nanoSeconds)
 
-        handleResolve(resolve, .keys_manager_init_success)
+        return handleResolve(resolve, .keys_manager_init_success)
     }
 
     @objc
@@ -147,7 +147,7 @@ class Ldk: NSObject {
         }
 
         LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Loaded channel monitors: \(channelMonitors!.count)")
-        handleResolve(resolve, .load_channel_monitors_success)
+        return handleResolve(resolve, .load_channel_monitors_success)
     }
 
     @objc
@@ -171,14 +171,14 @@ class Ldk: NSObject {
         channelHandshakeLimits.set_force_announced_channel_preference(val: announcedChannels)
         userConfig!.set_peer_channel_config_limits(val: channelHandshakeLimits)
 
-        handleResolve(resolve, .config_init_success)
+        return handleResolve(resolve, .config_init_success)
     }
 
     @objc
     func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
         //TODO load cached version if exists instead. NetworkGraph.read(ser: serialized_backup)
-        handleResolve(resolve, .network_graph_init_success)
+        return handleResolve(resolve, .network_graph_init_success)
     }
 
     @objc
@@ -265,7 +265,7 @@ class Ldk: NSObject {
         peerHandler = channelManagerConstructor!.getTCPPeerHandler()
         invoicePayer = channelManagerConstructor!.payer
 
-        handleResolve(resolve, .channel_manager_init_success)
+        return handleResolve(resolve, .channel_manager_init_success)
     }
 
     @objc
@@ -277,7 +277,7 @@ class Ldk: NSObject {
         //TODO figure out how to read channel monitors and pass to chain monitor
         //chainMonitor.as_Watch().watch_channel(funding_txo: T##OutPoint, monitor: channelMonitors)
 
-        handleResolve(resolve, .chain_monitor_updated)
+        return handleResolve(resolve, .chain_monitor_updated)
     }
 
     //MARK: Update methods
@@ -285,13 +285,13 @@ class Ldk: NSObject {
     @objc
     func updateFees(_ high: NSInteger, normal: NSInteger, low: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         feeEstimator.update(high: UInt32(high), normal: UInt32(normal), low: UInt32(low))
-        handleResolve(resolve, .fees_updated)
+        return handleResolve(resolve, .fees_updated)
     }
 
     @objc
     func setLogLevel(_ level: NSInteger, active: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         logger.setLevel(level: UInt32(level), active: active)
-        handleResolve(resolve, .log_level_updated)
+        return handleResolve(resolve, .log_level_updated)
     }
 
     @objc
@@ -308,7 +308,7 @@ class Ldk: NSObject {
         channelManager.as_Confirm().best_block_updated(header: String(header).hexaBytes, height: UInt32(height))
         chainMonitor.as_Confirm().best_block_updated(header: String(header).hexaBytes, height: UInt32(height))
 
-        handleResolve(resolve, .chain_sync_success)
+        return handleResolve(resolve, .chain_sync_success)
     }
 
     @objc
@@ -325,7 +325,7 @@ class Ldk: NSObject {
             return handleReject(reject, .add_peer_fail)
         }
 
-        handleResolve(resolve, .add_peer_success)
+        return handleResolve(resolve, .add_peer_success)
     }
 
     @objc
@@ -351,7 +351,7 @@ class Ldk: NSObject {
             height: UInt32(height)
         )
 
-        handleResolve(resolve, .tx_set_confirmed)
+        return handleResolve(resolve, .tx_set_confirmed)
     }
 
     @objc
@@ -367,7 +367,7 @@ class Ldk: NSObject {
         channelManager.as_Confirm().transaction_unconfirmed(txid: String(txId).hexaBytes)
         chainMonitor.as_Confirm().transaction_unconfirmed(txid: String(txId).hexaBytes)
 
-        handleResolve(resolve, .tx_set_unconfirmed)
+        return handleResolve(resolve, .tx_set_unconfirmed)
     }
 
     //MARK: Payments
@@ -379,7 +379,7 @@ class Ldk: NSObject {
             return handleReject(reject, .decode_invoice_fail, nil, error?.to_str())
         }
 
-        resolve(invoice.asJson) //Invoice class extended in Helpers file
+        return resolve(invoice.asJson) //Invoice class extended in Helpers file
     }
 
     @objc
@@ -427,8 +427,6 @@ class Ldk: NSObject {
         default:
             return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
         }
-        
-        return handleReject(reject, .invoice_payment_fail_unknown, nil)
     }
 
     @objc
@@ -476,7 +474,7 @@ class Ldk: NSObject {
 
         channelManager.process_pending_htlc_forwards()
 
-        handleResolve(resolve, .process_pending_htlc_forwards_success)
+        return handleResolve(resolve, .process_pending_htlc_forwards_success)
     }
 
     @objc
@@ -486,11 +484,11 @@ class Ldk: NSObject {
         }
 
         let res = channelManager.claim_funds(payment_preimage: String(paymentPreimage).hexaBytes)
-        if res == false {
-            handleReject(reject, .claim_funds_failed)
+        if !res {
+            return handleReject(reject, .claim_funds_failed)
         }
 
-        handleResolve(resolve, .claim_funds_success)
+        return handleResolve(resolve, .claim_funds_success)
     }
 
     //MARK: Fetch methods
@@ -501,7 +499,7 @@ class Ldk: NSObject {
             "ldk": Bindings.swift_ldk_get_compiled_version(),
         ]
 
-        resolve(String(data: try! JSONEncoder().encode(res), encoding: .utf8)!)
+        return resolve(String(data: try! JSONEncoder().encode(res), encoding: .utf8)!)
     }
 
     @objc
@@ -510,7 +508,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
 
-        resolve(Data(channelManager.get_our_node_id()).hexEncodedString())
+        return resolve(Data(channelManager.get_our_node_id()).hexEncodedString())
     }
 
     @objc
@@ -519,7 +517,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_peer_manager)
         }
 
-        resolve(peerManager.get_peer_node_ids().map { Data($0).hexEncodedString() })
+        return resolve(peerManager.get_peer_node_ids().map { Data($0).hexEncodedString() })
     }
 
     @objc
@@ -528,7 +526,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
 
-        resolve(channelManager.list_channels().map { $0.asJson })
+        return resolve(channelManager.list_channels().map { $0.asJson })
     }
 
     @objc
@@ -537,7 +535,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
 
-        resolve(channelManager.list_usable_channels().map { $0.asJson })
+        return resolve(channelManager.list_usable_channels().map { $0.asJson })
     }
 }
 

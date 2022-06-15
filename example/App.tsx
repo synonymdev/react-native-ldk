@@ -153,8 +153,6 @@ const App = () => {
 								return setMessage(res.error.message);
 							}
 
-							console.log(JSON.stringify(res.value));
-
 							const { recover_payee_pub_key, amount_milli_satoshis } =
 								res.value;
 

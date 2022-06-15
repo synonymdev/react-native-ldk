@@ -66,7 +66,8 @@ enum class LdkErrors {
     invoice_payment_fail_partial,
     invoice_payment_fail_path_parameter_error,
     init_ldk_currency,
-    invoice_create_failed
+    invoice_create_failed,
+    claim_funds_failed
 }
 
 enum class LdkCallbackResponses {
@@ -83,7 +84,9 @@ enum class LdkCallbackResponses {
     chain_sync_success,
     invoice_payment_success,
     tx_set_confirmed,
-    tx_set_unconfirmed
+    tx_set_unconfirmed,
+    process_pending_htlc_forwards_success,
+    claim_funds_success
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -109,7 +112,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private var keysManager: KeysManager? = null
     private var channelManager: ChannelManager? = null
     private var userConfig: UserConfig? = null
-    private var channelMonitors: Array<ByteArray>? = null //TODO don't keep this, just add it from initChannelManager
+    private var channelMonitors: MutableList<ByteArray> = arrayListOf() //TODO don't keep this, just add it from initChannelManager
     private var networkGraph: NetworkGraph? = null
     private var peerManager: PeerManager? = null
     private var peerHandler: NioPeerHandler? = null
@@ -157,7 +160,11 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun loadChannelMonitors(channelMonitorStrings: ReadableArray, promise: Promise) {
+        channelMonitorStrings.toArrayList().iterator().forEach { hex ->
+            channelMonitors.add((hex as String).hexa())
+        }
         //TODO remove this in favour of passing channel monitors through in initChannelManager
+        LdkEventEmitter.send(EventTypes.swift_log, "Loaded channel monitors: ${channelMonitors.size}")
         handleResolve(promise, LdkCallbackResponses.load_channel_monitors_success)
     }
 
@@ -204,7 +211,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
         userConfig ?: return handleReject(promise, LdkErrors.init_user_config)
-//        channelMonitors ?: return handleReject(promise, LdkErrors.load_channel_monitors) //TODO remove when passed into this function
         networkGraph ?: return handleReject(promise, LdkErrors.init_network_graph)
 
         when (network) {
@@ -226,7 +232,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         try {
-            if (channelMonitors == null || channelMonitors!!.isEmpty()) {
+            if (channelMonitors.isEmpty()) {
                 channelManagerConstructor = ChannelManagerConstructor(
                     ldkNetwork,
                     userConfig,
@@ -243,7 +249,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 println("Untested node restore")
                 channelManagerConstructor = ChannelManagerConstructor(
                     serializedChannelManager.hexa(),
-                    channelMonitors,
+                    channelMonitors.toTypedArray(),
                     userConfig,
                     keysManager!!.as_KeysInterface(),
                     feeEstimator.feeEstimator,
@@ -430,6 +436,27 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val error = res as Result_InvoiceSignOrCreationErrorZ
         return handleReject(promise, LdkErrors.invoice_create_failed, Error(error.toString()))
+    }
+
+    @ReactMethod
+    fun processPendingHtlcForwards(promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        channelManager!!.process_pending_htlc_forwards()
+
+        return handleResolve(promise, LdkCallbackResponses.process_pending_htlc_forwards_success)
+    }
+
+    @ReactMethod
+    fun claimFunds(paymentPreimage: String, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        val res = channelManager!!.claim_funds(paymentPreimage.hexa())
+        if (!res) {
+            return handleReject(promise, LdkErrors.claim_funds_failed)
+        }
+
+        return handleResolve(promise, LdkCallbackResponses.claim_funds_success)
     }
 
     //MARK: Fetch methods
