@@ -1,0 +1,26 @@
+name: lint-check
+
+on:
+  push:
+    branches:
+      - 'gh-action-e2e-test'
+
+jobs:
+  eslint:
+    name: Run lint check
+    runs-on: macOS-latest
+    defaults:
+      run:
+        working-directory: example
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+
+      - name: Install Node.js dependencies
+        run: yarn install
