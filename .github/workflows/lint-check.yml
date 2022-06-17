@@ -1,0 +1,32 @@
+name: lint-check
+
+on:
+  pull_request:
+    branches:
+      - 'master'
+
+jobs:
+  eslint:
+    name: Run lint check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+
+      - name: Install Node.js dependencies
+        run: yarn install
+
+      - name: Lint check
+        run: yarn lint:check
+
+      - name: Run linters
+        uses: tinovyatkin/action-eslint@v1
+        with:
+          repo-token: ${{secrets.GITHUB_TOKEN}}
+          check-name: eslint
