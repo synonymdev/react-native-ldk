@@ -5,13 +5,13 @@ This is an example project for [`react-native-ldk`](https://github.com/synonymde
 
 ### Getting started
 
-####1. Clone & Install
+#### 1. Clone & Install
 ```bash
 git clone git@github.com:synonymdev/react-native-ldk.git && cd react-native-ldk && yarn install && yarn build && cd example && yarn install
 ````
-####2. Spin up Polar or a Lightning node of your choosing and connect an Electrum Server to it.
-####3. Update the Lightning node and Electrum server info in `example/utils/constants.ts`.
-####4. Run iOS or Android
+#### 2. Spin up Polar or a Lightning node of your choosing and connect an Electrum Server to it.
+#### 3. Update the Lightning node and Electrum server info in `example/utils/constants.ts`.
+#### 4. Run iOS or Android
 ```bash
 npx react-native run-ios
 #or
