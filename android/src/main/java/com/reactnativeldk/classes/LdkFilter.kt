@@ -13,7 +13,7 @@ class LdkFilter {
     var filter = Filter.new_impl(object : FilterInterface {
         override fun register_tx(txid: ByteArray, script_pubkey: ByteArray) {
             val body = Arguments.createMap()
-            body.putString("txid", txid.hexEncodedString())
+            body.putString("txid", txid.reversedArray().hexEncodedString())
             body.putString("script_pubkey", script_pubkey.hexEncodedString())
             LdkEventEmitter.send(EventTypes.register_tx, body)
         }
