@@ -2,6 +2,7 @@ import { TAvailableNetworks } from '../../src';
 
 export const selectedNetwork: TAvailableNetworks = 'bitcoinRegtest';
 
+//Lightning Peer Info
 export const peers = {
 	lnd: {
 		pubKey:
@@ -23,6 +24,7 @@ export const peers = {
 	},
 };
 
+//Electrum Server Info
 export const customPeers = [
 	{
 		host: '127.0.0.1',
