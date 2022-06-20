@@ -1,3 +1,5 @@
+import { Result } from './result';
+
 export enum ENetworks {
 	regtest = 'regtest',
 	testnet = 'testnet',
@@ -213,4 +215,86 @@ export enum ELdkLogLevels {
 	info = 3, //LDKLevel_Info
 	warn = 4, //LDKLevel_Warn
 	error = 5, //LDKLevel_Error
+}
+
+export type THeader = {
+	hex: string;
+	hash: string;
+	height: number;
+};
+
+export type TTransactionData = {
+	header: string;
+	height: number;
+	transaction: string;
+};
+
+export const DefaultTransactionDataShape: TTransactionData = {
+	header: '',
+	height: 0,
+	transaction: '',
+};
+
+export type TStorage = (key: string, ...args: Array<any>) => any;
+export type TGetTransactionData = (
+	txid: string,
+) => Promise<Result<TTransactionData>>;
+export type TGetBestBlock = () => Promise<THeader>;
+export type TWatchTxs = {
+	script_pubkey: string;
+	txid: string;
+};
+export type TWatchOutputs = {
+	block_hash: string;
+	index: number;
+	script_pubkey: string;
+};
+
+export enum ELdkData {
+	storageKey = 'LDKData', // TODO: Replace with init seed to allow for multiple lightning profiles/accounts in storage.
+	channelManager = 'channelManager',
+	channelData = 'channelData',
+	peers = 'peers', //TODO: Save peers after successfully adding them.
+}
+export type TLdkData = {
+	[ELdkData.channelManager]: string;
+	[ELdkData.channelData]: {
+		[id: string]: string;
+	};
+	peers: string[];
+};
+
+export const DefaultLdkDataShape: TLdkData = {
+	[ELdkData.channelManager]: '',
+	[ELdkData.channelData]: {},
+	[ELdkData.peers]: [],
+};
+
+export type TAvailableNetworks =
+	| 'bitcoin'
+	| 'bitcoinTestnet'
+	| 'bitcoinRegtest';
+
+export interface IHeader {
+	height: number;
+	hash: string;
+	hex: string;
+}
+
+export interface IGetHeaderResponse {
+	id: Number;
+	error: boolean;
+	method: 'getHeader';
+	data: string;
+	network: TAvailableNetworks;
+}
+
+export interface ISubscribeToHeader {
+	data: {
+		height: number;
+		hex: string;
+	};
+	error: boolean;
+	id: string;
+	method: string;
 }

@@ -425,7 +425,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val res = UtilMethods.create_invoice_from_channelmanager(
             channelManager,
             keysManager!!.as_KeysInterface(),
-            Currency.LDKCurrency_Bitcoin,
+            ldkCurrency,
             Option_u64Z.some(amountSats.toLong()),
             description
         );

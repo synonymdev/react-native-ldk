@@ -1,75 +1,80 @@
-import React, { useState } from 'react';
+import './shim';
+import React, { useEffect, useState } from 'react';
 import {
-	Alert,
-	Button,
 	SafeAreaView,
 	ScrollView,
-	StatusBar,
 	StyleSheet,
 	Text,
+	View,
+	Button,
+	Alert,
 } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
+import { dummyRandomSeed, setItem, setupLdk, syncLdk } from './ldk';
+import { connectToElectrum, subscribeToHeader } from './electrum';
+import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm from '@synonymdev/react-native-ldk';
-import ldk from '@synonymdev/react-native-ldk/dist/ldk'; //For direct access to LDK functions
-
-//const testNodePubkey = '034ecfd567a64f06742ac300a2985676abc0b1dc6345904a08bb52d5418e685f79';
-//const testNodeAddress = '35.240.72.95';
-//const testNodePort = 9735;
 
 const App = () => {
-	const [message, setMessage] = useState('');
+	const [message, setMessage] = useState('...');
+
+	useEffect(() => {
+		(async (): Promise<void> => {
+			// Connect to Electrum Server
+			const electrumResponse = await connectToElectrum({});
+			if (electrumResponse.isErr()) {
+				setMessage(
+					`Unable to connect to Electrum Server:\n ${electrumResponse.error.message}`,
+				);
+				return;
+			}
+			// Subscribe to new blocks and sync LDK accordingly.
+			await subscribeToHeader({
+				onReceive: async () => {
+					const syncRes = await syncLdk();
+					if (syncRes.isErr()) {
+						setMessage(syncRes.error.message);
+						return;
+					}
+					setMessage(syncRes.value);
+				},
+			});
+			// Setup LDK
+			const setupResponse = await setupLdk();
+			if (setupResponse.isErr()) {
+				setMessage(setupResponse.error.message);
+				return;
+			}
+			setMessage(JSON.stringify(setupResponse.value));
+		})();
+	}, []);
 
 	return (
-		<>
-			<StatusBar barStyle="dark-content" />
-			<SafeAreaView>
-				<Text style={styles.title}>react-native-ldk</Text>
-				<ScrollView
-					contentInsetAdjustmentBehavior="automatic"
-					style={styles.scrollView}>
-					<Text style={styles.message}>{message}</Text>
-
+		<SafeAreaView style={styles.container}>
+			<ScrollView
+				contentInsetAdjustmentBehavior="automatic"
+				style={styles.container}>
+				<Text>{message}</Text>
+				<View>
 					<Button
-						title={'Start'}
+						title={'Create New Random Seed'}
 						onPress={async () => {
-							setMessage('Starting LDK...');
-							try {
-								const res = await lm.start({});
-
-								if (res.isErr()) {
-									setMessage(res.error.message);
-									return;
-								}
-
-								setMessage(JSON.stringify(res.value));
-							} catch (e) {
-								console.error(e);
-								setMessage(e.toString());
-							}
+							const seed = dummyRandomSeed();
+							await setItem('ldkseed', seed);
+							await setItem('LDKData', '');
+							setMessage(`New seed created: ${seed}`);
 						}}
 					/>
 
 					<Button
-						title={'Add peer'}
+						title={'Sync LDK'}
 						onPress={async () => {
-							setMessage('Adding peer...');
-							try {
-								const res = await ldk.addPeer({
-									pubKey:
-										'02b96088e17dd53a4297d0769e8166a64c25ff47b143cbd6615723cc2a49efbb65',
-									address: '10.0.0.103',
-									port: 9837,
-									timeout: 5000,
-								});
-
-								if (res.isErr()) {
-									setMessage(res.error.message);
-									return;
-								}
-
-								setMessage(JSON.stringify(res.value));
-							} catch (e) {
-								setMessage(e.toString());
+							const syncRes = await syncLdk();
+							if (syncRes.isErr()) {
+								setMessage(syncRes.error.message);
+								return;
 							}
+							setMessage(syncRes.value);
 						}}
 					/>
 
@@ -77,14 +82,12 @@ const App = () => {
 						title={'List peers'}
 						onPress={async () => {
 							try {
-								const res = await ldk.listPeers();
-
-								if (res.isErr()) {
-									setMessage(res.error.message);
+								const listPeers = await ldk.listPeers();
+								if (listPeers.isErr()) {
+									setMessage(listPeers.error.message);
 									return;
 								}
-
-								setMessage(JSON.stringify(res.value));
+								setMessage(JSON.stringify(listPeers.value));
 							} catch (e) {
 								setMessage(e.toString());
 							}
@@ -95,20 +98,30 @@ const App = () => {
 						title={'List channels'}
 						onPress={async () => {
 							try {
-								const res = await ldk.listChannels();
-
-								if (res.isErr()) {
-									setMessage(res.error.message);
+								const listChannels = await ldk.listChannels();
+								if (listChannels.isErr()) {
+									setMessage(listChannels.error.message);
 									return;
 								}
+								const keys = Object.keys(listChannels);
+								keys.sort();
 
 								let msg = '';
-								res.value.forEach((channel) => {
-									Object.keys(channel).forEach((key) => {
-										// @ts-ignore
-										msg += `${key}: ${channel[key]}\n`;
-									});
-								});
+								await Promise.all(
+									listChannels.value.map(async (channel) => {
+										const ordered = Object.keys(channel)
+											.sort()
+											.reduce((obj, key) => {
+												obj[key] = channel[key];
+												return obj;
+											}, {});
+										await Promise.all(
+											Object.keys(ordered).map((key) => {
+												msg += `${key}: ${ordered[key]}\n`;
+											}),
+										);
+									}),
+								);
 
 								setMessage(msg);
 							} catch (e) {
@@ -118,43 +131,31 @@ const App = () => {
 					/>
 
 					<Button
-						title={'List usable channels'}
+						title={'List watch transactions'}
 						onPress={async () => {
-							try {
-								const res = await ldk.listUsableChannels();
+							console.log(lm.watchTxs);
+							setMessage(`Watch TXs: ${JSON.stringify(lm.watchTxs)}`);
+						}}
+					/>
 
-								if (res.isErr()) {
-									setMessage(res.error.message);
-									return;
-								}
-
-								let msg = '';
-								res.value.forEach((channel) => {
-									Object.keys(channel).forEach((key) => {
-										// @ts-ignore
-										msg += `${key}: ${channel[key]}\n`;
-									});
-								});
-
-								setMessage(msg);
-							} catch (e) {
-								setMessage(e.toString());
-							}
+					<Button
+						title={'List watch outputs'}
+						onPress={async () => {
+							setMessage(`Watch Outputs: ${JSON.stringify(lm.watchOutputs)}`);
 						}}
 					/>
 
 					<Button
 						title={'Pay invoice'}
 						onPress={async () => {
-							const paymentRequest =
-								'lnbcrt100u1p3gw4lmpp5g8nn2m856gwmc2rxlsgacw9746tyrzz5nh8svq6s6usmqqwdkn9qdp92phkcctjypykuan0d93k2grxdaezqcmpwfhkcxqyjw5qcqp2sp5csqwsteyyfeg6l0pfa6x6cwh88aklqzy0g7s5ndrg55h5fanwajq9qy9qsqtvfuzpl3w00tfvfgwt0waxsl9fe4z6eu4cwttulx5c5p5fl442vynngr9w0un3janvcr68a3vtlyn3js0j332wzdry5wneat6f2365gp6xstn6';
-							const res = await ldk.decode({ paymentRequest });
-							if (res.isErr()) {
-								return setMessage(res.error.message);
+							const paymentRequest = await Clipboard.getString();
+							const decode = await ldk.decode({ paymentRequest });
+							if (decode.isErr()) {
+								return setMessage(decode.error.message);
 							}
 
 							const { recover_payee_pub_key, amount_milli_satoshis } =
-								res.value;
+								decode.value;
 
 							Alert.alert(
 								`Pay ${amount_milli_satoshis ?? 0}`,
@@ -185,18 +186,19 @@ const App = () => {
 						title={'Create invoice'}
 						onPress={async () => {
 							try {
-								const res = await ldk.createPaymentRequest({
-									amountSats: 1234,
+								const createPaymentRequest = await ldk.createPaymentRequest({
+									amountSats: 1000000,
 									description: 'paymeplz',
 								});
 
-								if (res.isErr()) {
-									setMessage(res.error.message);
+								if (createPaymentRequest.isErr()) {
+									setMessage(createPaymentRequest.error.message);
 									return;
 								}
 
-								const { to_str } = res.value;
-
+								const { to_str } = createPaymentRequest.value;
+								console.log(to_str);
+								Clipboard.setString(to_str);
 								setMessage(to_str);
 							} catch (e) {
 								setMessage(e.toString());
@@ -212,6 +214,7 @@ const App = () => {
 								return setMessage(nodeIdRes.error.message);
 							}
 
+							Clipboard.setString(nodeIdRes.value);
 							console.log(nodeIdRes.value);
 
 							setMessage(`Node ID: ${nodeIdRes.value}`);
@@ -221,32 +224,23 @@ const App = () => {
 					<Button
 						title={'Show version'}
 						onPress={async () => {
-							const res = await ldk.version();
-							if (res.isErr()) {
-								return setMessage(res.error.message);
+							const ldkVersion = await ldk.version();
+							if (ldkVersion.isErr()) {
+								return setMessage(ldkVersion.error.message);
 							}
 
-							setMessage(res.value.ldk);
+							setMessage(ldkVersion.value.ldk);
 						}}
 					/>
-				</ScrollView>
-			</SafeAreaView>
-		</>
+				</View>
+			</ScrollView>
+		</SafeAreaView>
 	);
 };
 
 const styles = StyleSheet.create({
-	scrollView: {
-		height: '100%',
-	},
-	title: {
-		fontSize: 18,
-		textAlign: 'center',
-	},
-	message: {
-		margin: 10,
-		textAlign: 'center',
-		color: 'green',
+	container: {
+		flex: 1,
 	},
 });
 

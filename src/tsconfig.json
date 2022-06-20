@@ -5,7 +5,7 @@
     "strict": true,
     "outDir": "../dist",
     "jsx": "react-native",
-    "lib": ["es2016"],
+    "lib": ["es2016", "dom"],
     "declaration": true,
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,

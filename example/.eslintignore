@@ -4,7 +4,6 @@ ios/*
 android/*
 !.eslintrc.js
 metro.config.js
-postinstall.js
 __mocks__/**
 coverage
 

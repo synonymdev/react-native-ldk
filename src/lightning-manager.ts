@@ -21,13 +21,15 @@ import {
 	TRegisterOutputEvent,
 	TRegisterTxEvent,
 	TChannelManagerPendingHtlcsForwardable,
+	TStorage,
+	TGetBestBlock,
+	THeader,
+	ELdkData,
+	TLdkData,
+	DefaultLdkDataShape,
+	TGetTransactionData,
 } from './utils/types';
-import {
-	dummyRandomSeed,
-	regtestBestBlock,
-	regtestBlockHeaderHex,
-	regtestGenesisBlockHash,
-} from './utils/regtest-dev-tools';
+import { dummyRandomSeed } from './utils/regtest-dev-tools';
 
 //TODO startup steps
 // Step 0: Listen for events ✅
@@ -52,9 +54,20 @@ import {
 // Step 19: Background Processing
 
 class LightningManager {
-	currentBlockHash = '';
+	currentBlockHeight: number = 0;
 	watchTxs: TRegisterTxEvent[] = [];
 	watchOutputs: TRegisterOutputEvent[] = [];
+	getBestBlock?: TGetBestBlock = async (): Promise<THeader> => ({
+		hex: '',
+		hash: '',
+		height: 0,
+	});
+	seed: string = '';
+	getItem: TStorage = () => null;
+	setItem: TStorage = () => null;
+	getTransactionData: TGetTransactionData = async () =>
+		err('getTransactionData is not set.');
+	network: ENetworks = ENetworks.regtest;
 
 	constructor() {
 		// Step 0: Subscribe to all events
@@ -128,7 +141,25 @@ class LightningManager {
 	 * Spins up and syncs all processes
 	 * @returns {Promise<Err<string> | Ok<string>>}
 	 */
-	async start({ seed }: { seed?: string }): Promise<Result<string>> {
+	async start({
+		seed,
+		genesisHash,
+		isExistingNode,
+		getBestBlock,
+		getItem,
+		setItem,
+		getTransactionData,
+		network = ENetworks.regtest,
+	}: {
+		seed?: string;
+		genesisHash: string;
+		isExistingNode: boolean;
+		getBestBlock: TGetBestBlock;
+		getItem: TStorage;
+		setItem: TStorage;
+		getTransactionData: TGetTransactionData;
+		network?: ENetworks;
+	}): Promise<Result<string>> {
 		if (__DEV__ && !seed) {
 			seed = dummyRandomSeed();
 		}
@@ -137,8 +168,42 @@ class LightningManager {
 				'No seed provided. Please pass a seed to the start method and try again.',
 			);
 		}
-		const bestBlock = await regtestBestBlock();
-		const isExistingNode = false;
+		if (!getBestBlock) {
+			return err('getBestBlock method not specified in start method.');
+		}
+		if (!genesisHash) {
+			return err(
+				'No genesisHash provided. Please pass genesisHash to the start method and try again.',
+			);
+		}
+		if (!setItem) {
+			return err(
+				'No setItem method provided. Please pass setItem to the start method and try again.',
+			);
+		}
+		if (!getItem) {
+			return err(
+				'No getItem method provided. Please pass getItem to the start method and try again.',
+			);
+		}
+		if (!getTransactionData) {
+			return err('getTransactionData is not set in start method.');
+		}
+		this.getBestBlock = getBestBlock;
+		this.seed = seed;
+		this.network = network;
+		this.setItem = setItem;
+		this.getItem = getItem;
+		this.getTransactionData = getTransactionData;
+		const bestBlock = await this.getBestBlock();
+		if (!bestBlock?.hash || !bestBlock?.hex || !bestBlock?.height) {
+			return err(
+				'The getBestBlock method is not providing the appropriate block hex, hash or height.',
+			);
+		}
+		this.currentBlockHeight = bestBlock.height;
+
+		const ldkData = await this.getLdkData();
 
 		// Step 1: Initialize the FeeEstimator
 		// Lazy loaded in native code
@@ -182,20 +247,22 @@ class LightningManager {
 		}
 
 		// Step 6: Initialize the KeysManager
-		const keysManager = await ldk.initKeysManager(seed); //TODO get real stored/generated 32-byte entropy
+		const keysManager = await ldk.initKeysManager(seed);
 		if (keysManager.isErr()) {
 			return keysManager;
 		}
 
 		// Step 7: Read ChannelMonitors state from disk
-		const channelMonitorsRes = await ldk.loadChannelMonitors([]);
+		let channelData = ldkData[ELdkData.channelData];
+		const channelMonitorsRes = await ldk.loadChannelMonitors(
+			Object.values(channelData),
+		);
 		if (channelMonitorsRes.isErr()) {
 			return channelMonitorsRes;
 		}
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
 		// [Needs to happen first before ChannelManagerConstructor inside initChannelManager() can be called 🤷️]
-		const genesisHash = await regtestGenesisBlockHash();
 		const networkGraph = await ldk.initNetworkGraph(
 			//TODO load a cached version once persisted
 			genesisHash,
@@ -215,23 +282,21 @@ class LightningManager {
 			return confRes;
 		}
 
+		const serializedChannelManager = ldkData[ELdkData.channelManager] ?? '';
 		const channelManagerRes = await ldk.initChannelManager({
-			network: ENetworks.regtest,
-			serializedChannelManager: '', //TODO [UNTESTED]
-			bestBlock: {
-				hash: bestBlock.bestblockhash,
-				height: bestBlock.blocks,
-			},
+			network: this.network,
+			serializedChannelManager,
+			bestBlock,
 		});
 		if (channelManagerRes.isErr()) {
 			return channelManagerRes;
 		}
 
 		// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
-		if (!isExistingNode) {
+		if (isExistingNode) {
 			// https://github.com/lightningdevkit/ldk-sample/blob/c0a722430b8fbcb30310d64487a32aae839da3e8/src/main.rs#L479
 			// Sample app only syncs when restarting an existing node
-			await this.syncLdk();
+			return await this.syncLdk();
 		}
 
 		// Step 10: Give ChannelMonitors to ChainMonitor
@@ -242,18 +307,7 @@ class LightningManager {
 		// Step 13: Initialize networking
 		// Done with initChannelManager
 
-		this.keepBlockchainInSync();
-
 		return ok('Node running');
-	}
-
-	/**
-	 * Keeps polling for best block.
-	 * TODO this should subscribe (electrum?) somewhere instead of polling.
-	 * @returns {Promise<void>}
-	 */
-	keepBlockchainInSync(): void {
-		setInterval(this.syncLdk, 2500);
 	}
 
 	/**
@@ -262,41 +316,91 @@ class LightningManager {
 	 * @returns {Promise<Err<string> | Ok<string>>}
 	 */
 	async syncLdk(): Promise<Result<string>> {
-		const { bestblockhash, blocks } = await regtestBestBlock();
+		if (!this.getBestBlock) {
+			return err('No getBestBlock method provided.');
+		}
+		const bestBlock = await this.getBestBlock();
+		const header = bestBlock?.hex;
+		const height = bestBlock?.height;
 
 		//Don't update unnecessarily
-		if (this.currentBlockHash !== bestblockhash) {
-			const header = await regtestBlockHeaderHex(bestblockhash);
+		if (this.currentBlockHeight !== height) {
 			const syncToTip = await ldk.syncToTip({
 				header,
-				height: blocks,
+				height,
 			});
 			if (syncToTip.isErr()) {
 				return syncToTip;
 			}
 
-			this.currentBlockHash = bestblockhash;
+			this.currentBlockHeight = height;
 		}
 
 		//TODO fetch latest data for watchTxs and watchOutputs. Feed any updates to LDK.
-		// const setRes = await ldk.setTxConfirmed({
-		// 	header: 'hex_encoded_header',
-		// 	height: 1,
-		// 	transaction: 'hex_encoded_tx',
-		// 	pos: 1
-		// });
-		// const unsetRes = await ldk.setTxUnconfirmed({ txId: 'set_me' });
+		await Promise.all(
+			this.watchTxs.map(async ({ txid }, i) => {
+				const response = await this.getTransactionData(txid);
+				if (response.isErr()) {
+					return err(response.error.message);
+				}
+				if (response.value.height > 0) {
+					const pos = this.watchOutputs[i].index;
+					await ldk.setTxConfirmed({
+						header: response.value.header,
+						height: response.value.height,
+						transaction: response.value.transaction,
+						pos,
+					});
+				} else {
+					/*
+					await ldk.setTxUnconfirmed({
+						txId: txid,
+					});
+				*/
+				}
+			}),
+		);
 
-		return ok(`Synced to block ${blocks}`);
+		return ok(`Synced to block ${height}`);
 	}
+
+	getLdkData = async (): Promise<TLdkData> => {
+		let ldkData = await this.getItem(ELdkData.storageKey);
+		return ldkData ? JSON.parse(ldkData) : DefaultLdkDataShape;
+	};
 
 	//LDK events
 
 	private onRegisterTx(res: TRegisterTxEvent): void {
+		(async () => {
+			// Set new/unconfirmed transaction.
+			const filterRes = await Promise.all(
+				this.watchTxs.filter((watchTx) => {
+					if (watchTx.txid === res.txid) {
+						return watchTx;
+					}
+				}),
+			);
+			if (filterRes.length > 0) {
+				await ldk.setTxUnconfirmed({
+					txId: res.txid,
+				});
+			}
+			//const ldkData = await this.getLdkData();
+			//ldkData[ELdkData.watchTxs].push(res);
+			//this.setItem(ELdkData.storageKey, JSON.stringify(ldkData));
+		})();
+		console.log('onRegisterTx: watchTxs', res);
 		this.watchTxs.push(res);
 	}
 
 	private onRegisterOutput(res: TRegisterOutputEvent): void {
+		/*(async () => {
+			const ldkData = await this.getLdkData();
+			ldkData[ELdkData.watchOutputs].push(res);
+			this.setItem(ELdkData.storageKey, JSON.stringify(ldkData));
+		})();*/
+		console.log('onRegisterOutput: watchOutputs', res);
 		this.watchOutputs.push(res);
 	}
 
@@ -306,15 +410,33 @@ class LightningManager {
 
 	private onPersistManager(res: TPersistManagerEvent): void {
 		//Around 8kb for one channel backup stored as a hex string
-		console.log(`onPersistManager channel_manager: ${res.channel_manager}`); //TODO
+		(async () => {
+			const ldkData = await this.getLdkData();
+			ldkData[ELdkData.channelManager] = res.channel_manager;
+			this.setItem(ELdkData.storageKey, JSON.stringify(ldkData));
+		})();
+		console.log('onPersistManager channel_manager', res);
+		//console.log(`onPersistManager channel_manager: ${res.channel_manager}`);
 	}
 
 	private onPersistNewChannel(res: TChannelBackupEvent): void {
-		console.log(`onPersistNewChannel: ${res.id} = ${res.data}`); //TODO
+		(async (): Promise<void> => {
+			const ldkData = await this.getLdkData();
+			ldkData[ELdkData.channelData][`${res.id}`] = res.data;
+			this.setItem(ELdkData.storageKey, JSON.stringify(ldkData));
+		})();
+		console.log('onPersistNewChannel', res);
+		//console.log(`onPersistNewChannel: ${res.id} = ${res.data}`);
 	}
 
 	private onUpdatePersistedChannel(res: TChannelBackupEvent): void {
-		console.log(`onUpdatePersistedChannel: ${res.id} = ${res.data}`); //TODO
+		(async (): Promise<void> => {
+			const ldkData = await this.getLdkData();
+			ldkData[ELdkData.channelData][`${res.id}`] = res.data;
+			this.setItem(ELdkData.storageKey, JSON.stringify(ldkData));
+		})();
+		console.log('onUpdatePersistedChannel', res);
+		//console.log(`onUpdatePersistedChannel: ${res.id} = ${res.data}`);
 	}
 
 	private onPersistGraph(res: TPersistGraphEvent): void {
@@ -341,6 +463,7 @@ class LightningManager {
 		} else {
 			ldk.claimFunds(res.payment_preimage).catch(console.error);
 		}
+		console.log(`onChannelManagerPaymentReceived: ${JSON.stringify(res)}`);
 	}
 
 	private onChannelManagerPaymentSent(res: TChannelManagerPaymentSent): void {
@@ -379,6 +502,7 @@ class LightningManager {
 	private onChannelManagerPendingHtlcsForwardable(
 		res: TChannelManagerPendingHtlcsForwardable,
 	): void {
+		console.log('onChannelManagerPendingHtlcsForwardable', res);
 		ldk.processPendingHtlcForwards().catch(console.error);
 	}
 
