@@ -24,3 +24,6 @@ jobs:
 
       - name: Install Node.js dependencies
         run: yarn install
+
+      - name: Testing iOS app
+        run: exec ./.github/scripts/ios-e2e.sh

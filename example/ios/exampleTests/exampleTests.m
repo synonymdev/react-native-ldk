@@ -4,8 +4,7 @@
 #import <React/RCTLog.h>
 #import <React/RCTRootView.h>
 
-#define TIMEOUT_SECONDS 600
-#define TEXT_TO_LOOK_FOR @"Welcome to React"
+#define TIMEOUT_SECONDS 60
 
 @interface exampleTests : XCTestCase
 
@@ -26,7 +25,9 @@
   return NO;
 }
 
-- (void)testRendersWelcomeScreen
+#define TEXT_TO_LOOK_FOR_AFTER_SETUP @"SUCCESS"
+
+- (void)testLdkSetup
 {
   UIViewController *vc = [[[RCTSharedApplication() delegate] window] rootViewController];
   NSDate *date = [NSDate dateWithTimeIntervalSinceNow:TIMEOUT_SECONDS];
@@ -48,7 +49,7 @@
 
     foundElement = [self findSubviewInView:vc.view
                                   matching:^BOOL(UIView *view) {
-                                    if ([view.accessibilityLabel isEqualToString:TEXT_TO_LOOK_FOR]) {
+                                    if ([view.accessibilityLabel isEqualToString:TEXT_TO_LOOK_FOR_AFTER_SETUP]) {
                                       return YES;
                                     }
                                     return NO;
@@ -60,7 +61,8 @@
 #endif
 
   XCTAssertNil(redboxError, @"RedBox error: %@", redboxError);
-  XCTAssertTrue(foundElement, @"Couldn't find element with text '%@' in %d seconds", TEXT_TO_LOOK_FOR, TIMEOUT_SECONDS);
+    
+  XCTAssertTrue(foundElement, @"Couldn't find element with text '%@' in %d seconds", TEXT_TO_LOOK_FOR_AFTER_SETUP, TIMEOUT_SECONDS);
 }
 
 @end
