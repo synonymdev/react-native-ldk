@@ -67,23 +67,25 @@ export type TChannelManagerOpenChannelRequest = {
 	funding_satoshis: number;
 	channel_type: string;
 };
+
+type TPath = {
+	pubkey: string;
+	fee_msat: number;
+	short_channel_id: number;
+	cltv_expiry_delta: number;
+};
+
 export type TChannelManagerPaymentPathSuccessful = {
 	payment_id: string;
 	payment_hash: string;
-	path: {
-		pubkey: string;
-		fee_msat: number;
-	}[];
+	path: TPath[];
 };
 export type TChannelManagerPaymentPathFailed = {
 	payment_id: string;
 	payment_hash: string;
 	rejected_by_dest: boolean;
-	channel_id: string;
-	path: {
-		pubkey: string;
-		fee_msat: number;
-	}[];
+	short_channel_id: string;
+	path: TPath[];
 	network_update: string;
 };
 export type TChannelManagerPaymentFailed = {
@@ -113,23 +115,24 @@ export type TChannel = {
 	is_outbound: boolean;
 	balance_msat: number;
 	counterparty: string;
-	funding_txo: string;
-	channel_type: string;
+	funding_txo?: string;
+	channel_type?: string;
 	user_channel_id: number;
 	confirmations_required?: number;
 	short_channel_id?: number;
 	is_funding_locked: boolean;
 	inbound_scid_alias?: number;
-	get_inbound_payment_scid?: number;
+	inbound_payment_scid?: number;
 	inbound_capacity_msat: number;
-	channel_value_satoshis: number;
 	outbound_capacity_msat: number;
+	channel_value_satoshis: number;
 	force_close_spend_delay?: number;
 	unspendable_punishment_reserve?: number;
 };
 
 export type TInvoice = {
 	amount_milli_satoshis?: number;
+	description?: string;
 	check_signature: boolean;
 	is_expired: boolean;
 	duration_since_epoch: number;
@@ -140,7 +143,7 @@ export type TInvoice = {
 	payment_hash: string;
 	payment_secret: string;
 	timestamp: number;
-	features: string;
+	features?: string;
 	currency: number;
 	to_str: string; //Actual bolt11 invoice string
 };
@@ -165,6 +168,7 @@ export type TAddPeerReq = {
 	address: string;
 	port: number;
 	pubKey: string;
+	timeout: number;
 };
 
 export type TSetTxConfirmedReq = {

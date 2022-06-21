@@ -27,20 +27,21 @@ func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ erro
 extension Invoice {
     var asJson: Any {
         return [
-            "amount_milli_satoshis": self.amount_milli_satoshis().getValue() as Any,
-            "check_signature": self.check_signature().isOk(),
-            "is_expired": self.is_expired(),
-            "duration_since_epoch": self.duration_since_epoch(),
-            "expiry_time": self.expiry_time(),
-            "min_final_cltv_expiry": self.min_final_cltv_expiry(),
-            "payee_pub_key": Data(self.payee_pub_key()).hexEncodedString(),
-            "recover_payee_pub_key": Data(self.recover_payee_pub_key()).hexEncodedString(),
-            "payment_hash": Data(self.payment_hash()).hexEncodedString(),
-            "payment_secret": Data(self.payment_secret()).hexEncodedString(),
-            "timestamp": self.timestamp(),
-            "features": Data(self.features().write()).hexEncodedString(),
-            "currency": self.currency().rawValue,
-            "to_str": self.to_str()
+            "amount_milli_satoshis": amount_milli_satoshis().getValue() as Any,
+            "description": into_signed_raw().raw_invoice().description(),
+            "check_signature": check_signature().isOk(),
+            "is_expired": is_expired(),
+            "duration_since_epoch": duration_since_epoch(),
+            "expiry_time": expiry_time(),
+            "min_final_cltv_expiry": min_final_cltv_expiry(),
+            "payee_pub_key": Data(payee_pub_key()).hexEncodedString(),
+            "recover_payee_pub_key": Data(recover_payee_pub_key()).hexEncodedString(),
+            "payment_hash": Data(payment_hash()).hexEncodedString(),
+            "payment_secret": Data(payment_secret()).hexEncodedString(),
+            "timestamp": timestamp(),
+            "features": Data(features().write()).hexEncodedString(),
+            "currency": currency().rawValue,
+            "to_str": to_str()
         ]
     }
 }
@@ -48,25 +49,36 @@ extension Invoice {
 extension ChannelDetails {
     var asJson: Any {
         return [
-            "channel_id": Data(self.get_channel_id()).hexEncodedString(),
-            "is_public": self.get_is_public(),
-            "is_usable": self.get_is_usable(),
-            "is_outbound": self.get_is_outbound(),
-            "balance_msat": self.get_balance_msat(),
-            "counterparty": Data(self.get_counterparty().write()).hexEncodedString(),
-            "funding_txo": Data(self.get_funding_txo()?.write() ?? []).hexEncodedString(),
-            "channel_type": Data(self.get_channel_type().write()).hexEncodedString(),
-            "user_channel_id": self.get_user_channel_id(), //Number
-            "confirmations_required": self.get_confirmations_required().getValue() as Any, // Optional number
-            "short_channel_id": self.get_short_channel_id().getValue() as Any, //Optional number
-            "is_funding_locked": self.get_is_funding_locked(), //Bool
-            "inbound_scid_alias": self.get_inbound_scid_alias().getValue() as Any, //Optional number
-            "get_inbound_payment_scid": self.get_inbound_payment_scid().getValue() as Any, //Optional number,
-            "inbound_capacity_msat": self.get_inbound_capacity_msat(),
-            "channel_value_satoshis": self.get_channel_value_satoshis(),
-            "outbound_capacity_msat": self.get_outbound_capacity_msat(),
-            "force_close_spend_delay": self.get_force_close_spend_delay().getValue() as Any, //Optional number
-            "unspendable_punishment_reserve": self.get_unspendable_punishment_reserve().getValue() as Any //Optional number
+            "channel_id": Data(get_channel_id()).hexEncodedString(),
+            "is_public": get_is_public(),
+            "is_usable": get_is_usable(),
+            "is_outbound": get_is_outbound(),
+            "balance_msat": get_balance_msat(),
+            "counterparty": Data(get_counterparty().write()).hexEncodedString(),
+            "funding_txo": Data(get_funding_txo()?.write() ?? []).hexEncodedString(),
+            "channel_type": Data(get_channel_type().write()).hexEncodedString(),
+            "user_channel_id": get_user_channel_id(), //Number
+            "confirmations_required": get_confirmations_required().getValue() as Any, // Optional number
+            "short_channel_id": get_short_channel_id().getValue() as Any, //Optional number
+            "is_funding_locked": get_is_funding_locked(), //Bool
+            "inbound_scid_alias": get_inbound_scid_alias().getValue() as Any, //Optional number
+            "inbound_payment_scid": get_inbound_payment_scid().getValue() as Any, //Optional number,
+            "inbound_capacity_msat": get_inbound_capacity_msat(),
+            "outbound_capacity_msat": get_outbound_capacity_msat(),
+            "channel_value_satoshis": get_channel_value_satoshis(),
+            "force_close_spend_delay": get_force_close_spend_delay().getValue() as Any, //Optional number
+            "unspendable_punishment_reserve": get_unspendable_punishment_reserve().getValue() as Any //Optional number
+        ]
+    }
+}
+
+extension LDKFramework.RouteHop {
+    var asJson: Any {
+        return [
+            "pubkey": get_pubkey(),
+            "fee_msat": get_fee_msat(),
+            "short_channel_id": get_short_channel_id(),
+            "cltv_expiry_delta": get_cltv_expiry_delta()
         ]
     }
 }
@@ -79,7 +91,7 @@ extension Data {
 
     func hexEncodedString(options: HexEncodingOptions = []) -> String {
         let format = options.contains(.upperCase) ? "%02hhX" : "%02hhx"
-        return self.map { String(format: format, $0) }.joined()
+        return map { String(format: format, $0) }.joined()
     }
 }
 
@@ -88,8 +100,8 @@ extension StringProtocol {
     var hexaBytes: [UInt8] { .init(hexa) }
     private var hexa: UnfoldSequence<UInt8, Index> {
         sequence(state: startIndex) { startIndex in
-            guard startIndex < self.endIndex else { return nil }
-            let endIndex = self.index(startIndex, offsetBy: 2, limitedBy: self.endIndex) ?? self.endIndex
+            guard startIndex < endIndex else { return nil }
+            let endIndex = index(startIndex, offsetBy: 2, limitedBy: endIndex) ?? endIndex
             defer { startIndex = endIndex }
             return UInt8(self[startIndex..<endIndex], radix: 16)
         }

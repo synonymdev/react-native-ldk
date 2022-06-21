@@ -76,6 +76,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             )
             return
         case .OpenChannelRequest:
+            //Use if we ever manually accept inbound channels. Setting in initConfig.
             guard let openChannelRequest = event.getValueAsOpenChannelRequest() else {
                 return handleEventError(event)
             }
@@ -89,7 +90,6 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "channel_type": Data(openChannelRequest.getChannel_type().write()).hexEncodedString()
                 ]
             )
-            //Use if we ever manually accept inbound channels. Setting in initConfig.
             return
         case .PaymentPathSuccessful:
             guard let paymentPathSuccessful = event.getValueAsPaymentPathSuccessful() else {
@@ -101,7 +101,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 body: [
                     "payment_id": Data(paymentPathSuccessful.getPayment_id()).hexEncodedString(),
                     "payment_hash": Data(paymentPathSuccessful.getPayment_hash()).hexEncodedString(),
-                    "path": paymentPathSuccessful.getPath().map { [ "pubkey": $0.get_pubkey(), "fee_msat": $0.get_fee_msat() ] },
+                    "path": paymentPathSuccessful.getPath().map { $0.asJson },
                 ]
             )
             return
@@ -116,9 +116,9 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "payment_id": Data(paymentPathFailed.getPayment_id()).hexEncodedString(),
                     "payment_hash": Data(paymentPathFailed.getPayment_hash()).hexEncodedString(),
                     "rejected_by_dest": paymentPathFailed.getRejected_by_dest(),
-                    "channel_id": paymentPathFailed.getShort_channel_id(),
-                    "path": paymentPathFailed.getPath().map { [ "pubkey": $0.get_pubkey(), "fee_msat": $0.get_fee_msat() ] },
-                    "network_update": paymentPathFailed.getNetwork_update().getValue().debugDescription
+                    "short_channel_id": paymentPathFailed.getShort_channel_id(),
+                    "path": paymentPathFailed.getPath().map { $0.asJson },
+                    "network_update": paymentPathFailed.getNetwork_update().getValue().debugDescription //TODO could be more detailed
                 ]
             )
             return
