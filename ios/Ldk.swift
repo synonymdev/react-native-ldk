@@ -12,8 +12,6 @@ enum EventTypes: String, CaseIterable {
     case persist_new_channel = "persist_new_channel"
     case persist_graph = "persist_graph"
     case update_persisted_channel = "update_persisted_channel"
-    
-    //>>LdkChannelManagerPersister.handle_event()
     case channel_manager_funding_generation_ready = "channel_manager_funding_generation_ready"
     case channel_manager_payment_received = "channel_manager_payment_received"
     case channel_manager_payment_sent = "channel_manager_payment_sent"
@@ -46,7 +44,14 @@ enum LdkErrors: String {
     case init_channel_manager = "init_channel_manager"
     case decode_invoice_fail = "decode_invoice_fail"
     case init_invoice_payer = "init_invoice_payer"
-    case invoice_payment_fail = "invoice_payment_fail"
+    case invoice_payment_fail_unknown = "invoice_payment_fail_unknown"
+    case invoice_payment_fail_invoice = "invoice_payment_fail_invoice"
+    case invoice_payment_fail_routing = "invoice_payment_fail_routing"
+    case invoice_payment_fail_sending = "invoice_payment_fail_sending"
+    case invoice_payment_fail_retry_safe = "invoice_payment_fail_retry_safe"
+    case invoice_payment_fail_parameter_error = "invoice_payment_fail_parameter_error"
+    case invoice_payment_fail_partial = "invoice_payment_fail_partial"
+    case invoice_payment_fail_path_parameter_error = "invoice_payment_fail_path_parameter_error"
     case init_ldk_currency = "init_ldk_currency"
     case invoice_create_failed = "invoice_create_failed"
     case claim_funds_failed = "claim_funds_failed"
@@ -60,7 +65,6 @@ enum LdkCallbackResponses: String {
     case channel_manager_init_success = "channel_manager_init_success"
     case load_channel_monitors_success = "load_channel_monitors_success"
     case config_init_success = "config_init_success"
-    case net_graph_msg_handler_init_success = "net_graph_msg_handler_init_success"
     case chain_monitor_updated = "chain_monitor_updated"
     case network_graph_init_success = "network_graph_init_success"
     case add_peer_success = "add_peer_success"
@@ -82,13 +86,13 @@ class Ldk: NSObject {
     lazy var filter = {LdkFilter()}()
     lazy var channelManagerPersister = {LdkChannelManagerPersister()}()
     lazy var scorer = {MultiThreadedLockableScore(score: Scorer().as_Score())}()
-    
+
     //Config required to setup below objects
     var chainMonitor: ChainMonitor?
     var keysManager: KeysManager?
     var channelManager: ChannelManager?
     var userConfig: UserConfig?
-    var channelMonitors: Array<[UInt8]>?
+    var channelMonitors: Array<[UInt8]>? //TODO don't keep this, just add it from initChannelManager
     var networkGraph: NetworkGraph?
     var peerManager: PeerManager?
     var peerHandler: TCPPeerHandler?
@@ -96,26 +100,15 @@ class Ldk: NSObject {
     var invoicePayer: InvoicePayer?
     var ldkNetwork: LDKNetwork?
     var ldkCurrency: LDKCurrency?
-    
-    lazy var ldkStorage: URL = {
-        let docsurl = try! FileManager.default.url(for:.documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-        let ldkPath = docsurl.appendingPathComponent("ldk")
-        
-        if !ldkPath.hasDirectoryPath {
-            try! FileManager.default.createDirectory(atPath: ldkPath.path, withIntermediateDirectories: true, attributes: nil)
-        }
-        
-        return ldkPath
-    }()
-    
+
     //MARK: Startup methods
-    
+
     @objc
     func initChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard chainMonitor == nil else {
             return handleReject(reject, .already_init)
         }
-        
+
         chainMonitor = ChainMonitor(
             chain_source: Option_FilterZ(value: filter),
             broadcaster: broadcaster,
@@ -123,77 +116,77 @@ class Ldk: NSObject {
             feeest: feeEstimator,
             persister: persister
         )
-                
-        handleResolve(resolve, .chain_monitor_init_success)
+
+        return handleResolve(resolve, .chain_monitor_init_success)
     }
-    
+
     @objc
     func initKeysManager(_ seed: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard keysManager == nil else {
             return handleReject(reject, .already_init)
         }
-        
+
         let seconds = UInt64(NSDate().timeIntervalSince1970)
         let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
         let seedBytes = String(seed).hexaBytes
-        
+
         guard seedBytes.count == 32 else {
             return handleReject(reject, .invalid_seed_hex)
         }
-        
+
         keysManager = KeysManager(seed: String(seed).hexaBytes, starting_time_secs: seconds, starting_time_nanos: nanoSeconds)
 
-        handleResolve(resolve, .keys_manager_init_success)
+        return handleResolve(resolve, .keys_manager_init_success)
     }
-    
+
     @objc
     func loadChannelMonitors(_ channelMonitorStrings: NSArray, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         channelMonitors = Array<[UInt8]>()
         for monitor in channelMonitorStrings {
             channelMonitors?.append((monitor as! String).hexaBytes)
         }
-        
+
         LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Loaded channel monitors: \(channelMonitors!.count)")
-        handleResolve(resolve, .load_channel_monitors_success)
+        return handleResolve(resolve, .load_channel_monitors_success)
     }
-    
+
     @objc
     func initConfig(_ acceptInboundChannels: Bool, manuallyAcceptInboundChannels: Bool, announcedChannels: Bool, minChannelHandshakeDepth: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard userConfig == nil else {
             return handleReject(reject, .already_init)
         }
-    
+
         userConfig = UserConfig()
         userConfig!.set_accept_inbound_channels(val: acceptInboundChannels)
         userConfig!.set_manually_accept_inbound_channels(val: manuallyAcceptInboundChannels)
-        
+
         let channelConfig = ChannelConfig()
         channelConfig.set_announced_channel(val: announcedChannels)
-        
+
         let channelHandshakeConfig = ChannelHandshakeConfig()
         channelHandshakeConfig.set_minimum_depth(val: UInt32(minChannelHandshakeDepth))
         userConfig!.set_own_channel_config(val: channelHandshakeConfig)
-        
+
         let channelHandshakeLimits = ChannelHandshakeLimits()
         channelHandshakeLimits.set_force_announced_channel_preference(val: announcedChannels)
         userConfig!.set_peer_channel_config_limits(val: channelHandshakeLimits)
-        
-        handleResolve(resolve, .config_init_success)
+
+        return handleResolve(resolve, .config_init_success)
     }
-    
+
     @objc
     func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
         //TODO load cached version if exists instead. NetworkGraph.read(ser: serialized_backup)
-        handleResolve(resolve, .network_graph_init_success)
+        return handleResolve(resolve, .network_graph_init_success)
     }
-    
+
     @objc
     func initChannelManager(_ network: NSString, serializedChannelManager: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
         }
-        
+
         guard let chainMonitor = chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
@@ -201,19 +194,19 @@ class Ldk: NSObject {
         guard let keysManager = keysManager else {
             return handleReject(reject, .init_keys_manager)
         }
-        
+
         guard let userConfig = userConfig else {
             return handleReject(reject, .init_user_config)
         }
-        
+
         guard let channelMonitors = channelMonitors else {
             return handleReject(reject, .load_channel_monitors)
         }
-        
+
         guard let networkGraph = networkGraph else {
             return handleReject(reject, .init_network_graph)
         }
-        
+
         switch network {
         case "regtest":
             ldkNetwork = LDKNetwork_Regtest
@@ -227,7 +220,7 @@ class Ldk: NSObject {
         default:
             return handleReject(reject, .invalid_network)
         }
-        
+
         do {
             if channelMonitors.count == 0 {
                 //New node
@@ -260,9 +253,9 @@ class Ldk: NSObject {
                 )
             }
         } catch {
-            return handleReject(reject, .init_channel_monitor, error)
+            return handleReject(reject, .unknown_error, error)
         }
-        
+
         channelManager = channelManagerConstructor!.channelManager
         self.networkGraph = channelManagerConstructor!.net_graph
 
@@ -271,81 +264,82 @@ class Ldk: NSObject {
 
         peerHandler = channelManagerConstructor!.getTCPPeerHandler()
         invoicePayer = channelManagerConstructor!.payer
-        
-        handleResolve(resolve, .channel_manager_init_success)
+
+        return handleResolve(resolve, .channel_manager_init_success)
     }
-    
+
     @objc
     func syncChainMonitorWithChannelMonitor(_ blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let chainMonitor = chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
-        
+
         //TODO figure out how to read channel monitors and pass to chain monitor
         //chainMonitor.as_Watch().watch_channel(funding_txo: T##OutPoint, monitor: channelMonitors)
-        
-        handleResolve(resolve, .chain_monitor_updated)
+
+        return handleResolve(resolve, .chain_monitor_updated)
     }
-    
+
     //MARK: Update methods
-    
+
     @objc
     func updateFees(_ high: NSInteger, normal: NSInteger, low: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         feeEstimator.update(high: UInt32(high), normal: UInt32(normal), low: UInt32(low))
-        handleResolve(resolve, .fees_updated)
+        return handleResolve(resolve, .fees_updated)
     }
-    
+
     @objc
     func setLogLevel(_ level: NSInteger, active: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         logger.setLevel(level: UInt32(level), active: active)
-        handleResolve(resolve, .log_level_updated)
+        return handleResolve(resolve, .log_level_updated)
     }
-    
+
     @objc
     func syncToTip(_ header: NSString, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         //Sync ChannelMonitors and ChannelManager to chain tip
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-        
+
         guard let chainMonitor = chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
-        
+
         channelManager.as_Confirm().best_block_updated(header: String(header).hexaBytes, height: UInt32(height))
         chainMonitor.as_Confirm().best_block_updated(header: String(header).hexaBytes, height: UInt32(height))
-        
-        handleResolve(resolve, .chain_sync_success)
+
+        return handleResolve(resolve, .chain_sync_success)
     }
-    
-    
+
     @objc
-    func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, timeout: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        //timeout param not used. Only for android.
+
         //Sync ChannelMonitors and ChannelManager to chain tip
         guard let peerHandler = peerHandler else {
             return handleReject(reject, .init_peer_handler)
         }
-               
+
         let res = peerHandler.connect(address: String(address), port: UInt16(port), theirNodeId: String(pubKey).hexaBytes)
         if !res {
             return handleReject(reject, .add_peer_fail)
         }
-        
-        handleResolve(resolve, .add_peer_success)
+
+        return handleResolve(resolve, .add_peer_success)
     }
-    
+
     @objc
     func setTxConfirmed(_ header: NSString, transaction: NSString, pos: NSInteger, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-        
+
         guard let chainMonitor = chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
-        
+
         let txData = [C2Tuple_usizeTransactionZ.new(a: UInt(pos), b: String(transaction).hexaBytes)]
-        
+
         channelManager.as_Confirm().transactions_confirmed(
             header: String(header).hexaBytes,
             txdata: txData,
@@ -356,26 +350,26 @@ class Ldk: NSObject {
             txdata: txData,
             height: UInt32(height)
         )
-        
-        handleResolve(resolve, .tx_set_confirmed)
+
+        return handleResolve(resolve, .tx_set_confirmed)
     }
-    
+
     @objc
     func setTxUnconfirmed(_ txId: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-        
+
         guard let chainMonitor = chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
-        
+
         channelManager.as_Confirm().transaction_unconfirmed(txid: String(txId).hexaBytes)
         chainMonitor.as_Confirm().transaction_unconfirmed(txid: String(txId).hexaBytes)
-        
-        handleResolve(resolve, .tx_set_unconfirmed)
+
+        return handleResolve(resolve, .tx_set_unconfirmed)
     }
-    
+
     //MARK: Payments
     @objc
     func decode(_ paymentRequest: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -384,69 +378,71 @@ class Ldk: NSObject {
             let error = parsedInvoice.getError()?.getValueAsParseError()
             return handleReject(reject, .decode_invoice_fail, nil, error?.to_str())
         }
-                        
-        resolve(invoice.asJson) //Invoice class extended in Helpers file
+
+        return resolve(invoice.asJson) //Invoice class extended in Helpers file
     }
-    
+
     @objc
     func pay(_ paymentRequest: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let invoicePayer = invoicePayer else {
             return handleReject(reject, .init_invoice_payer)
         }
-        
+
         guard let invoice = Invoice.from_str(s: String(paymentRequest)).getValue() else {
             return handleReject(reject, .decode_invoice_fail)
         }
-        
+
         let res = invoicePayer.pay_invoice(invoice: invoice)
         if res.isOk() {
             return handleResolve(resolve, .invoice_payment_success)
         }
-        
+
         guard let error = res.getError() else {
-            return handleReject(reject, .invoice_payment_fail)
+            return handleReject(reject, .invoice_payment_fail_unknown)
         }
-        
+
         switch error.getValueType() {
         case .Invoice:
-            return handleReject(reject, .invoice_payment_fail, nil, error.getValueAsInvoice())
+            return handleReject(reject, .invoice_payment_fail_invoice, nil, error.getValueAsInvoice())
         case .Routing:
-            return handleReject(reject, .invoice_payment_fail, nil, error.getValueAsRouting()?.get_err())
+            return handleReject(reject, .invoice_payment_fail_routing, nil, error.getValueAsRouting()?.get_err())
         case .Sending:
             //Multiple sending errors
             guard let sendingError = error.getValueAsSending() else {
-                return handleReject(reject, .invoice_payment_fail)
+                return handleReject(reject, .invoice_payment_fail_sending)
             }
-            
+
             switch sendingError.getValueType() {
             case .AllFailedRetrySafe:
-                return handleReject(reject, .invoice_payment_fail, nil, sendingError.getValueAsAllFailedRetrySafe().map { $0.description } )
+                return handleReject(reject, .invoice_payment_fail_retry_safe, nil, sendingError.getValueAsAllFailedRetrySafe().map { $0.description } )
             case .ParameterError:
-                return handleReject(reject, .invoice_payment_fail, nil, sendingError.getValueAsParameterError().debugDescription)
+                return handleReject(reject, .invoice_payment_fail_parameter_error, nil, sendingError.getValueAsParameterError().debugDescription)
             case .PartialFailure:
-                return handleReject(reject, .invoice_payment_fail, nil, sendingError.getValueAsPartialFailure().debugDescription)
+                return handleReject(reject, .invoice_payment_fail_partial, nil, sendingError.getValueAsPartialFailure().debugDescription)
+            case .PathParameterError:
+                return handleReject(reject, .invoice_payment_fail_path_parameter_error, nil, sendingError.getValueAsPartialFailure().debugDescription)
             default:
-                return handleReject(reject, .invoice_payment_fail)
+                return handleReject(reject, .invoice_payment_fail_sending)
             }
         default:
-            return handleReject(reject, .invoice_payment_fail, nil, res.getError().debugDescription)
+            return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
         }
     }
-    
+
     @objc
     func createPaymentRequest(_ amountSats: NSInteger, description: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-        
+
         guard let keysManager = keysManager else {
             return handleReject(reject, .init_keys_manager)
         }
-        
+
         guard let ldkCurrency = ldkCurrency else {
             return handleReject(reject, .init_ldk_currency)
         }
-        
+
         let res = Bindings.createInvoiceFromChannelManager(
             channelManager: channelManager,
             keysManager: keysManager.as_KeysInterface(),
@@ -454,47 +450,47 @@ class Ldk: NSObject {
             amountMsat: UInt64(amountSats),
             description: String(description)
         )
-        
+
         if res.isOk() {
             guard let invoice = res.getValue() else {
                 return handleReject(reject, .invoice_create_failed)
             }
-            
+
             return resolve(invoice.asJson) //Invoice class extended in Helpers file
         }
-        
+
         guard let error = res.getError(), let creationError = error.getValueAsCreationError()  else {
             return handleReject(reject, .invoice_create_failed)
         }
-    
+
         return handleReject(reject, .invoice_create_failed, nil, "Invoice creation error: \(creationError.rawValue)")
     }
-    
+
     @objc
     func processPendingHtlcForwards(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-        
+
         channelManager.process_pending_htlc_forwards()
-        
-        handleResolve(resolve, .process_pending_htlc_forwards_success)
+
+        return handleResolve(resolve, .process_pending_htlc_forwards_success)
     }
-    
+
     @objc
     func claimFunds(_ paymentPreimage: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-        
+
         let res = channelManager.claim_funds(payment_preimage: String(paymentPreimage).hexaBytes)
-        if res == false {
-            handleReject(reject, .claim_funds_failed)
+        if !res {
+            return handleReject(reject, .claim_funds_failed)
         }
-        
-        handleResolve(resolve, .claim_funds_success)
+
+        return handleResolve(resolve, .claim_funds_success)
     }
-    
+
     //MARK: Fetch methods
     @objc
     func version(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -502,47 +498,44 @@ class Ldk: NSObject {
             "c_bindings": Bindings.swift_ldk_c_bindings_get_compiled_version(),
             "ldk": Bindings.swift_ldk_get_compiled_version(),
         ]
-               
-        resolve(String(data: try! JSONEncoder().encode(res), encoding: .utf8)!)
+
+        return resolve(String(data: try! JSONEncoder().encode(res), encoding: .utf8)!)
     }
-    
+
     @objc
     func nodeId(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-        
-        resolve(Data(channelManager.get_our_node_id()).hexEncodedString())
+
+        return resolve(Data(channelManager.get_our_node_id()).hexEncodedString())
     }
-    
+
     @objc
     func listPeers(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        //Sync ChannelMonitors and ChannelManager to chain tip
         guard let peerManager = peerManager else {
             return handleReject(reject, .init_peer_manager)
         }
-        
-        resolve(peerManager.get_peer_node_ids().map { Data($0).hexEncodedString() })
+
+        return resolve(peerManager.get_peer_node_ids().map { Data($0).hexEncodedString() })
     }
-    
+
     @objc
     func listChannels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        //Sync ChannelMonitors and ChannelManager to chain tip
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-                
-        resolve(channelManager.list_channels().map { $0.asJson })
+
+        return resolve(channelManager.list_channels().map { $0.asJson })
     }
-    
+
     @objc
     func listUsableChannels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        //Sync ChannelMonitors and ChannelManager to chain tip
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-                
-        resolve(channelManager.list_usable_channels().map { $0.asJson })
+
+        return resolve(channelManager.list_usable_channels().map { $0.asJson })
     }
 }
 
