@@ -21,9 +21,10 @@
   "scripts": {
     "build": "rm -rf dist && mkdir dist/ && tsc -p ./src",
     "watch": "yarn run build -- -w",
-    "lint": "yarn run lint:ts",
-    "lint:ts": "eslint . --ext .ts,.tsx --fix",
-    "prepublish": "yarn lint && yarn run build && npm --no-git-tag-version version patch",
+    "lint": "yarn lint",
+    "lint:check": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --fix --ext .js,.jsx,.ts,.tsx",
+    "prepublish": "yarn lint:fix && yarn run build && npm --no-git-tag-version version patch",
     "dev:save-ios-updates": "cp example/node_modules/@synonymdev/react-native-ldk/ios/*.{m,swift,h} ./ios && cp example/node_modules/@synonymdev/react-native-ldk/ios/Classes/*.swift ./ios/Classes/",
     "dev:save-android-updates": "cp example/node_modules/@synonymdev/react-native-ldk/android/src/main/java/com/reactnativeldk/*.kt ./android/src/main/java/com/reactnativeldk/ && cp example/node_modules/@synonymdev/react-native-ldk/android/src/main/java/com/reactnativeldk/classes/*.kt ./android/src/main/java/com/reactnativeldk/classes/ && cp example/node_modules/@synonymdev/react-native-ldk/android/build.gradle ./android/",
     "dev:update-example-dist": "yarn build && cp -R dist example/node_modules/@synonymdev/react-native-ldk",
