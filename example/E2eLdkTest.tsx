@@ -5,19 +5,18 @@ import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 const E2eLdkTest = () => {
 	const [message, setMessage] = useState('');
 
-	alert(JSON.stringify(process.env));
-
 	useEffect(() => {
 		(async () => {
 			try {
 				const res = await ldk.version();
 
 				if (res.isErr()) {
+					//If res screen error message is shown test will fail
 					return console.error(res.error.message);
 				}
 
 				//Below message needs to be displayed to stop test with success
-				// setMessage('SUCCESS');
+				setMessage('SUCCESS');
 			} catch (e) {
 				console.error(e);
 			}
@@ -26,6 +25,7 @@ const E2eLdkTest = () => {
 
 	return (
 		<SafeAreaView>
+			<Text>react-native-ldk integration test</Text>
 			<Text>{message}</Text>
 		</SafeAreaView>
 	);

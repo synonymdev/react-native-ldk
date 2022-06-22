@@ -1,4 +1,4 @@
-name: lint-check
+name: e2e-test
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - 'gh-action-e2e-test'
 
 jobs:
-  eslint:
-    name: Run lint check
+  e2e-test:
+    name: Run e2e iOS test
     runs-on: macOS-latest
     defaults:
       run:
@@ -26,4 +26,5 @@ jobs:
         run: yarn install
 
       - name: Testing iOS app
-        run: exec ./.github/scripts/ios-e2e.sh
+        run: sh ../.github/scripts/ios-e2e.sh
+        shell: bash
