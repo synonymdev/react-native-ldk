@@ -5,7 +5,7 @@
   "apps": {
     "ios": {
       "type": "ios.app",
-      "build": "set -o pipefail && xcodebuild -workspace ios/example.xcworkspace -scheme example -sdk iphonesimulator -destination platform=iOS\\ Simulator,OS=15.5,name=iPhone\\ 13 -derivedDataPath ios/build",
+      "build": "set -o pipefail && xcodebuild -workspace ios/example.xcworkspace -scheme example -sdk iphonesimulator -destination platform=iOS\\ Simulator,OS=15.2,name=iPhone\\ 13 -derivedDataPath ios/build | xcpretty",
       "binaryPath": "ios/build/Build/Products/Debug-iphonesimulator/example.app"
     },
     "android": {

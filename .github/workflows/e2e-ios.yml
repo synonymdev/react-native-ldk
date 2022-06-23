@@ -1,0 +1,56 @@
+name: e2e-ios
+
+on:
+  push:
+    branches:
+      - 'e2e-tests'
+
+jobs:
+  e2e-test:
+    name: Run e2e iOS test
+    runs-on: macOS-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: example
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        id: npmcache
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Rebuild detox
+        if: steps.npmcache.outputs.cache-hit == 'true'
+        run: yarn detox clean-framework-cache && yarn detox build-framework-cache
+
+      - name: Install Dependencies
+        if: steps.npmcache.outputs.cache-hit != 'true'
+        run: yarn install
+
+      - name: Cache Pods
+        uses: actions/cache@v3
+        id: podcache
+        with:
+          path: ios/Pods
+          key: pods-${{ hashFiles('**/Podfile.lock') }}
+
+      - name: Update Pods
+        if: steps.podcache.outputs.cache-hit != 'true'
+        run: |
+          gem update cocoapods xcodeproj
+          yarn ios:pods
+
+      - run: brew tap wix/brew
+      - run: brew install applesimutils
+      - run: yarn e2e:ios-build && yarn e2e:ios-test

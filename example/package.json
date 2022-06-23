@@ -7,7 +7,7 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
-    "postinstall": "cd ios && pod install && cd ../",
+    "ios:pods": "cd ios && pod install && cd ../",
     "clean": "rm -rf node_modules ios/Pods ios/Podfile.lock && yarn install",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "e2e:ios-build": "detox build --configuration ios",
