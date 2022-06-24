@@ -501,21 +501,6 @@ class LightningManager {
 	//LDK events
 
 	private onRegisterTx(res: TRegisterTxEvent): void {
-		(async (): Promise<void> => {
-			// Set new/unconfirmed transaction.
-			const filterRes = await Promise.all(
-				this.watchTxs.filter((watchTx) => {
-					if (watchTx.txid === res.txid) {
-						return watchTx;
-					}
-				}),
-			);
-			if (filterRes.length > 0) {
-				await ldk.setTxUnconfirmed({
-					txId: res.txid,
-				});
-			}
-		})();
 		console.log('onRegisterTx: watchTxs', res);
 		this.watchTxs.push(res);
 	}
