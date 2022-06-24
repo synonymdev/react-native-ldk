@@ -265,7 +265,7 @@ export enum ELdkData {
 export type TLdkData = {
 	[ELdkData.channelManager]: TLdkChannelManagerData;
 	[ELdkData.channelData]: TLdkChannelData;
-	peers: TLdkPeersData;
+	[ELdkData.peers]: TLdkPeersData;
 };
 
 export type TLdkChannelManagerData = string;
