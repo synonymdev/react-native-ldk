@@ -1,3 +1,5 @@
+import { DefaultLdkDataShape } from './types';
+
 /**
  * Convert string to bytes
  * @param str
@@ -79,4 +81,10 @@ export const btoa = (input: string): string => {
 	}
 
 	return output;
+};
+
+export const getDefaultLdkStorageShape = (seed: string) => {
+	return {
+		[seed]: DefaultLdkDataShape,
+	};
 };

@@ -34,16 +34,86 @@ yarn ios
 yarn android
 ```
 
-## Usage
-```javascript
-import ldk from '@synonymdev/react-native-ldk';
-```
+## Example Setup & Usage
 
+To run the following example:
+ 1. Install & Run [Polar](https://github.com/jamaljsr/polar)
+ 2. Create a network and replace the `USER`, `PASS` & `HOST` variables with the correct info provided under the "Connect" tab for your Bitcoin instance in Polar.
+ 3. See [Notes](#notes) for additional instructions.
+ 
 ```javascript
-const res = await ldk.start();
-if (res.isErr()) {
-    //LDK failed to start
-    console.error(res.error)
+import lm, { ENetworks } from '@synonymdev/react-native-ldk';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { encode as btoa } from 'js-base64';
+
+const USER = 'polaruser';
+const PASS = 'polarpass';
+const HOST = 'http://127.0.0.1:18443/';
+
+const bitcoinRPC = async (method, params) => {
+    const data = { jsonrpc: '1.0', id: 'todo', method, params };
+    const res = await fetch(HOST, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Basic ${btoa(`${USER}:${PASS}`)}`,
+        },
+        body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (json.error) {
+        throw new Error(json.error);
+    }
+    return json.result;
+};
+
+export const getBlockHeaderHexFromHash = async (hash) => await bitcoinRPC('getblockheader', [hash, false]);
+export const getBlockHeaderHashFromHeight = async (height) => await bitcoinRPC('getblockhash', [height]);
+export const getBlockHeight = async () => {
+	const { blocks } = await bitcoinRPC('getblockchaininfo', []);
+	return Number(blocks);
+};
+const getTxData = async (txid) => await bitcoinRPC('getrawtransaction', [txid, true]);
+
+const seed = 'd88a2f0ab4aefd38d22a96ac556cafa419aed5e2782b6e7c816e4777a6bfbd56';
+const network = ENetworks.testnet;
+const genesisHash = await getBlockHeaderHashFromHeight(0);
+const setItem = async (key, value) => await AsyncStorage.setItem(key, value);
+const getItem = async (key) => await AsyncStorage.getItem(key);
+const getBestBlock = async () => {
+	const height = await getBlockHeight();
+	const hash = await getBlockHeaderHashFromHeight(height);
+	const hex = await getBlockHeaderHexFromHash(hash);
+	return { height, hash, hex };
+};
+const getTransactionData = async (txid) => {
+	const txData = await getTxData(txid);
+	const currentBlockHeight = await getBlockHeight();
+	const height = txData.confirmations ? currentBlockHeight - txData.confirmations : 0;
+	const header = txData.blockhash ? await getBlockHeaderHexFromHash(txData.blockhash) : '';
+	const transaction = txData.hex;
+	return { header, height, transaction };
+};
+
+const startResponse = await lm.start({
+	seed,
+	network,
+	genesisHash,
+	getItem,
+	setItem,
+	getBestBlock,
+	getTransactionData,
+});
+if (startResponse.isErr()) {
+	//LDK failed to start
+    console.error(startResponse.error);
+	return;
+} else {
+	// Sync when new blocks are detected.
+	setInterval(async () => {
+		await lm.syncLdk();
+	}, 5000);
 }
 
 //Subscribe to LDK logs
@@ -53,5 +123,4 @@ const logListener = ldk.addLogListener((message) => {
 
 //Unsubscribe if listening component is unmounted
 ldk.removeLogListener(logListener);
-
 ```

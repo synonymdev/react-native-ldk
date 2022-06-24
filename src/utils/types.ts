@@ -164,6 +164,12 @@ export type TSyncTipReq = {
 	height: number;
 };
 
+export type TPeer = {
+	address: string;
+	port: number;
+	pubKey: string;
+};
+
 export type TAddPeerReq = {
 	address: string;
 	port: number;
@@ -214,3 +220,101 @@ export enum ELdkLogLevels {
 	warn = 4, //LDKLevel_Warn
 	error = 5, //LDKLevel_Error
 }
+
+export type THeader = {
+	hex: string;
+	hash: string;
+	height: number;
+};
+
+export type TTransactionData = {
+	header: string;
+	height: number;
+	transaction: string;
+};
+
+export const DefaultTransactionDataShape: TTransactionData = {
+	header: '',
+	height: 0,
+	transaction: '',
+};
+
+export type TStorage = (key: string, ...args: Array<any>) => any;
+export type TGetTransactionData = (txid: string) => Promise<TTransactionData>;
+export type TGetBestBlock = () => Promise<THeader>;
+export type TWatchTxs = {
+	script_pubkey: string;
+	txid: string;
+};
+export type TWatchOutputs = {
+	block_hash: string;
+	index: number;
+	script_pubkey: string;
+};
+
+export enum ELdkStorage {
+	key = 'LDKStorage',
+}
+
+export enum ELdkData {
+	channelManager = 'channelManager',
+	channelData = 'channelData',
+	peers = 'peers',
+}
+
+export type TLdkData = {
+	[ELdkData.channelManager]: TLdkChannelManagerData;
+	[ELdkData.channelData]: TLdkChannelData;
+	peers: TLdkPeersData;
+};
+
+export type TLdkChannelManagerData = string;
+
+export type TLdkChannelData = {
+	[id: string]: string;
+};
+
+export type TLdkPeersData = TPeer[];
+
+export type TLdkStorage = {
+	[key: string]: TLdkData;
+};
+
+export const DefaultLdkDataShape: TLdkData = {
+	[ELdkData.channelManager]: '',
+	[ELdkData.channelData]: {},
+	[ELdkData.peers]: [],
+};
+
+export type TAvailableNetworks =
+	| 'bitcoin'
+	| 'bitcoinTestnet'
+	| 'bitcoinRegtest';
+
+export interface IGetHeaderResponse {
+	id: Number;
+	error: boolean;
+	method: 'getHeader';
+	data: string;
+	network: TAvailableNetworks;
+}
+
+export interface ISubscribeToHeader {
+	data: {
+		height: number;
+		hex: string;
+	};
+	error: boolean;
+	id: string;
+	method: string;
+}
+
+export type TLdkStart = {
+	seed?: string;
+	genesisHash: string;
+	getBestBlock: TGetBestBlock;
+	getItem: TStorage;
+	setItem: TStorage;
+	getTransactionData: TGetTransactionData;
+	network?: ENetworks;
+};
