@@ -63,10 +63,14 @@ import { getDefaultLdkStorageShape } from './utils/helpers';
 // Step 19: Background Processing
 
 class LightningManager {
-	currentBlockHeight: number = 0;
+	currentBlock: THeader = {
+		hex: '',
+		hash: '',
+		height: 0,
+	};
 	watchTxs: TRegisterTxEvent[] = [];
 	watchOutputs: TRegisterOutputEvent[] = [];
-	getBestBlock?: TGetBestBlock = async (): Promise<THeader> => ({
+	getBestBlock: TGetBestBlock = async (): Promise<THeader> => ({
 		hex: '',
 		hash: '',
 		height: 0,
@@ -207,7 +211,7 @@ class LightningManager {
 				'The getBestBlock method is not providing the appropriate block hex, hash or height.',
 			);
 		}
-		this.currentBlockHeight = bestBlock.height;
+		this.currentBlock = bestBlock;
 
 		const ldkData = await this.getLdkData();
 
@@ -333,7 +337,7 @@ class LightningManager {
 		const height = bestBlock?.height;
 
 		//Don't update unnecessarily
-		if (this.currentBlockHeight !== height) {
+		if (this.currentBlock.hash !== bestBlock?.hash) {
 			const syncToTip = await ldk.syncToTip({
 				header,
 				height,
@@ -342,7 +346,7 @@ class LightningManager {
 				return syncToTip;
 			}
 
-			this.currentBlockHeight = height;
+			this.currentBlock = bestBlock;
 		}
 
 		// Iterate over watch transactions and set whether they are confirmed or unconfirmed.
