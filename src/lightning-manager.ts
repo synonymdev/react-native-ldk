@@ -35,6 +35,7 @@ import {
 	TLdkPeersData,
 	TPeer,
 	DefaultTransactionDataShape,
+	TTransactionData,
 } from './utils/types';
 import { dummyRandomSeed } from './utils/regtest-dev-tools';
 import { getDefaultLdkStorageShape } from './utils/helpers';
@@ -71,10 +72,10 @@ class LightningManager {
 		height: 0,
 	});
 	seed: string = '';
-	getItem: TStorage = () => null;
-	setItem: TStorage = () => null;
-	getTransactionData: TGetTransactionData = async () =>
-		DefaultTransactionDataShape;
+	getItem: TStorage = (): null => null;
+	setItem: TStorage = (): null => null;
+	getTransactionData: TGetTransactionData =
+		async (): Promise<TTransactionData> => DefaultTransactionDataShape;
 	network: ENetworks = ENetworks.regtest;
 
 	constructor() {
@@ -496,7 +497,7 @@ class LightningManager {
 	//LDK events
 
 	private onRegisterTx(res: TRegisterTxEvent): void {
-		(async () => {
+		(async (): Promise<void> => {
 			// Set new/unconfirmed transaction.
 			const filterRes = await Promise.all(
 				this.watchTxs.filter((watchTx) => {
