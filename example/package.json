@@ -7,39 +7,67 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
-    "postinstall": "cd ios && pod install && cd ../",
-    "clean": "rm -rf node_modules ios/Pods ios/Podfile.lock && yarn install",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx --fix"
+    "lint": "eslint .",
+    "clean": "rm -rf node_modules ios/Pods ios/Podfile.lock ios/build && yarn install && cd ios && pod deintegrate && pod install && cd ../",
+    "postinstall": "node postinstall.js"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^1.17.6",
+    "@react-native-clipboard/clipboard": "^1.10.0",
     "@synonymdev/react-native-ldk": "../",
+    "assert": "^2.0.0",
+    "bitcoinjs-lib": "^6.0.1",
+    "buffer": "^6.0.3",
+    "events": "^1.1.1",
+    "process": "^0.11.10",
     "react": "17.0.2",
-    "react-native": "0.68.2"
+    "react-native": "0.68.2",
+    "react-native-crypto": "^2.2.0",
+    "react-native-keychain": "^8.1.0",
+    "react-native-randombytes": "^3.6.1",
+    "react-native-tcp-socket": "^5.6.2",
+    "readable-stream": "^4.0.0",
+    "rn-electrum-client": "git+ssh://git@github.com/synonymdev/react-native-electrum-client#ee0fb0575bf84f970f6e9ede9a4487b2eaefe7b1",
+    "stream-browserify": "^3.0.0",
+    "vm-browserify": "^1.1.2"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",
     "@babel/runtime": "^7.12.5",
-    "@react-native-community/eslint-config": "^2.0.0",
-    "@types/jest": "^27.5.1",
-    "@types/react-native": "^0.67.7",
+    "@react-native-community/eslint-config": "^3.0.2",
+    "@types/jest": "^28.1.2",
+    "@types/react-native": "^0.67.8",
     "@types/react-test-renderer": "^18.0.0",
-    "@typescript-eslint/eslint-plugin": "^5.26.0",
+    "@typescript-eslint/eslint-plugin": "^5.28.0",
     "babel-jest": "^26.6.3",
-    "eslint": "^7.32.0",
+    "eslint": "^8.17.0",
     "jest": "^26.6.3",
     "metro-react-native-babel-preset": "^0.67.0",
     "react-test-renderer": "17.0.2",
+    "rn-nodeify": "^10.3.0",
     "typescript": "^3.9.7"
   },
   "jest": {
-    "preset": "react-native",
-    "moduleFileExtensions": [
-      "ts",
-      "tsx",
-      "js",
-      "jsx",
-      "json",
-      "node"
-    ]
+    "preset": "react-native"
+  },
+  "react-native": {
+    "crypto": "react-native-crypto",
+    "_stream_transform": "readable-stream/transform",
+    "_stream_readable": "readable-stream/readable",
+    "_stream_writable": "readable-stream/writable",
+    "_stream_duplex": "readable-stream/duplex",
+    "_stream_passthrough": "readable-stream/passthrough",
+    "stream": "stream-browserify",
+    "vm": "vm-browserify"
+  },
+  "browser": {
+    "crypto": "react-native-crypto",
+    "_stream_transform": "readable-stream/transform",
+    "_stream_readable": "readable-stream/readable",
+    "_stream_writable": "readable-stream/writable",
+    "_stream_duplex": "readable-stream/duplex",
+    "_stream_passthrough": "readable-stream/passthrough",
+    "stream": "stream-browserify",
+    "vm": "vm-browserify"
   }
 }
