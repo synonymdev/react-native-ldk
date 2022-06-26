@@ -37,8 +37,11 @@ import {
 	DefaultTransactionDataShape,
 	TTransactionData,
 } from './utils/types';
-import { dummyRandomSeed } from './utils/regtest-dev-tools';
-import { getDefaultLdkStorageShape } from './utils/helpers';
+import {
+	dummyRandomSeed,
+	getDefaultLdkStorageShape,
+	startParamCheck,
+} from './utils/helpers';
 
 //TODO startup steps
 // Step 0: Listen for events ✅
@@ -199,6 +202,21 @@ class LightningManager {
 		if (!getTransactionData) {
 			return err('getTransactionData is not set in start method.');
 		}
+
+		// Ensure the start params function as expected.
+		const paramCheckResponse = await startParamCheck({
+			seed,
+			genesisHash,
+			getBestBlock,
+			getItem,
+			setItem,
+			getTransactionData,
+			network,
+		});
+		if (paramCheckResponse.isErr()) {
+			return err(paramCheckResponse.error.message);
+		}
+
 		this.getBestBlock = getBestBlock;
 		this.seed = seed;
 		this.network = network;
@@ -206,11 +224,6 @@ class LightningManager {
 		this.getItem = getItem;
 		this.getTransactionData = getTransactionData;
 		const bestBlock = await this.getBestBlock();
-		if (!bestBlock?.hash || !bestBlock?.hex || !bestBlock?.height) {
-			return err(
-				'The getBestBlock method is not providing the appropriate block hex, hash or height.',
-			);
-		}
 		this.currentBlock = bestBlock;
 
 		const ldkData = await this.getLdkData();
