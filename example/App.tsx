@@ -1,5 +1,5 @@
 import './shim';
-import React, { useEffect, useState } from 'react';
+import React, { ReactElement, useEffect, useState } from 'react';
 import {
 	SafeAreaView,
 	ScrollView,
@@ -17,7 +17,7 @@ import lm from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
 import { dummyRandomSeed, setSeed } from './utils/helpers';
 
-const App = () => {
+const App = (): ReactElement => {
 	const [message, setMessage] = useState('...');
 
 	useEffect(() => {
@@ -32,7 +32,7 @@ const App = () => {
 			}
 			// Subscribe to new blocks and sync LDK accordingly.
 			await subscribeToHeader({
-				onReceive: async () => {
+				onReceive: async (): Promise<void> => {
 					const syncRes = await syncLdk();
 					if (syncRes.isErr()) {
 						setMessage(syncRes.error.message);
@@ -62,7 +62,7 @@ const App = () => {
 				<View style={styles.container}>
 					<Button
 						title={'Create New Random Seed'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							const seed = dummyRandomSeed();
 							await setSeed('ldkseed', seed);
 							await setItem('LDKData', '');
@@ -72,7 +72,7 @@ const App = () => {
 
 					<Button
 						title={'Sync LDK'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							const syncRes = await syncLdk();
 							if (syncRes.isErr()) {
 								setMessage(syncRes.error.message);
@@ -84,7 +84,7 @@ const App = () => {
 
 					<Button
 						title={'Add Peers'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							try {
 								const peersRes = await Promise.all(
 									Object.keys(peers).map(async (peer) => {
@@ -108,7 +108,7 @@ const App = () => {
 
 					<Button
 						title={'List peers'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							try {
 								const listPeers = await ldk.listPeers();
 								if (listPeers.isErr()) {
@@ -124,7 +124,7 @@ const App = () => {
 
 					<Button
 						title={'List channels'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							try {
 								const listChannels = await ldk.listChannels();
 								if (listChannels.isErr()) {
@@ -164,7 +164,7 @@ const App = () => {
 
 					<Button
 						title={'List watch transactions'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							console.log(lm.watchTxs);
 							setMessage(`Watch TXs: ${JSON.stringify(lm.watchTxs)}`);
 						}}
@@ -172,14 +172,14 @@ const App = () => {
 
 					<Button
 						title={'List watch outputs'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							setMessage(`Watch Outputs: ${JSON.stringify(lm.watchOutputs)}`);
 						}}
 					/>
 
 					<Button
 						title={'Create invoice'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							try {
 								const createPaymentRequest = await ldk.createPaymentRequest({
 									amountSats: 1000000,
@@ -203,7 +203,7 @@ const App = () => {
 
 					<Button
 						title={'Pay invoice'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							const paymentRequest = await Clipboard.getString();
 							const decode = await ldk.decode({ paymentRequest });
 							if (decode.isErr()) {
@@ -224,7 +224,7 @@ const App = () => {
 									},
 									{
 										text: 'Pay',
-										onPress: async () => {
+										onPress: async (): Promise<void> => {
 											const pay = await ldk.pay({ paymentRequest });
 											if (pay.isErr()) {
 												return setMessage(pay.error.message);
@@ -240,7 +240,7 @@ const App = () => {
 
 					<Button
 						title={'Get info'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							const nodeIdRes = await ldk.nodeId();
 							if (nodeIdRes.isErr()) {
 								return setMessage(nodeIdRes.error.message);
@@ -255,7 +255,7 @@ const App = () => {
 
 					<Button
 						title={'Show version'}
-						onPress={async () => {
+						onPress={async (): Promise<void> => {
 							const ldkVersion = await ldk.version();
 							if (ldkVersion.isErr()) {
 								return setMessage(ldkVersion.error.message);
