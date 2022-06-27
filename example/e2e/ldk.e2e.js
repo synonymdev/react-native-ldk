@@ -16,7 +16,7 @@ describe('LDK integration test', () => {
 
 	it('should show "Node running" after tapping start', async () => {
 		// await element(by.id('start')).tap();
-		await element(by.text('Start')).tap();
-		await expect(element(by.text('"Node running"'))).toBeVisible();
+		await element(by.text('E2E test')).tap();
+		await expect(element(by.text('SUCCESS'))).toBeVisible();
 	});
 });

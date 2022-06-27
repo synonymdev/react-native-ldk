@@ -264,6 +264,13 @@ const App = (): ReactElement => {
 							setMessage(ldkVersion.value.ldk);
 						}}
 					/>
+
+					<Button
+						title={'E2E test'}
+						onPress={async (): Promise<void> => {
+							setMessage('SUCCESS');
+						}}
+					/>
 				</View>
 			</ScrollView>
 		</SafeAreaView>
