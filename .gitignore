@@ -9,3 +9,4 @@ android/local.properties
 android/.gradle/
 yarn-error.log
 example/.watchman*
+example/*.log

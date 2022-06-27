@@ -1,0 +1,480 @@
+Jun 24 15:55:51 detox[94140] TRACE: [DETOX_CREATE] created a Detox instance with config:
+{
+  appsConfig: {
+    default: {
+      type: 'android.apk',
+      binaryPath: 'android/app/build/outputs/apk/debug/app-debug.apk',
+      testBinaryPath: 'android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk',
+      build: 'cd android && ./gradlew assembleRelease assembleAndroidTest -DtestBuildType=debug && cd ..'
+    }
+  },
+  artifactsConfig: {
+    rootDir: 'artifacts/android.debug.2022-06-24 13-55-49Z',
+    plugins: {
+      log: {
+        enabled: true,
+        keepOnlyFailedTestsArtifacts: false
+      },
+      screenshot: {
+        enabled: true,
+        shouldTakeAutomaticSnapshots: false,
+        keepOnlyFailedTestsArtifacts: false
+      },
+      video: {
+        enabled: false,
+        keepOnlyFailedTestsArtifacts: false
+      },
+      instruments: {
+        enabled: false,
+        keepOnlyFailedTestsArtifacts: false
+      },
+      timeline: {
+        enabled: false
+      },
+      uiHierarchy: {
+        enabled: false,
+        keepOnlyFailedTestsArtifacts: false
+      }
+    },
+    pathBuilder: ArtifactPathBuilder {
+      _rootDir: 'artifacts/android.debug.2022-06-24 13-55-49Z'
+    }
+  },
+  behaviorConfig: {
+    init: {
+      reinstallApp: true,
+      exposeGlobals: true
+    },
+    cleanup: {
+      shutdownDevice: true
+    },
+    launchApp: 'auto'
+  },
+  cliConfig: {
+    recordLogs: 'all',
+    cleanup: true,
+    configuration: 'android.debug',
+    loglevel: 'trace',
+    useCustomLogger: true
+  },
+  configurationName: 'android.debug',
+  deviceConfig: {
+    type: 'android.emulator',
+    device: {
+      avdName: 'Android_API_33'
+    }
+  },
+  runnerConfig: {
+    testRunner: 'jest',
+    runnerConfig: './e2e/config.json',
+    specs: 'e2e',
+    skipLegacyWorkersInjection: true
+  },
+  sessionConfig: {
+    autoStart: true,
+    sessionId: 'ff4017ee-34ec-068c-004c-6bc5cf37984f',
+    debugSynchronization: 10000
+  }
+}
+Jun 24 15:55:51 detox[94140] DEBUG: [WSS_CREATE] Detox server listening on localhost:49827...
+Jun 24 15:55:51 detox[94140] DEBUG: [WSS_CONNECTION, #49828] registered a new connection.
+Jun 24 15:55:51 detox[94140] TRACE: [WS_OPEN] opened web socket to: ws://localhost:49827
+Jun 24 15:55:51 detox[94140] TRACE: [WS_SEND] {"type":"login","params":{"sessionId":"ff4017ee-34ec-068c-004c-6bc5cf37984f","role":"tester"},"messageId":0}
+Jun 24 15:55:51 detox[94140] TRACE: [WSS_GET_FROM, #49828] {"type":"login","params":{"sessionId":"ff4017ee-34ec-068c-004c-6bc5cf37984f","role":"tester"},"messageId":0}
+Jun 24 15:55:51 detox[94140] TRACE: [SESSION_CREATED] created session ff4017ee-34ec-068c-004c-6bc5cf37984f
+Jun 24 15:55:51 detox[94140] TRACE: [WSS_SEND_TO, #tester] {"type":"loginSuccess","params":{"testerConnected":true,"appConnected":false},"messageId":0}
+Jun 24 15:55:51 detox[94140] TRACE: [SESSION_JOINED] tester joined session ff4017ee-34ec-068c-004c-6bc5cf37984f
+Jun 24 15:55:51 detox[94140] TRACE: [WS_MESSAGE] {"type":"loginSuccess","params":{"testerConnected":true,"appConnected":false},"messageId":0}
+ 
+Jun 24 15:55:51 detox[94140] DEBUG: [EXEC_CMD, #0] "/Users/jason/Library/Android/sdk/emulator/emulator" -list-avds --verbose
+Jun 24 15:55:51 detox[94140] TRACE: [EXEC_SUCCESS, #0] Android_API_33
+Pixel_4_API_30
+
+Jun 24 15:55:51 detox[94140] DEBUG: [EXEC_CMD, #1] "/Users/jason/Library/Android/sdk/emulator/emulator" -version 
+Jun 24 15:55:51 detox[94140] TRACE: [EXEC_SUCCESS, #1] Android emulator version 31.2.10.0 (build_id 8420304) (CL:N/A)
+Copyright (C) 2006-2017 The Android Open Source Project and many others.
+This program is a derivative of the QEMU CPU emulator (www.qemu.org).
+
+  This software is licensed under the terms of the GNU General Public
+  License version 2, as published by the Free Software Foundation, and
+  may be copied, distributed, and modified under those terms.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+
+Jun 24 15:55:51 detox[94140] DEBUG: [EMU_BIN_VERSION_DETECT] Detected emulator binary version { major: 31, minor: 2, patch: 10, toString: [Function: toString] }
+Jun 24 15:55:51 detox[94140] DEBUG: [ALLOCATE_DEVICE] Trying to allocate a device based on "Android_API_33"
+Jun 24 15:55:51 detox[94140] DEBUG: [EXEC_CMD, #2] "/Users/jason/Library/Android/sdk/platform-tools/adb"  devices
+Jun 24 15:55:51 detox[94140] DEBUG: [EXEC_SUCCESS, #2] List of devices attached
+
+
+Jun 24 15:55:51 detox[94140] DEBUG: [ALLOCATE_DEVICE] Settled on emulator-19040
+Jun 24 15:55:51 detox[94140] DEBUG: [SPAWN_CMD] /Users/jason/Library/Android/sdk/emulator/emulator -verbose -no-audio -no-boot-anim -port 19040 @Android_API_33
+Jun 24 16:00:51 detox[94140] ERROR: Exceeded timeout of 300000ms while handling jest-circus "setup" event
+Jun 24 16:00:51 detox[94140] INFO:  [97mLDK integration test[39m is assigned to [91mundefined[39m
+Jun 24 16:00:51 detox[94140] INFO:  [1m[37mLDK integration test: [39m[22m[90mshould have heading[39m
+Jun 24 16:00:51 detox[94140] INFO:  [1m[37mLDK integration test: [39m[22m[90mshould have heading[39m[90m [[31mFAIL[90m][39m
+Jun 24 16:00:51 detox[94140] INFO:  [1m[37mLDK integration test: [39m[22m[90mshould show "Node running" after tapping start[39m
+Jun 24 16:00:51 detox[94140] INFO:  [1m[37mLDK integration test: [39m[22m[90mshould show "Node running" after tapping start[39m[90m [[31mFAIL[90m][39m
+Jun 24 16:00:51 detox[94140] TRACE: [ARTIFACTS_LIFECYCLE] artifactsManager.onBeforeCleanup()
+Jun 24 16:00:51 detox[94140] ERROR: Aborted detox.init() execution, and now running detox.cleanup()
+
+HINT: Most likely, your test runner is tearing down the suite due to the timeout error
+Jun 24 16:00:51 detox[94140] TRACE: [ARTIFACT_START] starting FileArtifact
+Jun 24 16:00:51 detox[94140] TRACE: [ARTIFACT_STOP] stopping FileArtifact
+Jun 24 16:00:51 detox[94140] TRACE: [ARTIFACT_SAVE] saving FileArtifact to: artifacts/android.debug.2022-06-24 13-55-49Z/detox_pid_94140.json.log { append: true }
+Jun 24 16:00:51 detox[94140] TRACE: [ARTIFACT_START] starting FileArtifact
+Jun 24 16:00:51 detox[94140] TRACE: [ARTIFACT_STOP] stopping FileArtifact
+Jun 24 16:00:51 detox[94140] TRACE: [ARTIFACT_SAVE] saving FileArtifact to: artifacts/android.debug.2022-06-24 13-55-49Z/detox_pid_94140.log { append: true }
+Jun 24 16:00:51 detox[94140] DEBUG: [MOVE_FILE] moving "/private/var/folders/f1/_ssby91d0gs8cn9l6ts2_tnr0000gn/T/057ca403-4a83-4e53-8584-52df2cba4748.detox.log" to artifacts/android.debug.2022-06-24 13-55-49Z/detox_pid_94140.json.log
+Jun 24 16:00:51 detox[94140] DEBUG: [MOVE_FILE] moving "/private/var/folders/f1/_ssby91d0gs8cn9l6ts2_tnr0000gn/T/9cd88a3f-83d8-415a-928a-d3bbe83c1def.detox.log" to artifacts/android.debug.2022-06-24 13-55-49Z/detox_pid_94140.log
+Jun 24 16:00:51 detox[94140] DEBUG: [WSS_CLOSE] Detox server has been closed gracefully
+Jun 24 16:00:51 detox[94140] TRACE: [SESSION_TORN] tester exited session ff4017ee-34ec-068c-004c-6bc5cf37984f
+Jun 24 16:00:52 detox[94140] WARN:  at node_modules/jest-cli/build/cli/index.js:252:15 
+ [33m[1mJest did not exit one second after the test run has completed.[22m[39m
+[33m[1m[22m[39m
+[33m[1m[22m[39m[33mThis usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.[39m
+Jun 24 22:13:16 detox[94140] DEBUG: [SPAWN_SUCCESS] WARNING | unexpected system image feature string, emulator might not function correctly, please try updating the emulator.
+WARNING | cannot add library /Users/jason/Library/Android/sdk/emulator/qemu/darwin-x86_64/lib64/vulkan/libvulkan.dylib: failed
+VERBOSE | autoconfig: -skin 1080x2340
+VERBOSE | autoconfig: -skindir (null)
+VERBOSE | autoconfig: -kernel /Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//kernel-ranchu
+VERBOSE | Target arch = 'x86_64'
+VERBOSE | Auto-detect: Kernel image requires new device naming scheme.
+VERBOSE | Auto-detect: Kernel does not support YAFFS2 partitions.
+VERBOSE | autoconfig: -ramdisk /Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//ramdisk.img
+VERBOSE | Using initial system image: /Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//system.img
+VERBOSE | Using initial vendor image: /Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//vendor.img
+VERBOSE | autoconfig: -data /Users/jason/.android/avd/Android_API_33.avd/userdata-qemu.img
+VERBOSE | autoconfig: -initdata /Users/jason/.android/avd/Android_API_33.avd/userdata.img
+VERBOSE | autoconfig: -cache /Users/jason/.android/avd/Android_API_33.avd/cache.img
+VERBOSE | autoconfig: -sdcard /Users/jason/.android/avd/Android_API_33.avd/sdcard.img
+VERBOSE | Increasing RAM size to 2048MB
+VERBOSE | VM heap size 256MB is below hardware specified minimum of 512MB,setting it to that value
+VERBOSE | System image is read only
+VERBOSE | Found 1 DNS servers:
+VERBOSE | 	10.0.0.254
+VERBOSE | Unexpected feature list:
+VERBOSE | VirtioSndCard
+VERBOSE | found magic skin width=1080 height=2340 bpp=16
+
+VERBOSE | Requested console port 19040: Inferring adb port 19041.
+VERBOSE | CPU Acceleration: working
+VERBOSE | CPU Acceleration status: Hypervisor.Framework OS X Version 12.4
+VERBOSE | handleCpuAcceleration: feature check for hvf
+VERBOSE | Bluetooth requested by guest
+VERBOSE | started modem simulator host server at port: 49833
+VERBOSE | GPU emulation enabled using 'host' mode
+VERBOSE | Initializing hardware OpenGLES emulation support
+VERBOSE | create display 0
+VERBOSE | setDisplayPose 0 x 0 y 0 w 1080 h 2340 dpi 0
+INFO    | configAndStartRenderer: setting vsync to 60 hz
+INFO    | added library /Users/jason/Library/Android/sdk/emulator/lib64/vulkan/libvulkan.dylib
+INFO    | Sending adb public key [QAAAAI/Ho7ORiEgCxDWkqgl/bLrKwZduYxOWtOW7anExFxOd/xEhPKwTvzxbjDtGLFPD3GmsRBpTxZI1dhJgmN6LVYGowqo/2Rhl0ez/W70On00aJrDs1dpa4+DrGV3c3fYtrpmwiCIau3roXpPNNvWpnpqWFWBHUSYEbbZVZnir9EdKe64aZvtyEqqmMWHAdkbuDBo6KlPvMXxK3W895dDsj9vVvVfIAAPt47NDtBUW2N8V8Zw32YYf0HBTdQlxRPzY5yiG9COFioV2trUbPdWnsKjhZ/7/2euI6MiwSnzTDbdJam5yErFqjyP7pUiqX3tV37X+4Fq2F+k3pxdpEwNzkPEPlim4hvYIv9DhawsGMu7tgBCTR2KOYd5xY2nJN6SR5reQZ/eGfokh9d0318EmvxHfLeO8Vxiky2Yk5k3eWeGfWyYwucqKLJS3RHlQEcuz8ykIapI2fPoD34rt2aHJDz3CJZSoBhx3MSA40EYARujQA52qWJ1x9qRRL5P39SKjEy/LOTzVp3r8dGBDXjC43Wzdj+iF+SWAmk9tpoZig/Kz6QIELsR0CqYfFBrx78HQME75tjDwwufrHNX/D6qscW4P3o5dUIrZCqkBk35+CAfx1XOyhWcNB9fVNk7g6YIG6B7ROJtQcqWbcvrGEt5e2oI5wALXgGGEWgCiA73kJ0vnx36xqAEAAQA= jason@unknown]
+VERBOSE | Found 1 DNS servers:
+VERBOSE | 	10.0.0.254
+INFO    | Content of hardware configuration file:
+INFO    | 	hw.cpu.arch = x86_64
+INFO    | 	hw.cpu.ncore = 4
+INFO    | 	hw.ramSize = 2048
+INFO    | 	hw.screen = multi-touch
+INFO    | 	hw.mainKeys = false
+INFO    | 	hw.trackBall = false
+INFO    | 	hw.keyboard = true
+INFO    | 	hw.keyboard.lid = false
+INFO    | 	hw.keyboard.charmap = qwerty2
+INFO    | 	hw.dPad = false
+INFO    | 	hw.rotaryInput = false
+INFO    | 	hw.gsmModem = true
+INFO    | 	hw.gps = true
+INFO    | 	hw.battery = true
+INFO    | 	hw.accelerometer = true
+INFO    | 	hw.gyroscope = true
+INFO    | 	hw.audioInput = true
+INFO    | 	hw.audioOutput = true
+INFO    | 	hw.sdCard = true
+INFO    | 	hw.sdCard.path = /Users/jason/.android/avd/Android_API_33.avd/sdcard.img
+INFO    | 	disk.cachePartition = true
+INFO    | 	disk.cachePartition.path = /Users/jason/.android/avd/Android_API_33.avd/cache.img
+INFO    | 	disk.cachePartition.size = 66m
+INFO    | 	test.quitAfterBootTimeOut = -1
+INFO    | 	test.delayAdbTillBootComplete = 0
+INFO    | 	test.monitorAdb = 0
+INFO    | 	hw.lcd.width = 1080
+INFO    | 	hw.lcd.height = 2340
+INFO    | 	hw.lcd.depth = 16
+INFO    | 	hw.lcd.density = 420
+INFO    | 	hw.lcd.backlight = true
+INFO    | 	hw.lcd.vsync = 60
+INFO    | 	hw.gltransport = pipe
+INFO    | 	hw.gltransport.asg.writeBufferSize = 1048576
+INFO    | 	hw.gltransport.asg.writeStepSize = 4096
+INFO    | 	hw.gltransport.asg.dataRingSize = 32768
+INFO    | 	hw.gltransport.drawFlushInterval = 800
+INFO    | 	hw.displayRegion.0.1.xOffset = -1
+INFO    | 	hw.displayRegion.0.1.yOffset = -1
+INFO    | 	hw.displayRegion.0.1.width = 0
+INFO    | 	hw.displayRegion.0.1.height = 0
+INFO    | 	hw.displayRegion.0.2.xOffset = -1
+INFO    | 	hw.displayRegion.0.2.yOffset = -1
+INFO    | 	hw.displayRegion.0.2.width = 0
+INFO    | 	hw.displayRegion.0.2.height = 0
+INFO    | 	hw.displayRegion.0.3.xOffset = -1
+INFO    | 	hw.displayRegion.0.3.yOffset = -1
+INFO    | 	hw.displayRegion.0.3.width = 0
+INFO    | 	hw.displayRegion.0.3.height = 0
+INFO    | 	hw.display1.width = 0
+INFO    | 	hw.display1.height = 0
+INFO    | 	hw.display1.density = 0
+INFO    | 	hw.display1.xOffset = -1
+INFO    | 	hw.display1.yOffset = -1
+INFO    | 	hw.display1.flag = 0
+INFO    | 	hw.display2.width = 0
+INFO    | 	hw.display2.height = 0
+INFO    | 	hw.display2.density = 0
+INFO    | 	hw.display2.xOffset = -1
+INFO    | 	hw.display2.yOffset = -1
+INFO    | 	hw.display2.flag = 0
+INFO    | 	hw.display3.width = 0
+INFO    | 	hw.display3.height = 0
+INFO    | 	hw.display3.density = 0
+INFO    | 	hw.display3.xOffset = -1
+INFO    | 	hw.display3.yOffset = -1
+INFO    | 	hw.display3.flag = 0
+INFO    | 	hw.gpu.enabled = true
+INFO    | 	hw.gpu.mode = host
+INFO    | 	hw.initialOrientation = Portrait
+INFO    | 	hw.camera.back = virtualscene
+INFO    | 	hw.camera.front = emulated
+INFO    | 	vm.heapSize = 512
+INFO    | 	hw.sensors.light = true
+INFO    | 	hw.sensors.pressure = true
+INFO    | 	hw.sensors.humidity = true
+INFO    | 	hw.sensors.proximity = true
+INFO    | 	hw.sensors.magnetic_field = true
+INFO    | 	hw.sensors.magnetic_field_uncalibrated = true
+INFO    | 	hw.sensors.gyroscope_uncalibrated = true
+INFO    | 	hw.sensors.orientation = true
+INFO    | 	hw.sensors.temperature = true
+INFO    | 	hw.sensors.rgbclight = false
+INFO    | 	hw.sensor.hinge = false
+INFO    | 	hw.sensor.hinge.count = 0
+INFO    | 	hw.sensor.hinge.type = 0
+INFO    | 	hw.sensor.hinge.sub_type = 0
+INFO    | 	hw.sensor.hinge.fold_to_displayRegion.0.1_at_posture = 1
+INFO    | 	hw.sensor.roll = false
+INFO    | 	hw.sensor.roll.count = 0
+INFO    | 	hw.sensor.roll.resize_to_displayRegion.0.1_at_posture = 6
+INFO    | 	hw.sensor.roll.resize_to_displayRegion.0.2_at_posture = 6
+INFO    | 	hw.sensor.roll.resize_to_displayRegion.0.3_at_posture = 6
+INFO    | 	hw.sensors.heart_rate = false
+INFO    | 	hw.sensors.wrist_tilt = false
+INFO    | 	hw.useext4 = true
+INFO    | 	hw.arc = false
+INFO    | 	hw.arc.autologin = false
+INFO    | 	hw.device.name = resizable
+INFO    | 	hw.resizable.configs = phone-0-1080-2340-420, foldable-1-1768-2208-420, tablet-2-1920-1200-240, desktop-3-1920-1080-160
+INFO    | 	kernel.path = /Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//kernel-ranchu
+INFO    | 	kernel.newDeviceNaming = yes
+INFO    | 	kernel.supportsYaffs2 = no
+INFO    | 	disk.ramdisk.path = /Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//ramdisk.img
+INFO    | 	disk.systemPartition.initPath = /Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//system.img
+INFO    | 	disk.systemPartition.size = 4107m
+INFO    | 	disk.vendorPartition.initPath = /Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//vendor.img
+INFO    | 	disk.vendorPartition.size = 800m
+INFO    | 	disk.dataPartition.path = /Users/jason/.android/avd/Android_API_33.avd/userdata-qemu.img
+INFO    | 	disk.dataPartition.size = 800m
+INFO    | 	disk.encryptionKeyPartition.path = /Users/jason/.android/avd/Android_API_33.avd/encryptionkey.img
+INFO    | 	PlayStore.enabled = false
+INFO    | 	avd.name = Android_API_33
+INFO    | 	avd.id = Android_API_33
+INFO    | 	fastboot.forceColdBoot = false
+INFO    | 	android.sdk.root = /Users/jason/Library/Android/sdk
+INFO    | 	android.avd.home = /Users/jason/.android/avd
+INFO    | .
+INFO    | QEMU options list:
+INFO    | 	 argv[00] = "/Users/jason/Library/Android/sdk/emulator/qemu/darwin-x86_64/qemu-system-x86_64"
+INFO    | 	 argv[01] = "-dns-server"
+INFO    | 	 argv[02] = "10.0.0.254"
+INFO    | 	 argv[03] = "-no-audio"
+INFO    | 	 argv[04] = "-mem-path"
+INFO    | 	 argv[05] = "/Users/jason/.android/avd/Android_API_33.avd/snapshots/default_boot/ram.img"
+INFO    | 	 argv[06] = "-mem-file-shared"
+INFO    | 	 argv[07] = "-serial"
+INFO    | 	 argv[08] = "null"
+INFO    | 	 argv[09] = "-android-ports"
+INFO    | 	 argv[10] = "19040,19041"
+INFO    | 	 argv[11] = "-device"
+INFO    | 	 argv[12] = "goldfish_pstore,addr=0xff018000,size=0x10000,file=/Users/jason/.android/avd/Android_API_33.avd/data/misc/pstore/pstore.bin"
+INFO    | 	 argv[13] = "-cpu"
+INFO    | 	 argv[14] = "android64"
+INFO    | 	 argv[15] = "-enable-hvf"
+INFO    | 	 argv[16] = "-smp"
+INFO    | 	 argv[17] = "cores=4"
+INFO    | 	 argv[18] = "-m"
+INFO    | 	 argv[19] = "2048"
+INFO    | 	 argv[20] = "-lcd-density"
+INFO    | 	 argv[21] = "420"
+INFO    | 	 argv[22] = "-nodefaults"
+INFO    | 	 argv[23] = "-kernel"
+INFO    | 	 argv[24] = "/Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//kernel-ranchu"
+INFO    | 	 argv[25] = "-initrd"
+INFO    | 	 argv[26] = "/Users/jason/.android/avd/Android_API_33.avd/initrd"
+INFO    | 	 argv[27] = "-drive"
+INFO    | 	 argv[28] = "if=none,index=0,id=system,if=none,file=/Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//system.img,read-only"
+INFO    | 	 argv[29] = "-device"
+INFO    | 	 argv[30] = "virtio-blk-pci,drive=system,modern-pio-notify"
+INFO    | 	 argv[31] = "-drive"
+INFO    | 	 argv[32] = "if=none,index=1,id=cache,if=none,file=/Users/jason/.android/avd/Android_API_33.avd/cache.img.qcow2,overlap-check=none,cache=unsafe,l2-cache-size=1048576"
+INFO    | 	 argv[33] = "-device"
+INFO    | 	 argv[34] = "virtio-blk-pci,drive=cache,modern-pio-notify"
+INFO    | 	 argv[35] = "-drive"
+INFO    | 	 argv[36] = "if=none,index=2,id=userdata,if=none,file=/Users/jason/.android/avd/Android_API_33.avd/userdata-qemu.img.qcow2,overlap-check=none,cache=unsafe,l2-cache-size=1048576"
+INFO    | 	 argv[37] = "-device"
+INFO    | 	 argv[38] = "virtio-blk-pci,drive=userdata,modern-pio-notify"
+INFO    | 	 argv[39] = "-drive"
+INFO    | 	 argv[40] = "if=none,index=3,id=encrypt,if=none,file=/Users/jason/.android/avd/Android_API_33.avd/encryptionkey.img.qcow2,overlap-check=none,cache=unsafe,l2-cache-size=1048576"
+INFO    | 	 argv[41] = "-device"
+INFO    | 	 argv[42] = "virtio-blk-pci,drive=encrypt,modern-pio-notify"
+INFO    | 	 argv[43] = "-drive"
+INFO    | 	 argv[44] = "if=none,index=4,id=vendor,if=none,file=/Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//vendor.img,read-only"
+INFO    | 	 argv[45] = "-device"
+INFO    | 	 argv[46] = "virtio-blk-pci,drive=vendor,modern-pio-notify"
+INFO    | 	 argv[47] = "-drive"
+INFO    | 	 argv[48] = "if=none,index=5,id=sdcard,if=none,file=/Users/jason/.android/avd/Android_API_33.avd/sdcard.img.qcow2,overlap-check=none,cache=unsafe,l2-cache-size=1048576"
+INFO    | 	 argv[49] = "-device"
+INFO    | 	 argv[50] = "virtio-blk-pci,drive=sdcard,modern-pio-notify"
+INFO    | 	 argv[51] = "-netdev"
+INFO    | 	 argv[52] = "user,id=mynet"
+INFO    | 	 argv[53] = "-device"
+INFO    | 	 argv[54] = "virtio-net-pci,netdev=mynet"
+INFO    | 	 argv[55] = "-chardev"
+INFO    | 	 argv[56] = "null,id=forhvc0"
+INFO    | 	 argv[57] = "-chardev"
+INFO    | 	 argv[58] = "null,id=forhvc1"
+INFO    | 	 argv[59] = "-device"
+INFO    | 	 argv[60] = "virtio-serial-pci,ioeventfd=off"
+INFO    | 	 argv[61] = "-device"
+INFO    | 	 argv[62] = "virtconsole,chardev=forhvc0"
+INFO    | 	 argv[63] = "-device"
+INFO    | 	 argv[64] = "virtconsole,chardev=forhvc1"
+INFO    | 	 argv[65] = "-chardev"
+INFO    | 	 argv[66] = "rootcanal,id=rootcanal"
+INFO    | 	 argv[67] = "-device"
+INFO    | 	 argv[68] = "virtserialport,chardev=rootcanal,name=bluetooth"
+INFO    | 	 argv[69] = "-device"
+INFO    | 	 argv[70] = "virtio-serial,ioeventfd=off"
+INFO    | 	 argv[71] = "-chardev"
+INFO    | 	 argv[72] = "socket,port=49832,host=::1,nowait,nodelay,ipv6,id=modem"
+INFO    | 	 argv[73] = "-device"
+INFO    | 	 argv[74] = "virtserialport,chardev=modem,name=modem"
+INFO    | 	 argv[75] = "-device"
+INFO    | 	 argv[76] = "virtio-rng-pci"
+INFO    | 	 argv[77] = "-show-cursor"
+INFO    | 	 argv[78] = "-device"
+INFO    | 	 argv[79] = "virtio_input_multi_touch_pci_1"
+INFO    | 	 argv[80] = "-device"
+INFO    | 	 argv[81] = "virtio_input_multi_touch_pci_2"
+INFO    | 	 argv[82] = "-device"
+INFO    | 	 argv[83] = "virtio_input_multi_touch_pci_3"
+INFO    | 	 argv[84] = "-device"
+INFO    | 	 argv[85] = "virtio_input_multi_touch_pci_4"
+INFO    | 	 argv[86] = "-device"
+INFO    | 	 argv[87] = "virtio_input_multi_touch_pci_5"
+INFO    | 	 argv[88] = "-device"
+INFO    | 	 argv[89] = "virtio_input_multi_touch_pci_6"
+INFO    | 	 argv[90] = "-device"
+INFO    | 	 argv[91] = "virtio_input_multi_touch_pci_7"
+INFO    | 	 argv[92] = "-device"
+INFO    | 	 argv[93] = "virtio_input_multi_touch_pci_8"
+INFO    | 	 argv[94] = "-device"
+INFO    | 	 argv[95] = "virtio_input_multi_touch_pci_9"
+INFO    | 	 argv[96] = "-device"
+INFO    | 	 argv[97] = "virtio_input_multi_touch_pci_10"
+INFO    | 	 argv[98] = "-device"
+INFO    | 	 argv[99] = "virtio_input_multi_touch_pci_11"
+INFO    | 	 argv[100] = "-device"
+INFO    | 	 argv[101] = "virtio-keyboard-pci"
+INFO    | 	 argv[102] = "-netdev"
+INFO    | 	 argv[103] = "user,id=virtio-wifi,dhcpstart=10.0.2.16"
+INFO    | 	 argv[104] = "-device"
+INFO    | 	 argv[105] = "virtio-wifi-pci,netdev=virtio-wifi"
+INFO    | 	 argv[106] = "-device"
+INFO    | 	 argv[107] = "virtio-vsock-pci,guest-cid=77"
+INFO    | 	 argv[108] = "-L"
+INFO    | 	 argv[109] = "/Users/jason/Library/Android/sdk/emulator/lib/pc-bios"
+INFO    | 	 argv[110] = "-soundhw"
+INFO    | 	 argv[111] = "hda"
+INFO    | 	 argv[112] = "-vga"
+INFO    | 	 argv[113] = "none"
+INFO    | 	 argv[114] = "-append"
+INFO    | 	 argv[115] = "no_timer_check clocksource=pit console=0 cma=296M@0-4G loop.max_part=7 ramoops.mem_address=0xff018000 ramoops.mem_size=0x10000 memmap=0x10000$0xff018000 printk.devkmsg=on bootconfig"
+INFO    | 	 argv[116] = "-android-hw"
+INFO    | 	 argv[117] = "/Users/jason/.android/avd/Android_API_33.avd/hardware-qemu.ini"
+INFO    | Concatenated QEMU options: /Users/jason/Library/Android/sdk/emulator/qemu/darwin-x86_64/qemu-system-x86_64 -dns-server 10.0.0.254 -no-audio -mem-path /Users/jason/.android/avd/Android_API_33.avd/snapshots/default_boot/ram.img -mem-file-shared -serial null -android-ports 19040,19041 -device goldfish_pstore,addr=0xff018000,size=0x10000,file=/Users/jason/.android/avd/Android_API_33.avd/data/misc/pstore/pstore.bin -cpu android64 -enable-hvf -smp cores=4 -m 2048 -lcd-density 420 -nodefaults -kernel /Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//kernel-ranchu -initrd /Users/jason/.android/avd/Android_API_33.avd/initrd -drive if=none,index=0,id=system,if=none,file=/Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//system.img,read-only -device virtio-blk-pci,drive=system,modern-pio-notify -drive if=none,index=1,id=cache,if=none,file=/Users/jason/.android/avd/Android_API_33.avd/cache.img.qcow2,overlap-check=none,cache=unsafe,l2-cache-size=1048576 -device virtio-blk-pci,drive=cache,modern-pio-notify -drive if=none,index=2,id=userdata,if=none,file=/Users/jason/.android/avd/Android_API_33.avd/userdata-qemu.img.qcow2,overlap-check=none,cache=unsafe,l2-cache-size=1048576 -device virtio-blk-pci,drive=userdata,modern-pio-notify -drive if=none,index=3,id=encrypt,if=none,file=/Users/jason/.android/avd/Android_API_33.avd/encryptionkey.img.qcow2,overlap-check=none,cache=unsafe,l2-cache-size=1048576 -device virtio-blk-pci,drive=encrypt,modern-pio-notify -drive if=none,index=4,id=vendor,if=none,file=/Users/jason/Library/Android/sdk/system-images/android-33/google_apis/x86_64//vendor.img,read-only -device virtio-blk-pci,drive=vendor,modern-pio-notify -drive if=none,index=5,id=sdcard,if=none,file=/Users/jason/.android/avd/Android_API_33.avd/sdcard.img.qcow2,overlap-check=none,cache=unsafe,l2-cache-size=1048576 -device virtio-blk-pci,drive=sdcard,modern-pio-notify -netdev user,id=mynet -device virtio-net-pci,netdev=mynet -chardev null,id=forhvc0 -chardev null,id=forhvc1 -device virtio-serial-pci,ioeventfd=off -device virtconsole,chardev=forhvc0 -device virtconsole,chardev=forhvc1 -chardev rootcanal,id=rootcanal -device virtserialport,chardev=rootcanal,name=bluetooth -device virtio-serial,ioeventfd=off -chardev socket,port=49832,host=::1,nowait,nodelay,ipv6,id=modem -device virtserialport,chardev=modem,name=modem -device virtio-rng-pci -show-cursor -device virtio_input_multi_touch_pci_1 -device virtio_input_multi_touch_pci_2 -device virtio_input_multi_touch_pci_3 -device virtio_input_multi_touch_pci_4 -device virtio_input_multi_touch_pci_5 -device virtio_input_multi_touch_pci_6 -device virtio_input_multi_touch_pci_7 -device virtio_input_multi_touch_pci_8 -device virtio_input_multi_touch_pci_9 -device virtio_input_multi_touch_pci_10 -device virtio_input_multi_touch_pci_11 -device virtio-keyboard-pci -netdev user,id=virtio-wifi,dhcpstart=10.0.2.16 -device virtio-wifi-pci,netdev=virtio-wifi -device virtio-vsock-pci,guest-cid=77 -L /Users/jason/Library/Android/sdk/emulator/lib/pc-bios -soundhw hda -vga none -append 'no_timer_check clocksource=pit console=0 cma=296M@0-4G loop.max_part=7 ramoops.mem_address=0xff018000 ramoops.mem_size=0x10000 memmap=0x10000$0xff018000 printk.devkmsg=on bootconfig' -android-hw /Users/jason/.android/avd/Android_API_33.avd/hardware-qemu.ini
+VERBOSE | Starting hostapd main loop.
+VERBOSE | Android qemu version 31.2.10.0 (build_id 8420304) (CL:N/A)
+VERBOSE | Starting QEMU main loop
+VERBOSE | registered 'boot-properties' qemud service
+VERBOSE | Adding boot property: 'ro.opengles.version' = '196608'
+VERBOSE | Adding boot property: 'qemu.sf.fake_camera' = 'front'
+VERBOSE | Adding boot property: 'dalvik.vm.heapsize' = '512m'
+VERBOSE | Adding boot property: 'qemu.hw.mainkeys' = '0'
+VERBOSE | Adding boot property: 'qemu.sf.lcd_density' = '420'
+INFO    | Rootcanal has  been activated.
+VERBOSE | goldfish_events.have-dpad: false
+VERBOSE | goldfish_events.have-trackball: false
+VERBOSE | goldfish_events.have-camera: true
+VERBOSE | goldfish_events.have-keyboard: false
+VERBOSE | goldfish_events.have-lidswitch: false
+VERBOSE | goldfish_events.have-tabletmode: false
+VERBOSE | goldfish_events.have-touch: false
+VERBOSE | goldfish_events.have-multitouch: false
+VERBOSE | Adding boot property: 'net.wifi_mac_prefix' = '19040'
+WARNING | Requested adb port (19041) is outside the recommended range [5555,5586]. ADB may not function properly for the emulator. See -help-port for details.
+VERBOSE | Not using any http proxy
+VERBOSE | Adding boot property: 'qemu.timezone' = 'Africa/Johannesburg'
+VERBOSE | android_hw_fingerprint_init: fingerprint qemud listen service initialized
+VERBOSE | emulator_window_fb_rotate
+INFO    | setDisplayConfigs w 1080 h 2340 dpiX 420 dpiY 420
+INFO    | setDisplayConfigs w 1768 h 2208 dpiX 420 dpiY 420
+INFO    | setDisplayConfigs w 1920 h 1200 dpiX 240 dpiY 240
+INFO    | setDisplayConfigs w 1920 h 1080 dpiX 160 dpiY 160
+VERBOSE | setDisplayPose 0 x 0 y 0 w 1080 h 2340 dpi 0
+INFO    | setDisplayActiveConfig 0
+VERBOSE | config multidisplay with config.ini 0x0 0x0 0x0
+VERBOSE | No acpi ini file provided, using default
+VERBOSE | Adding boot property: 'ro.opengles.version' = '196608'
+VERBOSE | Adding boot property: 'qemu.sf.fake_camera' = 'front'
+VERBOSE | Adding boot property: 'dalvik.vm.heapsize' = '512m'
+VERBOSE | Adding boot property: 'qemu.hw.mainkeys' = '0'
+VERBOSE | Adding boot property: 'qemu.sf.lcd_density' = '420'
+VERBOSE | Adding boot property: 'net.wifi_mac_prefix' = '16024'
+VERBOSE | Adding boot property: 'qemu.timezone' = 'Africa/Johannesburg'
+VERBOSE | Path:/Users/jason/Library/Android/sdk/platform-tools/adb protocol version: 41
+VERBOSE | Path:/Users/jason/Library/Android/sdk/platform-tools/adb protocol version: 41
+VERBOSE | Found: 2 adb executables
+VERBOSE | Adb: /Users/jason/Library/Android/sdk/platform-tools/adb
+VERBOSE | Adb: /Users/jason/Library/Android/sdk/platform-tools/adb
+VERBOSE | Path:/Users/jason/Library/Android/sdk/platform-tools/adb protocol version: 41
+VERBOSE | Path:/Users/jason/Library/Android/sdk/platform-tools/adb protocol version: 41
+VERBOSE | _hwFingerprint_connect: connect finger print listen is called
+VERBOSE | Saving state on exit with session uptime 3525411 ms
+INFO    | Closing down rootcanal.
+VERBOSE | Done with QEMU main loop
+VERBOSE | User configuration saved to /Users/jason/.android/avd/Android_API_33.avd/emulator-user.ini
+VERBOSE | sending STOP to modem simulator host server
+VERBOSE | received exit request from parent process
+VERBOSE | Adb transition disconnected -> disconnected
+
+Jun 24 22:13:16 detox[94140] DEBUG: [EXEC_CMD, #3] "/Users/jason/Library/Android/sdk/platform-tools/adb" -s emulator-19040 shell "getprop dev.bootcomplete"
+Jun 24 22:13:17 detox[94140] ERROR: [EXEC_FAIL, #3] ""/Users/jason/Library/Android/sdk/platform-tools/adb" -s emulator-19040 shell "getprop dev.bootcomplete"" failed with error = ChildProcessError: Command failed: "/Users/jason/Library/Android/sdk/platform-tools/adb" -s emulator-19040 shell "getprop dev.bootcomplete"
+adb: device 'emulator-19040' not found
+ `"/Users/jason/Library/Android/sdk/platform-tools/adb" -s emulator-19040 shell "getprop dev.bootcomplete"` (exited with error code 1) (code=1), stdout and stderr:
+
+Jun 24 22:13:17 detox[94140] ERROR: [EXEC_FAIL, #3] 
+Jun 24 22:13:17 detox[94140] ERROR: [EXEC_FAIL, #3] adb: device 'emulator-19040' not found
+
