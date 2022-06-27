@@ -4,7 +4,7 @@ import org.apache.tools.ant.taskdefs.condition.Os
 
 buildscript {
     ext {
-        buildToolsVersion = "30.0.2"
+        buildToolsVersion = "31.0.0"
         minSdkVersion = 24
         compileSdkVersion = 31
         targetSdkVersion = 31
@@ -53,6 +53,7 @@ allprojects {
                 excludeGroup "com.facebook.react"
             }
         }
+        mavenLocal()
         google()
         maven { url 'https://www.jitpack.io' }
     }

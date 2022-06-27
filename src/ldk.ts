@@ -227,7 +227,7 @@ class LDK {
 		pubKey,
 		address,
 		port,
-		timeout
+		timeout,
 	}: TAddPeerReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.addPeer(address, port, pubKey, timeout);
