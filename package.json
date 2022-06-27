@@ -1,7 +1,7 @@
 {
   "name": "@synonymdev/react-native-ldk",
   "title": "React Native LDK",
-  "version": "0.0.40",
+  "version": "0.0.41",
   "description": "React Native wrapper for LDK",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,7 +21,6 @@
   "scripts": {
     "build": "rm -rf dist && mkdir dist/ && tsc -p ./src",
     "watch": "yarn run build -- -w",
-    "lint": "yarn lint",
     "lint:check": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --fix --ext .js,.jsx,.ts,.tsx",
     "prepublish": "yarn lint:fix && yarn run build && npm --no-git-tag-version version patch",
