@@ -9,7 +9,7 @@ jobs:
   e2e-test:
     name: E2E iOS test
     runs-on: macOS-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Check out Git repository
@@ -58,8 +58,7 @@ jobs:
           path: example/ios/Pods
           key: pods-${{ hashFiles('**/Podfile.lock') }}
 
-      - name: Update pods and rn-nodify
-        if: steps.podcache.outputs.cache-hit != 'true'
+      - name: Install pods and rn-nodify
         working-directory: example
         run: |
           gem update cocoapods xcodeproj
