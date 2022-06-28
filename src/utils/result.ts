@@ -37,7 +37,7 @@ export const ok = <T>(value: T): Ok<T> => new Ok(value);
 /**
  * Construct a new Err result value.
  */
-export const err = <T>(error: Error | string): Err<T> => {
+export const err = <T>(error: Error | string | any): Err<T> => {
 	if (typeof error === 'string') {
 		return new Err(new Error(error));
 	}
