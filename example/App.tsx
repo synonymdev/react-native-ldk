@@ -56,6 +56,7 @@ const App = (): ReactElement => {
 			<ScrollView
 				contentInsetAdjustmentBehavior="automatic"
 				style={styles.scrollView}>
+				<Text style={styles.text}>react-native-ldk</Text>
 				<View style={styles.messageContainer}>
 					<Text style={styles.text}>{message}</Text>
 				</View>
@@ -268,7 +269,18 @@ const App = (): ReactElement => {
 					<Button
 						title={'E2E test'}
 						onPress={async (): Promise<void> => {
-							setMessage('SUCCESS');
+							//TODO add more functionality to test
+							const ldkVersion = await ldk.version();
+							if (ldkVersion.isErr()) {
+								return setMessage(ldkVersion.error.message);
+							}
+
+							const nodeIdRes = await ldk.nodeId();
+							if (nodeIdRes.isErr()) {
+								return setMessage(nodeIdRes.error.message);
+							}
+
+							return setMessage('e2e success');
 						}}
 					/>
 				</View>

@@ -1,13 +1,13 @@
 name: e2e-ios
 
 on:
-  push:
+  pull_request:
     branches:
-      - 'e2e-tests'
+      - 'master'
 
 jobs:
   e2e-test:
-    name: Run e2e iOS test
+    name: E2E iOS test
     runs-on: macOS-latest
     timeout-minutes: 30
 
