@@ -26,7 +26,7 @@ jobs:
         run: yarn lint:check
 
       - name: Run linters
-        uses: tinovyatkin/action-eslint@v1
+        uses: tinovyatkin/action-eslint@a62d4ab3ea77b401bd40d1dfbd1ff053b3aa9307
         with:
           repo-token: ${{secrets.GITHUB_TOKEN}}
           check-name: eslint
