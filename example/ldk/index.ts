@@ -142,7 +142,7 @@ export const setupLdk = async (): Promise<Result<string>> => {
 		await lm.syncLdk();
 
 		console.log(`Node ID: ${nodeIdRes.value}`);
-		return ok(`Node ID: ${nodeIdRes.value}`);
+		return ok('Running LDK'); //e2e test needs to see this string
 	} catch (e) {
 		return err(e.toString());
 	}

@@ -1,0 +1,76 @@
+name: e2e-ios
+
+on:
+  pull_request:
+    branches:
+      - 'master'
+
+jobs:
+  e2e-test:
+    name: E2E iOS test
+    runs-on: macOS-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+
+      - name: Cache lib node modules
+        uses: actions/cache@v3
+        id: lib-npmcache
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Install lib dependencies
+        if: steps.lib-npmcache.outputs.cache-hit != 'true'
+        run: yarn install
+
+      - name: Build lib
+        run: yarn build
+
+      - name: Cache app node modules
+        uses: actions/cache@v3
+        id: app-npmcache
+        with:
+          path: example/node_modules
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Rebuild detox
+        if: steps.app-npmcache.outputs.cache-hit == 'true'
+        working-directory: example
+        run: yarn detox clean-framework-cache && yarn detox build-framework-cache
+
+      - name: Install app dependencies
+        if: steps.app-npmcache.outputs.cache-hit != 'true'
+        working-directory: example
+        run: yarn install
+
+      - name: Cache Pods
+        uses: actions/cache@v3
+        id: podcache
+        with:
+          path: example/ios/Pods
+          key: pods-${{ hashFiles('**/Podfile.lock') }}
+
+      - name: Install pods and rn-nodify
+        working-directory: example
+        run: |
+          gem update cocoapods xcodeproj
+          yarn rn-setup
+
+      - name: Install brew dependencies
+        run: brew tap wix/brew && brew install applesimutils
+
+      - name: Build iOS app
+        working-directory: example
+        run: yarn e2e:ios-build
+
+      - name: Test iOS app
+        working-directory: example
+        run: sh ../.github/scripts/test-ios.sh
