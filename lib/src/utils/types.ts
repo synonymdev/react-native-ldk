@@ -179,8 +179,10 @@ export type TAddPeerReq = {
 
 export type TSetTxConfirmedReq = {
 	header: string;
-	transaction: string;
-	pos: number;
+	txData: {
+		transaction: string;
+		pos: number;
+	}[];
 	height: number;
 };
 
