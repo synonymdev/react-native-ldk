@@ -5,6 +5,10 @@ on:
     branches:
       - 'master'
 
+defaults:
+  run:
+    working-directory: lib
+
 jobs:
   eslint:
     name: Run lint check
@@ -19,8 +23,15 @@ jobs:
         with:
           node-version: 14
 
-      - name: Install Node.js dependencies
-        working-directory: lib
+      - name: Cache node modules
+        uses: actions/cache@v3
+        id: npmcache
+        with:
+          path: lib/node_modules
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Install lib dependencies
+        if: steps.npmcache.outputs.cache-hit != 'true'
         run: yarn install
 
       - name: Lint check
