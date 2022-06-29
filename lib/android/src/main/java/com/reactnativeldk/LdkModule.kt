@@ -76,7 +76,6 @@ enum class LdkCallbackResponses {
     chain_monitor_init_success,
     keys_manager_init_success,
     channel_manager_init_success,
-    load_channel_monitors_success,
     config_init_success,
     chain_monitor_updated,
     network_graph_init_success,
@@ -112,7 +111,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private var keysManager: KeysManager? = null
     private var channelManager: ChannelManager? = null
     private var userConfig: UserConfig? = null
-    private var channelMonitors: MutableList<ByteArray> = arrayListOf() //TODO don't keep this, just add it from initChannelManager
     private var networkGraph: NetworkGraph? = null
     private var peerManager: PeerManager? = null
     private var peerHandler: NioPeerHandler? = null
@@ -159,16 +157,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun loadChannelMonitors(channelMonitorStrings: ReadableArray, promise: Promise) {
-        channelMonitorStrings.toArrayList().iterator().forEach { hex ->
-            channelMonitors.add((hex as String).hexa())
-        }
-        //TODO remove this in favour of passing channel monitors through in initChannelManager
-        LdkEventEmitter.send(EventTypes.swift_log, "Loaded channel monitors: ${channelMonitors.size}")
-        handleResolve(promise, LdkCallbackResponses.load_channel_monitors_success)
-    }
-
-    @ReactMethod
     fun initConfig(acceptInboundChannels: Boolean, manuallyAcceptInboundChannels: Boolean, announcedChannels: Boolean, minChannelHandshakeDepth: Double, promise: Promise) {
         if (userConfig !== null) {
             return handleReject(promise, LdkErrors.already_init)
@@ -203,7 +191,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initChannelManager(network: String, serializedChannelManager: String, blockHash: String, blockHeight: Double, promise: Promise) {
+    fun initChannelManager(network: String, channelManagerSerialized: String, channelMonitorsSerialized: ReadableArray, blockHash: String, blockHeight: Double, promise: Promise) {
         if (channelManager !== null) {
             return handleReject(promise, LdkErrors.already_init)
         }
@@ -231,8 +219,14 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             }
         }
 
+        var channelMonitors: MutableList<ByteArray> = arrayListOf()
+        channelMonitorsSerialized.toArrayList().iterator().forEach { hex ->
+            channelMonitors.add((hex as String).hexa())
+        }
+
         try {
-            if (channelMonitors.isEmpty()) {
+            if (channelManagerSerialized == "") {
+                //New node
                 channelManagerConstructor = ChannelManagerConstructor(
                     ldkNetwork,
                     userConfig,
@@ -246,9 +240,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     logger.logger
                 )
             } else {
-                println("Untested node restore")
+                //Restoring node
                 channelManagerConstructor = ChannelManagerConstructor(
-                    serializedChannelManager.hexa(),
+                    channelManagerSerialized.hexa(),
                     channelMonitors.toTypedArray(),
                     userConfig,
                     keysManager!!.as_KeysInterface(),
@@ -274,12 +268,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         invoicePayer = channelManagerConstructor!!.payer
 
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
-    }
-
-    @ReactMethod
-    fun syncChainMonitorWithChannelMonitor(blockHash: String, blockHeight: Double, promise: Promise) {
-        //TODO
-        handleResolve(promise, LdkCallbackResponses.chain_monitor_updated)
     }
 
     //MARK: Update methods

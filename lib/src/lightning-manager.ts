@@ -276,13 +276,7 @@ class LightningManager {
 		}
 
 		// Step 7: Read ChannelMonitors state from disk
-		let channelData = ldkData[ELdkData.channelData];
-		const channelMonitorsRes = await ldk.loadChannelMonitors(
-			Object.values(channelData),
-		);
-		if (channelMonitorsRes.isErr()) {
-			return channelMonitorsRes;
-		}
+		// Handled in initChannelManager below
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
 		// [Needs to happen first before ChannelManagerConstructor inside initChannelManager() can be called 🤷️]
@@ -305,10 +299,12 @@ class LightningManager {
 			return confRes;
 		}
 
-		const serializedChannelManager = ldkData[ELdkData.channelManager] ?? '';
+		const channelManagerSerialized = ldkData[ELdkData.channelManager] ?? '';
+		let channelData = ldkData[ELdkData.channelData];
 		const channelManagerRes = await ldk.initChannelManager({
 			network: this.network,
-			serializedChannelManager,
+			channelManagerSerialized,
+			channelMonitorsSerialized: Object.values(channelData),
 			bestBlock,
 		});
 		if (channelManagerRes.isErr()) {
