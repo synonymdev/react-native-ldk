@@ -325,14 +325,25 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun setTxConfirmed(header: String, transaction: String, pos: Double, height: Double, promise: Promise) {
+    fun setTxConfirmed(header: String, txData: ReadableArray, height: Double, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
         chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
 
-        val txData = arrayOf(TwoTuple_usizeTransactionZ.of(pos.toLong(), transaction.hexa()))
+        val confirmTxData: MutableList<TwoTuple_usizeTransactionZ> = ArrayList()
 
-        channelManager!!.as_Confirm().transactions_confirmed(header.hexa(), txData, height.toInt())
-        chainMonitor!!.as_Confirm().transactions_confirmed(header.hexa(), txData, height.toInt())
+        var msg = ""
+        txData.toArrayList().iterator().forEach { tx ->
+            val txMap = tx as HashMap<*, *>
+            confirmTxData.add(
+                TwoTuple_usizeTransactionZ.of(
+                    (txMap.get("pos") as Double).toLong(),
+                    (txMap.get("transaction") as String).hexa()
+                )
+            )
+        }
+
+        channelManager!!.as_Confirm().transactions_confirmed(header.hexa(), confirmTxData.toTypedArray(), height.toInt())
+        chainMonitor!!.as_Confirm().transactions_confirmed(header.hexa(), confirmTxData.toTypedArray(), height.toInt())
 
         handleResolve(promise, LdkCallbackResponses.tx_set_confirmed)
     }

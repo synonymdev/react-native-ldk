@@ -329,7 +329,7 @@ class Ldk: NSObject {
     }
 
     @objc
-    func setTxConfirmed(_ header: NSString, transaction: NSString, pos: NSInteger, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func setTxConfirmed(_ header: NSString, txData: NSArray, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
@@ -338,16 +338,20 @@ class Ldk: NSObject {
             return handleReject(reject, .init_chain_monitor)
         }
 
-        let txData = [C2Tuple_usizeTransactionZ.new(a: UInt(pos), b: String(transaction).hexaBytes)]
-
+        var confirmTxData: [C2Tuple_usizeTransactionZ] = []
+        for tx in txData {
+            let d = tx as! NSDictionary
+            confirmTxData.append(C2Tuple_usizeTransactionZ.new(a: d["pos"] as! UInt, b: (d["transaction"] as! String).hexaBytes))
+        }
+        
         channelManager.as_Confirm().transactions_confirmed(
             header: String(header).hexaBytes,
-            txdata: txData,
+            txdata: confirmTxData,
             height: UInt32(height)
         )
         chainMonitor.as_Confirm().transactions_confirmed(
             header: String(header).hexaBytes,
-            txdata: txData,
+            txdata: confirmTxData,
             height: UInt32(height)
         )
 

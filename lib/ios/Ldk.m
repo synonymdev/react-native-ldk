@@ -49,8 +49,7 @@ RCT_EXTERN_METHOD(addPeer:(NSString *)address
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setTxConfirmed:(NSString *)header
-                  transaction:(NSString *)transaction
-                  pos:(NSInteger *)pos
+                  txData:(NSArray *)txData
                   height:(NSInteger *)height
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
