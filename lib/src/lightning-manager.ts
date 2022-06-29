@@ -372,8 +372,7 @@ class LightningManager {
 					await ldk.setTxConfirmed({
 						header: response.header,
 						height: response.height,
-						transaction: response.transaction,
-						pos,
+						txData: [{ transaction: response.transaction, pos }], //TODO can be used to batch this call
 					});
 				} else {
 					await ldk.setTxUnconfirmed({

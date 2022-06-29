@@ -169,7 +169,8 @@ export const getTransactionData = async (
 		txHashes: data,
 		network: selectedNetwork,
 	});
-	if (response.error) {
+
+	if (response.error || !response.data || response.data[0].error) {
 		return transactionData;
 	}
 	const { confirmations, hex: hex_encoded_tx } = response.data[0].result;

@@ -236,17 +236,11 @@ class LDK {
 	 */
 	async setTxConfirmed({
 		header,
-		transaction,
+		txData,
 		height,
-		pos,
 	}: TSetTxConfirmedReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.setTxConfirmed(
-				header,
-				transaction,
-				pos,
-				height,
-			);
+			const res = await NativeLDK.setTxConfirmed(header, txData, height);
 			return ok(res);
 		} catch (e) {
 			return err(e);
