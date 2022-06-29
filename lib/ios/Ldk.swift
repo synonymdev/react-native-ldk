@@ -254,18 +254,6 @@ class Ldk: NSObject {
         return handleResolve(resolve, .channel_manager_init_success)
     }
 
-    @objc
-    func syncChainMonitorWithChannelMonitor(_ blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let chainMonitor = chainMonitor else {
-            return handleReject(reject, .init_chain_monitor)
-        }
-
-        //TODO figure out how to read channel monitors and pass to chain monitor
-        //chainMonitor.as_Watch().watch_channel(funding_txo: T##OutPoint, monitor: channelMonitors)
-
-        return handleResolve(resolve, .chain_monitor_updated)
-    }
-
     //MARK: Update methods
 
     @objc

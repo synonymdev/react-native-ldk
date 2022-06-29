@@ -270,12 +270,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
     }
 
-    @ReactMethod
-    fun syncChainMonitorWithChannelMonitor(blockHash: String, blockHeight: Double, promise: Promise) {
-        //TODO
-        handleResolve(promise, LdkCallbackResponses.chain_monitor_updated)
-    }
-
     //MARK: Update methods
 
     @ReactMethod
