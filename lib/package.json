@@ -1,7 +1,7 @@
 {
   "name": "@synonymdev/react-native-ldk",
   "title": "React Native LDK",
-  "version": "0.0.43",
+  "version": "0.0.44",
   "description": "React Native wrapper for LDK",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -24,9 +24,9 @@
     "lint:check": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --fix --ext .js,.jsx,.ts,.tsx",
     "prepublish": "yarn lint:fix && yarn run build && npm --no-git-tag-version version patch",
-    "dev:save-ios-updates": "cp example/node_modules/@synonymdev/react-native-ldk/ios/*.{m,swift,h} ./ios && cp example/node_modules/@synonymdev/react-native-ldk/ios/Classes/*.swift ./ios/Classes/",
-    "dev:save-android-updates": "cp example/node_modules/@synonymdev/react-native-ldk/android/src/main/java/com/reactnativeldk/*.kt ./android/src/main/java/com/reactnativeldk/ && cp example/node_modules/@synonymdev/react-native-ldk/android/src/main/java/com/reactnativeldk/classes/*.kt ./android/src/main/java/com/reactnativeldk/classes/ && cp example/node_modules/@synonymdev/react-native-ldk/android/build.gradle ./android/",
-    "dev:update-example-dist": "yarn build && cp -R dist example/node_modules/@synonymdev/react-native-ldk",
+    "dev:save-ios-updates": "cp ../example/node_modules/@synonymdev/react-native-ldk/ios/*.{m,swift,h} ./ios && cp ../example/node_modules/@synonymdev/react-native-ldk/ios/Classes/*.swift ./ios/Classes/",
+    "dev:save-android-updates": "cp ../example/node_modules/@synonymdev/react-native-ldk/android/src/main/java/com/reactnativeldk/*.kt ./android/src/main/java/com/reactnativeldk/ && cp ../example/node_modules/@synonymdev/react-native-ldk/android/src/main/java/com/reactnativeldk/classes/*.kt ./android/src/main/java/com/reactnativeldk/classes/ && cp ../example/node_modules/@synonymdev/react-native-ldk/android/build.gradle ./android/",
+    "dev:update-example-dist": "yarn build && cp -R dist ../example/node_modules/@synonymdev/react-native-ldk",
     "dev:example": "yarn dev:save-ios-updates && yarn dev:save-android-updates && yarn dev:update-example-dist"
   },
   "repository": {
@@ -64,8 +64,5 @@
   "bugs": {
     "url": "https://github.com/synonymdev/react-native-ldk/issues"
   },
-  "homepage": "https://github.com/synonymdev/react-native-ldk#readme",
-  "directories": {
-    "example": "example"
-  }
+  "homepage": "https://github.com/synonymdev/react-native-ldk#readme"
 }

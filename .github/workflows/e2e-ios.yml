@@ -24,14 +24,16 @@ jobs:
         uses: actions/cache@v3
         id: lib-npmcache
         with:
-          path: node_modules
+          path: lib/node_modules
           key: node-modules-${{ hashFiles('**/yarn.lock') }}
 
       - name: Install lib dependencies
         if: steps.lib-npmcache.outputs.cache-hit != 'true'
+        working-directory: lib
         run: yarn install
 
       - name: Build lib
+        working-directory: lib
         run: yarn build
 
       - name: Cache app node modules

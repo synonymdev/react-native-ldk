@@ -1,9 +1,13 @@
-name: lint-check
+name: example-lint-check
 
 on:
   pull_request:
     branches:
       - 'master'
+
+defaults:
+  run:
+    working-directory: example
 
 jobs:
   eslint:
@@ -19,7 +23,15 @@ jobs:
         with:
           node-version: 14
 
-      - name: Install Node.js dependencies
+      - name: Cache node modules
+        uses: actions/cache@v3
+        id: npmcache
+        with:
+          path: example/node_modules
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Install example dependencies
+        if: steps.npmcache.outputs.cache-hit != 'true'
         run: yarn install
 
       - name: Lint check
