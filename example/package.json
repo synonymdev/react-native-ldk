@@ -17,7 +17,7 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "^1.17.6",
     "@react-native-clipboard/clipboard": "^1.10.0",
-    "@synonymdev/react-native-ldk": "../",
+    "@synonymdev/react-native-ldk": "../lib",
     "assert": "^2.0.0",
     "bitcoinjs-lib": "^6.0.1",
     "buffer": "^6.0.3",

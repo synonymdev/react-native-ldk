@@ -1,4 +1,4 @@
-name: lint-check
+name: example-lint-check
 
 on:
   pull_request:
@@ -20,6 +20,7 @@ jobs:
           node-version: 14
 
       - name: Install Node.js dependencies
+        working-directory: example
         run: yarn install
 
       - name: Lint check

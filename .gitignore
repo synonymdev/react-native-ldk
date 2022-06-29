@@ -1,12 +1,1 @@
-node_modules/
 .idea/
-src/protos/*.ts
-src/protos/*.js
-dist/
-**.DS_Store
-android/build/
-android/local.properties
-android/.gradle/
-yarn-error.log
-example/.watchman*
-example/*.log
