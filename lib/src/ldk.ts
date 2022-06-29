@@ -73,23 +73,6 @@ class LDK {
 	}
 
 	/**
-	 * Accepts array of hex encoded channel monitors from storage.
-	 * If blank array is set then initChannelManager will init new channelManager.
-	 * @param channelMonitors
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
-	 */
-	async loadChannelMonitors(
-		channelMonitors: string[],
-	): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.loadChannelMonitors(channelMonitors);
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
 	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetworkGraph.html
 	 * @param genesisHash
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
@@ -137,21 +120,27 @@ class LDK {
 	}
 
 	/**
-	 * Starts channel manager for current network and best block
+	 * Starts channel manager for current network and best block.
+	 * Accepts array of hex encoded channel manager and channel monitors from storage.
+	 * NOTE: If empty channelManagerSerialized string then initChannelManager will create a new channel manager.
 	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/index.html
 	 * @param network
+	 * @param channelManagerSerialized
+	 * @param channelMonitorsSerialized
 	 * @param bestBlock
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async initChannelManager({
 		network,
-		serializedChannelManager,
+		channelManagerSerialized,
+		channelMonitorsSerialized,
 		bestBlock,
 	}: TInitChannelManagerReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initChannelManager(
 				network,
-				serializedChannelManager,
+				channelManagerSerialized,
+				channelMonitorsSerialized,
 				bestBlock.hash,
 				bestBlock.height,
 			);
