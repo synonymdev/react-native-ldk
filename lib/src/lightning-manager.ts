@@ -87,7 +87,9 @@ class LightningManager {
 
 	constructor() {
 		// Step 0: Subscribe to all events
-		ldk.onEvent(EEventTypes.swift_log, (line) => console.log(`SWIFT: ${line}`));
+		ldk.onEvent(EEventTypes.native_log, (line) =>
+			console.log(`NATIVE LOG: ${line}`),
+		);
 		ldk.onEvent(EEventTypes.ldk_log, (line) => console.log(`LDK: ${line}`));
 		ldk.onEvent(EEventTypes.register_tx, this.onRegisterTx.bind(this));
 		ldk.onEvent(EEventTypes.register_output, this.onRegisterOutput.bind(this));

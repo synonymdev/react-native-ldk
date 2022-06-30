@@ -18,7 +18,7 @@ import java.net.InetSocketAddress
 //MARK: ************Replicate in typescript and swift************
 enum class EventTypes {
     ldk_log,
-    swift_log,
+    native_log,
     register_tx,
     register_output,
     broadcast_transaction,

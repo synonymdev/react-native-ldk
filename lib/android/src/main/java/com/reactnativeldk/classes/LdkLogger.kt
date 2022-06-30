@@ -17,6 +17,6 @@ class LdkLogger {
 
     fun setLevel(level: Int, active: Boolean) {
         activeLevels.set(level, active);
-        LdkEventEmitter.send(EventTypes.swift_log, "Log level ${level} set to ${active}")
+        LdkEventEmitter.send(EventTypes.native_log, "Log level ${level} set to ${active}")
     }
 }

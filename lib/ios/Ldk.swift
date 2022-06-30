@@ -4,7 +4,7 @@ import Darwin
 //MARK: ************Replicate in typescript and kotlin************
 enum EventTypes: String, CaseIterable {
     case ldk_log = "ldk_log"
-    case swift_log = "swift_log"
+    case native_log = "native_log"
     case register_tx = "register_tx"
     case register_output = "register_output"
     case broadcast_transaction = "broadcast_transaction"

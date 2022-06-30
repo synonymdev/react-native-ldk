@@ -6,7 +6,7 @@ export enum ENetworks {
 
 export enum EEventTypes {
 	ldk_log = 'ldk_log',
-	swift_log = 'swift_log',
+	native_log = 'native_log',
 	register_tx = 'register_tx',
 	register_output = 'register_output',
 	broadcast_transaction = 'broadcast_transaction',
