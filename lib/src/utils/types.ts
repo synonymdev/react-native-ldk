@@ -201,7 +201,8 @@ export type TCreatePaymentReq = {
 
 export type TInitChannelManagerReq = {
 	network: ENetworks;
-	serializedChannelManager: string;
+	channelManagerSerialized: string;
+	channelMonitorsSerialized: string[];
 	bestBlock: {
 		hash: string;
 		height: number;

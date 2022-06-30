@@ -64,7 +64,6 @@ enum LdkCallbackResponses: String {
     case chain_monitor_init_success = "chain_monitor_init_success"
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
-    case load_channel_monitors_success = "load_channel_monitors_success"
     case config_init_success = "config_init_success"
     case chain_monitor_updated = "chain_monitor_updated"
     case network_graph_init_success = "network_graph_init_success"
@@ -93,7 +92,6 @@ class Ldk: NSObject {
     var keysManager: KeysManager?
     var channelManager: ChannelManager?
     var userConfig: UserConfig?
-    var channelMonitors: Array<[UInt8]>? //TODO don't keep this, just add it from initChannelManager
     var networkGraph: NetworkGraph?
     var peerManager: PeerManager?
     var peerHandler: TCPPeerHandler?
@@ -139,18 +137,7 @@ class Ldk: NSObject {
 
         return handleResolve(resolve, .keys_manager_init_success)
     }
-
-    @objc
-    func loadChannelMonitors(_ channelMonitorStrings: NSArray, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        channelMonitors = Array<[UInt8]>()
-        for monitor in channelMonitorStrings {
-            channelMonitors?.append((monitor as! String).hexaBytes)
-        }
-
-        LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Loaded channel monitors: \(channelMonitors!.count)")
-        return handleResolve(resolve, .load_channel_monitors_success)
-    }
-
+    
     @objc
     func initConfig(_ acceptInboundChannels: Bool, manuallyAcceptInboundChannels: Bool, announcedChannels: Bool, minChannelHandshakeDepth: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard userConfig == nil else {
@@ -198,7 +185,7 @@ class Ldk: NSObject {
     }
 
     @objc
-    func initChannelManager(_ network: NSString, serializedChannelManager: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initChannelManager(_ network: NSString, channelManagerSerialized: NSString, channelMonitorsSerialized: NSArray, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
         }
@@ -213,10 +200,6 @@ class Ldk: NSObject {
 
         guard let userConfig = userConfig else {
             return handleReject(reject, .init_user_config)
-        }
-
-        guard let channelMonitors = channelMonitors else {
-            return handleReject(reject, .load_channel_monitors)
         }
 
         guard let networkGraph = networkGraph else {
@@ -236,9 +219,14 @@ class Ldk: NSObject {
         default:
             return handleReject(reject, .invalid_network)
         }
+        
+        var channelMonitorsBytes: Array<[UInt8]> = []
+        for monitor in channelMonitorsSerialized {
+            channelMonitorsBytes.append((monitor as! String).hexaBytes)
+        }
 
         do {
-            if channelMonitors.count == 0 {
+            if channelManagerSerialized == "" {
                 //New node
                 channelManagerConstructor = ChannelManagerConstructor(
                     network: ldkNetwork!,
@@ -254,11 +242,9 @@ class Ldk: NSObject {
                 )
             } else {
                 //Restoring node
-                // MARK: Untested code
-                print("Untested node restore:")
                 channelManagerConstructor = try ChannelManagerConstructor(
-                    channel_manager_serialized: String(serializedChannelManager).hexaBytes,
-                    channel_monitors_serialized: channelMonitors,
+                    channel_manager_serialized: String(channelManagerSerialized).hexaBytes,
+                    channel_monitors_serialized: channelMonitorsBytes,
                     keys_interface: keysManager.as_KeysInterface(),
                     fee_estimator: feeEstimator,
                     chain_monitor: chainMonitor,
@@ -282,18 +268,6 @@ class Ldk: NSObject {
         invoicePayer = channelManagerConstructor!.payer
 
         return handleResolve(resolve, .channel_manager_init_success)
-    }
-
-    @objc
-    func syncChainMonitorWithChannelMonitor(_ blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let chainMonitor = chainMonitor else {
-            return handleReject(reject, .init_chain_monitor)
-        }
-
-        //TODO figure out how to read channel monitors and pass to chain monitor
-        //chainMonitor.as_Watch().watch_channel(funding_txo: T##OutPoint, monitor: channelMonitors)
-
-        return handleResolve(resolve, .chain_monitor_updated)
     }
 
     //MARK: Update methods
