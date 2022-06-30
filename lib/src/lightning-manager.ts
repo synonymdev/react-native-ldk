@@ -414,7 +414,7 @@ class LightningManager {
 		if (addPeerResponse.isErr()) {
 			return err(addPeerResponse.error.message);
 		}
-		this.saveLdkPeerData(peer).then();
+		this.saveLdkPeerData(peer).then().catch(console.error);
 		return ok(addPeerResponse.value);
 	};
 
