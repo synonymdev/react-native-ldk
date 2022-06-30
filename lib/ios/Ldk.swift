@@ -73,6 +73,7 @@ enum LdkCallbackResponses: String {
     case tx_set_unconfirmed = "tx_set_unconfirmed"
     case process_pending_htlc_forwards_success = "process_pending_htlc_forwards_success"
     case claim_funds_success = "claim_funds_success"
+    case ldk_reset = "ldk_reset"
 }
 
 @objc(Ldk)
@@ -252,6 +253,23 @@ class Ldk: NSObject {
         invoicePayer = channelManagerConstructor!.payer
 
         return handleResolve(resolve, .channel_manager_init_success)
+    }
+    
+    @objc
+    func reset(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        channelManagerConstructor?.interrupt()
+        channelManagerConstructor = nil
+        chainMonitor = nil
+        keysManager = nil
+        channelManager = nil
+        userConfig = nil
+        networkGraph = nil
+        peerManager = nil
+        peerHandler = nil
+        ldkNetwork = nil
+        ldkCurrency = nil
+       
+        return handleResolve(resolve, .ldk_reset)
     }
 
     //MARK: Update methods
