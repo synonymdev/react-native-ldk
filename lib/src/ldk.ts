@@ -15,6 +15,7 @@ import {
 	TCreatePaymentReq,
 	TSetTxConfirmedReq,
 	TSetTxUnconfirmedReq,
+	TInitNetworkGraphReq,
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -90,13 +91,25 @@ class LDK {
 	}
 
 	/**
+	 * Must provide either a serialized backup OR genesis block hash to sync from scratch
 	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetworkGraph.html
+	 * @param serializedBackup
 	 * @param genesisHash
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async initNetworkGraph(genesisHash: string): Promise<Result<string>> {
+	async initNetworkGraph({
+		serializedBackup,
+		genesisHash,
+	}: TInitNetworkGraphReq): Promise<Result<string>> {
+		if (!serializedBackup && !genesisHash) {
+			return err('Must provide serializedBackup or genesisHash as a backup');
+		}
+
 		try {
-			const res = await NativeLDK.initNetworkGraph(genesisHash);
+			const res = await NativeLDK.initNetworkGraph(
+				genesisHash || '',
+				serializedBackup || '',
+			);
 			return ok(res);
 		} catch (e) {
 			return err(e);
