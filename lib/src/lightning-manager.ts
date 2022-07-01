@@ -447,10 +447,20 @@ class LightningManager {
 	 * @returns {Promise<TLdkStorage>}
 	 */
 	getLdkStorage = async (): Promise<TLdkStorage> => {
-		const ldkStorage = await this.getItem(ELdkStorage.key);
-		return ldkStorage
-			? JSON.parse(ldkStorage)
-			: getDefaultLdkStorageShape(this.seed);
+		try {
+			const ldkStorage = await this.getItem(ELdkStorage.key);
+			if (!ldkStorage) {
+				return getDefaultLdkStorageShape(this.seed);
+			}
+			const parsedldkStorage = JSON.parse(ldkStorage);
+			// If the current seed is not present in the current storage object, add it.
+			if (!(this.seed in parsedldkStorage)) {
+				parsedldkStorage[this.seed] = DefaultLdkDataShape;
+			}
+			return parsedldkStorage;
+		} catch {
+			return getDefaultLdkStorageShape(this.seed);
+		}
 	};
 
 	/**
@@ -459,7 +469,7 @@ class LightningManager {
 	 */
 	getLdkData = async (): Promise<TLdkData> => {
 		const ldkStorage = await this.getLdkStorage();
-		return ldkStorage[this.seed] ? ldkStorage[this.seed] : DefaultLdkDataShape;
+		return ldkStorage[this.seed];
 	};
 
 	/**
