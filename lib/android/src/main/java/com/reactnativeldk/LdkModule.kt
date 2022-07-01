@@ -67,7 +67,8 @@ enum class LdkErrors {
     invoice_payment_fail_path_parameter_error,
     init_ldk_currency,
     invoice_create_failed,
-    claim_funds_failed
+    claim_funds_failed,
+    network_graph_restore_failed
 }
 
 enum class LdkCallbackResponses {
@@ -181,12 +182,23 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initNetworkGraph(genesisHash: String, promise: Promise) {
+    fun initNetworkGraph(genesisHash: String, serializedBackup: String, promise: Promise) {
         if (networkGraph !== null) {
             return handleReject(promise, LdkErrors.already_init)
         }
 
-        networkGraph = NetworkGraph.of(genesisHash.hexa())
+        if (serializedBackup == "") {
+            networkGraph = NetworkGraph.of(genesisHash.hexa())
+        } else {
+            (NetworkGraph.read(serializedBackup.hexa()) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
+                networkGraph = res.res
+            }
+
+            if (networkGraph == null) {
+                return handleReject(promise, LdkErrors.network_graph_restore_failed)
+            }
+        }
+
         handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
     }
 

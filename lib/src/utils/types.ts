@@ -209,6 +209,11 @@ export type TInitChannelManagerReq = {
 	};
 };
 
+export type TInitNetworkGraphReq = {
+	serializedBackup?: string;
+	genesisHash?: string;
+};
+
 export type TInitConfig = {
 	acceptInboundChannels: boolean;
 	manuallyAcceptInboundChannels: boolean;
@@ -263,12 +268,14 @@ export enum ELdkData {
 	channelManager = 'channelManager',
 	channelData = 'channelData',
 	peers = 'peers',
+	networkGraph = 'networkGraph',
 }
 
 export type TLdkData = {
 	[ELdkData.channelManager]: TLdkChannelManagerData;
 	[ELdkData.channelData]: TLdkChannelData;
 	[ELdkData.peers]: TLdkPeersData;
+	[ELdkData.networkGraph]: TLdkNetworkGraph;
 };
 
 export type TLdkChannelManagerData = string;
@@ -279,6 +286,8 @@ export type TLdkChannelData = {
 
 export type TLdkPeersData = TPeer[];
 
+export type TLdkNetworkGraph = string;
+
 export type TLdkStorage = {
 	[key: string]: TLdkData;
 };
@@ -287,6 +296,7 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.channelManager]: '',
 	[ELdkData.channelData]: {},
 	[ELdkData.peers]: [],
+	[ELdkData.networkGraph]: '',
 };
 
 export type TAvailableNetworks =

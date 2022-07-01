@@ -279,13 +279,20 @@ class LightningManager {
 		// Handled in initChannelManager below
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
-		// [Needs to happen first before ChannelManagerConstructor inside initChannelManager() can be called 🤷️]
-		const networkGraph = await ldk.initNetworkGraph(
-			//TODO load a cached version once persisted
-			genesisHash,
-		);
-		if (networkGraph.isErr()) {
-			return networkGraph;
+		let networkGraph = ldkData[ELdkData.networkGraph];
+		const networkGraphRes = await ldk.initNetworkGraph({
+			serializedBackup: networkGraph,
+		});
+		if (networkGraphRes.isErr()) {
+			console.log(
+				`Network graph restore failed (${networkGraphRes.error.message}). Syncing from scratch.`,
+			);
+			//Restore failed, re-sync graph from scratch
+			const newNetworkGraphRes = await ldk.initNetworkGraph({ genesisHash });
+
+			if (newNetworkGraphRes.isErr()) {
+				return newNetworkGraphRes;
+			}
 		}
 
 		// Step 8: Initialize the UserConfig ChannelManager
@@ -407,7 +414,7 @@ class LightningManager {
 		if (addPeerResponse.isErr()) {
 			return err(addPeerResponse.error.message);
 		}
-		this.saveLdkPeerData(peer).then();
+		this.saveLdkPeerData(peer).then().catch(console.error);
 		return ok(addPeerResponse.value);
 	};
 
@@ -516,15 +523,24 @@ class LightningManager {
 		this.setItem(ELdkStorage.key, JSON.stringify(ldkStorage));
 	};
 
+	/**
+	 * Caches network graph.
+	 * @param {string} data
+	 * @returns {Promise<void>}
+	 */
+	private saveNetworkGraph = async (data: string): Promise<void> => {
+		const ldkStorage = await this.getLdkStorage();
+		ldkStorage[this.seed][ELdkData.networkGraph] = data;
+		this.setItem(ELdkStorage.key, JSON.stringify(ldkStorage));
+	};
+
 	//LDK events
 
 	private onRegisterTx(res: TRegisterTxEvent): void {
-		console.log('onRegisterTx: watchTxs', res);
 		this.watchTxs.push(res);
 	}
 
 	private onRegisterOutput(res: TRegisterOutputEvent): void {
-		console.log('onRegisterOutput: watchOutputs', res);
 		this.watchOutputs.push(res);
 	}
 
@@ -534,22 +550,21 @@ class LightningManager {
 
 	private onPersistManager(res: TPersistManagerEvent): void {
 		//Around 8kb for one channel backup stored as a hex string
-		this.saveLdkChannelManagerData(res.channel_manager).then();
-		console.log('onPersistManager channel_manager', res);
+		this.saveLdkChannelManagerData(res.channel_manager)
+			.then()
+			.catch(console.error);
 	}
 
 	private onPersistNewChannel(res: TChannelBackupEvent): void {
-		this.saveLdkChannelData(res.id, res.data).then();
-		console.log('onPersistNewChannel', res);
+		this.saveLdkChannelData(res.id, res.data).then().catch(console.error);
 	}
 
 	private onUpdatePersistedChannel(res: TChannelBackupEvent): void {
-		this.saveLdkChannelData(res.id, res.data).then();
-		console.log('onUpdatePersistedChannel', res);
+		this.saveLdkChannelData(res.id, res.data).then().catch(console.error);
 	}
 
 	private onPersistGraph(res: TPersistGraphEvent): void {
-		console.log(`onPersistGraph network_graph: ${res}`); //TODO
+		this.saveNetworkGraph(res.network_graph).then().catch(console.error);
 	}
 
 	//LDK channel manager events
@@ -572,7 +587,6 @@ class LightningManager {
 		} else {
 			ldk.claimFunds(res.payment_preimage).catch(console.error);
 		}
-		console.log(`onChannelManagerPaymentReceived: ${JSON.stringify(res)}`);
 	}
 
 	private onChannelManagerPaymentSent(res: TChannelManagerPaymentSent): void {
@@ -611,7 +625,6 @@ class LightningManager {
 	private onChannelManagerPendingHtlcsForwardable(
 		res: TChannelManagerPendingHtlcsForwardable,
 	): void {
-		console.log('onChannelManagerPendingHtlcsForwardable', res);
 		ldk.processPendingHtlcForwards().catch(console.error);
 	}
 
@@ -625,7 +638,7 @@ class LightningManager {
 	private onChannelManagerChannelClosed(
 		res: TChannelManagerChannelClosed,
 	): void {
-		console.log(`onChannelManagerChannelClosed: ${JSON.stringify(res)}`); //TODO
+		console.log(`onChannelManagerChannelClosed: ${JSON.stringify(res)}`); //TODO remove from storage or mark as closed so we don't try restore
 	}
 
 	private onChannelManagerDiscardFunding(

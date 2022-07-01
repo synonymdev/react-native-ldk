@@ -55,6 +55,7 @@ enum LdkErrors: String {
     case init_ldk_currency = "init_ldk_currency"
     case invoice_create_failed = "invoice_create_failed"
     case claim_funds_failed = "claim_funds_failed"
+    case network_graph_restore_failed = "network_graph_restore_failed"
 }
 
 enum LdkCallbackResponses: String {
@@ -162,9 +163,24 @@ class Ldk: NSObject {
     }
 
     @objc
-    func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
-        //TODO load cached version if exists instead. NetworkGraph.read(ser: serialized_backup)
+    func initNetworkGraph(_ genesisHash: NSString, serializedBackup: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard networkGraph == nil else {
+            return handleReject(reject, .already_init)
+        }
+        
+        if serializedBackup == "" {
+            networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
+        } else {
+            print("serializedBackup:")
+            print(serializedBackup)
+            let read = NetworkGraph.read(ser: String(serializedBackup).hexaBytes)
+            if read.isOk() {
+                networkGraph = read.getValue()
+            } else {
+                return handleReject(reject, .network_graph_restore_failed)
+            }
+        }
+                
         return handleResolve(resolve, .network_graph_init_success)
     }
 
