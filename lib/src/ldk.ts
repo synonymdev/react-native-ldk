@@ -181,6 +181,19 @@ class LDK {
 	}
 
 	/**
+	 * Unsets all LDK components. Can be used to safely shutdown node.
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async reset(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.reset();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
 	 * Switch different log levels on/off
 	 * https://docs.rs/lightning/latest/lightning/util/logger/enum.Level.html
 	 * @param level

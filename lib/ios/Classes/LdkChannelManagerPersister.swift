@@ -16,7 +16,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     //Custom function to manage any unlikely missing info from the event object
     func handleEventError(_ event: Event) {
         LdkEventEmitter.shared.send(
-            withEvent: .swift_log,
+            withEvent: .native_log,
             body: "Error missing details for handle_event of type \(event.getValueType().debugDescription)"
         )
     }
@@ -191,7 +191,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             )
             return
         default:
-            LdkEventEmitter.shared.send(withEvent: .swift_log, body: "ERROR: unknown LdkChannelManagerPersister.handle_event type")
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "ERROR: unknown LdkChannelManagerPersister.handle_event type")
         }
     }
     

@@ -29,7 +29,7 @@ class LdkFeeEstimator {
         this.normal = normal
         this.low = low
 
-        LdkEventEmitter.send(EventTypes.swift_log, "Fee estimator updated")
+        LdkEventEmitter.send(EventTypes.native_log, "Fee estimator updated")
     }
 }
 

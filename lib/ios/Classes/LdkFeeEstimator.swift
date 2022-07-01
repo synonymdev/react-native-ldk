@@ -22,7 +22,7 @@ class LdkFeeEstimator: FeeEstimator {
         self.normal = normal
         self.low = low
         
-        LdkEventEmitter.shared.send(withEvent: .swift_log, body: "Fee estimator updated")
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Fee estimator updated")
     }
     
     override func get_est_sat_per_1000_weight(confirmation_target: LDKConfirmationTarget) -> UInt32 {

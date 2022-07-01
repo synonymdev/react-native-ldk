@@ -18,7 +18,7 @@ import java.net.InetSocketAddress
 //MARK: ************Replicate in typescript and swift************
 enum class EventTypes {
     ldk_log,
-    swift_log,
+    native_log,
     register_tx,
     register_output,
     broadcast_transaction,
@@ -86,7 +86,8 @@ enum class LdkCallbackResponses {
     tx_set_confirmed,
     tx_set_unconfirmed,
     process_pending_htlc_forwards_success,
-    claim_funds_success
+    claim_funds_success,
+    ldk_reset
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -280,6 +281,22 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         invoicePayer = channelManagerConstructor!!.payer
 
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
+    }
+
+    @ReactMethod
+    fun reset(promise: Promise) {
+        channelManagerConstructor?.interrupt()
+        channelManagerConstructor = null
+        chainMonitor = null
+        keysManager = null
+        channelManager = null
+        userConfig = null
+        networkGraph = null
+        peerManager = null
+        peerHandler = null
+        ldkNetwork = null
+        ldkCurrency = null
+        handleResolve(promise, LdkCallbackResponses.ldk_reset)
     }
 
     //MARK: Update methods
