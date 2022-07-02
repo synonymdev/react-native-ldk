@@ -14,7 +14,7 @@ import lm, {
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import { selectedNetwork, peers } from '../utils/constants';
-import { dummyRandomSeed, getSeed, setSeed } from '../utils/helpers';
+import { getAccount } from '../utils/helpers';
 
 /**
  * Retrieves data from local storage.
@@ -85,23 +85,20 @@ export const syncLdk = async (): Promise<Result<string>> => {
  */
 export const setupLdk = async (): Promise<Result<string>> => {
 	try {
+		await ldk.reset();
 		const genesisHash = await getBlockHashFromHeight({
 			height: 0,
 		});
 		if (genesisHash.isErr()) {
 			return err(genesisHash.error.message);
 		}
-		let seed = await getSeed();
-		if (!seed) {
-			seed = dummyRandomSeed();
-			await setSeed('ldkseed', seed);
-		}
+		const account = await getAccount();
 		const lmStart = await lm.start({
 			getBestBlock,
 			genesisHash: genesisHash.value,
 			setItem,
 			getItem,
-			seed,
+			account,
 			getTransactionData,
 		});
 

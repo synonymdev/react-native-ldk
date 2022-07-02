@@ -4,11 +4,8 @@ import { getItem, updateHeader } from '../ldk';
 import { Block } from 'bitcoinjs-lib';
 import * as tls from './tls';
 import { customPeers, selectedNetwork } from '../utils/constants';
-import {
-	THeader,
-	IGetHeaderResponse,
-	ISubscribeToHeader,
-} from '@synonymdev/react-native-ldk';
+import { THeader } from '@synonymdev/react-native-ldk';
+import { IGetHeaderResponse, ISubscribeToHeader } from '../utils/types';
 
 /**
  * Returns the block hash given a block hex.

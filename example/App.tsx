@@ -1,21 +1,21 @@
 import './shim';
 import React, { ReactElement, useEffect, useState } from 'react';
 import {
+	Alert,
+	Button,
 	SafeAreaView,
 	ScrollView,
 	StyleSheet,
 	Text,
 	View,
-	Button,
-	Alert,
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { setItem, setupLdk, syncLdk } from './ldk';
+import { setupLdk, syncLdk } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
-import { dummyRandomSeed, setSeed } from './utils/helpers';
+import { createNewAccount } from './utils/helpers';
 
 const App = (): ReactElement => {
 	const [message, setMessage] = useState('...');
@@ -62,12 +62,11 @@ const App = (): ReactElement => {
 				</View>
 				<View style={styles.container}>
 					<Button
-						title={'Create New Random Seed'}
+						title={'Create New Account'}
 						onPress={async (): Promise<void> => {
-							const seed = dummyRandomSeed();
-							await setSeed('ldkseed', seed);
-							await setItem('LDKData', '');
-							setMessage(`New seed created: ${seed}`);
+							const newAccount = await createNewAccount();
+							await setupLdk();
+							setMessage(`New account created: ${newAccount.seed}`);
 						}}
 					/>
 

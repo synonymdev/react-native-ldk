@@ -126,3 +126,6 @@ const logListener = ldk.addLogListener((message) => {
 //Unsubscribe if listening component is unmounted
 ldk.removeLogListener(logListener);
 ```
+
+## Notes
+ - It is important to not mix and match account names and seeds when starting LDK. Doing so can result in a corrupt save.
