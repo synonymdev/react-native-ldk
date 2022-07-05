@@ -184,6 +184,7 @@ const App = (): ReactElement => {
 								const createPaymentRequest = await ldk.createPaymentRequest({
 									amountSats: 1000000,
 									description: 'paymeplz',
+									expiryDeltaSeconds: 60
 								});
 
 								if (createPaymentRequest.isErr()) {

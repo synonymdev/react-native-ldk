@@ -72,7 +72,6 @@ val ChannelDetails.asJson: WritableMap
         result.putInt("get_confirmations_required", (_confirmations_required as Option_u32Z.Some).some)
         (_short_channel_id as? Option_u64Z.Some)?.some?.toInt()
             ?.let { result.putInt("short_channel_id", it) } //Optional number
-        result.putBoolean("is_funding_locked", _is_funding_locked)
         (_inbound_scid_alias as? Option_u64Z.Some)?.some?.toInt()
             ?.let { result.putInt("inbound_scid_alias", it) }
         (_inbound_scid_alias as? Option_u64Z.Some)?.some?.toInt()

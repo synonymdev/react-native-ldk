@@ -329,13 +329,12 @@ class LDK {
 	async createPaymentRequest({
 		amountSats,
 		description,
-	   	expiryDelta
+	   	expiryDeltaSeconds
 	}: TCreatePaymentReq): Promise<Result<TInvoice>> {
 		//TODO convert to msats
 		let msats = amountSats * 1000;
 		try {
-			//TODO add expiryDelta to android
-			const res = await NativeLDK.createPaymentRequest(msats, description, expiryDelta);
+			const res = await NativeLDK.createPaymentRequest(msats, description, expiryDeltaSeconds);
 			return ok(res);
 		} catch (e) {
 			return err(e);

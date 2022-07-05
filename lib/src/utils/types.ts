@@ -196,7 +196,7 @@ export type TPaymentReq = {
 export type TCreatePaymentReq = {
 	amountSats: number;
 	description: string;
-	expiryDelta: number;
+	expiryDeltaSeconds: number;
 };
 
 export type TInitChannelManagerReq = {
