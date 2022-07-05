@@ -250,15 +250,6 @@ export const DefaultTransactionDataShape: TTransactionData = {
 export type TStorage = (key: string, ...args: Array<any>) => any;
 export type TGetTransactionData = (txid: string) => Promise<TTransactionData>;
 export type TGetBestBlock = () => Promise<THeader>;
-export type TWatchTxs = {
-	script_pubkey: string;
-	txid: string;
-};
-export type TWatchOutputs = {
-	block_hash: string;
-	index: number;
-	script_pubkey: string;
-};
 
 export enum ELdkStorage {
 	key = 'LDKStorage',
@@ -272,19 +263,19 @@ export enum ELdkData {
 }
 
 export type TLdkData = {
-	[ELdkData.channelManager]: TLdkChannelManagerData;
+	[ELdkData.channelManager]: TLdkChannelManager;
 	[ELdkData.channelData]: TLdkChannelData;
-	[ELdkData.peers]: TLdkPeersData;
+	[ELdkData.peers]: TLdkPeers;
 	[ELdkData.networkGraph]: TLdkNetworkGraph;
 };
 
-export type TLdkChannelManagerData = string;
+export type TLdkChannelManager = string;
 
 export type TLdkChannelData = {
 	[id: string]: string;
 };
 
-export type TLdkPeersData = TPeer[];
+export type TLdkPeers = TPeer[];
 
 export type TLdkNetworkGraph = string;
 
@@ -304,26 +295,13 @@ export type TAvailableNetworks =
 	| 'bitcoinTestnet'
 	| 'bitcoinRegtest';
 
-export interface IGetHeaderResponse {
-	id: Number;
-	error: boolean;
-	method: 'getHeader';
-	data: string;
-	network: TAvailableNetworks;
-}
-
-export interface ISubscribeToHeader {
-	data: {
-		height: number;
-		hex: string;
-	};
-	error: boolean;
-	id: string;
-	method: string;
-}
+export type TAccount = {
+	name: string;
+	seed: string;
+};
 
 export type TLdkStart = {
-	seed?: string;
+	account: TAccount;
 	genesisHash: string;
 	getBestBlock: TGetBestBlock;
 	getItem: TStorage;

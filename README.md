@@ -24,10 +24,9 @@ cd ios && pod install && cd ../
 
 #Build dist files
 git clone https://github.com/synonymdev/react-native-ldk.git
-yarn install && yarn build
+cd react-native-ldk/lib/ && yarn install && yarn build && cd ../
 
-cd example/
-yarn install
+cd example/ && yarn install && yarn rn-setup
 
 yarn ios
 #or
@@ -76,7 +75,10 @@ export const getBlockHeight = async () => {
 };
 const getTxData = async (txid) => await bitcoinRPC('getrawtransaction', [txid, true]);
 
-const seed = 'd88a2f0ab4aefd38d22a96ac556cafa419aed5e2782b6e7c816e4777a6bfbd56';
+const account = {
+	name: 'wallet0',
+	seed: 'd88a2f0ab4aefd38d22a96ac556cafa419aed5e2782b6e7c816e4777a6bfbd56',
+}
 const network = ENetworks.testnet;
 const genesisHash = await getBlockHeaderHashFromHeight(0);
 const setItem = async (key, value) => await AsyncStorage.setItem(key, value);
@@ -97,7 +99,7 @@ const getTransactionData = async (txid) => {
 };
 
 const startResponse = await lm.start({
-	seed,
+	account,
 	network,
 	genesisHash,
 	getItem,
@@ -124,3 +126,6 @@ const logListener = ldk.addLogListener((message) => {
 //Unsubscribe if listening component is unmounted
 ldk.removeLogListener(logListener);
 ```
+
+## Notes
+ - It is important to not mix and match account names and seeds when starting LDK. Doing so can result in a corrupt save.

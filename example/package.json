@@ -11,6 +11,7 @@
     "e2e:ios-test": "detox test --configuration ios --cleanup",
     "lint:check": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "reinstall": "cd ../lib/ && yarn install && yarn build && cd ../example/ && yarn add ../lib && yarn rn-setup",
     "clean": "rm -rf node_modules ios/Pods ios/Podfile.lock ios/build && yarn install && cd ios && pod deintegrate && pod install && cd ../",
     "rn-setup": "node rn-setup.js"
   },

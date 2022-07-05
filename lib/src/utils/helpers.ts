@@ -1,5 +1,7 @@
 import {
 	DefaultLdkDataShape,
+	ELdkData,
+	ELdkStorage,
 	ENetworks,
 	TLdkStart,
 	TLdkStorage,
@@ -110,7 +112,7 @@ export const getDefaultLdkStorageShape = (seed: string): TLdkStorage => {
  * @returns {Promise<Result<string>>}
  */
 export const startParamCheck = async ({
-	seed,
+	account,
 	genesisHash,
 	getBestBlock,
 	getItem,
@@ -135,9 +137,12 @@ export const startParamCheck = async ({
 			);
 		}
 
-		// Test seed
-		if (typeof seed !== 'string') {
-			return err('seed must be a string.');
+		// Test account
+		if (typeof account !== 'object') {
+			return err('account must be an object.');
+		}
+		if (!account?.name || !account?.seed) {
+			return err('account must contain both a name and seed.');
 		}
 
 		// Test genesisHash
@@ -247,4 +252,11 @@ export const dummyRandomSeed = (): string => {
 		'8a bd ac 77 55 2a 6e a6 0a 47 2f bf 6c d8 d5 af b4 78 19 96 a4 d2 e2 81 7c ae 6e 2b 38 ae 56 fd';
 
 	return shuffle(bytes.split(' ')).join('');
+};
+
+export const getLdkStorageKey = (
+	accountName: string,
+	ldkDataKey: ELdkData,
+): string => {
+	return `${ELdkStorage.key}${accountName}${ldkDataKey}`;
 };

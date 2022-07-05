@@ -1,16 +1,25 @@
 import Keychain from 'react-native-keychain';
+import { TAccount } from '@synonymdev/react-native-ldk';
+import { getItem, setItem } from '../ldk';
+import { EAccount } from './types';
 
 /**
- * Use Keychain to save LDK seed.
+ * Use Keychain to save LDK name & seed.
  * @param {string} [key]
  * @param {string} seed
  */
-export const setSeed = async (
-	key = 'ldkseed',
+export const setAccount = async ({
+	name = EAccount.name,
 	seed = dummyRandomSeed(),
-): Promise<boolean> => {
+}: TAccount): Promise<boolean> => {
 	try {
-		await Keychain.setGenericPassword(key, seed, { service: key });
+		const account: TAccount = {
+			name,
+			seed,
+		};
+		await Keychain.setGenericPassword(name, JSON.stringify(account), {
+			service: name,
+		});
 		return true;
 	} catch {
 		return false;
@@ -18,20 +27,60 @@ export const setSeed = async (
 };
 
 /**
- * Use Keychain to retrieve LDK seed.
- * @param {string} [key]
+ * Use Keychain to retrieve LDK name & seed.
+ * @param {string} [accountName]
  * @returns {Promise<string>}
  */
-export const getSeed = async (key = 'ldkseed'): Promise<string> => {
-	try {
-		let result = await Keychain.getGenericPassword({ service: key });
-		if (!result) {
-			return '';
-		}
-		return result && result?.password ? result?.password : '';
-	} catch (e) {
-		return '';
+export const getAccount = async (accountName?: string): Promise<TAccount> => {
+	if (!accountName) {
+		accountName = await getCurrentAccountName();
 	}
+	const defaultAccount: TAccount = {
+		name: EAccount.name,
+		seed: dummyRandomSeed(),
+	};
+	try {
+		let result = await Keychain.getGenericPassword({ service: accountName });
+		if (result && result?.password) {
+			// Return existing account.
+			return JSON.parse(result?.password);
+		} else {
+			// Setup default account.
+			await setAccount(defaultAccount);
+			await setItem(EAccount.currentAccountKey, defaultAccount.name);
+			return defaultAccount;
+		}
+	} catch (e) {
+		console.log(e);
+		return defaultAccount;
+	}
+};
+
+/**
+ * Returns current account name, if any.
+ * @returns {Promise<string>}
+ */
+export const getCurrentAccountName = async (): Promise<string> => {
+	const currentAccountName = await getItem(EAccount.currentAccountKey);
+	return currentAccountName ?? EAccount.name;
+};
+
+/**
+ * Creates and saves new name/seed pair.
+ * @returns {Promise<TAccount>}
+ */
+export const createNewAccount = async (): Promise<TAccount> => {
+	const currentAccountName = await getCurrentAccountName();
+	let num = Number(currentAccountName.replace('wallet', ''));
+	num++;
+	const name = `wallet${num}`;
+	const account: TAccount = {
+		name,
+		seed: dummyRandomSeed(),
+	};
+	await setAccount(account);
+	await setItem(EAccount.currentAccountKey, name);
+	return account;
 };
 
 const shuffle = (array: string[]): string[] => {

@@ -1,12 +1,18 @@
 import ldk from './ldk';
 import { err, ok, Result } from './utils/result';
 import {
+	DefaultLdkDataShape,
+	DefaultTransactionDataShape,
 	EEventTypes,
+	ELdkData,
 	ELdkLogLevels,
 	ENetworks,
+	TAccount,
+	TAddPeerReq,
 	TBroadcastTransactionEvent,
 	TChannelBackupEvent,
 	TChannelManagerChannelClosed,
+	TChannelManagerDiscardFunding,
 	TChannelManagerFundingGenerationReady,
 	TChannelManagerOpenChannelRequest,
 	TChannelManagerPaymentFailed,
@@ -14,34 +20,25 @@ import {
 	TChannelManagerPaymentPathSuccessful,
 	TChannelManagerPaymentReceived,
 	TChannelManagerPaymentSent,
+	TChannelManagerPendingHtlcsForwardable,
 	TChannelManagerSpendableOutputs,
-	TChannelManagerDiscardFunding,
+	TGetBestBlock,
+	TGetTransactionData,
+	THeader,
+	TLdkChannelData,
+	TLdkChannelManager,
+	TLdkNetworkGraph,
+	TLdkPeers,
+	TLdkStart,
+	TPeer,
 	TPersistGraphEvent,
 	TPersistManagerEvent,
 	TRegisterOutputEvent,
 	TRegisterTxEvent,
-	TChannelManagerPendingHtlcsForwardable,
 	TStorage,
-	TGetBestBlock,
-	THeader,
-	ELdkData,
-	TLdkData,
-	DefaultLdkDataShape,
-	TGetTransactionData,
-	TLdkStorage,
-	ELdkStorage,
-	TAddPeerReq,
-	TLdkStart,
-	TLdkPeersData,
-	TPeer,
-	DefaultTransactionDataShape,
 	TTransactionData,
 } from './utils/types';
-import {
-	dummyRandomSeed,
-	getDefaultLdkStorageShape,
-	startParamCheck,
-} from './utils/helpers';
+import { getLdkStorageKey, startParamCheck } from './utils/helpers';
 
 //TODO startup steps
 // Step 0: Listen for events ✅
@@ -78,7 +75,10 @@ class LightningManager {
 		hash: '',
 		height: 0,
 	});
-	seed: string = '';
+	account: TAccount = {
+		name: '',
+		seed: '',
+	};
 	getItem: TStorage = (): null => null;
 	setItem: TStorage = (): null => null;
 	getTransactionData: TGetTransactionData =
@@ -167,7 +167,7 @@ class LightningManager {
 	 * @returns {Promise<Result<string>>}
 	 */
 	async start({
-		seed,
+		account,
 		genesisHash,
 		getBestBlock,
 		getItem,
@@ -175,12 +175,14 @@ class LightningManager {
 		getTransactionData,
 		network = ENetworks.regtest,
 	}: TLdkStart): Promise<Result<string>> {
-		if (__DEV__ && !seed) {
-			seed = dummyRandomSeed();
-		}
-		if (!seed) {
+		if (!account) {
 			return err(
-				'No seed provided. Please pass a seed to the start method and try again.',
+				'No account provided. Please pass an account object containing the name & seed to the start method and try again.',
+			);
+		}
+		if (!account?.name || !account?.seed) {
+			return err(
+				'No account name or seed provided. Please pass an account object containing the name & seed to the start method and try again.',
 			);
 		}
 		if (!getBestBlock) {
@@ -207,7 +209,7 @@ class LightningManager {
 
 		// Ensure the start params function as expected.
 		const paramCheckResponse = await startParamCheck({
-			seed,
+			account,
 			genesisHash,
 			getBestBlock,
 			getItem,
@@ -220,15 +222,13 @@ class LightningManager {
 		}
 
 		this.getBestBlock = getBestBlock;
-		this.seed = seed;
+		this.account = account;
 		this.network = network;
 		this.setItem = setItem;
 		this.getItem = getItem;
 		this.getTransactionData = getTransactionData;
 		const bestBlock = await this.getBestBlock();
 		this.currentBlock = bestBlock;
-
-		const ldkData = await this.getLdkData();
 
 		// Step 1: Initialize the FeeEstimator
 		// Lazy loaded in native code
@@ -272,7 +272,7 @@ class LightningManager {
 		}
 
 		// Step 6: Initialize the KeysManager
-		const keysManager = await ldk.initKeysManager(seed);
+		const keysManager = await ldk.initKeysManager(this.account.seed);
 		if (keysManager.isErr()) {
 			return keysManager;
 		}
@@ -281,7 +281,7 @@ class LightningManager {
 		// Handled in initChannelManager below
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
-		let networkGraph = ldkData[ELdkData.networkGraph];
+		const networkGraph = await this.getLdkNetworkGraph();
 		const networkGraphRes = await ldk.initNetworkGraph({
 			serializedBackup: networkGraph,
 		});
@@ -308,8 +308,8 @@ class LightningManager {
 			return confRes;
 		}
 
-		const channelManagerSerialized = ldkData[ELdkData.channelManager] ?? '';
-		let channelData = ldkData[ELdkData.channelData];
+		const channelManagerSerialized = await this.getLdkChannelManager();
+		const channelData = await this.getLdkChannelData();
 		const channelManagerRes = await ldk.initChannelManager({
 			network: this.network,
 			channelManagerSerialized,
@@ -432,53 +432,23 @@ class LightningManager {
 		address,
 		port,
 	}: TAddPeerReq): Promise<Result<TPeer[]>> => {
-		const ldkStorage = await this.getLdkStorage();
 		const peers = await this.getPeers();
 		const newPeers = peers.filter(
 			(p) => p.pubKey !== pubKey && p.address !== address && p.port !== port,
 		);
-		ldkStorage[this.seed][ELdkData.peers] = newPeers;
-		this.setItem(ELdkStorage.key, JSON.stringify(ldkStorage));
+		const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
+		this.setItem(storageKey, JSON.stringify(newPeers));
 		return ok(newPeers);
 	};
 
 	/**
 	 * Returns saved peers from storage for the current seed.
-	 * @returns {Promise<TLdkPeersData>}
+	 * @returns {Promise<TLdkPeers>}
 	 */
-	getPeers = async (): Promise<TLdkPeersData> => {
-		const ldkData = await this.getLdkData();
-		return ldkData[ELdkData.peers] ?? [];
-	};
-
-	/**
-	 * Returns the entire LDK storage object. This includes data for all seeds.
-	 * @returns {Promise<TLdkStorage>}
-	 */
-	getLdkStorage = async (): Promise<TLdkStorage> => {
-		try {
-			const ldkStorage = await this.getItem(ELdkStorage.key);
-			if (!ldkStorage) {
-				return getDefaultLdkStorageShape(this.seed);
-			}
-			const parsedldkStorage = JSON.parse(ldkStorage);
-			// If the current seed is not present in the current storage object, add it.
-			if (!(this.seed in parsedldkStorage)) {
-				parsedldkStorage[this.seed] = DefaultLdkDataShape;
-			}
-			return parsedldkStorage;
-		} catch {
-			return getDefaultLdkStorageShape(this.seed);
-		}
-	};
-
-	/**
-	 * Returns the LDK data object for the current seed.
-	 * @returns {Promise<TLdkData>}
-	 */
-	getLdkData = async (): Promise<TLdkData> => {
-		const ldkStorage = await this.getLdkStorage();
-		return ldkStorage[this.seed];
+	getPeers = async (): Promise<TLdkPeers> => {
+		const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
+		const peers = await this.getItem(storageKey);
+		return JSON.parse(peers) ?? DefaultLdkDataShape[ELdkData.peers];
 	};
 
 	/**
@@ -491,9 +461,13 @@ class LightningManager {
 		channelId: string,
 		data: string,
 	): Promise<void> => {
-		const ldkStorage = await this.getLdkStorage();
-		ldkStorage[this.seed][ELdkData.channelData][channelId] = data;
-		this.setItem(ELdkStorage.key, JSON.stringify(ldkStorage));
+		const storageKey = getLdkStorageKey(
+			this.account.name,
+			ELdkData.channelData,
+		);
+		const channelData = await this.getLdkChannelData();
+		channelData[channelId] = data;
+		this.setItem(storageKey, JSON.stringify(channelData));
 	};
 
 	/**
@@ -502,9 +476,11 @@ class LightningManager {
 	 * @returns {Promise<void>}
 	 */
 	private saveLdkChannelManagerData = async (data: string): Promise<void> => {
-		const ldkStorage = await this.getLdkStorage();
-		ldkStorage[this.seed][ELdkData.channelManager] = data;
-		this.setItem(ELdkStorage.key, JSON.stringify(ldkStorage));
+		const storageKey = getLdkStorageKey(
+			this.account.name,
+			ELdkData.channelManager,
+		);
+		this.setItem(storageKey, JSON.stringify(data));
 	};
 
 	/**
@@ -513,16 +489,16 @@ class LightningManager {
 	 * @returns {Promise<void>}
 	 */
 	private saveLdkPeerData = async (peer: TPeer): Promise<void> => {
-		const ldkStorage = await this.getLdkStorage();
-		const peers = ldkStorage[this.seed][ELdkData.peers];
+		const peers = await this.getPeers();
 		const duplicatePeerArr = peers.filter(
 			(p) => p.pubKey === peer.pubKey && p.address === peer.address,
 		);
 		if (duplicatePeerArr.length > 0) {
 			return;
 		}
-		ldkStorage[this.seed][ELdkData.peers].push(peer);
-		this.setItem(ELdkStorage.key, JSON.stringify(ldkStorage));
+		peers.push(peer);
+		const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
+		this.setItem(storageKey, JSON.stringify(peers));
 	};
 
 	/**
@@ -531,9 +507,44 @@ class LightningManager {
 	 * @returns {Promise<void>}
 	 */
 	private saveNetworkGraph = async (data: string): Promise<void> => {
-		const ldkStorage = await this.getLdkStorage();
-		ldkStorage[this.seed][ELdkData.networkGraph] = data;
-		this.setItem(ELdkStorage.key, JSON.stringify(ldkStorage));
+		const storageKey = getLdkStorageKey(
+			this.account.name,
+			ELdkData.networkGraph,
+		);
+		this.setItem(storageKey, JSON.stringify(data));
+	};
+
+	private getLdkChannelManager = async (): Promise<TLdkChannelManager> => {
+		const ldkDataKey = ELdkData.channelManager;
+		const storageKey = getLdkStorageKey(this.account.name, ldkDataKey);
+		try {
+			const ldkData = await this.getItem(storageKey);
+			return JSON.parse(ldkData) ?? DefaultLdkDataShape[ldkDataKey];
+		} catch {
+			return DefaultLdkDataShape[ldkDataKey];
+		}
+	};
+
+	private getLdkChannelData = async (): Promise<TLdkChannelData> => {
+		const ldkDataKey = ELdkData.channelData;
+		const storageKey = getLdkStorageKey(this.account.name, ldkDataKey);
+		try {
+			const ldkData = await this.getItem(storageKey);
+			return JSON.parse(ldkData) ?? DefaultLdkDataShape[ldkDataKey];
+		} catch {
+			return DefaultLdkDataShape[ldkDataKey];
+		}
+	};
+
+	private getLdkNetworkGraph = async (): Promise<TLdkNetworkGraph> => {
+		const ldkDataKey = ELdkData.networkGraph;
+		const storageKey = getLdkStorageKey(this.account.name, ldkDataKey);
+		try {
+			const ldkData = await this.getItem(storageKey);
+			return JSON.parse(ldkData) ?? DefaultLdkDataShape[ldkDataKey];
+		} catch {
+			return DefaultLdkDataShape[ldkDataKey];
+		}
 	};
 
 	//LDK events
