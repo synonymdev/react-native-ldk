@@ -60,7 +60,6 @@ extension ChannelDetails {
             "user_channel_id": get_user_channel_id(), //Number
             "confirmations_required": get_confirmations_required().getValue() as Any, // Optional number
             "short_channel_id": get_short_channel_id().getValue() as Any, //Optional number
-            "is_funding_locked": get_is_funding_locked(), //Bool
             "inbound_scid_alias": get_inbound_scid_alias().getValue() as Any, //Optional number
             "inbound_payment_scid": get_inbound_payment_scid().getValue() as Any, //Optional number,
             "inbound_capacity_msat": get_inbound_capacity_msat(),

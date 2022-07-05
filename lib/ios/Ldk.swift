@@ -86,7 +86,7 @@ class Ldk: NSObject {
     lazy var persister = {LdkPersister()}()
     lazy var filter = {LdkFilter()}()
     lazy var channelManagerPersister = {LdkChannelManagerPersister()}()
-    lazy var scorer = {MultiThreadedLockableScore(score: Scorer().as_Score())}()
+//    lazy var scorer = {MultiThreadedLockableScore(score: Scorer())}()
 
     //Config required to setup below objects
     var chainMonitor: ChainMonitor?
@@ -170,11 +170,11 @@ class Ldk: NSObject {
         }
         
         if serializedBackup == "" {
-            networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes)
+            networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
         } else {
             print("serializedBackup:")
             print(serializedBackup)
-            let read = NetworkGraph.read(ser: String(serializedBackup).hexaBytes)
+            let read = NetworkGraph.read(ser: String(serializedBackup).hexaBytes, arg: logger)
             if read.isOk() {
                 networkGraph = read.getValue()
             } else {
@@ -262,7 +262,7 @@ class Ldk: NSObject {
         channelManager = channelManagerConstructor!.channelManager
         self.networkGraph = channelManagerConstructor!.net_graph
 
-        channelManagerConstructor!.chain_sync_completed(persister: channelManagerPersister, scorer: scorer)
+        channelManagerConstructor!.chain_sync_completed(persister: channelManagerPersister, scorer: nil)
         peerManager = channelManagerConstructor!.peerManager
 
         peerHandler = channelManagerConstructor!.getTCPPeerHandler()
@@ -442,7 +442,7 @@ class Ldk: NSObject {
     }
 
     @objc
-    func createPaymentRequest(_ amountSats: NSInteger, description: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func createPaymentRequest(_ amountSats: NSInteger, description: NSString, expiryDelta: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
@@ -454,15 +454,16 @@ class Ldk: NSObject {
         guard let ldkCurrency = ldkCurrency else {
             return handleReject(reject, .init_ldk_currency)
         }
-
-        let res = Bindings.createInvoiceFromChannelManager(
-            channelManager: channelManager,
-            keysManager: keysManager.as_KeysInterface(),
+        
+        let res = Bindings.swift_create_invoice_from_channelmanager(
+            channelmanager: channelManager,
+            keys_manager: keysManager.as_KeysInterface(),
             network: ldkCurrency,
-            amountMsat: UInt64(amountSats),
-            description: String(description)
+            amt_msat: Option_u64Z(value: UInt64(amountSats)),
+            description: String(description),
+            invoice_expiry_delta_secs: UInt32(expiryDelta)
         )
-
+            
         if res.isOk() {
             guard let invoice = res.getValue() else {
                 return handleReject(reject, .invoice_create_failed)
@@ -494,12 +495,9 @@ class Ldk: NSObject {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-
-        let res = channelManager.claim_funds(payment_preimage: String(paymentPreimage).hexaBytes)
-        if !res {
-            return handleReject(reject, .claim_funds_failed)
-        }
-
+        
+        channelManager.claim_funds(payment_preimage: String(paymentPreimage).hexaBytes)
+        
         return handleResolve(resolve, .claim_funds_success)
     }
 

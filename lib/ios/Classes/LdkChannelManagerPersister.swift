@@ -53,7 +53,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 withEvent: .channel_manager_payment_received,
                 body: [
                     "payment_hash": Data(paymentReceived.getPayment_hash()).hexEncodedString(),
-                    "amount": paymentReceived.getAmt(),
+                    "amount_msat": paymentReceived.getAmount_msat(),
                     "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
                     "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
                     "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),

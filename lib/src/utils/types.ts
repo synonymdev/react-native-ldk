@@ -49,7 +49,7 @@ export type TChannelManagerFundingGenerationReady = {
 };
 export type TChannelManagerPaymentReceived = {
 	payment_hash: string;
-	amount: number;
+	amount_msat: number;
 	payment_preimage: string;
 	payment_secret: string;
 	spontaneous_payment_preimage: string;
@@ -120,7 +120,6 @@ export type TChannel = {
 	user_channel_id: number;
 	confirmations_required?: number;
 	short_channel_id?: number;
-	is_funding_locked: boolean;
 	inbound_scid_alias?: number;
 	inbound_payment_scid?: number;
 	inbound_capacity_msat: number;
@@ -197,6 +196,7 @@ export type TPaymentReq = {
 export type TCreatePaymentReq = {
 	amountSats: number;
 	description: string;
+	expiryDelta: number;
 };
 
 export type TInitChannelManagerReq = {

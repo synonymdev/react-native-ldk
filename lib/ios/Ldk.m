@@ -79,6 +79,7 @@ RCT_EXTERN_METHOD(pay:(NSString *)paymentRequest
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(createPaymentRequest:(NSInteger *)amountSats
                   description:(NSString *)description
+                  expiryDelta:(NSInteger *)expiryDelta
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(processPendingHtlcForwards:(RCTPromiseResolveBlock)resolve
