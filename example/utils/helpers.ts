@@ -1,7 +1,9 @@
 import Keychain from 'react-native-keychain';
-import { TAccount } from '@synonymdev/react-native-ldk';
+import { ELdkData, TAccount } from '@synonymdev/react-native-ldk';
 import { getItem, setItem } from '../ldk';
 import { EAccount } from './types';
+import { getLdkStorageKey } from '@synonymdev/react-native-ldk/dist/utils/helpers';
+import { err, ok, Result } from './result';
 
 /**
  * Use Keychain to save LDK name & seed.
@@ -20,6 +22,7 @@ export const setAccount = async ({
 		await Keychain.setGenericPassword(name, JSON.stringify(account), {
 			service: name,
 		});
+		await setItem(EAccount.currentAccountKey, name);
 		return true;
 	} catch {
 		return false;
@@ -47,7 +50,6 @@ export const getAccount = async (accountName?: string): Promise<TAccount> => {
 		} else {
 			// Setup default account.
 			await setAccount(defaultAccount);
-			await setItem(EAccount.currentAccountKey, defaultAccount.name);
 			return defaultAccount;
 		}
 	} catch (e) {
@@ -69,18 +71,34 @@ export const getCurrentAccountName = async (): Promise<string> => {
  * Creates and saves new name/seed pair.
  * @returns {Promise<TAccount>}
  */
-export const createNewAccount = async (): Promise<TAccount> => {
-	const currentAccountName = await getCurrentAccountName();
-	let num = Number(currentAccountName.replace('wallet', ''));
-	num++;
-	const name = `wallet${num}`;
-	const account: TAccount = {
-		name,
-		seed: dummyRandomSeed(),
-	};
-	await setAccount(account);
-	await setItem(EAccount.currentAccountKey, name);
-	return account;
+export const createNewAccount = async (): Promise<Result<TAccount>> => {
+	try {
+		let emptyAccount = false;
+		const currentAccountName = await getCurrentAccountName();
+		let num = Number(currentAccountName.replace('wallet', ''));
+		while (emptyAccount === false) {
+			const channelManagerStorageKey = getLdkStorageKey(
+				`wallet${num}`,
+				ELdkData.channelManager,
+			);
+			const channelData = await getItem(channelManagerStorageKey);
+			if (channelData) {
+				num++;
+			} else {
+				emptyAccount = true;
+			}
+		}
+		const name = `wallet${num}`;
+		const account: TAccount = {
+			name,
+			seed: dummyRandomSeed(),
+		};
+		await setAccount(account);
+		return ok(account);
+	} catch (e) {
+		console.log(e);
+		return err(e);
+	}
 };
 
 const shuffle = (array: string[]): string[] => {
