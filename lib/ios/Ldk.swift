@@ -86,8 +86,7 @@ class Ldk: NSObject {
     lazy var persister = {LdkPersister()}()
     lazy var filter = {LdkFilter()}()
     lazy var channelManagerPersister = {LdkChannelManagerPersister()}()
-//    lazy var scorer = {MultiThreadedLockableScore(score: Scorer())}()
-
+   
     //Config required to setup below objects
     var chainMonitor: ChainMonitor?
     var keysManager: KeysManager?
@@ -262,7 +261,10 @@ class Ldk: NSObject {
         channelManager = channelManagerConstructor!.channelManager
         self.networkGraph = channelManagerConstructor!.net_graph
 
-        channelManagerConstructor!.chain_sync_completed(persister: channelManagerPersister, scorer: nil)
+        //Scorer setup
+        let scorer = MultiThreadedLockableScore(score: Score())
+        
+        channelManagerConstructor!.chain_sync_completed(persister: channelManagerPersister, scorer: scorer)
         peerManager = channelManagerConstructor!.peerManager
 
         peerHandler = channelManagerConstructor!.getTCPPeerHandler()

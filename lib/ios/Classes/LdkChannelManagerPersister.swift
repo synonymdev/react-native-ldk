@@ -206,4 +206,10 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
 
         return Result_NoneErrorZ.ok()
     }
+    
+    override func persist_scorer(scorer: MultiThreadedLockableScore) -> Result_NoneErrorZ {
+        //TODO
+        print("TODO Swift persist scorer")
+        return Result_NoneErrorZ.ok()
+    }
 }
