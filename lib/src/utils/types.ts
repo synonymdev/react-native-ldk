@@ -49,7 +49,7 @@ export type TChannelManagerFundingGenerationReady = {
 };
 export type TChannelManagerPaymentReceived = {
 	payment_hash: string;
-	amount_msat: number;
+	amount_sat: number;
 	payment_preimage: string;
 	payment_secret: string;
 	spontaneous_payment_preimage: string;
@@ -58,19 +58,19 @@ export type TChannelManagerPaymentSent = {
 	payment_id: string;
 	payment_preimage: string;
 	payment_hash: string;
-	fee_paid_msat: number;
+	fee_paid_sat: number;
 };
 export type TChannelManagerOpenChannelRequest = {
 	temp_channel_id: string;
 	counterparty_node_id: string;
-	push_msat: number;
+	push_sat: number;
 	funding_satoshis: number;
 	channel_type: string;
 };
 
 type TPath = {
 	pubkey: string;
-	fee_msat: number;
+	fee_sat: number;
 	short_channel_id: number;
 	cltv_expiry_delta: number;
 };
@@ -113,7 +113,7 @@ export type TChannel = {
 	is_public: boolean;
 	is_usable: boolean;
 	is_outbound: boolean;
-	balance_msat: number;
+	balance_sat: number;
 	counterparty: string;
 	funding_txo?: string;
 	channel_type?: string;
@@ -122,8 +122,8 @@ export type TChannel = {
 	short_channel_id?: number;
 	inbound_scid_alias?: number;
 	inbound_payment_scid?: number;
-	inbound_capacity_msat: number;
-	outbound_capacity_msat: number;
+	inbound_capacity_sat: number;
+	outbound_capacity_sat: number;
 	channel_value_satoshis: number;
 	force_close_spend_delay?: number;
 	unspendable_punishment_reserve?: number;

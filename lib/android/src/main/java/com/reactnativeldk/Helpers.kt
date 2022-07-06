@@ -64,7 +64,7 @@ val ChannelDetails.asJson: WritableMap
         result.putBoolean("is_public", _is_public)
         result.putBoolean("is_usable", _is_usable)
         result.putBoolean("is_outbound", _is_outbound)
-        result.putInt("balance_msat", _balance_msat.toInt())
+        result.putInt("balance_sat", _balance_msat.toInt() / 1000)
         result.putHexString("counterparty", _counterparty.write())
         result.putHexString("funding_txo", _funding_txo?.write())
         result.putHexString("channel_type", _channel_type?.write())
@@ -76,8 +76,8 @@ val ChannelDetails.asJson: WritableMap
             ?.let { result.putInt("inbound_scid_alias", it) }
         (_inbound_scid_alias as? Option_u64Z.Some)?.some?.toInt()
             ?.let { result.putInt("inbound_payment_scid", it) }
-        result.putInt("inbound_capacity_msat", _inbound_capacity_msat.toInt())
-        result.putInt("outbound_capacity_msat", _outbound_capacity_msat.toInt())
+        result.putInt("inbound_capacity_sat", _inbound_capacity_msat.toInt() / 1000)
+        result.putInt("outbound_capacity_sat", _outbound_capacity_msat.toInt() / 1000)
         result.putInt("channel_value_satoshis", _channel_value_satoshis.toInt())
         (_force_close_spend_delay as? Option_u16Z.Some)?.some?.toInt()
             ?.let { result.putInt("force_close_spend_delay", it) }
@@ -90,7 +90,7 @@ val RouteHop.asJson: WritableMap
     get() {
         val hop = Arguments.createMap()
         hop.putHexString("pubkey", _pubkey)
-        hop.putInt("fee_msat", _fee_msat.toInt())
+        hop.putInt("fee_sat", _fee_msat.toInt() / 1000)
         return hop
     }
 

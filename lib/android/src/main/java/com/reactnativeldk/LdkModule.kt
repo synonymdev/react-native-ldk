@@ -107,7 +107,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private val persister: LdkPersister by lazy { LdkPersister() }
     private val filter: LdkFilter by lazy { LdkFilter() }
     private val channelManagerPersister: LdkChannelManagerPersister by lazy { LdkChannelManagerPersister() }
-    import java.net.InetSocketAddress
+
     //Config required to setup below objects
     private var chainMonitor: ChainMonitor? = null
     private var keysManager: KeysManager? = null

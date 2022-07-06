@@ -21,7 +21,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         (event as? Event.PaymentReceived)?.let { paymentReceived ->
             val body = Arguments.createMap()
             body.putHexString("payment_hash", paymentReceived.payment_hash)
-            body.putInt("amount_msat", paymentReceived.amount_msat.toInt())
+            body.putInt("amount_sat", paymentReceived.amount_msat.toInt() / 1000)
             (paymentReceived.purpose as? PaymentPurpose.InvoicePayment)?.let {
                 body.putHexString("payment_preimage", it.payment_preimage)
                 body.putHexString("payment_secret", it.payment_secret)
@@ -37,7 +37,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             body.putHexString("payment_id", paymentSent.payment_id)
             body.putHexString("payment_preimage", paymentSent.payment_preimage)
             body.putHexString("payment_hash", paymentSent.payment_hash)
-            body.putInt("fee_paid_msat", (paymentSent.fee_paid_msat as Option_u64Z.Some).some.toInt())
+            body.putInt("fee_paid_sat", (paymentSent.fee_paid_msat as Option_u64Z.Some).some.toInt() / 1000)
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_sent, body)
         }
 
@@ -46,7 +46,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             val body = Arguments.createMap()
             body.putHexString("temp_channel_id", openChannelRequest.temporary_channel_id)
             body.putHexString("counterparty_node_id", openChannelRequest.counterparty_node_id)
-            body.putInt("push_msat", openChannelRequest.push_msat.toInt())
+            body.putInt("push_sat", openChannelRequest.push_msat.toInt() / 1000)
             body.putInt("funding_satoshis", openChannelRequest.funding_satoshis.toInt())
             body.putHexString("channel_type", openChannelRequest.channel_type.write())
             return LdkEventEmitter.send(EventTypes.channel_manager_open_channel_request, body)

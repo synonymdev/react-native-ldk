@@ -53,7 +53,7 @@ extension ChannelDetails {
             "is_public": get_is_public(),
             "is_usable": get_is_usable(),
             "is_outbound": get_is_outbound(),
-            "balance_msat": get_balance_msat(),
+            "balance_sat": get_balance_msat() / 1000,
             "counterparty": Data(get_counterparty().write()).hexEncodedString(),
             "funding_txo": Data(get_funding_txo()?.write() ?? []).hexEncodedString(),
             "channel_type": Data(get_channel_type().write()).hexEncodedString(),
@@ -62,8 +62,8 @@ extension ChannelDetails {
             "short_channel_id": get_short_channel_id().getValue() as Any, //Optional number
             "inbound_scid_alias": get_inbound_scid_alias().getValue() as Any, //Optional number
             "inbound_payment_scid": get_inbound_payment_scid().getValue() as Any, //Optional number,
-            "inbound_capacity_msat": get_inbound_capacity_msat(),
-            "outbound_capacity_msat": get_outbound_capacity_msat(),
+            "inbound_capacity_sat": get_inbound_capacity_msat() / 1000,
+            "outbound_capacity_sat": get_outbound_capacity_msat() / 1000,
             "channel_value_satoshis": get_channel_value_satoshis(),
             "force_close_spend_delay": get_force_close_spend_delay().getValue() as Any, //Optional number
             "unspendable_punishment_reserve": get_unspendable_punishment_reserve().getValue() as Any //Optional number
@@ -75,7 +75,7 @@ extension LDKFramework.RouteHop {
     var asJson: Any {
         return [
             "pubkey": get_pubkey(),
-            "fee_msat": get_fee_msat(),
+            "fee_sat": get_fee_msat() / 1000,
             "short_channel_id": get_short_channel_id(),
             "cltv_expiry_delta": get_cltv_expiry_delta()
         ]
