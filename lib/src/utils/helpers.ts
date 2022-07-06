@@ -5,6 +5,8 @@ import {
 	ENetworks,
 	TLdkStart,
 	TLdkStorage,
+	TLdkStorageKeys,
+	TStorage,
 } from './types';
 import { err, ok, Result } from './result';
 
@@ -163,17 +165,12 @@ export const startParamCheck = async ({
 		}
 
 		// Test setItem & getItem
-		if (!isFunction(setItem)) {
-			return err('setItem must be a function.');
-		}
-		if (!isFunction(getItem)) {
-			return err('getItem must be a function.');
-		}
-		const rand = Math.random().toString();
-		await setItem('ldkstoragetest', rand);
-		const getTest = await getItem('ldkstoragetest');
-		if (getTest !== rand) {
-			return err('setItem & getItem are not able to access storage.');
+		const setAndGetCheckResponse = await setAndGetMethodCheck({
+			setItem,
+			getItem,
+		});
+		if (setAndGetCheckResponse.isErr()) {
+			return err(setAndGetCheckResponse.error.message);
 		}
 
 		// Test getTransactionData
@@ -243,6 +240,35 @@ const shuffle = (array: string[]): string[] => {
 	return array;
 };
 
+/**
+ * Used to test the setItem & getItem methods passed to react-native-ldk by the dev/user/software.
+ * @param {TStorage} setItem
+ * @param {TStorage} getItem
+ * @returns {Promise<Result<boolean>>}
+ */
+export const setAndGetMethodCheck = async ({
+	setItem,
+	getItem,
+}: {
+	getItem: TStorage;
+	setItem: TStorage;
+}): Promise<Result<boolean>> => {
+	// Test setItem & getItem
+	if (!setItem || !isFunction(setItem)) {
+		return err('setItem must be a function.');
+	}
+	if (!getItem || !isFunction(getItem)) {
+		return err('getItem must be a function.');
+	}
+	const rand = Math.random().toString();
+	await setItem('ldkstoragetest', rand);
+	const getTest = await getItem('ldkstoragetest');
+	if (getTest !== rand) {
+		return err('setItem & getItem are not able to access storage.');
+	}
+	return ok(true);
+};
+
 export const dummyRandomSeed = (): string => {
 	if (!__DEV__) {
 		throw new Error('Use random bytes instead of dummyRandomSeed');
@@ -259,4 +285,27 @@ export const getLdkStorageKey = (
 	ldkDataKey: ELdkData,
 ): string => {
 	return `${ELdkStorage.key}${accountName}${ldkDataKey}`;
+};
+
+/**
+ * Returns the storage key for each key value in ELdkData for the given account name.
+ * @param {string} accountName
+ * @returns {Promise<TLdkStorageKeys>}
+ */
+export const getAllStorageKeys = async (
+	accountName = '',
+): Promise<TLdkStorageKeys> => {
+	const storageKeys: TLdkStorageKeys = {
+		[ELdkData.channelManager]: '',
+		[ELdkData.channelData]: '',
+		[ELdkData.peers]: '',
+		[ELdkData.networkGraph]: '',
+	};
+	await Promise.all(
+		Object.values(ELdkData).map((ldkDataKey) => {
+			const storageKey = getLdkStorageKey(accountName, ldkDataKey);
+			storageKeys[ldkDataKey] = storageKey;
+		}),
+	);
+	return storageKeys;
 };
