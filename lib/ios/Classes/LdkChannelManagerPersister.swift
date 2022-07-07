@@ -53,7 +53,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 withEvent: .channel_manager_payment_received,
                 body: [
                     "payment_hash": Data(paymentReceived.getPayment_hash()).hexEncodedString(),
-                    "amount": paymentReceived.getAmt(),
+                    "amount_sat": paymentReceived.getAmount_msat() / 1000,
                     "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
                     "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
                     "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
@@ -71,7 +71,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "payment_id": Data(paymentSent.getPayment_id()).hexEncodedString(),
                     "payment_preimage": Data(paymentSent.getPayment_preimage()).hexEncodedString(),
                     "payment_hash": Data(paymentSent.getPayment_hash()).hexEncodedString(),
-                    "fee_paid_msat": paymentSent.getFee_paid_msat(),
+                    "fee_paid_sat": paymentSent.getFee_paid_msat().getValue() ?? 0 / 1000,
                 ]
             )
             return
@@ -85,7 +85,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 body: [
                     "temp_channel_id": Data(openChannelRequest.getTemporary_channel_id()).hexEncodedString(),
                     "counterparty_node_id": Data(openChannelRequest.getCounterparty_node_id()).hexEncodedString(),
-                    "push_msat": openChannelRequest.getPush_msat(),
+                    "push_sat": openChannelRequest.getPush_msat() / 1000,
                     "funding_satoshis": openChannelRequest.getFunding_satoshis(),
                     "channel_type": Data(openChannelRequest.getChannel_type().write()).hexEncodedString()
                 ]
@@ -204,6 +204,12 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     override func persist_graph(network_graph: NetworkGraph) -> Result_NoneErrorZ {
         LdkEventEmitter.shared.send(withEvent: .persist_graph, body: ["network_graph": Data(network_graph.write()).hexEncodedString()])
 
+        return Result_NoneErrorZ.ok()
+    }
+    
+    override func persist_scorer(scorer: MultiThreadedLockableScore) -> Result_NoneErrorZ {
+        //TODO
+        print("TODO Swift persist scorer")
         return Result_NoneErrorZ.ok()
     }
 }

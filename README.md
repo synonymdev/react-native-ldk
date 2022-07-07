@@ -162,3 +162,9 @@ console.log(importResponse.value);
 
 ## Notes
  - It is important to not mix and match account names and seeds when starting LDK. Doing so can result in a corrupt save.
+
+## Upgrading LDK
+- Use latest LDK-release.aar from [ldk-garbagecollected](https://github.com/lightningdevkit/ldk-garbagecollected/releases) and place in `lib/android/libs`.
+- Use latest LDKFramework.xcframework from [ldk-swift](https://github.com/lightningdevkit/ldk-swift/releases) and place in lib/ios.
+  - To get `pod install` working you might have to open the `LDKFramework.xcframework` directory, delete non ios frameworks and remove all references to deleted frameworks inside `LDKFramework.xcframework/Info.plist`.
+- Update Swift and Kotlin code if there are any breaking changes.

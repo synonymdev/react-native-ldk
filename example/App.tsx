@@ -184,8 +184,9 @@ const App = (): ReactElement => {
 						onPress={async (): Promise<void> => {
 							try {
 								const createPaymentRequest = await ldk.createPaymentRequest({
-									amountSats: 1000000,
+									amountSats: 1000,
 									description: 'paymeplz',
+									expiryDeltaSeconds: 999999,
 								});
 
 								if (createPaymentRequest.isErr()) {

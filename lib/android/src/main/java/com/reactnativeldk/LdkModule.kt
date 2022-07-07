@@ -13,6 +13,7 @@ import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
 import org.ldk.structs.Result_InvoiceParseOrSemanticErrorZ.Result_InvoiceParseOrSemanticErrorZ_OK
 import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCreationErrorZ_OK
+import org.ldk.structs.Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK
 import java.net.InetSocketAddress
 
 //MARK: ************Replicate in typescript and swift************
@@ -67,8 +68,8 @@ enum class LdkErrors {
     invoice_payment_fail_path_parameter_error,
     init_ldk_currency,
     invoice_create_failed,
-    claim_funds_failed,
-    network_graph_restore_failed
+    network_graph_restore_failed,
+    init_scorer_failed
 }
 
 enum class LdkCallbackResponses {
@@ -106,7 +107,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private val persister: LdkPersister by lazy { LdkPersister() }
     private val filter: LdkFilter by lazy { LdkFilter() }
     private val channelManagerPersister: LdkChannelManagerPersister by lazy { LdkChannelManagerPersister() }
-    private val scorer: MultiThreadedLockableScore by lazy { MultiThreadedLockableScore.of(Scorer.with_default().as_Score()) }
 
     //Config required to setup below objects
     private var chainMonitor: ChainMonitor? = null
@@ -189,9 +189,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         if (serializedBackup == "") {
-            networkGraph = NetworkGraph.of(genesisHash.hexa())
+            networkGraph = NetworkGraph.of(genesisHash.hexa(), logger.logger)
         } else {
-            (NetworkGraph.read(serializedBackup.hexa()) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
+            (NetworkGraph.read(serializedBackup.hexa(), logger.logger) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
                 networkGraph = res.res
             }
 
@@ -274,7 +274,20 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         channelManager = channelManagerConstructor!!.channel_manager
         this.networkGraph = channelManagerConstructor!!.net_graph
 
-        channelManagerConstructor!!.chain_sync_completed(channelManagerPersister.channelManagerPersister, scorer)
+        //Scorer setup
+        val params = ProbabilisticScoringParameters.with_default()
+        val default_scorer = ProbabilisticScorer.of(params, networkGraph, logger.logger)
+        val score_res = ProbabilisticScorer.read(
+            default_scorer.write(), params, networkGraph,
+            logger.logger
+        )
+        if (!score_res.is_ok) {
+            return handleReject(promise, LdkErrors.init_scorer_failed)
+        }
+        val score = (score_res as Result_ProbabilisticScorerDecodeErrorZ_OK).res.as_Score()
+        val scorer = MultiThreadedLockableScore.of(score)
+
+        channelManagerConstructor!!.chain_sync_completed(channelManagerPersister, scorer)
         peerManager = channelManagerConstructor!!.peer_manager
 
         peerHandler = channelManagerConstructor!!.nio_peer_handler
@@ -445,7 +458,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun createPaymentRequest(amountSats: Double, description: String, promise: Promise) {
+    fun createPaymentRequest(amountSats: Double, description: String, expiryDelta: Double, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
         ldkCurrency ?: return handleReject(promise, LdkErrors.init_ldk_currency)
@@ -455,7 +468,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             keysManager!!.as_KeysInterface(),
             ldkCurrency,
             Option_u64Z.some(amountSats.toLong()),
-            description
+            description,
+            expiryDelta.toInt()
         );
 
         if (res.is_ok) {
@@ -479,10 +493,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun claimFunds(paymentPreimage: String, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
-        val res = channelManager!!.claim_funds(paymentPreimage.hexa())
-        if (!res) {
-            return handleReject(promise, LdkErrors.claim_funds_failed)
-        }
+        channelManager!!.claim_funds(paymentPreimage.hexa())
 
         return handleResolve(promise, LdkCallbackResponses.claim_funds_success)
     }
