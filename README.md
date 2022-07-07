@@ -123,8 +123,41 @@ const logListener = ldk.addLogListener((message) => {
     console.log(message);
 });
 
+//Backup LDK account.
+const backupResponse = await lm.backupAccount({
+	account,
+	setItem,
+	getItem,
+});
+if (backupResponse.isErr()) {
+	console.log(backupResponse.error.message);
+	return;
+}
+//Store this backup string somewhere safe.
+console.log(backupResponse.value);
+
 //Unsubscribe if listening component is unmounted
 ldk.removeLogListener(logListener);
+```
+
+### Importing an account from a backup:
+```javascript
+//The backup string can be acquired from the `lm.backupAccount` method.
+const backup = backupResponse.value;
+//Import LDK account backup.
+const importResponse = await lm.importAccount({
+	backup,
+	setItem,
+	getItem,
+	overwrite: true,
+});
+if (importResponse.isErr()) {
+	console.log(importResponse.error.message);
+	return;
+}
+//Successfully imported account. 
+//This value can now be used as the `account` param in `lm.start`
+console.log(importResponse.value);
 ```
 
 ## Notes

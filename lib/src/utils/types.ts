@@ -269,6 +269,11 @@ export type TLdkData = {
 	[ELdkData.networkGraph]: TLdkNetworkGraph;
 };
 
+export type TAccountBackup = {
+	account: TAccount;
+	data: TLdkData;
+};
+
 export type TLdkChannelManager = string;
 
 export type TLdkChannelData = {
@@ -308,4 +313,8 @@ export type TLdkStart = {
 	setItem: TStorage;
 	getTransactionData: TGetTransactionData;
 	network?: ENetworks;
+};
+
+export type TLdkStorageKeys = {
+	[key in ELdkData]: string;
 };

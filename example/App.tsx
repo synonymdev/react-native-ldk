@@ -10,7 +10,7 @@ import {
 	View,
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { setupLdk, syncLdk } from './ldk';
+import { backupAccount, importAccount, setupLdk, syncLdk } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm from '@synonymdev/react-native-ldk';
@@ -65,8 +65,10 @@ const App = (): ReactElement => {
 						title={'Create New Account'}
 						onPress={async (): Promise<void> => {
 							const newAccount = await createNewAccount();
-							await setupLdk();
-							setMessage(`New account created: ${newAccount.seed}`);
+							if (newAccount.isOk()) {
+								await setupLdk();
+								setMessage(`New account created: ${newAccount.value.seed}`);
+							}
 						}}
 					/>
 
@@ -88,7 +90,7 @@ const App = (): ReactElement => {
 							try {
 								const peersRes = await Promise.all(
 									Object.keys(peers).map(async (peer) => {
-										const addPeer = await ldk.addPeer({
+										const addPeer = await lm.addPeer({
 											...peers[peer],
 											timeout: 5000,
 										});
@@ -281,6 +283,41 @@ const App = (): ReactElement => {
 							}
 
 							return setMessage('e2e success');
+						}}
+					/>
+
+					<Button
+						title={'Backup Current Account'}
+						onPress={async (): Promise<void> => {
+							const backupResponse = await backupAccount();
+							if (backupResponse.isErr()) {
+								setMessage(backupResponse.error.message);
+								return;
+							}
+							console.log(backupResponse.value);
+							Clipboard.setString(backupResponse.value);
+							const account = JSON.parse(backupResponse.value).account;
+							setMessage(
+								`Backup of the following account copied to clipboard:\n${JSON.stringify(
+									account,
+								)}`,
+							);
+						}}
+					/>
+					<Button
+						title={'Import Account From Clipboard'}
+						onPress={async (): Promise<void> => {
+							setMessage('Importing Account...');
+							const clipboardBackup = await Clipboard.getString();
+							const importResponse = await importAccount(clipboardBackup);
+							if (importResponse.isErr()) {
+								setMessage(importResponse.error.message);
+								return;
+							}
+							const accountData = JSON.stringify(importResponse.value);
+							setMessage(
+								`Successfully imported the following account: ${accountData}`,
+							);
 						}}
 					/>
 				</View>

@@ -47,10 +47,10 @@
     "detox": "^19.7.1",
     "eslint": "^8.17.0",
     "eslint-config-prettier": "^8.5.0",
-    "prettier": "^2.6.2",
     "jest": "^26.6.3",
     "jest-circus": "^26.6.3",
     "metro-react-native-babel-preset": "^0.67.0",
+    "prettier": "^2.6.2",
     "react-test-renderer": "17.0.2",
     "rn-nodeify": "^10.3.0",
     "typescript": "^3.9.7"
