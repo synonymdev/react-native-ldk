@@ -8,6 +8,7 @@ import {
 	ELdkLogLevels,
 	ENetworks,
 	TAccount,
+	TAccountBackup,
 	TAddPeerReq,
 	TBroadcastTransactionEvent,
 	TChannelBackupEvent,
@@ -38,7 +39,12 @@ import {
 	TStorage,
 	TTransactionData,
 } from './utils/types';
-import { getLdkStorageKey, startParamCheck } from './utils/helpers';
+import {
+	getAllStorageKeys,
+	getLdkStorageKey,
+	setAndGetMethodCheck,
+	startParamCheck,
+} from './utils/helpers';
 
 //TODO startup steps
 // Step 0: Listen for events ✅
@@ -229,6 +235,8 @@ class LightningManager {
 		this.getTransactionData = getTransactionData;
 		const bestBlock = await this.getBestBlock();
 		this.currentBlock = bestBlock;
+		this.watchTxs = [];
+		this.watchOutputs = [];
 
 		// Step 1: Initialize the FeeEstimator
 		// Lazy loaded in native code
@@ -282,16 +290,23 @@ class LightningManager {
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
 		const networkGraph = await this.getLdkNetworkGraph();
-		const networkGraphRes = await ldk.initNetworkGraph({
-			serializedBackup: networkGraph,
-		});
-		if (networkGraphRes.isErr()) {
-			console.log(
-				`Network graph restore failed (${networkGraphRes.error.message}). Syncing from scratch.`,
-			);
-			//Restore failed, re-sync graph from scratch
-			const newNetworkGraphRes = await ldk.initNetworkGraph({ genesisHash });
 
+		if (networkGraph) {
+			const networkGraphRes = await ldk.initNetworkGraph({
+				serializedBackup: networkGraph,
+			});
+			if (networkGraphRes.isErr()) {
+				console.log(
+					`Network graph restore failed (${networkGraphRes.error.message}). Syncing from scratch.`,
+				);
+				//Restore failed, re-sync graph from scratch
+				const newNetworkGraphRes = await ldk.initNetworkGraph({ genesisHash });
+				if (newNetworkGraphRes.isErr()) {
+					return newNetworkGraphRes;
+				}
+			}
+		} else {
+			const newNetworkGraphRes = await ldk.initNetworkGraph({ genesisHash });
 			if (newNetworkGraphRes.isErr()) {
 				return newNetworkGraphRes;
 			}
@@ -449,6 +464,176 @@ class LightningManager {
 		const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
 		const peers = await this.getItem(storageKey);
 		return JSON.parse(peers) ?? DefaultLdkDataShape[ELdkData.peers];
+	};
+
+	/**
+	 * This method is used to import backups provided by react-native-ldk's backupAccount method.
+	 * @param {TAccountBackup} accountData
+	 * @param {Function} setItem
+	 * @param {Function} getItem
+	 * @param {boolean} [overwrite] Determines if this function should overwrite an existing account of the same name.
+	 * @returns {Promise<Result<TAccount>>} TAccount is used to start the node using the newly imported and saved data.
+	 */
+	importAccount = async ({
+		backup,
+		setItem,
+		getItem,
+		overwrite = false,
+	}: {
+		backup: string | TAccountBackup;
+		setItem: TStorage;
+		getItem: TStorage;
+		overwrite?: boolean;
+	}): Promise<Result<TAccount>> => {
+		try {
+			if (!backup) {
+				return err('No backup was provided for import.');
+			}
+			let accountBackup: TAccountBackup;
+			if (typeof backup === 'string') {
+				try {
+					accountBackup = JSON.parse(backup);
+				} catch {
+					return err('Invalid backup string.');
+				}
+			} else if (typeof backup === 'object') {
+				// It's possible the dev passed the TAccountBackup object instead of the JSON string.
+				accountBackup = backup;
+			} else {
+				return err('Invalid backup. Unable to import.');
+			}
+			if (!accountBackup?.account.name) {
+				return err('No account name was provided in the accountBackup object.');
+			}
+			if (!accountBackup?.account.seed) {
+				return err('No seed was provided in the accountBackup object.');
+			}
+			if (!accountBackup?.data) {
+				return err('No data was provided in the accountBackup object.');
+			}
+			if (
+				!(ELdkData.channelManager in accountBackup.data) ||
+				!(ELdkData.channelData in accountBackup.data) ||
+				!(ELdkData.peers in accountBackup.data) ||
+				!(ELdkData.networkGraph in accountBackup.data)
+			) {
+				return err(
+					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.channelManager}, ${ELdkData.channelData}, ${ELdkData.peers}, ${ELdkData.networkGraph}`,
+				);
+			}
+
+			//Retrieve all storage keys for the provided account name.
+			const storageKeys = await getAllStorageKeys(accountBackup.account.name);
+
+			// Check that an account of this name doesn't already exist.
+			const channelManager = await this.getItem(
+				storageKeys[ELdkData.channelManager],
+			);
+			// If channel data is present and instructed not to overwrite the existing data, return.
+			if (channelManager && !overwrite) {
+				return err('This account name already exists in local storage.');
+			}
+
+			// Check that we're properly connected to the device's storage and that the setItem & getItem methods work as expected.
+			const setAndGetCheckResponse = await setAndGetMethodCheck({
+				setItem,
+				getItem,
+			});
+			if (setAndGetCheckResponse.isErr()) {
+				return err(setAndGetCheckResponse.error.message);
+			}
+
+			//Save the provided backup data using the storage keys.
+			this.setItem(
+				storageKeys[ELdkData.channelManager],
+				JSON.stringify(accountBackup.data[ELdkData.channelManager]),
+			);
+			this.setItem(
+				storageKeys[ELdkData.channelData],
+				JSON.stringify(accountBackup.data[ELdkData.channelData]),
+			);
+			this.setItem(
+				storageKeys[ELdkData.peers],
+				JSON.stringify(accountBackup.data[ELdkData.peers]),
+			);
+			this.setItem(
+				storageKeys[ELdkData.networkGraph],
+				JSON.stringify(accountBackup.data[ELdkData.networkGraph]),
+			);
+
+			//Return the saved account info.
+			return ok(accountBackup.account);
+		} catch (e) {
+			return err(e);
+		}
+	};
+
+	/**
+	 * Used to backup the data that corresponds with the provided account.
+	 * @param {TAccount} account
+	 * @param {TStorage} setItem
+	 * @param {TStorage} getItem
+	 * @param {TStorage} includeNetworkGraph
+	 * @returns {string} This string can be used to import/restore this LDK account via importAccount.
+	 */
+	backupAccount = async ({
+		account,
+		setItem,
+		getItem,
+		includeNetworkGraph = false,
+	}: {
+		account: TAccount;
+		setItem: TStorage;
+		getItem: TStorage;
+		includeNetworkGraph?: boolean;
+	}): Promise<Result<string>> => {
+		try {
+			if (!account || !this?.account) {
+				return err(
+					'No account provided. Please pass an account object containing the name & seed to the start method and try again.',
+				);
+			}
+			if (!account) {
+				account = this.account;
+			}
+			if (!account?.name || !account?.seed) {
+				return err(
+					'No account name or seed provided. Please pass an account object containing the name & seed to the start method and try again.',
+				);
+			}
+			//Check that we're properly connected to the device's storage.
+			//While setItem is not needed in the backupAccount method we still need to check that the getItem method works as expected.
+			const setAndGetCheckResponse = await setAndGetMethodCheck({
+				setItem,
+				getItem,
+			});
+			if (setAndGetCheckResponse.isErr()) {
+				return err(setAndGetCheckResponse.error.message);
+			}
+			const storageKeys = await getAllStorageKeys(account.name);
+			const channelManager = await getItem(
+				storageKeys[ELdkData.channelManager],
+			);
+			const channelData = await getItem(storageKeys[ELdkData.channelData]);
+			const peers = await getItem(storageKeys[ELdkData.peers]);
+			let networkGraph = '';
+			if (includeNetworkGraph) {
+				networkGraph = await getItem(storageKeys[ELdkData.networkGraph]);
+				networkGraph = JSON.parse(networkGraph);
+			}
+			const accountBackup: TAccountBackup = {
+				account,
+				data: {
+					[ELdkData.channelManager]: JSON.parse(channelManager),
+					[ELdkData.channelData]: JSON.parse(channelData),
+					[ELdkData.peers]: JSON.parse(peers),
+					[ELdkData.networkGraph]: networkGraph,
+				},
+			};
+			return ok(JSON.stringify(accountBackup));
+		} catch (e) {
+			return err(e);
+		}
 	};
 
 	/**

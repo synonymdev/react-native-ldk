@@ -11,10 +11,13 @@ import lm, {
 	THeader,
 	TTransactionData,
 	DefaultTransactionDataShape,
+	TAccount,
+	TAccountBackup,
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import { selectedNetwork, peers } from '../utils/constants';
-import { getAccount } from '../utils/helpers';
+import { getAccount, setAccount } from '../utils/helpers';
+import { EAccount } from '../utils/types';
 
 /**
  * Retrieves data from local storage.
@@ -188,4 +191,46 @@ export const getTransactionData = async (
 		height: confirmedHeight,
 		transaction: hex_encoded_tx,
 	};
+};
+
+/**
+ * Used to backup a given account.
+ * @param {TAccount} [account]
+ * @returns {Promise<Result<string>>}
+ */
+export const backupAccount = async (
+	account?: TAccount,
+): Promise<Result<string>> => {
+	if (!account) {
+		account = await getAccount();
+	}
+	return await lm.backupAccount({
+		account,
+		setItem,
+		getItem,
+	});
+};
+
+/**
+ * Used to import an account using the backup JSON string or TAccountBackup object.
+ * @param {string | TAccountBackup} backup
+ * @returns {Promise<Result<TAccount>>}
+ */
+export const importAccount = async (
+	backup: string | TAccountBackup,
+): Promise<Result<TAccount>> => {
+	const importResponse = await lm.importAccount({
+		backup,
+		setItem,
+		getItem,
+		overwrite: true,
+	});
+	if (importResponse.isErr()) {
+		return err(importResponse.error.message);
+	}
+	await setAccount(importResponse.value);
+	await setItem(EAccount.currentAccountKey, importResponse.value.name);
+	await setupLdk();
+	await syncLdk();
+	return ok(importResponse.value);
 };
