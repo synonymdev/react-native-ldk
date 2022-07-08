@@ -26,6 +26,7 @@ export enum EEventTypes {
 	channel_manager_spendable_outputs = 'channel_manager_spendable_outputs',
 	channel_manager_channel_closed = 'channel_manager_channel_closed',
 	channel_manager_discard_funding = 'channel_manager_discard_funding',
+	channel_manager_payment_claimed = 'channel_manager_payment_claimed'
 }
 
 //LDK event responses
@@ -47,7 +48,7 @@ export type TChannelManagerFundingGenerationReady = {
 	user_channel_id: number;
 	value_satoshis: number;
 };
-export type TChannelManagerPaymentReceived = {
+export type TChannelManagerPayment = {
 	payment_hash: string;
 	amount_sat: number;
 	payment_preimage: string;
@@ -114,7 +115,7 @@ export type TChannel = {
 	is_usable: boolean;
 	is_outbound: boolean;
 	balance_sat: number;
-	counterparty: string;
+	counterparty_node_id: string;
 	funding_txo?: string;
 	channel_type?: string;
 	user_channel_id: number;
@@ -187,6 +188,11 @@ export type TSetTxConfirmedReq = {
 
 export type TSetTxUnconfirmedReq = {
 	txId: string;
+};
+
+export type TCloseChannelReq = {
+	channelId: string;
+	counterPartyNodeId: string;
 };
 
 export type TPaymentReq = {

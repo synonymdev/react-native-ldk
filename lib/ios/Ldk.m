@@ -57,6 +57,10 @@ RCT_EXTERN_METHOD(setTxConfirmed:(NSString *)header
 RCT_EXTERN_METHOD(setTxUnconfirmed:(NSString *)txId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(closeChannel:(NSString *)channelId
+                  counterPartyNodeId:(NSString *)counterPartyNodeId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 
 //MARK: Fetch methods
 RCT_EXTERN_METHOD(version:(RCTPromiseResolveBlock)resolve

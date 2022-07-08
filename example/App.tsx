@@ -19,8 +19,14 @@ import { createNewAccount } from './utils/helpers';
 
 const App = (): ReactElement => {
 	const [message, setMessage] = useState('...');
+	const [nodeStarted, setNodeStarted] = useState(false);
 
 	useEffect(() => {
+		//Restarting LDK on each code update causes constant errors.
+		if (nodeStarted) {
+			return;
+		}
+
 		(async (): Promise<void> => {
 			// Connect to Electrum Server
 			const electrumResponse = await connectToElectrum({});
@@ -47,6 +53,8 @@ const App = (): ReactElement => {
 				setMessage(setupResponse.error.message);
 				return;
 			}
+
+			setNodeStarted(true);
 			setMessage(setupResponse.value);
 		})();
 	}, []);
@@ -163,6 +171,38 @@ const App = (): ReactElement => {
 							}
 						}}
 					/>
+
+					<Button
+						title={'Close channel'}
+						onPress={async (): Promise<void> => {
+							try {
+								const listChannels = await ldk.listChannels();
+								if (listChannels.isErr()) {
+									setMessage(listChannels.error.message);
+									return;
+								}
+								if (listChannels.value.length < 1) {
+									setMessage('No channels detected.');
+									return;
+								}
+
+								const {channel_id, counterparty_node_id} = listChannels.value[0];
+
+								setMessage(`Closing ${channel_id}...`);
+
+								const res = await ldk.closeChannel({channelId: channel_id, counterPartyNodeId: counterparty_node_id});
+								if (res.isErr()) {
+									setMessage(res.error.message);
+									return;
+								}
+								setMessage(res.value);
+							} catch (e) {
+								setMessage(e.toString());
+							}
+						}}
+					/>
+
+
 
 					<Button
 						title={'List watch transactions'}

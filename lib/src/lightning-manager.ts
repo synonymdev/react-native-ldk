@@ -15,11 +15,10 @@ import {
 	TChannelManagerChannelClosed,
 	TChannelManagerDiscardFunding,
 	TChannelManagerFundingGenerationReady,
-	TChannelManagerOpenChannelRequest,
+	TChannelManagerOpenChannelRequest, TChannelManagerPayment,
 	TChannelManagerPaymentFailed,
 	TChannelManagerPaymentPathFailed,
 	TChannelManagerPaymentPathSuccessful,
-	TChannelManagerPaymentReceived,
 	TChannelManagerPaymentSent,
 	TChannelManagerPendingHtlcsForwardable,
 	TChannelManagerSpendableOutputs,
@@ -158,6 +157,10 @@ class LightningManager {
 		ldk.onEvent(
 			EEventTypes.channel_manager_discard_funding,
 			this.onChannelManagerDiscardFunding.bind(this),
+		);
+		ldk.onEvent(
+			EEventTypes.channel_manager_payment_claimed,
+			this.onChannelManagerPaymentClaimed.bind(this),
 		);
 	}
 
@@ -739,6 +742,7 @@ class LightningManager {
 	}
 
 	private onRegisterOutput(res: TRegisterOutputEvent): void {
+		//TODO check for duplicates first
 		this.watchOutputs.push(res);
 	}
 
@@ -777,7 +781,7 @@ class LightningManager {
 	}
 
 	private onChannelManagerPaymentReceived(
-		res: TChannelManagerPaymentReceived,
+		res: TChannelManagerPayment,
 	): void {
 		if (res.spontaneous_payment_preimage) {
 			//https://docs.rs/lightning/latest/lightning/util/events/enum.PaymentPurpose.html#variant.SpontaneousPayment
@@ -829,6 +833,7 @@ class LightningManager {
 	private onChannelManagerSpendableOutputs(
 		res: TChannelManagerSpendableOutputs,
 	): void {
+		https://docs.rs/lightning/0.0.109/lightning/util/events/enum.Event.html#variant.SpendableOutputs
 		//Needs to call keysManager.spend_spendable_outputs to send to change address or on chain wallet could keep output and use in its own tx? I don't know
 		console.log(`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`); //TODO
 	}
@@ -844,6 +849,10 @@ class LightningManager {
 	): void {
 		//Wallet should probably "lock" the UTXOs spent in funding transactions until the funding transaction either confirms, or this event is generated.
 		console.log(`onChannelManagerDiscardFunding: ${JSON.stringify(res)}`); //TODO
+	}
+
+	private onChannelManagerPaymentClaimed(res: TChannelManagerPayment): void {
+		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`); //TODO
 	}
 }
 

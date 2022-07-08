@@ -16,6 +16,7 @@ import {
 	TSetTxConfirmedReq,
 	TSetTxUnconfirmedReq,
 	TInitNetworkGraphReq,
+	TCloseChannelReq,
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -300,6 +301,25 @@ class LDK {
 	}: TSetTxUnconfirmedReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.setTxUnconfirmed(txId);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Close channel cooperatively
+	 * https://docs.rs/lightning/0.0.109/lightning/ln/channelmanager/struct.ChannelManager.html#method.close_channel
+	 * @param channelId
+	 * @param counterpartyNodeId
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async closeChannel({
+		channelId,
+						   counterPartyNodeId,
+	}: TCloseChannelReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.closeChannel(channelId, counterPartyNodeId);
 			return ok(res);
 		} catch (e) {
 			return err(e);
