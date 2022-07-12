@@ -300,6 +300,7 @@ export const getAllStorageKeys = async (
 		[ELdkData.channelData]: '',
 		[ELdkData.peers]: '',
 		[ELdkData.networkGraph]: '',
+		[ELdkData.timestamp]: '0',
 	};
 	await Promise.all(
 		Object.values(ELdkData).map((ldkDataKey) => {
@@ -308,4 +309,12 @@ export const getAllStorageKeys = async (
 		}),
 	);
 	return storageKeys;
+};
+
+export const parseData = (data: string, fallback: any): any => {
+	try {
+		return data ? JSON.parse(data) : fallback;
+	} catch {
+		return fallback;
+	}
 };

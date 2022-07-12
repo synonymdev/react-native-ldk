@@ -260,6 +260,7 @@ export enum ELdkData {
 	channelData = 'channelData',
 	peers = 'peers',
 	networkGraph = 'networkGraph',
+	timestamp = 'timestamp',
 }
 
 export type TLdkData = {
@@ -267,6 +268,7 @@ export type TLdkData = {
 	[ELdkData.channelData]: TLdkChannelData;
 	[ELdkData.peers]: TLdkPeers;
 	[ELdkData.networkGraph]: TLdkNetworkGraph;
+	[ELdkData.timestamp]: number;
 };
 
 export type TAccountBackup = {
@@ -293,6 +295,7 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.channelData]: {},
 	[ELdkData.peers]: [],
 	[ELdkData.networkGraph]: '',
+	[ELdkData.timestamp]: 0,
 };
 
 export type TAvailableNetworks =
