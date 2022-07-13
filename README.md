@@ -11,7 +11,7 @@ This library hopes to simplify the process of adding Lightning via LDK to any Re
 ```bash
 yarn add @synonymdev/react-native-ldk
 #or
-npm i -s @synonymdev/react-native-ldk
+npm i -S @synonymdev/react-native-ldk
 ````
 
 ### iOS installation
@@ -41,8 +41,9 @@ To run the following example:
  3. See [Notes](#notes) for additional instructions.
  
 ```javascript
-import lm, { ENetworks } from '@synonymdev/react-native-ldk';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import lm, { ENetworks } from '@synonymdev/react-native-ldk';
+import { randomBytes } from 'react-native-randombytes';
 import { encode as btoa } from 'js-base64';
 
 const USER = 'polaruser';
@@ -77,7 +78,7 @@ const getTxData = async (txid) => await bitcoinRPC('getrawtransaction', [txid, t
 
 const account = {
 	name: 'wallet0',
-	seed: 'd88a2f0ab4aefd38d22a96ac556cafa419aed5e2782b6e7c816e4777a6bfbd56',
+	seed: randomBytes(32).toString('hex'),
 }
 const network = ENetworks.testnet;
 const genesisHash = await getBlockHeaderHashFromHeight(0);
