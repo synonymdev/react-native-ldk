@@ -4,6 +4,7 @@ import { getItem, setItem } from '../ldk';
 import { EAccount } from './types';
 import { getLdkStorageKey } from '@synonymdev/react-native-ldk/dist/utils/helpers';
 import { err, ok, Result } from './result';
+import { randomBytes } from 'react-native-randombytes';
 
 /**
  * Use Keychain to save LDK name & seed.
@@ -12,7 +13,7 @@ import { err, ok, Result } from './result';
  */
 export const setAccount = async ({
 	name = EAccount.name,
-	seed = dummyRandomSeed(),
+	seed = randomSeed(),
 }: TAccount): Promise<boolean> => {
 	try {
 		const account: TAccount = {
@@ -40,7 +41,7 @@ export const getAccount = async (accountName?: string): Promise<TAccount> => {
 	}
 	const defaultAccount: TAccount = {
 		name: EAccount.name,
-		seed: dummyRandomSeed(),
+		seed: randomSeed(),
 	};
 	try {
 		let result = await Keychain.getGenericPassword({ service: accountName });
@@ -91,7 +92,7 @@ export const createNewAccount = async (): Promise<Result<TAccount>> => {
 		const name = `wallet${num}`;
 		const account: TAccount = {
 			name,
-			seed: dummyRandomSeed(),
+			seed: randomSeed(),
 		};
 		await setAccount(account);
 		return ok(account);
@@ -101,28 +102,6 @@ export const createNewAccount = async (): Promise<Result<TAccount>> => {
 	}
 };
 
-const shuffle = (array: string[]): string[] => {
-	let currentIndex = array.length,
-		randomIndex;
-	while (currentIndex !== 0) {
-		randomIndex = Math.floor(Math.random() * currentIndex);
-		currentIndex--;
-		[array[currentIndex], array[randomIndex]] = [
-			array[randomIndex],
-			array[currentIndex],
-		];
-	}
-
-	return array;
-};
-
-export const dummyRandomSeed = (): string => {
-	if (!__DEV__) {
-		throw new Error('Use random bytes instead of dummyRandomSeed');
-	}
-
-	const bytes =
-		'8a bd ac 77 55 2a 6e a6 0a 47 2f bf 6c d8 d5 af b4 78 19 96 a4 d2 e2 81 7c ae 6e 2b 38 ae 56 fd';
-
-	return shuffle(bytes.split(' ')).join('');
+export const randomSeed = (): string => {
+	return randomBytes(32).toString('hex');
 };
