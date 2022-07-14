@@ -42,6 +42,7 @@ import {
 import {
 	getAllStorageKeys,
 	getLdkStorageKey,
+	parseData,
 	setAndGetMethodCheck,
 	startParamCheck,
 } from './utils/helpers';
@@ -87,6 +88,7 @@ class LightningManager {
 	};
 	getItem: TStorage = (): null => null;
 	setItem: TStorage = (): null => null;
+	updateStorage: TStorage = (): null => null;
 	getTransactionData: TGetTransactionData =
 		async (): Promise<TTransactionData> => DefaultTransactionDataShape;
 	network: ENetworks = ENetworks.regtest;
@@ -231,6 +233,10 @@ class LightningManager {
 		this.account = account;
 		this.network = network;
 		this.setItem = setItem;
+		this.updateStorage = (key, value): void => {
+			this.setItem(key, value);
+			this.updateTimestamp();
+		};
 		this.getItem = getItem;
 		this.getTransactionData = getTransactionData;
 		const bestBlock = await this.getBestBlock();
@@ -452,7 +458,7 @@ class LightningManager {
 			(p) => p.pubKey !== pubKey && p.address !== address && p.port !== port,
 		);
 		const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
-		this.setItem(storageKey, JSON.stringify(newPeers));
+		this.updateStorage(storageKey, JSON.stringify(newPeers));
 		return ok(newPeers);
 	};
 
@@ -461,9 +467,13 @@ class LightningManager {
 	 * @returns {Promise<TLdkPeers>}
 	 */
 	getPeers = async (): Promise<TLdkPeers> => {
-		const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
-		const peers = await this.getItem(storageKey);
-		return JSON.parse(peers) ?? DefaultLdkDataShape[ELdkData.peers];
+		try {
+			const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
+			const peers = await this.getItem(storageKey);
+			return parseData(peers, DefaultLdkDataShape[ELdkData.peers]);
+		} catch {
+			return DefaultLdkDataShape[ELdkData.peers];
+		}
 	};
 
 	/**
@@ -526,12 +536,15 @@ class LightningManager {
 			const storageKeys = await getAllStorageKeys(accountBackup.account.name);
 
 			// Check that an account of this name doesn't already exist.
-			const channelManager = await this.getItem(
-				storageKeys[ELdkData.channelManager],
-			);
-			// If channel data is present and instructed not to overwrite the existing data, return.
-			if (channelManager && !overwrite) {
-				return err('This account name already exists in local storage.');
+			const timestamp = await getItem(storageKeys[ELdkData.timestamp]);
+
+			// Ensure the user is not attempting to import an old/stale backup.
+			if (!overwrite && accountBackup.data?.timestamp <= timestamp) {
+				const msg =
+					accountBackup.data?.timestamp < timestamp
+						? 'This appears to be an old backup. The stored backup is more recent than the backup trying to be imported.'
+						: 'No need to import. The backup timestamps match.';
+				return err(msg);
 			}
 
 			// Check that we're properly connected to the device's storage and that the setItem & getItem methods work as expected.
@@ -544,21 +557,26 @@ class LightningManager {
 			}
 
 			//Save the provided backup data using the storage keys.
-			this.setItem(
+			setItem(
 				storageKeys[ELdkData.channelManager],
 				JSON.stringify(accountBackup.data[ELdkData.channelManager]),
 			);
-			this.setItem(
+			setItem(
 				storageKeys[ELdkData.channelData],
 				JSON.stringify(accountBackup.data[ELdkData.channelData]),
 			);
-			this.setItem(
+			setItem(
 				storageKeys[ELdkData.peers],
 				JSON.stringify(accountBackup.data[ELdkData.peers]),
 			);
-			this.setItem(
+			setItem(
 				storageKeys[ELdkData.networkGraph],
 				JSON.stringify(accountBackup.data[ELdkData.networkGraph]),
+			);
+
+			setItem(
+				storageKeys[ELdkData.timestamp],
+				JSON.stringify(accountBackup.data[ELdkData.timestamp]),
 			);
 
 			//Return the saved account info.
@@ -616,18 +634,35 @@ class LightningManager {
 			);
 			const channelData = await getItem(storageKeys[ELdkData.channelData]);
 			const peers = await getItem(storageKeys[ELdkData.peers]);
+			const timestamp = await getItem(storageKeys[ELdkData.timestamp]);
 			let networkGraph = '';
 			if (includeNetworkGraph) {
 				networkGraph = await getItem(storageKeys[ELdkData.networkGraph]);
-				networkGraph = JSON.parse(networkGraph);
+				networkGraph = parseData(
+					networkGraph,
+					DefaultLdkDataShape[ELdkData.networkGraph],
+				);
 			}
 			const accountBackup: TAccountBackup = {
 				account,
 				data: {
-					[ELdkData.channelManager]: JSON.parse(channelManager),
-					[ELdkData.channelData]: JSON.parse(channelData),
-					[ELdkData.peers]: JSON.parse(peers),
+					[ELdkData.channelManager]: parseData(
+						channelManager,
+						DefaultLdkDataShape[ELdkData.channelManager],
+					),
+					[ELdkData.channelData]: parseData(
+						channelData,
+						DefaultLdkDataShape[ELdkData.channelData],
+					),
+					[ELdkData.peers]: parseData(
+						peers,
+						DefaultLdkDataShape[ELdkData.peers],
+					),
 					[ELdkData.networkGraph]: networkGraph,
+					[ELdkData.timestamp]: parseData(
+						timestamp,
+						DefaultLdkDataShape[ELdkData.timestamp],
+					),
 				},
 			};
 			return ok(JSON.stringify(accountBackup));
@@ -652,7 +687,7 @@ class LightningManager {
 		);
 		const channelData = await this.getLdkChannelData();
 		channelData[channelId] = data;
-		this.setItem(storageKey, JSON.stringify(channelData));
+		this.updateStorage(storageKey, JSON.stringify(channelData));
 	};
 
 	/**
@@ -665,7 +700,7 @@ class LightningManager {
 			this.account.name,
 			ELdkData.channelManager,
 		);
-		this.setItem(storageKey, JSON.stringify(data));
+		this.updateStorage(storageKey, JSON.stringify(data));
 	};
 
 	/**
@@ -683,7 +718,7 @@ class LightningManager {
 		}
 		peers.push(peer);
 		const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
-		this.setItem(storageKey, JSON.stringify(peers));
+		this.updateStorage(storageKey, JSON.stringify(peers));
 	};
 
 	/**
@@ -696,7 +731,7 @@ class LightningManager {
 			this.account.name,
 			ELdkData.networkGraph,
 		);
-		this.setItem(storageKey, JSON.stringify(data));
+		this.updateStorage(storageKey, JSON.stringify(data));
 	};
 
 	private getLdkChannelManager = async (): Promise<TLdkChannelManager> => {
@@ -704,7 +739,7 @@ class LightningManager {
 		const storageKey = getLdkStorageKey(this.account.name, ldkDataKey);
 		try {
 			const ldkData = await this.getItem(storageKey);
-			return JSON.parse(ldkData) ?? DefaultLdkDataShape[ldkDataKey];
+			return parseData(ldkData, DefaultLdkDataShape[ldkDataKey]);
 		} catch {
 			return DefaultLdkDataShape[ldkDataKey];
 		}
@@ -715,7 +750,7 @@ class LightningManager {
 		const storageKey = getLdkStorageKey(this.account.name, ldkDataKey);
 		try {
 			const ldkData = await this.getItem(storageKey);
-			return JSON.parse(ldkData) ?? DefaultLdkDataShape[ldkDataKey];
+			return parseData(ldkData, DefaultLdkDataShape[ldkDataKey]);
 		} catch {
 			return DefaultLdkDataShape[ldkDataKey];
 		}
@@ -726,10 +761,16 @@ class LightningManager {
 		const storageKey = getLdkStorageKey(this.account.name, ldkDataKey);
 		try {
 			const ldkData = await this.getItem(storageKey);
-			return JSON.parse(ldkData) ?? DefaultLdkDataShape[ldkDataKey];
+			return parseData(ldkData, DefaultLdkDataShape[ldkDataKey]);
 		} catch {
 			return DefaultLdkDataShape[ldkDataKey];
 		}
+	};
+
+	private updateTimestamp = (): void => {
+		const storageKey = getLdkStorageKey(this.account.name, ELdkData.timestamp);
+		const date = Date.now();
+		this.setItem(storageKey, JSON.stringify(date));
 	};
 
 	//LDK events
