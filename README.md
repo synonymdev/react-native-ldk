@@ -1,6 +1,6 @@
 # react-native-ldk
 
-:warning: This is pre-alpha software. Please use at your own risk.
+:warning: This is pre-alpha software and not suitable for production apps yet.
 
 
 ### Description
