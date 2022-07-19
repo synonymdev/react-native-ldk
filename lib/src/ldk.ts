@@ -214,6 +214,21 @@ class LDK {
 	}
 
 	/**
+	 * If set will write all LDK logging to file.
+	 * @param level
+	 * @param active
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async setLogFilePath(path: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.setLogFilePath(path);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
 	 * Provide fee rate information on a number of time horizons.
 	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/enum.ConfirmationTarget.html
 	 * @param high
@@ -316,7 +331,7 @@ class LDK {
 	 */
 	async closeChannel({
 		channelId,
-						   counterPartyNodeId,
+		counterPartyNodeId,
 	}: TCloseChannelReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.closeChannel(channelId, counterPartyNodeId);

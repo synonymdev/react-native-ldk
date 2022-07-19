@@ -75,11 +75,11 @@ enum class LdkErrors {
 enum class LdkCallbackResponses {
     fees_updated,
     log_level_updated,
+    log_path_updated,
     chain_monitor_init_success,
     keys_manager_init_success,
     channel_manager_init_success,
     config_init_success,
-    chain_monitor_updated,
     network_graph_init_success,
     add_peer_success,
     chain_sync_success,
@@ -325,6 +325,12 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun setLogLevel(level: Double, active: Boolean, promise: Promise) {
         logger.setLevel(level.toInt(), active)
         handleResolve(promise, LdkCallbackResponses.log_level_updated)
+    }
+
+    @ReactMethod
+    fun setLogFilePath(path: String, promise: Promise) {
+        LogFile.setFilePath(path)
+        handleResolve(promise, LdkCallbackResponses.log_path_updated)
     }
 
     @ReactMethod

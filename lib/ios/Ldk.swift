@@ -61,11 +61,11 @@ enum LdkErrors: String {
 enum LdkCallbackResponses: String {
     case fees_updated = "fees_updated"
     case log_level_updated = "log_level_updated"
+    case log_path_updated = "log_path_updated"
     case chain_monitor_init_success = "chain_monitor_init_success"
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
     case config_init_success = "config_init_success"
-    case chain_monitor_updated = "chain_monitor_updated"
     case network_graph_init_success = "network_graph_init_success"
     case add_peer_success = "add_peer_success"
     case chain_sync_success = "chain_sync_success"
@@ -304,6 +304,12 @@ class Ldk: NSObject {
         logger.setLevel(level: UInt32(level), active: active)
         return handleResolve(resolve, .log_level_updated)
     }
+    
+    @objc
+    func setLogFilePath(_ path: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        Logfile.log.setFilePath(String(path))
+        return handleResolve(resolve, .log_path_updated)
+    }
 
     @objc
     func syncToTip(_ header: NSString, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -413,7 +419,6 @@ class Ldk: NSObject {
             }
         }
     
-        keysManager?.as_KeysInterface().get_destination_script()
         return handleResolve(resolve, .close_channel_success)
     }
 

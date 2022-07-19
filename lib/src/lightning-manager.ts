@@ -15,7 +15,8 @@ import {
 	TChannelManagerChannelClosed,
 	TChannelManagerDiscardFunding,
 	TChannelManagerFundingGenerationReady,
-	TChannelManagerOpenChannelRequest, TChannelManagerPayment,
+	TChannelManagerOpenChannelRequest,
+	TChannelManagerPayment,
 	TChannelManagerPaymentFailed,
 	TChannelManagerPaymentPathFailed,
 	TChannelManagerPaymentPathSuccessful,
@@ -263,10 +264,10 @@ class LightningManager {
 		await ldk.setLogLevel(ELdkLogLevels.info, true);
 		await ldk.setLogLevel(ELdkLogLevels.warn, true);
 		await ldk.setLogLevel(ELdkLogLevels.error, true);
+		await ldk.setLogLevel(ELdkLogLevels.debug, true);
 
-		//TODO might not always need these ones as they make the logs a little noisy
+		//TODO might not always need this one as they make the logs a little noisy
 		// await ldk.setLogLevel(ELdkLogLevels.trace, true);
-		// await ldk.setLogLevel(ELdkLogLevels.debug, true);
 
 		// Step 3: Initialize the BroadcasterInterface
 		// Lazy loaded in native code
@@ -780,9 +781,7 @@ class LightningManager {
 		); //TODO
 	}
 
-	private onChannelManagerPaymentReceived(
-		res: TChannelManagerPayment,
-	): void {
+	private onChannelManagerPaymentReceived(res: TChannelManagerPayment): void {
 		if (res.spontaneous_payment_preimage) {
 			//https://docs.rs/lightning/latest/lightning/util/events/enum.PaymentPurpose.html#variant.SpontaneousPayment
 			ldk.claimFunds(res.spontaneous_payment_preimage).catch(console.error);
@@ -833,9 +832,11 @@ class LightningManager {
 	private onChannelManagerSpendableOutputs(
 		res: TChannelManagerSpendableOutputs,
 	): void {
-		https://docs.rs/lightning/0.0.109/lightning/util/events/enum.Event.html#variant.SpendableOutputs
+		//docs.rs/lightning/0.0.109/lightning/util/events/enum.Event.html#variant.SpendableOutputs
 		//Needs to call keysManager.spend_spendable_outputs to send to change address or on chain wallet could keep output and use in its own tx? I don't know
-		console.log(`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`); //TODO
+		https: console.log(
+			`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`,
+		); //TODO
 	}
 
 	private onChannelManagerChannelClosed(

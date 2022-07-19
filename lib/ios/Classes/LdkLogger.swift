@@ -23,7 +23,6 @@ class LdkLogger: Logger {
             LdkEventEmitter.shared.send(withEvent: .ldk_log, body: record.get_args())
             Logfile.log.write(record.get_args())
         }
-        
     }
     
     func setLevel(level: UInt32, active: Bool) {
@@ -33,18 +32,17 @@ class LdkLogger: Logger {
 }
 
 class Logfile: TextOutputStream {
-    lazy var logfile: URL = {
-        //Each session has it's own log file
-        let f = DateFormatter()
-        f.dateFormat = "d-M-y-HH-mm-ss"
-
-        let log = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("ldk-\(f.string(from: Date())).txt")
-        print("Log path: \(log.path)")
-
-        return log
-    }()
+    var logfile: URL?
+    
+    func setFilePath(_ path: String) {
+        logfile = URL(fileURLWithPath: path)
+    }
     
     func write(_ str: String) {
+        guard let logfile = logfile else {
+            return
+        }
+        
         let line = "\(str)\n"
         
         if let handle = try? FileHandle(forWritingTo: logfile) {

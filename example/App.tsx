@@ -2,7 +2,7 @@ import './shim';
 import React, { ReactElement, useEffect, useState } from 'react';
 import {
 	Alert,
-	Button,
+	Button, Modal,
 	SafeAreaView,
 	ScrollView,
 	StyleSheet,
@@ -16,10 +16,14 @@ import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
 import { createNewAccount } from './utils/helpers';
+import RNFS from 'react-native-fs';
 
 const App = (): ReactElement => {
 	const [message, setMessage] = useState('...');
 	const [nodeStarted, setNodeStarted] = useState(false);
+	const [logFilePath, setLogFilePath] = useState('');
+	const [showLogs, setShowLogs] = useState(false);
+	const [logContent, setLogContent] = useState('');
 
 	useEffect(() => {
 		//Restarting LDK on each code update causes constant errors.
@@ -28,6 +32,12 @@ const App = (): ReactElement => {
 		}
 
 		(async (): Promise<void> => {
+			//Set only if you want logging to be saved to a file.
+			const logPath = `${RNFS.DocumentDirectoryPath}/ldk-${Date.now()}.log`;
+			await ldk.setLogFilePath(logPath);
+			setLogFilePath(logPath);
+			console.log(`LDK logs writing to ${logPath}`);
+
 			// Connect to Electrum Server
 			const electrumResponse = await connectToElectrum({});
 			if (electrumResponse.isErr()) {
@@ -202,8 +212,6 @@ const App = (): ReactElement => {
 						}}
 					/>
 
-
-
 					<Button
 						title={'List watch transactions'}
 						onPress={async (): Promise<void> => {
@@ -224,7 +232,7 @@ const App = (): ReactElement => {
 						onPress={async (): Promise<void> => {
 							try {
 								const createPaymentRequest = await ldk.createPaymentRequest({
-									amountSats: 1000,
+									amountSats: 123400,
 									description: 'paymeplz',
 									expiryDeltaSeconds: 999999,
 								});
@@ -308,6 +316,19 @@ const App = (): ReactElement => {
 						}}
 					/>
 
+					<Button title={"Show LDK logs"} onPress={async () => {
+						if (!logFilePath) {
+							return
+						}
+						try {
+							const content = await RNFS.readFile(logFilePath, 'utf8');
+							setLogContent(content);
+							setShowLogs(true);
+						} catch (e) {
+							setMessage(JSON.stringify(e));
+						}
+					}} />
+
 					<Button
 						title={'E2E test'}
 						onPress={async (): Promise<void> => {
@@ -362,6 +383,21 @@ const App = (): ReactElement => {
 					/>
 				</View>
 			</ScrollView>
+
+			<Modal
+				animationType="slide"
+				visible={showLogs}
+				onRequestClose={() => {
+					setShowLogs(false);
+				}}
+			>
+			<View style={styles.logModal}>
+				<ScrollView>
+					<Button title={"Close"} onPress={() => setShowLogs(false)}/>
+					<Text style={styles.modalText}>{logContent}</Text>
+				</ScrollView>
+			</View>
+			</Modal>
 		</SafeAreaView>
 	);
 };
@@ -383,6 +419,17 @@ const styles = StyleSheet.create({
 	text: {
 		textAlign: 'center',
 	},
+	logModal: {
+		paddingTop: 40,
+		paddingHorizontal: 10,
+		flex: 1,
+		justifyContent: 'space-around',
+		backgroundColor: 'black',
+	},
+	modalText: {
+		color: 'green',
+		fontSize: 10
+	}
 });
 
 export default App;
