@@ -16,10 +16,10 @@ import {
 	TChannelManagerDiscardFunding,
 	TChannelManagerFundingGenerationReady,
 	TChannelManagerOpenChannelRequest,
+	TChannelManagerPayment,
 	TChannelManagerPaymentFailed,
 	TChannelManagerPaymentPathFailed,
 	TChannelManagerPaymentPathSuccessful,
-	TChannelManagerPaymentReceived,
 	TChannelManagerPaymentSent,
 	TChannelManagerPendingHtlcsForwardable,
 	TChannelManagerSpendableOutputs,
@@ -161,6 +161,10 @@ class LightningManager {
 			EEventTypes.channel_manager_discard_funding,
 			this.onChannelManagerDiscardFunding.bind(this),
 		);
+		ldk.onEvent(
+			EEventTypes.channel_manager_payment_claimed,
+			this.onChannelManagerPaymentClaimed.bind(this),
+		);
 	}
 
 	/**
@@ -266,10 +270,10 @@ class LightningManager {
 		await ldk.setLogLevel(ELdkLogLevels.info, true);
 		await ldk.setLogLevel(ELdkLogLevels.warn, true);
 		await ldk.setLogLevel(ELdkLogLevels.error, true);
+		await ldk.setLogLevel(ELdkLogLevels.debug, true);
 
-		//TODO might not always need these ones as they make the logs a little noisy
+		//TODO might not always need this one as they make the logs a little noisy
 		// await ldk.setLogLevel(ELdkLogLevels.trace, true);
-		// await ldk.setLogLevel(ELdkLogLevels.debug, true);
 
 		// Step 3: Initialize the BroadcasterInterface
 		// Lazy loaded in native code
@@ -780,6 +784,7 @@ class LightningManager {
 	}
 
 	private onRegisterOutput(res: TRegisterOutputEvent): void {
+		//TODO check for duplicates first
 		this.watchOutputs.push(res);
 	}
 
@@ -817,9 +822,7 @@ class LightningManager {
 		); //TODO
 	}
 
-	private onChannelManagerPaymentReceived(
-		res: TChannelManagerPaymentReceived,
-	): void {
+	private onChannelManagerPaymentReceived(res: TChannelManagerPayment): void {
 		if (res.spontaneous_payment_preimage) {
 			//https://docs.rs/lightning/latest/lightning/util/events/enum.PaymentPurpose.html#variant.SpontaneousPayment
 			ldk.claimFunds(res.spontaneous_payment_preimage).catch(console.error);
@@ -870,6 +873,7 @@ class LightningManager {
 	private onChannelManagerSpendableOutputs(
 		res: TChannelManagerSpendableOutputs,
 	): void {
+		//https:docs.rs/lightning/0.0.109/lightning/util/events/enum.Event.html#variant.SpendableOutputs
 		//Needs to call keysManager.spend_spendable_outputs to send to change address or on chain wallet could keep output and use in its own tx? I don't know
 		console.log(`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`); //TODO
 	}
@@ -885,6 +889,10 @@ class LightningManager {
 	): void {
 		//Wallet should probably "lock" the UTXOs spent in funding transactions until the funding transaction either confirms, or this event is generated.
 		console.log(`onChannelManagerDiscardFunding: ${JSON.stringify(res)}`); //TODO
+	}
+
+	private onChannelManagerPaymentClaimed(res: TChannelManagerPayment): void {
+		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`); //TODO
 	}
 }
 

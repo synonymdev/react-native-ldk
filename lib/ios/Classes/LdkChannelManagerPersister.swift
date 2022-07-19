@@ -154,7 +154,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             guard let spendableOutputs = event.getValueAsSpendableOutputs() else {
                 return handleEventError(event)
             }
-                        
+            
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_spendable_outputs,
                 body: [
@@ -190,6 +190,26 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 ]
             )
             return
+        case .PaymentClaimed:
+            guard let paymentClaimed = event.getValueAsPaymentClaimed() else {
+                return handleEventError(event)
+            }
+            
+            let paymentPreimage = paymentClaimed.getPurpose().getValueAsInvoicePayment()?.getPayment_preimage()
+            let paymentSecret = paymentClaimed.getPurpose().getValueAsInvoicePayment()?.getPayment_secret()
+            let spontaneousPayment = paymentClaimed.getPurpose().getValueAsSpontaneousPayment()
+            
+            LdkEventEmitter.shared.send(
+                withEvent: .channel_manager_payment_claimed,
+                body: [
+                    "payment_hash": Data(paymentClaimed.getPayment_hash()).hexEncodedString(),
+                    "amount_sat": paymentClaimed.getAmount_msat() / 1000,
+                    "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
+                    "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
+                    "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
+                ]
+            )
+            
         default:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "ERROR: unknown LdkChannelManagerPersister.handle_event type")
         }

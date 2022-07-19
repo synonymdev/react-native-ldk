@@ -39,6 +39,9 @@ RCT_EXTERN_METHOD(setLogLevel:(NSInteger *)high
                   active:(BOOL *)active
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(setLogFilePath:(NSString *)path
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(syncToTip:(NSString *)header
                   height:(NSInteger *)height
                   resolve:(RCTPromiseResolveBlock)resolve
@@ -55,6 +58,11 @@ RCT_EXTERN_METHOD(setTxConfirmed:(NSString *)header
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setTxUnconfirmed:(NSString *)txId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(closeChannel:(NSString *)channelId
+                  counterPartyNodeId:(NSString *)counterPartyNodeId
+                  force:(BOOL *)force
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 

@@ -16,6 +16,7 @@ import {
 	TSetTxConfirmedReq,
 	TSetTxUnconfirmedReq,
 	TInitNetworkGraphReq,
+	TCloseChannelReq,
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -213,6 +214,21 @@ class LDK {
 	}
 
 	/**
+	 * If set will write all LDK logging to file.
+	 * @param level
+	 * @param active
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async setLogFilePath(path: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.setLogFilePath(path);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
 	 * Provide fee rate information on a number of time horizons.
 	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/enum.ConfirmationTarget.html
 	 * @param high
@@ -300,6 +316,30 @@ class LDK {
 	}: TSetTxUnconfirmedReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.setTxUnconfirmed(txId);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Close channel cooperatively or use force=true to force close channel
+	 * https://docs.rs/lightning/0.0.109/lightning/ln/channelmanager/struct.ChannelManager.html#method.close_channel
+	 * @param channelId
+	 * @param counterpartyNodeId
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async closeChannel({
+		channelId,
+		counterPartyNodeId,
+		force,
+	}: TCloseChannelReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.closeChannel(
+				channelId,
+				counterPartyNodeId,
+				!!force,
+			);
 			return ok(res);
 		} catch (e) {
 			return err(e);

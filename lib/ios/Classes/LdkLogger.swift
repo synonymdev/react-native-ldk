@@ -21,6 +21,7 @@ class LdkLogger: Logger {
         //Only when the JS code has set the log level to active
         if activeLevels[level] == true {
             LdkEventEmitter.shared.send(withEvent: .ldk_log, body: record.get_args())
+            Logfile.log.write(record.get_args())
         }
     }
     
@@ -28,4 +29,30 @@ class LdkLogger: Logger {
         self.activeLevels[level] = active
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Log level \(level) set to \(active)")
     }
+}
+
+class Logfile: TextOutputStream {
+    var logfile: URL?
+    
+    func setFilePath(_ path: String) {
+        logfile = URL(fileURLWithPath: path)
+    }
+    
+    func write(_ str: String) {
+        guard let logfile = logfile else {
+            return
+        }
+        
+        let line = "\(str)\n"
+        
+        if let handle = try? FileHandle(forWritingTo: logfile) {
+            handle.seekToEndOfFile()
+            handle.write(line.data(using: .utf8)!)
+            handle.closeFile()
+        } else {
+            try? line.data(using: .utf8)?.write(to: logfile)
+        }
+    }
+    static var log = Logfile()
+    private init() {}
 }

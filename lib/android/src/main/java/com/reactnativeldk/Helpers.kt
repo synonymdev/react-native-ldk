@@ -65,7 +65,7 @@ val ChannelDetails.asJson: WritableMap
         result.putBoolean("is_usable", _is_usable)
         result.putBoolean("is_outbound", _is_outbound)
         result.putInt("balance_sat", _balance_msat.toInt() / 1000)
-        result.putHexString("counterparty", _counterparty.write())
+        result.putHexString("counterparty_node_id", _counterparty._node_id)
         result.putHexString("funding_txo", _funding_txo?.write())
         result.putHexString("channel_type", _channel_type?.write())
         result.putInt("user_channel_id", _user_channel_id.toInt())

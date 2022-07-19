@@ -37,7 +37,8 @@ enum class EventTypes {
     channel_manager_pending_htlcs_forwardable,
     channel_manager_spendable_outputs,
     channel_manager_channel_closed,
-    channel_manager_discard_funding
+    channel_manager_discard_funding,
+    channel_manager_payment_claimed
 }
 //*****************************************************************
 
@@ -50,8 +51,6 @@ enum class LdkErrors {
     init_user_config,
     init_peer_manager,
     invalid_network,
-    load_channel_monitors,
-    init_channel_monitor,
     init_network_graph,
     init_peer_handler,
     add_peer_fail,
@@ -69,17 +68,18 @@ enum class LdkErrors {
     init_ldk_currency,
     invoice_create_failed,
     network_graph_restore_failed,
-    init_scorer_failed
+    init_scorer_failed,
+    channel_close_fail
 }
 
 enum class LdkCallbackResponses {
     fees_updated,
     log_level_updated,
+    log_path_updated,
     chain_monitor_init_success,
     keys_manager_init_success,
     channel_manager_init_success,
     config_init_success,
-    chain_monitor_updated,
     network_graph_init_success,
     add_peer_success,
     chain_sync_success,
@@ -88,7 +88,8 @@ enum class LdkCallbackResponses {
     tx_set_unconfirmed,
     process_pending_htlc_forwards_success,
     claim_funds_success,
-    ldk_reset
+    ldk_reset,
+    close_channel_success
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -327,6 +328,12 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
+    fun setLogFilePath(path: String, promise: Promise) {
+        LogFile.setFilePath(path)
+        handleResolve(promise, LdkCallbackResponses.log_path_updated)
+    }
+
+    @ReactMethod
     fun syncToTip(header: String, height: Double, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
         chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
@@ -387,6 +394,18 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         chainMonitor!!.as_Confirm().transaction_unconfirmed(txId.hexa())
 
         handleResolve(promise, LdkCallbackResponses.tx_set_unconfirmed)
+    }
+
+    @ReactMethod
+    fun closeChannel(channelId: String, counterpartyNodeId: String, force: Boolean, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        val res = if (force) channelManager!!.force_close_channel(channelId.hexa(), counterpartyNodeId.hexa()) else channelManager!!.close_channel(channelId.hexa(), counterpartyNodeId.hexa())
+        if (!res.is_ok) {
+            return handleReject(promise, LdkErrors.channel_close_fail)
+        }
+
+        handleResolve(promise, LdkCallbackResponses.close_channel_success)
     }
 
     //MARK: Payments

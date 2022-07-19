@@ -3,6 +3,7 @@ import React, { ReactElement, useEffect, useState } from 'react';
 import {
 	Alert,
 	Button,
+	Modal,
 	SafeAreaView,
 	ScrollView,
 	StyleSheet,
@@ -16,12 +17,28 @@ import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
 import { createNewAccount } from './utils/helpers';
+import RNFS from 'react-native-fs';
 
 const App = (): ReactElement => {
 	const [message, setMessage] = useState('...');
+	const [nodeStarted, setNodeStarted] = useState(false);
+	const [logFilePath, setLogFilePath] = useState('');
+	const [showLogs, setShowLogs] = useState(false);
+	const [logContent, setLogContent] = useState('');
 
 	useEffect(() => {
+		//Restarting LDK on each code update causes constant errors.
+		if (nodeStarted) {
+			return;
+		}
+
 		(async (): Promise<void> => {
+			//Set only if you want logging to be saved to a file.
+			const logPath = `${RNFS.DocumentDirectoryPath}/ldk-${Date.now()}.log`;
+			await ldk.setLogFilePath(logPath);
+			setLogFilePath(logPath);
+			console.log(`LDK logs writing to ${logPath}`);
+
 			// Connect to Electrum Server
 			const electrumResponse = await connectToElectrum({});
 			if (electrumResponse.isErr()) {
@@ -47,9 +64,11 @@ const App = (): ReactElement => {
 				setMessage(setupResponse.error.message);
 				return;
 			}
+
+			setNodeStarted(true);
 			setMessage(setupResponse.value);
 		})();
-	}, []);
+	}, [nodeStarted]);
 
 	return (
 		<SafeAreaView style={styles.container}>
@@ -165,6 +184,59 @@ const App = (): ReactElement => {
 					/>
 
 					<Button
+						title={'Close channel'}
+						onPress={async (): Promise<void> => {
+							try {
+								const listChannels = await ldk.listChannels();
+								if (listChannels.isErr()) {
+									setMessage(listChannels.error.message);
+									return;
+								}
+								if (listChannels.value.length < 1) {
+									setMessage('No channels detected.');
+									return;
+								}
+
+								const { channel_id, counterparty_node_id } =
+									listChannels.value[0];
+
+								const close = async (force: boolean): Promise<void> => {
+									setMessage(`Closing ${channel_id}...`);
+
+									const res = await ldk.closeChannel({
+										channelId: channel_id,
+										counterPartyNodeId: counterparty_node_id,
+										force,
+									});
+									if (res.isErr()) {
+										setMessage(res.error.message);
+										return;
+									}
+									setMessage(res.value);
+								};
+
+								Alert.alert('Close channel', `Peer ${counterparty_node_id}`, [
+									{
+										text: 'Cancel',
+										onPress: () => console.log('Cancel Pressed'),
+										style: 'cancel',
+									},
+									{
+										text: 'Close channel',
+										onPress: async (): Promise<void> => close(false),
+									},
+									{
+										text: 'Force close',
+										onPress: async (): Promise<void> => close(true),
+									},
+								]);
+							} catch (e) {
+								setMessage(e.toString());
+							}
+						}}
+					/>
+
+					<Button
 						title={'List watch transactions'}
 						onPress={async (): Promise<void> => {
 							console.log(lm.watchTxs);
@@ -184,7 +256,7 @@ const App = (): ReactElement => {
 						onPress={async (): Promise<void> => {
 							try {
 								const createPaymentRequest = await ldk.createPaymentRequest({
-									amountSats: 1000,
+									amountSats: 123400,
 									description: 'paymeplz',
 									expiryDeltaSeconds: 999999,
 								});
@@ -269,6 +341,22 @@ const App = (): ReactElement => {
 					/>
 
 					<Button
+						title={'Show LDK logs'}
+						onPress={async (): Promise<void> => {
+							if (!logFilePath) {
+								return;
+							}
+							try {
+								const content = await RNFS.readFile(logFilePath, 'utf8');
+								setLogContent(content);
+								setShowLogs(true);
+							} catch (e) {
+								setMessage(JSON.stringify(e));
+							}
+						}}
+					/>
+
+					<Button
 						title={'E2E test'}
 						onPress={async (): Promise<void> => {
 							//TODO add more functionality to test
@@ -322,6 +410,20 @@ const App = (): ReactElement => {
 					/>
 				</View>
 			</ScrollView>
+
+			<Modal
+				animationType="slide"
+				visible={showLogs}
+				onRequestClose={(): void => {
+					setShowLogs(false);
+				}}>
+				<View style={styles.logModal}>
+					<ScrollView>
+						<Button title={'Close'} onPress={(): void => setShowLogs(false)} />
+						<Text style={styles.modalText}>{logContent}</Text>
+					</ScrollView>
+				</View>
+			</Modal>
 		</SafeAreaView>
 	);
 };
@@ -342,6 +444,16 @@ const styles = StyleSheet.create({
 	},
 	text: {
 		textAlign: 'center',
+	},
+	logModal: {
+		paddingTop: 40,
+		paddingHorizontal: 10,
+		flex: 1,
+		backgroundColor: 'black',
+	},
+	modalText: {
+		color: 'green',
+		fontSize: 10,
 	},
 });
 

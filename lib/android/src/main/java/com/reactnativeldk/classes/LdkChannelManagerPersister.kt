@@ -120,6 +120,20 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             body.putHexString("tx", discardFunding.transaction)
             return LdkEventEmitter.send(EventTypes.channel_manager_discard_funding, body)
         }
+
+        (event as? Event.PaymentClaimed)?.let { paymentClaimed ->
+            val body = Arguments.createMap()
+            body.putHexString("payment_hash", paymentClaimed.payment_hash)
+            body.putInt("amount_sat", paymentClaimed.amount_msat.toInt() / 1000)
+            (paymentClaimed.purpose as? PaymentPurpose.InvoicePayment)?.let {
+                body.putHexString("payment_preimage", it.payment_preimage)
+                body.putHexString("payment_secret", it.payment_secret)
+            }
+            (paymentClaimed.purpose as? PaymentPurpose.SpontaneousPayment)?.let {
+                body.putHexString("spontaneous_payment_preimage", it.spontaneous_payment)
+            }
+            return LdkEventEmitter.send(EventTypes.channel_manager_payment_claimed, body)
+        }
     }
 
     override fun persist_manager(channel_manager_bytes: ByteArray?) {

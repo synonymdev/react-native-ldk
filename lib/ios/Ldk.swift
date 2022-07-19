@@ -23,6 +23,7 @@ enum EventTypes: String, CaseIterable {
     case channel_manager_spendable_outputs = "channel_manager_spendable_outputs"
     case channel_manager_channel_closed = "channel_manager_channel_closed"
     case channel_manager_discard_funding = "channel_manager_discard_funding"
+    case channel_manager_payment_claimed = "channel_manager_payment_claimed"
     //<<
 }
 //*****************************************************************
@@ -36,8 +37,6 @@ enum LdkErrors: String {
     case init_user_config = "init_user_config"
     case init_peer_manager = "init_peer_manager"
     case invalid_network = "invalid_network"
-    case load_channel_monitors = "load_channel_monitors"
-    case init_channel_monitor = "init_channel_monitor"
     case init_network_graph = "init_network_graph"
     case init_peer_handler = "init_peer_handler"
     case add_peer_fail = "add_peer_fail"
@@ -56,16 +55,17 @@ enum LdkErrors: String {
     case invoice_create_failed = "invoice_create_failed"
     case claim_funds_failed = "claim_funds_failed"
     case network_graph_restore_failed = "network_graph_restore_failed"
+    case channel_close_fail = "channel_close_fail"
 }
 
 enum LdkCallbackResponses: String {
     case fees_updated = "fees_updated"
     case log_level_updated = "log_level_updated"
+    case log_path_updated = "log_path_updated"
     case chain_monitor_init_success = "chain_monitor_init_success"
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
     case config_init_success = "config_init_success"
-    case chain_monitor_updated = "chain_monitor_updated"
     case network_graph_init_success = "network_graph_init_success"
     case add_peer_success = "add_peer_success"
     case chain_sync_success = "chain_sync_success"
@@ -75,6 +75,7 @@ enum LdkCallbackResponses: String {
     case process_pending_htlc_forwards_success = "process_pending_htlc_forwards_success"
     case claim_funds_success = "claim_funds_success"
     case ldk_reset = "ldk_reset"
+    case close_channel_success = "close_channel_success"
 }
 
 @objc(Ldk)
@@ -303,6 +304,12 @@ class Ldk: NSObject {
         logger.setLevel(level: UInt32(level), active: active)
         return handleResolve(resolve, .log_level_updated)
     }
+    
+    @objc
+    func setLogFilePath(_ path: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        Logfile.log.setFilePath(String(path))
+        return handleResolve(resolve, .log_path_updated)
+    }
 
     @objc
     func syncToTip(_ header: NSString, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -382,6 +389,42 @@ class Ldk: NSObject {
         chainMonitor.as_Confirm().transaction_unconfirmed(txid: String(txId).hexaBytes)
 
         return handleResolve(resolve, .tx_set_unconfirmed)
+    }
+    
+    @objc
+    func closeChannel(_ channelId: NSString, counterPartyNodeId: NSString, force: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        let channel_id = String(channelId).hexaBytes
+        let counterparty_node_id = String(counterPartyNodeId).hexaBytes
+                
+        let res = force ?
+                    channelManager.force_close_channel(channel_id: channel_id, counterparty_node_id: counterparty_node_id) :
+                    channelManager.close_channel(channel_id: channel_id, counterparty_node_id: counterparty_node_id)
+        guard res.isOk() else {
+            guard let error = res.getError() else {
+                return handleReject(reject, .channel_close_fail)
+            }
+            
+            switch error.getValueType() {
+            case .APIMisuseError:
+                return handleReject(reject, .channel_close_fail, nil, error.getValueAsAPIMisuseError()?.getErr())
+            case .ChannelUnavailable:
+                return handleReject(reject, .channel_close_fail, nil, error.getValueAsChannelUnavailable()?.getErr())
+            case .FeeRateTooHigh:
+                return handleReject(reject, .channel_close_fail, nil, error.getValueAsFeeRateTooHigh()?.getErr())
+            case .IncompatibleShutdownScript:
+                return handleReject(reject, .channel_close_fail, nil, Data(error.getValueAsIncompatibleShutdownScript()?.getScript().write() ?? []).hexEncodedString())
+            case .RouteError:
+                return handleReject(reject, .channel_close_fail, nil, error.getValueAsRouteError()?.getErr())
+            default:
+                return handleReject(reject, .channel_close_fail)
+            }
+        }
+    
+        return handleResolve(resolve, .close_channel_success)
     }
 
     //MARK: Payments

@@ -358,6 +358,8 @@ PODS:
     - React-Core
   - RNCClipboard (1.10.0):
     - React-Core
+  - RNFS (2.20.0):
+    - React-Core
   - RNKeychain (8.1.0):
     - React-Core
   - SocketRocket (0.6.0)
@@ -425,6 +427,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
+  - RNFS (from `../node_modules/react-native-fs`)
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -517,6 +520,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNCClipboard:
     :path: "../node_modules/@react-native-clipboard/clipboard"
+  RNFS:
+    :path: "../node_modules/react-native-fs"
   RNKeychain:
     :path: "../node_modules/react-native-keychain"
   Yoga:
@@ -571,6 +576,7 @@ SPEC CHECKSUMS:
   ReactCommon: 095366164a276d91ea704ce53cb03825c487a3f2
   RNCAsyncStorage: 466b9df1a14bccda91da86e0b7d9a345d78e1673
   RNCClipboard: f1736c75ab85b627a4d57587edb4b60999c4dd80
+  RNFS: 4ac0f0ea233904cb798630b3c077808c06931688
   RNKeychain: c442b8512802a20cab4db3e3a1cf53e4731615bc
   SocketRocket: fccef3f9c5cedea1353a9ef6ada904fde10d6608
   Yoga: 99652481fcd320aefa4a7ef90095b95acd181952
