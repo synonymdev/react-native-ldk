@@ -117,7 +117,7 @@ export const setupLdk = async (): Promise<Result<string>> => {
 		try {
 			const peersRes = await Promise.all(
 				Object.keys(peers).map(async (peer) => {
-					const addPeer = await ldk.addPeer({
+					const addPeer = await lm.addPeer({
 						...peers[peer],
 						timeout: 5000,
 					});

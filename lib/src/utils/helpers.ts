@@ -269,17 +269,6 @@ export const setAndGetMethodCheck = async ({
 	return ok(true);
 };
 
-export const dummyRandomSeed = (): string => {
-	if (!__DEV__) {
-		throw new Error('Use random bytes instead of dummyRandomSeed');
-	}
-
-	const bytes =
-		'8a bd ac 77 55 2a 6e a6 0a 47 2f bf 6c d8 d5 af b4 78 19 96 a4 d2 e2 81 7c ae 6e 2b 38 ae 56 fd';
-
-	return shuffle(bytes.split(' ')).join('');
-};
-
 export const getLdkStorageKey = (
 	accountName: string,
 	ldkDataKey: ELdkData,
@@ -300,6 +289,7 @@ export const getAllStorageKeys = async (
 		[ELdkData.channelData]: '',
 		[ELdkData.peers]: '',
 		[ELdkData.networkGraph]: '',
+		[ELdkData.timestamp]: '0',
 	};
 	await Promise.all(
 		Object.values(ELdkData).map((ldkDataKey) => {
@@ -308,4 +298,12 @@ export const getAllStorageKeys = async (
 		}),
 	);
 	return storageKeys;
+};
+
+export const parseData = (data: string, fallback: any): any => {
+	try {
+		return data ? JSON.parse(data) : fallback;
+	} catch {
+		return fallback;
+	}
 };
