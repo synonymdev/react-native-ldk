@@ -323,7 +323,7 @@ class LDK {
 	}
 
 	/**
-	 * Close channel cooperatively
+	 * Close channel cooperatively or use force=true to force close channel
 	 * https://docs.rs/lightning/0.0.109/lightning/ln/channelmanager/struct.ChannelManager.html#method.close_channel
 	 * @param channelId
 	 * @param counterpartyNodeId
@@ -332,9 +332,14 @@ class LDK {
 	async closeChannel({
 		channelId,
 		counterPartyNodeId,
+		force,
 	}: TCloseChannelReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.closeChannel(channelId, counterPartyNodeId);
+			const res = await NativeLDK.closeChannel(
+				channelId,
+				counterPartyNodeId,
+				!!force,
+			);
 			return ok(res);
 		} catch (e) {
 			return err(e);

@@ -193,6 +193,7 @@ export type TSetTxUnconfirmedReq = {
 export type TCloseChannelReq = {
 	channelId: string;
 	counterPartyNodeId: string;
+	force?: boolean;
 };
 
 export type TPaymentReq = {

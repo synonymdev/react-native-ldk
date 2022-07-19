@@ -397,10 +397,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun closeChannel(channelId: String, counterpartyNodeId: String, promise: Promise) {
+    fun closeChannel(channelId: String, counterpartyNodeId: String, force: Boolean, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
-        val res = channelManager!!.close_channel(channelId.hexa(), counterpartyNodeId.hexa())
+        val res = if (force) channelManager!!.force_close_channel(channelId.hexa(), counterpartyNodeId.hexa()) else channelManager!!.close_channel(channelId.hexa(), counterpartyNodeId.hexa())
         if (!res.is_ok) {
             return handleReject(promise, LdkErrors.channel_close_fail)
         }

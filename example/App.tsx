@@ -2,7 +2,8 @@ import './shim';
 import React, { ReactElement, useEffect, useState } from 'react';
 import {
 	Alert,
-	Button, Modal,
+	Button,
+	Modal,
 	SafeAreaView,
 	ScrollView,
 	StyleSheet,
@@ -67,7 +68,7 @@ const App = (): ReactElement => {
 			setNodeStarted(true);
 			setMessage(setupResponse.value);
 		})();
-	}, []);
+	}, [nodeStarted]);
 
 	return (
 		<SafeAreaView style={styles.container}>
@@ -196,16 +197,39 @@ const App = (): ReactElement => {
 									return;
 								}
 
-								const {channel_id, counterparty_node_id} = listChannels.value[0];
+								const { channel_id, counterparty_node_id } =
+									listChannels.value[0];
 
-								setMessage(`Closing ${channel_id}...`);
+								const close = async (force: boolean): Promise<void> => {
+									setMessage(`Closing ${channel_id}...`);
 
-								const res = await ldk.closeChannel({channelId: channel_id, counterPartyNodeId: counterparty_node_id});
-								if (res.isErr()) {
-									setMessage(res.error.message);
-									return;
-								}
-								setMessage(res.value);
+									const res = await ldk.closeChannel({
+										channelId: channel_id,
+										counterPartyNodeId: counterparty_node_id,
+										force,
+									});
+									if (res.isErr()) {
+										setMessage(res.error.message);
+										return;
+									}
+									setMessage(res.value);
+								};
+
+								Alert.alert('Close channel', `Peer ${counterparty_node_id}`, [
+									{
+										text: 'Cancel',
+										onPress: () => console.log('Cancel Pressed'),
+										style: 'cancel',
+									},
+									{
+										text: 'Close channel',
+										onPress: async (): Promise<void> => close(false),
+									},
+									{
+										text: 'Force close',
+										onPress: async (): Promise<void> => close(true),
+									},
+								]);
 							} catch (e) {
 								setMessage(e.toString());
 							}
@@ -316,18 +340,21 @@ const App = (): ReactElement => {
 						}}
 					/>
 
-					<Button title={"Show LDK logs"} onPress={async () => {
-						if (!logFilePath) {
-							return
-						}
-						try {
-							const content = await RNFS.readFile(logFilePath, 'utf8');
-							setLogContent(content);
-							setShowLogs(true);
-						} catch (e) {
-							setMessage(JSON.stringify(e));
-						}
-					}} />
+					<Button
+						title={'Show LDK logs'}
+						onPress={async (): Promise<void> => {
+							if (!logFilePath) {
+								return;
+							}
+							try {
+								const content = await RNFS.readFile(logFilePath, 'utf8');
+								setLogContent(content);
+								setShowLogs(true);
+							} catch (e) {
+								setMessage(JSON.stringify(e));
+							}
+						}}
+					/>
 
 					<Button
 						title={'E2E test'}
@@ -387,16 +414,15 @@ const App = (): ReactElement => {
 			<Modal
 				animationType="slide"
 				visible={showLogs}
-				onRequestClose={() => {
+				onRequestClose={(): void => {
 					setShowLogs(false);
-				}}
-			>
-			<View style={styles.logModal}>
-				<ScrollView>
-					<Button title={"Close"} onPress={() => setShowLogs(false)}/>
-					<Text style={styles.modalText}>{logContent}</Text>
-				</ScrollView>
-			</View>
+				}}>
+				<View style={styles.logModal}>
+					<ScrollView>
+						<Button title={'Close'} onPress={(): void => setShowLogs(false)} />
+						<Text style={styles.modalText}>{logContent}</Text>
+					</ScrollView>
+				</View>
 			</Modal>
 		</SafeAreaView>
 	);
@@ -423,13 +449,12 @@ const styles = StyleSheet.create({
 		paddingTop: 40,
 		paddingHorizontal: 10,
 		flex: 1,
-		justifyContent: 'space-around',
 		backgroundColor: 'black',
 	},
 	modalText: {
 		color: 'green',
-		fontSize: 10
-	}
+		fontSize: 10,
+	},
 });
 
 export default App;

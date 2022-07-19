@@ -832,11 +832,9 @@ class LightningManager {
 	private onChannelManagerSpendableOutputs(
 		res: TChannelManagerSpendableOutputs,
 	): void {
-		//docs.rs/lightning/0.0.109/lightning/util/events/enum.Event.html#variant.SpendableOutputs
+		//https:docs.rs/lightning/0.0.109/lightning/util/events/enum.Event.html#variant.SpendableOutputs
 		//Needs to call keysManager.spend_spendable_outputs to send to change address or on chain wallet could keep output and use in its own tx? I don't know
-		https: console.log(
-			`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`,
-		); //TODO
+		console.log(`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`); //TODO
 	}
 
 	private onChannelManagerChannelClosed(

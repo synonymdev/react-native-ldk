@@ -392,12 +392,17 @@ class Ldk: NSObject {
     }
     
     @objc
-    func closeChannel(_ channelId: NSString, counterPartyNodeId: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func closeChannel(_ channelId: NSString, counterPartyNodeId: NSString, force: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
         
-        let res = channelManager.close_channel(channel_id: String(channelId).hexaBytes, counterparty_node_id: String(counterPartyNodeId).hexaBytes)
+        let channel_id = String(channelId).hexaBytes
+        let counterparty_node_id = String(counterPartyNodeId).hexaBytes
+                
+        let res = force ?
+                    channelManager.force_close_channel(channel_id: channel_id, counterparty_node_id: counterparty_node_id) :
+                    channelManager.close_channel(channel_id: channel_id, counterparty_node_id: counterparty_node_id)
         guard res.isOk() else {
             guard let error = res.getError() else {
                 return handleReject(reject, .channel_close_fail)

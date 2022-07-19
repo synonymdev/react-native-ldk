@@ -62,6 +62,7 @@ RCT_EXTERN_METHOD(setTxUnconfirmed:(NSString *)txId
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(closeChannel:(NSString *)channelId
                   counterPartyNodeId:(NSString *)counterPartyNodeId
+                  force:(BOOL *)force
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
