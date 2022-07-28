@@ -870,11 +870,25 @@ class LightningManager {
 		ldk.processPendingHtlcForwards().catch(console.error);
 	}
 
-	private onChannelManagerSpendableOutputs(
+	private async onChannelManagerSpendableOutputs(
 		res: TChannelManagerSpendableOutputs,
-	): void {
-		//https:docs.rs/lightning/0.0.109/lightning/util/events/enum.Event.html#variant.SpendableOutputs
-		//Needs to call keysManager.spend_spendable_outputs to send to change address or on chain wallet could keep output and use in its own tx? I don't know
+	): Promise<void> {
+		const spendRes = await ldk.spendOutputs({
+			descriptorsSerialized: res.outputsSerialized,
+			outputs: [], //Shouldn't need to specify this if we're sweeping all funds to dest script
+			change_destination_script:
+				'a91407694cfd2bd43f4e0fe285a4d013456cb58d7eab87', //TODO should be configurable
+			feerate_sat_per_1000_weight: 1000, //TODO should this be rather be priority ('high' | 'normal' | 'low') instead of a value?
+		});
+
+		if (spendRes.isErr()) {
+			//TODO should we notify user?
+			console.error(spendRes.error);
+			return;
+		}
+
+		this.onBroadcastTransaction({ tx: spendRes.value });
+
 		console.log(`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`); //TODO
 	}
 
