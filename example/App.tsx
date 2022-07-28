@@ -285,11 +285,10 @@ const App = (): ReactElement => {
 								return setMessage(decode.error.message);
 							}
 
-							const { recover_payee_pub_key, amount_milli_satoshis } =
-								decode.value;
+							const { recover_payee_pub_key, amount_satoshis } = decode.value;
 
 							Alert.alert(
-								`Pay ${amount_milli_satoshis ?? 0}`,
+								`Pay ${amount_satoshis ?? 0}`,
 								`To pubkey: ${recover_payee_pub_key}`,
 								[
 									{

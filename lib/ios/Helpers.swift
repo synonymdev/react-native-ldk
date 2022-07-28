@@ -27,7 +27,7 @@ func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ erro
 extension Invoice {
     var asJson: Any {
         return [
-            "amount_milli_satoshis": amount_milli_satoshis().getValue() as Any,
+            "amount_satoshis": (amount_milli_satoshis().getValue() != nil ? amount_milli_satoshis().getValue()! / 1000 : nil),
             "description": into_signed_raw().raw_invoice().description(),
             "check_signature": check_signature().isOk(),
             "is_expired": is_expired(),
