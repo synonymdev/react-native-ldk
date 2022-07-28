@@ -5,8 +5,12 @@ import { Block } from 'bitcoinjs-lib';
 import * as tls from './tls';
 import { customPeers, selectedNetwork } from '../utils/constants';
 import { THeader } from '@synonymdev/react-native-ldk';
-import { IGetHeaderResponse, ISubscribeToHeader } from '../utils/types';
-
+import {
+	IGetHeaderResponse,
+	ISubscribeToHeader,
+	TGetAddressHistory,
+} from '../utils/types';
+import { getAddressFromScriptPubKey, getScriptHash } from '../utils/helpers';
 /**
  * Returns the block hash given a block hex.
  * Leaving blockHex empty will return the last known block hash from storage.
@@ -140,4 +144,48 @@ export const subscribeToHeader = async ({
 		header,
 	});
 	return ok(header);
+};
+
+export const getScriptPubKeyHistory = async (
+	scriptPubkey: string,
+): Promise<TGetAddressHistory[]> => {
+	try {
+		const address = getAddressFromScriptPubKey(scriptPubkey);
+		const scriptHash = getScriptHash(address);
+		const response = await electrum.getAddressScriptHashesHistory({
+			scriptHashes: [scriptHash],
+			network: selectedNetwork,
+		});
+
+		/*
+		const mempoolResponse = await electrum.getAddressScriptHashesMempool({
+			scriptHashes: [scriptHash],
+			network: selectedNetwork,
+		});
+
+		if (response.error || mempoolResponse.error) {
+			return [];
+		}
+		const combinedResponse = [...response.data, ...mempoolResponse.data];
+		*/
+
+		let history: { txid: string; height: number }[] = [];
+		await Promise.all(
+			response.data.map(({ result }): void => {
+				if (result && result?.length > 0) {
+					result.map((item) => {
+						// @ts-ignore
+						history.push({
+							txid: item?.tx_hash ?? '',
+							height: item?.height ?? 0,
+						});
+					});
+				}
+			}),
+		);
+
+		return history;
+	} catch {
+		return [];
+	}
 };

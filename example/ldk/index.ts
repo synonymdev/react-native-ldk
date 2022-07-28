@@ -6,6 +6,7 @@ import {
 	getBlockHashFromHeight,
 	getBlockHeader,
 	getBlockHex,
+	getScriptPubKeyHistory,
 } from '../electrum';
 import lm, {
 	THeader,
@@ -74,7 +75,9 @@ export const updateHeader = async ({
  * @returns {Promise<Result<string>>}
  */
 export const syncLdk = async (): Promise<Result<string>> => {
-	return await lm.syncLdk();
+	const syncResponse = await lm.syncLdk();
+	await checkWatchTxs();
+	return syncResponse;
 };
 
 /**
@@ -233,4 +236,32 @@ export const importAccount = async (
 	await setupLdk();
 	await syncLdk();
 	return ok(importResponse.value);
+};
+
+/**
+ * Iterates over watch transactions for spends. Sets them as confirmed as needed.
+ * @returns {Promise<boolean>}
+ */
+export const checkWatchTxs = async (): Promise<boolean> => {
+	const checkedScriptPubKeys: string[] = [];
+	const watchTransactionIds = lm.watchTxs.map((tx) => tx.txid);
+	for (const watchTx of lm.watchTxs) {
+		if (!checkedScriptPubKeys.includes(watchTx.script_pubkey)) {
+			const scriptPubKeyHistory: { txid: string; height: number }[] =
+				await getScriptPubKeyHistory(watchTx.script_pubkey);
+			for (const data of scriptPubKeyHistory) {
+				if (!watchTransactionIds.includes(data?.txid)) {
+					const txData = await getTransactionData(data?.txid);
+					await ldk.setTxConfirmed({
+						header: txData.header,
+						height: txData.height,
+						txData: [{ transaction: txData.transaction, pos: 0 }],
+					});
+					return true;
+				}
+			}
+			checkedScriptPubKeys.push(watchTx.script_pubkey);
+		}
+	}
+	return false;
 };
