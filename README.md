@@ -19,6 +19,17 @@ npm i -S @synonymdev/react-native-ldk
 cd ios && pod install && cd ../
 ````
 
+### Android installation
+1. Add the following line to `dependencies` in `/android/app/build.gradle`
+```
+dependencies {
+  ...
+  implementation files("../../node_modules/@synonymdev/react-native-ldk/android/libs/LDK-release.aar")
+}
+```
+2. Ensure `minSdkVersion` is set to at least `24` in `/android/build.gradle`
+
+
 ## Running example app
 ```bash
 
