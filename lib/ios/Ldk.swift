@@ -461,7 +461,7 @@ class Ldk: NSObject {
             return handleReject(reject, .spend_outputs_fail)
         }
         
-        return resolve(Data(res.getValue()!).hexEncodedString)
+        return resolve(Data(res.getValue()!).hexEncodedString())
     }
 
     //MARK: Payments
