@@ -1,5 +1,5 @@
 import './shim';
-import React, {ReactElement, useCallback, useEffect, useState} from 'react';
+import React, { ReactElement, useEffect, useState } from 'react';
 import {
 	Alert,
 	Button,
@@ -15,7 +15,7 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { backupAccount, importAccount, setupLdk, syncLdk } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
-import lm, {EEventTypes} from '@synonymdev/react-native-ldk';
+import lm, { EEventTypes } from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
 import { createNewAccount } from './utils/helpers';
 import RNFS from 'react-native-fs';
@@ -75,7 +75,9 @@ const App = (): ReactElement => {
 
 	useEffect(() => {
 		if (!logSubscription) {
-			logSubscription = ldk.onEvent(EEventTypes.ldk_log, (log: string) => setLogContent((logs => `${logs}${log}`)));
+			logSubscription = ldk.onEvent(EEventTypes.ldk_log, (log: string) =>
+				setLogContent((logs) => `${logs}${log}`),
+			);
 		}
 
 		return (): void => logSubscription && logSubscription.remove();
