@@ -17,6 +17,7 @@ import {
 	TSetTxUnconfirmedReq,
 	TInitNetworkGraphReq,
 	TCloseChannelReq,
+	TSpendOutputsReq,
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -339,6 +340,34 @@ class LDK {
 				channelId,
 				counterPartyNodeId,
 				!!force,
+			);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Use LDK key manager to spend spendable outputs
+	 * https://docs.rs/lightning/latest/lightning/chain/keysinterface/struct.KeysManager.html#method.spend_spendable_outputs
+	 * @param descriptors
+	 * @param outputs
+	 * @param change_destination_script
+	 * @param feerate_sat_per_1000_weight
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>} (Hex string of the transaction)
+	 */
+	async spendOutputs({
+		descriptorsSerialized,
+		outputs,
+		change_destination_script,
+		feerate_sat_per_1000_weight,
+	}: TSpendOutputsReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.spendOutputs(
+				descriptorsSerialized,
+				outputs,
+				change_destination_script,
+				feerate_sat_per_1000_weight,
 			);
 			return ok(res);
 		} catch (e) {

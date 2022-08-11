@@ -97,7 +97,7 @@ export type TChannelManagerPendingHtlcsForwardable = {
 	time_forwardable: number;
 };
 export type TChannelManagerSpendableOutputs = {
-	outputs: string[];
+	outputsSerialized: string[];
 };
 export type TChannelManagerChannelClosed = {
 	user_channel_id: number;
@@ -194,6 +194,16 @@ export type TCloseChannelReq = {
 	channelId: string;
 	counterPartyNodeId: string;
 	force?: boolean;
+};
+
+export type TSpendOutputsReq = {
+	descriptorsSerialized: string[];
+	outputs: {
+		script_pubkey: string;
+		value: number;
+	}[];
+	change_destination_script: string;
+	feerate_sat_per_1000_weight: number;
 };
 
 export type TPaymentReq = {

@@ -102,7 +102,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             spendableOutputs.outputs.iterator().forEach {
                 outputs.pushHexString(it.write())
             }
-            body.putArray("outputs", outputs)
+            body.putArray("outputsSerialized", outputs)
             return LdkEventEmitter.send(EventTypes.channel_manager_spendable_outputs, body)
         }
 
