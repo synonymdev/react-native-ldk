@@ -1,8 +1,9 @@
 import './shim';
-import React, { ReactElement, useEffect, useState } from 'react';
+import React, {ReactElement, useCallback, useEffect, useState} from 'react';
 import {
 	Alert,
 	Button,
+	EmitterSubscription,
 	Modal,
 	SafeAreaView,
 	ScrollView,
@@ -14,10 +15,12 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { backupAccount, importAccount, setupLdk, syncLdk } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
-import lm from '@synonymdev/react-native-ldk';
+import lm, {EEventTypes} from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
 import { createNewAccount } from './utils/helpers';
 import RNFS from 'react-native-fs';
+
+let logSubscription: EmitterSubscription | undefined;
 
 const App = (): ReactElement => {
 	const [message, setMessage] = useState('...');
@@ -69,6 +72,14 @@ const App = (): ReactElement => {
 			setMessage(setupResponse.value);
 		})();
 	}, [nodeStarted]);
+
+	useEffect(() => {
+		if (!logSubscription) {
+			logSubscription = ldk.onEvent(EEventTypes.ldk_log, (log: string) => setLogContent((logs => `${logs}${log}`)));
+		}
+
+		return (): void => logSubscription && logSubscription.remove();
+	}, []);
 
 	return (
 		<SafeAreaView style={styles.container}>
