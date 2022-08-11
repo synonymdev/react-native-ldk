@@ -56,6 +56,7 @@ enum LdkErrors: String {
     case claim_funds_failed = "claim_funds_failed"
     case network_graph_restore_failed = "network_graph_restore_failed"
     case channel_close_fail = "channel_close_fail"
+    case spend_outputs_fail = "spend_outputs_fail"
 }
 
 enum LdkCallbackResponses: String {
@@ -425,6 +426,42 @@ class Ldk: NSObject {
         }
     
         return handleResolve(resolve, .close_channel_success)
+    }
+    
+    @objc
+    func spendOutputs(_ descriptorsSerialized: NSArray, outputs: NSArray, changeDestinationScript: NSString, feeRate: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let keysManager = keysManager else {
+            return handleReject(reject, .init_keys_manager)
+        }
+        
+        var ldkDescriptors: Array<SpendableOutputDescriptor> = []
+        for descriptor in descriptorsSerialized {
+            let read = SpendableOutputDescriptor.read(ser: (descriptor as! String).hexaBytes)
+            
+            guard read.isOk()  else {
+                return handleReject(reject, .spend_outputs_fail, nil, read.getError().debugDescription)
+            }            
+            ldkDescriptors.append(read.getValue()!)
+        }
+        
+        var ldkOutputs: Array<TxOut> = []
+        for output in outputs {
+            let d = output as! NSDictionary
+            ldkOutputs.append(TxOut(script_pubkey: (d["script_pubkey"] as! String).hexaBytes, value: d["value"] as! UInt64))
+        }
+        
+        let res = keysManager.spend_spendable_outputs(
+            descriptors: ldkDescriptors,
+            outputs: ldkOutputs,
+            change_destination_script: String(changeDestinationScript).hexaBytes,
+            feerate_sat_per_1000_weight: UInt32(feeRate)
+        )
+        
+        guard res.isOk() else {
+            return handleReject(reject, .spend_outputs_fail)
+        }
+        
+        return resolve(Data(res.getValue()!).hexEncodedString())
     }
 
     //MARK: Payments

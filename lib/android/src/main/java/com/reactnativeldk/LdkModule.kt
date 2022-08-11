@@ -69,7 +69,8 @@ enum class LdkErrors {
     invoice_create_failed,
     network_graph_restore_failed,
     init_scorer_failed,
-    channel_close_fail
+    channel_close_fail,
+    spend_outputs_fail
 }
 
 enum class LdkCallbackResponses {
@@ -406,6 +407,42 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         handleResolve(promise, LdkCallbackResponses.close_channel_success)
+    }
+
+    @ReactMethod
+    fun spendOutputs(descriptorsSerialized: ReadableArray, outputs: ReadableArray, changeDestinationScript: String, feeRate: Double, promise: Promise) {
+        keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
+
+        val ldkDescriptors: MutableList<SpendableOutputDescriptor> = arrayListOf()
+        descriptorsSerialized.toArrayList().iterator().forEach { descriptor ->
+            val read = SpendableOutputDescriptor.read((descriptor as String).hexa())
+            if (!read.is_ok) {
+                return handleReject(promise, LdkErrors.spend_outputs_fail)
+            }
+
+            ldkDescriptors.add((read as Result_SpendableOutputDescriptorDecodeErrorZ.Result_SpendableOutputDescriptorDecodeErrorZ_OK).res)
+        }
+
+        val ldkOutputs: MutableList<TxOut> = arrayListOf()
+        outputs.toArrayList().iterator().forEach { output ->
+            val outputMap = output as HashMap<*, *>
+            ldkOutputs.add(
+                TxOut((outputMap.get("value") as Double).toLong(), (outputMap.get("script_pubkey") as String).hexa())
+            )
+        }
+
+        val res = keysManager!!.spend_spendable_outputs(
+            ldkDescriptors.toTypedArray(),
+            ldkOutputs.toTypedArray(),
+            changeDestinationScript.hexa(),
+            feeRate.toInt()
+        )
+
+        if (!res.is_ok) {
+            return handleReject(promise, LdkErrors.spend_outputs_fail)
+        }
+
+        promise.resolve((res as Result_TransactionNoneZ.Result_TransactionNoneZ_OK).res.hexEncodedString())
     }
 
     //MARK: Payments

@@ -22,3 +22,5 @@ export interface ISubscribeToHeader {
 	id: string;
 	method: string;
 }
+
+export type TGetAddressHistory = { txid: string; height: number };

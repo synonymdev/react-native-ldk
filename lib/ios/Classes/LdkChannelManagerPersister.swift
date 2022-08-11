@@ -158,7 +158,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_spendable_outputs,
                 body: [
-                    "outputs": spendableOutputs.getOutputs().map { Data($0.write()).hexEncodedString() },
+                    "outputsSerialized": spendableOutputs.getOutputs().map { Data($0.write()).hexEncodedString() },
                 ]
             )
             return
