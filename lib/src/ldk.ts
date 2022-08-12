@@ -1,4 +1,9 @@
-import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import {
+	NativeModules,
+	NativeEventEmitter,
+	Platform,
+	EmitterSubscription,
+} from 'react-native';
 import { err, ok, Result } from './utils/result';
 import {
 	EEventTypes,
@@ -463,8 +468,11 @@ class LDK {
 	 * @param event
 	 * @param callback
 	 */
-	onEvent(event: EEventTypes, callback: (res: any) => void): void {
-		this.ldkEvent.addListener(event, callback);
+	onEvent(
+		event: EEventTypes,
+		callback: (res: any) => void,
+	): EmitterSubscription {
+		return this.ldkEvent.addListener(event, callback);
 	}
 
 	/**
@@ -532,71 +540,6 @@ class LDK {
 		} catch (e) {
 			return err(e);
 		}
-	}
-
-	/**
-	 * Callback passed though will get triggered for each LND log item
-	 * @param callback
-	 * @returns {string}
-	 */
-	addLogListener(callback: (log: string) => void): string {
-		const id = new Date().valueOf().toString() + Math.random().toString();
-		this.logListeners.push({ id, callback });
-		return id; // Developer needs to use this ID to unsubscribe later
-	}
-
-	/**
-	 * Removes a log listener once dev no longer wants to receive updates.
-	 * e.g. When a component has been unmounted
-	 * @param id
-	 */
-	removeLogListener(id: string): void {
-		let removeIndex = -1;
-		this.logListeners.forEach((listener, index) => {
-			if (listener.id === id) {
-				removeIndex = index;
-			}
-		});
-
-		if (removeIndex > -1) {
-			this.logListeners.splice(removeIndex, 1);
-		}
-	}
-
-	/**
-	 * Triggers every listener that has subscribed
-	 * @param log
-	 */
-	private processLogListeners(log: string): void {
-		if (!log) {
-			return;
-		}
-
-		if (__DEV__) {
-			console.log(log);
-		}
-
-		this.logListeners.forEach((listener) => listener.callback(log));
-	}
-
-	/**
-	 * Gets LND log file content
-	 * @param limit
-	 * @returns {Promise<Err<unknown> | Ok<string[]>>}
-	 */
-	async getLogFileContent(limit: number = 100): Promise<Result<string[]>> {
-		//TODO
-		// try {
-		// 	const content: string[] = await this.ldk.logFileContent(network, limit);
-		// 	return ok(content);
-		// } catch (e) {
-		// 	return err(e);
-		// }
-		if (__DEV__) {
-			console.log(limit);
-		}
-
-		return ok([]);
 	}
 }
 

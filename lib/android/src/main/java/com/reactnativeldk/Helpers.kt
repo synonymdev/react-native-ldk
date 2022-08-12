@@ -37,7 +37,7 @@ val Invoice.asJson: WritableMap
         val signedInv = into_signed_raw()
         val rawInvoice = signedInv.raw_invoice()
 
-        result.putInt("amount_milli_satoshis", (amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000)
+        result.putInt("amount_satoshis", (amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000)
         result.putString("description", rawInvoice.description()?.into_inner())
         result.putBoolean("check_signature",  signedInv.check_signature())
         result.putBoolean("is_expired",  is_expired)
