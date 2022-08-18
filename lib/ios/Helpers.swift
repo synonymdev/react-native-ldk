@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import LDKFramework
+import LightningDevKit
 
 func handleResolve(_ resolve: RCTPromiseResolveBlock, _ res: LdkCallbackResponses) {
     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Success: \(res.rawValue)")
@@ -71,7 +71,7 @@ extension ChannelDetails {
     }
 }
 
-extension LDKFramework.RouteHop {
+extension LightningDevKit.RouteHop {
     var asJson: Any {
         return [
             "pubkey": get_pubkey(),

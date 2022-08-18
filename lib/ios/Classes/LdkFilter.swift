@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import LDKFramework
+import LightningDevKit
 
 class LdkFilter: Filter {
     override func free() {

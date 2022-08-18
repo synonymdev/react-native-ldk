@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import LDKFramework
+import LightningDevKit
 
 class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     override func free() {

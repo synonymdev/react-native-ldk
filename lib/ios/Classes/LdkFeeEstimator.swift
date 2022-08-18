@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import LDKFramework
+import LightningDevKit
 
 class LdkFeeEstimator: FeeEstimator {
     private var high: UInt32 = 0

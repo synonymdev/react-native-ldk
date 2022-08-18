@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import LDKFramework
+import LightningDevKit
 
 class LdkLogger: Logger {
     var activeLevels: [UInt32: Bool] = [:]
