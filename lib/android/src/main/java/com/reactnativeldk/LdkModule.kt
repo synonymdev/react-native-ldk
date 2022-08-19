@@ -461,21 +461,35 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun pay(paymentRequest: String, promise: Promise) {
+    fun pay(paymentRequest: String, amountSats: Double, promise: Promise) {
         invoicePayer ?: return handleReject(promise, LdkErrors.init_invoice_payer)
 
-        val invoice = Invoice.from_str(paymentRequest)
-        if (!invoice.is_ok) {
+        val invoiceParse = Invoice.from_str(paymentRequest)
+        if (!invoiceParse.is_ok) {
             return handleReject(promise, LdkErrors.decode_invoice_fail)
         }
+        val invoice = (invoiceParse as Result_InvoiceParseOrSemanticErrorZ_OK).res
 
-        val res = invoicePayer!!.pay_invoice((invoice as Result_InvoiceParseOrSemanticErrorZ_OK).res)
+        val isZeroValueInvoice = invoice.amount_milli_satoshis() is Option_u64Z.None
 
+        //If it's a zero invoice and we don't have an amount then don't proceed
+        if (isZeroValueInvoice && amountSats == 0.0) {
+            return handleReject(promise, LdkErrors.invoice_payment_fail_must_specify_amount)
+        }
+
+        //Amount was set but not allowed to set own amount
+        if (amountSats > 0 && !isZeroValueInvoice) {
+            return handleReject(promise, LdkErrors.invoice_payment_fail_must_not_specify_amount)
+        }
+
+        val res = if (isZeroValueInvoice)
+                invoicePayer!!.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000) else
+                invoicePayer!!.pay_invoice(invoice)
         if (res.is_ok) {
             return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
         }
 
-        val error = res as? Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_Err // ?: return return handleReject(promise, LdkErrors.invoice_payment_fail)
+        val error = res as? Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_Err
 
         val invoiceError = error?.err as? PaymentError.Invoice
         if (invoiceError != null) {
@@ -525,7 +539,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             channelManager,
             keysManager!!.as_KeysInterface(),
             ldkCurrency,
-            Option_u64Z.some(amountSats.toLong()),
+            if (amountSats == 0.0) Option_u64Z.none() else Option_u64Z.some(amountSats.toLong()),
             description,
             expiryDelta.toInt()
         );

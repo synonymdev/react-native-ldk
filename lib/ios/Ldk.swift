@@ -501,7 +501,7 @@ class Ldk: NSObject {
         }
         
         let res = isZeroValueInvoice ?
-                    invoicePayer.pay_zero_value_invoice(invoice: invoice, amount_msats: UInt64(amountSats)) :
+                    invoicePayer.pay_zero_value_invoice(invoice: invoice, amount_msats: UInt64(amountSats * 1000)) :
                     invoicePayer.pay_invoice(invoice: invoice)
         if res.isOk() {
             return handleResolve(resolve, .invoice_payment_success)
