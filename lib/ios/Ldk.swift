@@ -1,4 +1,4 @@
-import LDKFramework
+import LightningDevKit
 import Darwin
 
 //MARK: ************Replicate in typescript and kotlin************
@@ -151,15 +151,15 @@ class Ldk: NSObject {
         userConfig!.set_manually_accept_inbound_channels(val: manuallyAcceptInboundChannels)
 
         let channelConfig = ChannelConfig()
-        channelConfig.set_announced_channel(val: announcedChannels)
-
+        userConfig!.set_channel_config(val: channelConfig)
+        
         let channelHandshakeConfig = ChannelHandshakeConfig()
         channelHandshakeConfig.set_minimum_depth(val: UInt32(minChannelHandshakeDepth))
-        userConfig!.set_own_channel_config(val: channelHandshakeConfig)
+        userConfig!.set_channel_handshake_config(val: channelHandshakeConfig)
 
         let channelHandshakeLimits = ChannelHandshakeLimits()
         channelHandshakeLimits.set_force_announced_channel_preference(val: announcedChannels)
-        userConfig!.set_peer_channel_config_limits(val: channelHandshakeLimits)
+        userConfig!.set_channel_handshake_limits(val: channelHandshakeLimits)
 
         return handleResolve(resolve, .config_init_success)
     }
@@ -402,7 +402,7 @@ class Ldk: NSObject {
         let counterparty_node_id = String(counterPartyNodeId).hexaBytes
                 
         let res = force ?
-                    channelManager.force_close_channel(channel_id: channel_id, counterparty_node_id: counterparty_node_id) :
+                    channelManager.force_close_broadcasting_latest_txn(channel_id: channel_id, counterparty_node_id: counterparty_node_id) :
                     channelManager.close_channel(channel_id: channel_id, counterparty_node_id: counterparty_node_id)
         guard res.isOk() else {
             guard let error = res.getError() else {

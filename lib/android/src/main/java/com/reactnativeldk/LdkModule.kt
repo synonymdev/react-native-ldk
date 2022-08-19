@@ -170,16 +170,16 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         userConfig!!._accept_inbound_channels = acceptInboundChannels
         userConfig!!._manually_accept_inbound_channels = manuallyAcceptInboundChannels
 
-        val newChannelConfig = ChannelConfig.with_default()
-        newChannelConfig._announced_channel = announcedChannels
+        val channelConfig = ChannelConfig.with_default()
+        userConfig!!._channel_config = channelConfig
 
-        val channelHandshake = ChannelHandshakeConfig.with_default()
-        channelHandshake._minimum_depth = minChannelHandshakeDepth.toInt()
-        userConfig!!._own_channel_config = channelHandshake
+        val channelChannelHandshake = ChannelHandshakeConfig.with_default()
+        channelChannelHandshake._minimum_depth = minChannelHandshakeDepth.toInt()
+        userConfig!!._channel_handshake_config = channelChannelHandshake
 
         val channelHandshakeLimits = ChannelHandshakeLimits.with_default()
         channelHandshakeLimits._force_announced_channel_preference = announcedChannels
-        userConfig!!._peer_channel_config_limits = channelHandshakeLimits
+        userConfig!!._channel_handshake_limits = channelHandshakeLimits
 
         handleResolve(promise, LdkCallbackResponses.config_init_success)
     }
@@ -401,7 +401,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun closeChannel(channelId: String, counterpartyNodeId: String, force: Boolean, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
-        val res = if (force) channelManager!!.force_close_channel(channelId.hexa(), counterpartyNodeId.hexa()) else channelManager!!.close_channel(channelId.hexa(), counterpartyNodeId.hexa())
+        val res = if (force) channelManager!!.force_close_broadcasting_latest_txn(channelId.hexa(), counterpartyNodeId.hexa()) else channelManager!!.close_channel(channelId.hexa(), counterpartyNodeId.hexa())
         if (!res.is_ok) {
             return handleReject(promise, LdkErrors.channel_close_fail)
         }
