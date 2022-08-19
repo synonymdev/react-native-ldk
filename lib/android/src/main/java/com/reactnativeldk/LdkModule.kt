@@ -58,6 +58,8 @@ enum class LdkErrors {
     decode_invoice_fail,
     init_invoice_payer,
     invoice_payment_fail_unknown,
+    invoice_payment_fail_must_specify_amount,
+    invoice_payment_fail_must_not_specify_amount,
     invoice_payment_fail_invoice,
     invoice_payment_fail_routing,
     invoice_payment_fail_sending,

@@ -267,25 +267,46 @@ const App = (): ReactElement => {
 					<Button
 						title={'Create invoice'}
 						onPress={async (): Promise<void> => {
-							try {
-								const createPaymentRequest = await ldk.createPaymentRequest({
-									amountSats: 123400,
-									description: 'paymeplz',
-									expiryDeltaSeconds: 999999,
-								});
+							const createInvoice = async (
+								amountSats: number | undefined = undefined,
+							): Promise<void> => {
+								try {
+									const createPaymentRequest = await ldk.createPaymentRequest({
+										amountSats,
+										description: 'paymeplz',
+										expiryDeltaSeconds: 999999,
+									});
 
-								if (createPaymentRequest.isErr()) {
-									setMessage(createPaymentRequest.error.message);
-									return;
+									if (createPaymentRequest.isErr()) {
+										setMessage(createPaymentRequest.error.message);
+										return;
+									}
+
+									const { to_str } = createPaymentRequest.value;
+									console.log(to_str);
+									Clipboard.setString(to_str);
+									setMessage(to_str);
+								} catch (e) {
+									setMessage(e.toString());
 								}
+							};
 
-								const { to_str } = createPaymentRequest.value;
-								console.log(to_str);
-								Clipboard.setString(to_str);
-								setMessage(to_str);
-							} catch (e) {
-								setMessage(e.toString());
-							}
+							const amountSats = 1234;
+							Alert.alert('Create invoice', 'Specify amount?', [
+								{
+									text: 'Cancel',
+									onPress: () => console.log('Cancel Pressed'),
+									style: 'cancel',
+								},
+								{
+									text: `${amountSats} sats`,
+									onPress: async (): Promise<void> => createInvoice(amountSats),
+								},
+								{
+									text: "Don't specify",
+									onPress: async (): Promise<void> => createInvoice(),
+								},
+							]);
 						}}
 					/>
 
@@ -300,9 +321,14 @@ const App = (): ReactElement => {
 
 							const { recover_payee_pub_key, amount_satoshis } = decode.value;
 
+							const ownAmountSats = 1000;
 							Alert.alert(
-								`Pay ${amount_satoshis ?? 0}`,
-								`To pubkey: ${recover_payee_pub_key}`,
+								amount_satoshis
+									? `Pay ${amount_satoshis ?? 0}`
+									: 'Zero sat invoice found',
+								amount_satoshis
+									? `To pubkey: ${recover_payee_pub_key}`
+									: `Send ${ownAmountSats} sats (Our chosen amount) to send over?`,
 								[
 									{
 										text: 'Cancel',
@@ -312,7 +338,10 @@ const App = (): ReactElement => {
 									{
 										text: 'Pay',
 										onPress: async (): Promise<void> => {
-											const pay = await ldk.pay({ paymentRequest });
+											const pay = await ldk.pay({
+												paymentRequest,
+												amountSats: amount_satoshis ? undefined : ownAmountSats,
+											});
 											if (pay.isErr()) {
 												return setMessage(pay.error.message);
 											}

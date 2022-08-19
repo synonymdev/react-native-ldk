@@ -89,6 +89,7 @@ RCT_EXTERN_METHOD(decode:(NSString *)paymentRequest
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(pay:(NSString *)paymentRequest
+                  amountSats:(NSInteger *)amountSats
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(createPaymentRequest:(NSInteger *)amountSats
