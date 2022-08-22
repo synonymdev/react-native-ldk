@@ -44,6 +44,8 @@ enum LdkErrors: String {
     case decode_invoice_fail = "decode_invoice_fail"
     case init_invoice_payer = "init_invoice_payer"
     case invoice_payment_fail_unknown = "invoice_payment_fail_unknown"
+    case invoice_payment_fail_must_specify_amount = "invoice_payment_fail_must_specify_amount"
+    case invoice_payment_fail_must_not_specify_amount = "invoice_payment_fail_must_not_specify_amount"
     case invoice_payment_fail_invoice = "invoice_payment_fail_invoice"
     case invoice_payment_fail_routing = "invoice_payment_fail_routing"
     case invoice_payment_fail_sending = "invoice_payment_fail_sending"
@@ -477,7 +479,7 @@ class Ldk: NSObject {
     }
 
     @objc
-    func pay(_ paymentRequest: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func pay(_ paymentRequest: NSString, amountSats: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let invoicePayer = invoicePayer else {
             return handleReject(reject, .init_invoice_payer)
         }
@@ -485,8 +487,22 @@ class Ldk: NSObject {
         guard let invoice = Invoice.from_str(s: String(paymentRequest)).getValue() else {
             return handleReject(reject, .decode_invoice_fail)
         }
-
-        let res = invoicePayer.pay_invoice(invoice: invoice)
+        
+        let isZeroValueInvoice = invoice.amount_milli_satoshis().getValue() == nil
+        
+        //If it's a zero invoice and we don't have an amount then don't proceed
+        guard !(isZeroValueInvoice && amountSats == 0) else {
+            return handleReject(reject, .invoice_payment_fail_must_specify_amount)
+        }
+        
+        //Amount was set but not allowed to set own amount
+        guard !(amountSats > 0 && !isZeroValueInvoice) else {
+            return handleReject(reject, .invoice_payment_fail_must_not_specify_amount)
+        }
+        
+        let res = isZeroValueInvoice ?
+                    invoicePayer.pay_zero_value_invoice(invoice: invoice, amount_msats: UInt64(amountSats * 1000)) :
+                    invoicePayer.pay_invoice(invoice: invoice)
         if res.isOk() {
             return handleResolve(resolve, .invoice_payment_success)
         }
@@ -541,11 +557,11 @@ class Ldk: NSObject {
             channelmanager: channelManager,
             keys_manager: keysManager.as_KeysInterface(),
             network: ldkCurrency,
-            amt_msat: Option_u64Z(value: UInt64(amountSats)),
+            amt_msat: amountSats == 0 ? Option_u64Z.none() : Option_u64Z(value: UInt64(amountSats)),
             description: String(description),
             invoice_expiry_delta_secs: UInt32(expiryDelta)
         )
-            
+        
         if res.isOk() {
             guard let invoice = res.getValue() else {
                 return handleReject(reject, .invoice_create_failed)

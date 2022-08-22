@@ -208,10 +208,11 @@ export type TSpendOutputsReq = {
 
 export type TPaymentReq = {
 	paymentRequest: string;
+	amountSats?: number;
 };
 
 export type TCreatePaymentReq = {
-	amountSats: number;
+	amountSats?: number;
 	description: string;
 	expiryDeltaSeconds: number;
 };

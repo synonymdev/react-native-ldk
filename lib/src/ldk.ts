@@ -407,7 +407,7 @@ class LDK {
 	}: TCreatePaymentReq): Promise<Result<TInvoice>> {
 		try {
 			const res = await NativeLDK.createPaymentRequest(
-				amountSats * 1000,
+				(amountSats || 0) * 1000,
 				description,
 				expiryDeltaSeconds,
 			);
@@ -449,18 +449,18 @@ class LDK {
 	 * @param paymentRequest
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async pay({ paymentRequest }: TPaymentReq): Promise<Result<string>> {
-		//TODO allow for setting amount if invoice amount is zero
+	async pay({
+		paymentRequest,
+		amountSats,
+	}: TPaymentReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.pay(paymentRequest);
+			const res = await NativeLDK.pay(paymentRequest, amountSats || 0);
 			return ok(res);
 		} catch (e) {
-			//TODO error can be drilled down in native code to provide better feedback and/or retry options.
 			return err(e);
 		}
 	}
 
-	//TODO pay_zero_value_invoice
 	//TODO pay_pubkey
 
 	/**
