@@ -176,8 +176,6 @@ class Ldk: NSObject {
         if serializedBackup == "" {
             networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
         } else {
-            print("serializedBackup:")
-            print(serializedBackup)
             let read = NetworkGraph.read(ser: String(serializedBackup).hexaBytes, arg: logger)
             if read.isOk() {
                 networkGraph = read.getValue()
@@ -185,7 +183,7 @@ class Ldk: NSObject {
                 return handleReject(reject, .network_graph_restore_failed)
             }
         }
-                
+                        
         return handleResolve(resolve, .network_graph_init_success)
     }
 
@@ -243,7 +241,8 @@ class Ldk: NSObject {
                     chain_monitor: chainMonitor,
                     net_graph: networkGraph,
                     tx_broadcaster: broadcaster,
-                    logger: logger
+                    logger: logger,
+                    enableP2PGossip: true
                 )
             } else {
                 //Restoring node
@@ -256,16 +255,18 @@ class Ldk: NSObject {
                     filter: filter,
                     net_graph_serialized: networkGraph.write(),
                     tx_broadcaster: broadcaster,
-                    logger: logger
+                    logger: logger,
+                    enableP2PGossip: true
                 )
             }
+            
         } catch {
             return handleReject(reject, .unknown_error, error)
         }
 
         channelManager = channelManagerConstructor!.channelManager
         self.networkGraph = channelManagerConstructor!.net_graph
-
+                
         //Scorer setup
         let scoringParams = ProbabilisticScoringParameters()
         let probabalisticScorer = ProbabilisticScorer(params: scoringParams, network_graph: self.networkGraph!, logger: logger)
@@ -277,7 +278,7 @@ class Ldk: NSObject {
 
         peerHandler = channelManagerConstructor!.getTCPPeerHandler()
         invoicePayer = channelManagerConstructor!.payer
-
+        
         return handleResolve(resolve, .channel_manager_init_success)
     }
     
