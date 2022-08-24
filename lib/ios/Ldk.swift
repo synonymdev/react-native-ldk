@@ -650,6 +650,37 @@ class Ldk: NSObject {
 
         return resolve(channelManager.list_usable_channels().map { $0.asJson })
     }
+    
+    @objc
+    func networkGraphListNodes(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+        
+        print(networkGraph.list_nodes().debugDescription)
+                
+        return resolve(networkGraph.list_nodes().map { Data($0.write()).hexEncodedString() })
+    }
+    
+    @objc
+    func networkGraphListChannels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+                
+        return resolve(networkGraph.list_channels().map { $0 })
+    }
+    
+//    @objc
+//    func networkGraphChannel(_ shortChannelId: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+//        guard let networkGraph = networkGraph?.read_only() else {
+//            return handleReject(reject, .init_network_graph)
+//        }
+//        
+//        let channel = networkGraph.channel(short_channel_id: UInt64(shortChannelId))
+//        
+//        return resolve(channel.get_capacity_sats())
+//    }
 }
 
 //MARK: Singleton react native event emitter

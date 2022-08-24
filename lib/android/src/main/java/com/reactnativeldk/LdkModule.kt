@@ -255,7 +255,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     chainMonitor,
                     networkGraph,
                     broadcaster.broadcaster,
-                    logger.logger
+                    logger.logger,
                 )
             } else {
                 //Restoring node
@@ -617,6 +617,26 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val list = Arguments.createArray()
         channelManager!!.list_usable_channels().iterator().forEach { list.pushMap(it.asJson) }
+
+        promise.resolve(list)
+    }
+
+    @ReactMethod
+    fun networkGraphListNodes(promise: Promise) {
+        val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
+
+        val list = Arguments.createArray()
+        graph.list_nodes().iterator().forEach { list.pushHexString(it.as_slice()) }
+
+        promise.resolve(list)
+    }
+
+    @ReactMethod
+    fun networkGraphListChannels(promise: Promise) {
+        val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
+
+        val list = Arguments.createArray()
+        graph.list_channels().iterator().forEach { list.pushDouble(it.toDouble()) }
 
         promise.resolve(list)
     }

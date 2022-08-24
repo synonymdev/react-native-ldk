@@ -306,7 +306,7 @@ const App = (): ReactElement => {
 								}
 							};
 
-							const amountSats = 1234;
+							const amountSats = 100;
 							Alert.alert('Create invoice', 'Specify amount?', [
 								{
 									text: 'Cancel',
@@ -381,6 +381,27 @@ const App = (): ReactElement => {
 							console.log(nodeIdRes.value);
 
 							setMessage(`Node ID: ${nodeIdRes.value}`);
+						}}
+					/>
+
+					<Button
+						title={'Get network graph'}
+						onPress={async (): Promise<void> => {
+							const nodesRes = await ldk.networkGraphListNodes();
+							if (nodesRes.isErr()) {
+								return setMessage(nodesRes.error.message);
+							}
+
+							const channelRes = await ldk.networkGraphListChannels();
+							if (channelRes.isErr()) {
+								return setMessage(channelRes.error.message);
+							}
+
+							setMessage(
+								`Nodes: ${nodesRes.value.join(
+									', ',
+								)}\nChannel short IDs: ${channelRes.value.join(', ')}`,
+							);
 						}}
 					/>
 

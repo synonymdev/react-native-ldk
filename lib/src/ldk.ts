@@ -405,6 +405,7 @@ class LDK {
 		description,
 		expiryDeltaSeconds,
 	}: TCreatePaymentReq): Promise<Result<TInvoice>> {
+		//TODO confirm we have enough incoming capacity
 		try {
 			const res = await NativeLDK.createPaymentRequest(
 				(amountSats || 0) * 1000,
@@ -536,6 +537,34 @@ class LDK {
 	async listUsableChannels(): Promise<Result<TChannel[]>> {
 		try {
 			const res = await NativeLDK.listUsableChannels();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Fetches list of node IDs in network graph
+	 * https://docs.rs/lightning/latest/lightning/routing/gossip/struct.ReadOnlyNetworkGraph.html#method.nodes
+	 * @returns {Promise<Ok<Ok<string[]> | Err<string[]>> | Err<unknown>>}
+	 */
+	async networkGraphListNodes(): Promise<Result<string[]>> {
+		try {
+			const res = await NativeLDK.networkGraphListNodes();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Fetches list of short channel IDs in network graph
+	 * https://docs.rs/lightning/latest/lightning/routing/gossip/struct.ReadOnlyNetworkGraph.html#method.channels
+	 * @returns {Promise<Ok<Ok<number[]> | Err<number[]>> | Err<unknown>>}
+	 */
+	async networkGraphListChannels(): Promise<Result<number[]>> {
+		try {
+			const res = await NativeLDK.networkGraphListChannels();
 			return ok(res);
 		} catch (e) {
 			return err(e);
