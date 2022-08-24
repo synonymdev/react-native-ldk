@@ -15,12 +15,16 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { backupAccount, importAccount, setupLdk, syncLdk } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
-import lm, { EEventTypes } from '@synonymdev/react-native-ldk';
+import lm, {
+	EEventTypes,
+	TChannelManagerPayment,
+} from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
 import { createNewAccount } from './utils/helpers';
 import RNFS from 'react-native-fs';
 
 let logSubscription: EmitterSubscription | undefined;
+let paymentSubscription: EmitterSubscription | undefined;
 
 const App = (): ReactElement => {
 	const [message, setMessage] = useState('...');
@@ -80,7 +84,18 @@ const App = (): ReactElement => {
 			);
 		}
 
-		return (): void => logSubscription && logSubscription.remove();
+		if (!paymentSubscription) {
+			paymentSubscription = ldk.onEvent(
+				EEventTypes.channel_manager_payment_claimed,
+				(res: TChannelManagerPayment) =>
+					alert(`Received ${res.amount_sat} sats`),
+			);
+		}
+
+		return (): void => {
+			logSubscription && logSubscription.remove();
+			paymentSubscription && paymentSubscription.remove();
+		};
 	}, []);
 
 	return (
