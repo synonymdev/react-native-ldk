@@ -157,10 +157,11 @@ class Ldk: NSObject {
         
         let channelHandshakeConfig = ChannelHandshakeConfig()
         channelHandshakeConfig.set_minimum_depth(val: UInt32(minChannelHandshakeDepth))
+        channelHandshakeConfig.set_announced_channel(val: announcedChannels)
         userConfig!.set_channel_handshake_config(val: channelHandshakeConfig)
 
         let channelHandshakeLimits = ChannelHandshakeLimits()
-        channelHandshakeLimits.set_force_announced_channel_preference(val: announcedChannels)
+        channelHandshakeLimits.set_force_announced_channel_preference(val: true)
         userConfig!.set_channel_handshake_limits(val: channelHandshakeLimits)
 
         return handleResolve(resolve, .config_init_success)
@@ -266,7 +267,10 @@ class Ldk: NSObject {
         self.networkGraph = channelManagerConstructor!.net_graph
 
         //Scorer setup
-        let scorer = MultiThreadedLockableScore(score: Score())
+        let scoringParams = ProbabilisticScoringParameters()
+        let probabalisticScorer = ProbabilisticScorer(params: scoringParams, network_graph: self.networkGraph!, logger: logger)
+        let score = probabalisticScorer.as_Score()
+        let scorer = MultiThreadedLockableScore(score: score)
         
         channelManagerConstructor!.chain_sync_completed(persister: channelManagerPersister, scorer: scorer)
         peerManager = channelManagerConstructor!.peerManager

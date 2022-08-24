@@ -74,7 +74,7 @@ extension ChannelDetails {
 extension LightningDevKit.RouteHop {
     var asJson: Any {
         return [
-            "pubkey": get_pubkey(),
+            "pubkey": Data(get_pubkey()).hexEncodedString(),
             "fee_sat": get_fee_msat() / 1000,
             "short_channel_id": get_short_channel_id(),
             "cltv_expiry_delta": get_cltv_expiry_delta()

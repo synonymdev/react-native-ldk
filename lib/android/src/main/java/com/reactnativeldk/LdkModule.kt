@@ -175,12 +175,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val channelConfig = ChannelConfig.with_default()
         userConfig!!._channel_config = channelConfig
 
-        val channelChannelHandshake = ChannelHandshakeConfig.with_default()
-        channelChannelHandshake._minimum_depth = minChannelHandshakeDepth.toInt()
-        userConfig!!._channel_handshake_config = channelChannelHandshake
+        val channelHandshakeConfig = ChannelHandshakeConfig.with_default()
+        channelHandshakeConfig._minimum_depth = minChannelHandshakeDepth.toInt()
+        channelHandshakeConfig._announced_channel = announcedChannels
+        userConfig!!._channel_handshake_config = channelHandshakeConfig
 
         val channelHandshakeLimits = ChannelHandshakeLimits.with_default()
-        channelHandshakeLimits._force_announced_channel_preference = announcedChannels
+        channelHandshakeLimits._force_announced_channel_preference = true
         userConfig!!._channel_handshake_limits = channelHandshakeLimits
 
         handleResolve(promise, LdkCallbackResponses.config_init_success)
