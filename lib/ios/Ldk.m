@@ -87,6 +87,12 @@ RCT_EXTERN_METHOD(networkGraphListNodes:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(networkGraphListChannels:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(networkGraphChannel:(NSString *)shortChannelId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(networkGraphNode:(NSString *)nodeId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 
 //MARK: Payments
 RCT_EXTERN_METHOD(decode:(NSString *)paymentRequest

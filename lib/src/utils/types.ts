@@ -130,6 +130,30 @@ export type TChannel = {
 	unspendable_punishment_reserve?: number;
 };
 
+export type TNetworkGraphChannelInfo = {
+	shortChannelId: string;
+	capacity_sats?: number;
+	node_one: string;
+	node_two: string;
+	one_to_two_fees_base_sats: number;
+	one_to_two_fees_proportional_millionths: number;
+	one_to_two_enabled: boolean;
+	one_to_two_last_update: number;
+	one_to_two_htlc_maximum_sats: number;
+	one_to_two_htlc_minimum_sats: number;
+	two_to_one_fees_base_sats: number;
+	two_to_one_fees_proportional_millionths: number;
+	two_to_one_enabled: boolean;
+	two_to_one_last_update: number;
+	two_to_one_htlc_maximum_sats: number;
+	two_to_one_htlc_minimum_sats: number;
+};
+
+export type TNetworkGraphNodeInfo = {
+	nodeId: string;
+	shortChannelIds: string[];
+};
+
 export type TInvoice = {
 	amount_satoshis?: number;
 	description?: string;

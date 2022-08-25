@@ -46,6 +46,7 @@ extension Invoice {
     }
 }
 
+//Our own channels
 extension ChannelDetails {
     var asJson: Any {
         return [
@@ -67,6 +68,41 @@ extension ChannelDetails {
             "channel_value_satoshis": get_channel_value_satoshis(),
             "force_close_spend_delay": get_force_close_spend_delay().getValue() as Any, //Optional number
             "unspendable_punishment_reserve": get_unspendable_punishment_reserve().getValue() as Any //Optional number
+        ]
+    }
+}
+
+//Channels in our network graph
+extension ChannelInfo {
+    var asJson: Any {
+        return [
+            "capacity_sats": get_capacity_sats().getValue() as Any, //Optional number
+            "node_one": Data(get_node_one().as_slice()).hexEncodedString(), //String
+            "node_two": Data(get_node_two().as_slice()).hexEncodedString(), //String
+            
+            "one_to_two_fees_base_sats": get_one_to_two().get_fees().get_base_msat() / 1000, //Number
+            "one_to_two_fees_proportional_millionths": get_one_to_two().get_fees().get_proportional_millionths(), //Number
+            "one_to_two_enabled": get_one_to_two().get_enabled(), //Bool
+            "one_to_two_last_update": get_one_to_two().get_last_update(), //Number
+            "one_to_two_htlc_maximum_sats": get_one_to_two().get_htlc_maximum_msat() / 1000, //Number
+            "one_to_two_htlc_minimum_sats": get_one_to_two().get_htlc_minimum_msat() / 1000, //Number
+
+            "two_to_one_fees_base_sats": get_two_to_one().get_fees().get_base_msat() / 1000, //Number
+            "two_to_one_fees_proportional_millionths": get_two_to_one().get_fees().get_proportional_millionths(), //Number
+            "two_to_one_enabled": get_two_to_one().get_enabled(), //Bool
+            "two_to_one_last_update": get_two_to_one().get_last_update(), //Number
+            "two_to_one_htlc_maximum_sats": get_two_to_one().get_htlc_maximum_msat() / 1000, //Number
+            "two_to_one_htlc_minimum_sats": get_two_to_one().get_htlc_minimum_msat() / 1000, //Number
+        ]
+    }
+}
+
+//Nodes in our network graph
+extension NodeInfo {
+    var asJson: Any {
+        return [
+            "shortChannelIds": get_channels().map({ String($0) }),
+            //TODO gathering other details results in EXC_BAD_ACCESS. Test with next version of LDK.
         ]
     }
 }

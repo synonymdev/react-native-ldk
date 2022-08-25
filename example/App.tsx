@@ -387,21 +387,24 @@ const App = (): ReactElement => {
 					<Button
 						title={'Get network graph'}
 						onPress={async (): Promise<void> => {
-							const nodesRes = await ldk.networkGraphListNodes();
+							const nodesRes = await ldk.completeNetworkGraphNodes();
 							if (nodesRes.isErr()) {
 								return setMessage(nodesRes.error.message);
 							}
 
-							const channelRes = await ldk.networkGraphListChannels();
+							const channelRes = await ldk.completeNetworkGraphChannels();
 							if (channelRes.isErr()) {
 								return setMessage(channelRes.error.message);
 							}
 
-							setMessage(
-								`Nodes: ${nodesRes.value.join(
-									', ',
-								)}\nChannel short IDs: ${channelRes.value.join(', ')}`,
-							);
+							const nodes = `Nodes:\n\n${nodesRes.value.map(
+								(node) => `\n${JSON.stringify(node)}`,
+							)}`;
+							const channels = `Channels:\n\n${channelRes.value.map(
+								(channel) => `\n${JSON.stringify(channel)}`,
+							)}`;
+
+							setMessage(`${nodes}\n${channels}`);
 						}}
 					/>
 

@@ -16,6 +16,7 @@ import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCr
 import org.ldk.structs.Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK
 import java.net.InetSocketAddress
 
+
 //MARK: ************Replicate in typescript and swift************
 enum class EventTypes {
     ldk_log,
@@ -632,13 +633,28 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
+    fun networkGraphNode(nodeId: String, promise: Promise) {
+        val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
+
+        val id = NodeId.from_pubkey(nodeId.hexa())
+        promise.resolve(graph.node(id)?.asJson)
+    }
+
+    @ReactMethod
     fun networkGraphListChannels(promise: Promise) {
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
 
         val list = Arguments.createArray()
-        graph.list_channels().iterator().forEach { list.pushDouble(it.toDouble()) }
+        graph.list_channels().iterator().forEach { list.pushString(it.toString()) }
 
         promise.resolve(list)
+    }
+
+    @ReactMethod
+    fun networkGraphChannel(shortChannelId: String, promise: Promise) {
+        val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
+
+        promise.resolve(graph.channel(shortChannelId.toLong())?.asJson)
     }
 }
 

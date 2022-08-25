@@ -56,6 +56,7 @@ val Invoice.asJson: WritableMap
         return result
     }
 
+//Our own channels
 val ChannelDetails.asJson: WritableMap
     get() {
         val result = Arguments.createMap()
@@ -82,6 +83,43 @@ val ChannelDetails.asJson: WritableMap
         (_force_close_spend_delay as? Option_u16Z.Some)?.some?.toInt()
             ?.let { result.putInt("force_close_spend_delay", it) }
         result.putInt("unspendable_punishment_reserve", (_unspendable_punishment_reserve as Option_u64Z.Some).some.toInt())
+
+        return result
+    }
+
+//Channels in our network graph
+val ChannelInfo.asJson: WritableMap
+    get() {
+        val result = Arguments.createMap()
+
+        if (_capacity_sats is Option_u64Z.Some) result.putInt("capacity_sats", ((_capacity_sats as Option_u64Z.Some).some.toInt())) else result.putNull("capacity_sats")
+        result.putHexString("node_one", _node_one.as_slice())
+        result.putHexString("node_two", _node_two.as_slice())
+
+        result.putInt("one_to_two_fees_base_sats", _one_to_two?._fees?._base_msat?.div(1000) ?: 0)
+        result.putInt("one_to_two_fees_proportional_millionths", _one_to_two?._fees?._proportional_millionths ?: 0)
+        result.putBoolean("one_to_two_enabled", _one_to_two?._enabled ?: false)
+        result.putInt("one_to_two_last_update", _one_to_two?._last_update ?: 0)
+        result.putInt("one_to_two_htlc_maximum_sats", (_one_to_two?._htlc_maximum_msat ?: 0).toInt() / 1000)
+        result.putInt("one_to_two_htlc_minimum_sats", (_one_to_two?._htlc_minimum_msat ?: 0).toInt() / 1000)
+
+        result.putInt("two_to_one_fees_base_sats", _two_to_one?._fees?._base_msat?.div(1000) ?: 0)
+        result.putInt("two_to_one_fees_proportional_millionths", _two_to_one?._fees?._proportional_millionths ?: 0)
+        result.putBoolean("two_to_one_enabled", _two_to_one?._enabled ?: false)
+        result.putInt("two_to_one_last_update", _two_to_one?._last_update ?: 0)
+        result.putInt("two_to_one_htlc_maximum_sats", (_two_to_one?._htlc_maximum_msat ?: 0).toInt() / 1000)
+        result.putInt("two_to_one_htlc_minimum_sats", (_two_to_one?._htlc_minimum_msat ?: 0).toInt() / 1000)
+
+        return result
+    }
+
+val NodeInfo.asJson: WritableMap
+    get() {
+        val result = Arguments.createMap()
+
+        val shortChannelIds = Arguments.createArray()
+        _channels.iterator().forEach { shortChannelIds.pushString(it.toString()) }
+        result.putArray("channels", shortChannelIds)
 
         return result
     }

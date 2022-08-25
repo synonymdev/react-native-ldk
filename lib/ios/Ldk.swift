@@ -656,10 +656,17 @@ class Ldk: NSObject {
         guard let networkGraph = networkGraph?.read_only() else {
             return handleReject(reject, .init_network_graph)
         }
-        
-        print(networkGraph.list_nodes().debugDescription)
                 
-        return resolve(networkGraph.list_nodes().map { Data($0.write()).hexEncodedString() })
+        return resolve(networkGraph.list_nodes().map { Data($0.as_slice()).hexEncodedString() })
+    }
+    
+    @objc
+    func networkGraphNode(_ nodeId: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+                
+        return resolve(networkGraph.node(node_id: NodeId(pubkey: String(nodeId).hexaBytes)).asJson)
     }
     
     @objc
@@ -667,20 +674,18 @@ class Ldk: NSObject {
         guard let networkGraph = networkGraph?.read_only() else {
             return handleReject(reject, .init_network_graph)
         }
-                
-        return resolve(networkGraph.list_channels().map { $0 })
+        
+        return resolve(networkGraph.list_channels().map { String($0) })
     }
     
-//    @objc
-//    func networkGraphChannel(_ shortChannelId: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-//        guard let networkGraph = networkGraph?.read_only() else {
-//            return handleReject(reject, .init_network_graph)
-//        }
-//        
-//        let channel = networkGraph.channel(short_channel_id: UInt64(shortChannelId))
-//        
-//        return resolve(channel.get_capacity_sats())
-//    }
+    @objc
+    func networkGraphChannel(_ shortChannelId: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+        
+        return resolve(networkGraph.channel(short_channel_id: UInt64(shortChannelId as String)!).asJson)
+    }
 }
 
 //MARK: Singleton react native event emitter
