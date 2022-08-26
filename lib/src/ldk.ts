@@ -581,7 +581,7 @@ class LDK {
 	 * @param nodeId
 	 * @returns {Promise<Ok<Ok<TNetworkGraphChannelInfo> | Err<string>> | Err<unknown>>}
 	 */
-	async completeNetworkGraphNodes(): Promise<Result<TNetworkGraphNodeInfo[]>> {
+	async completeGraphNodes(): Promise<Result<TNetworkGraphNodeInfo[]>> {
 		try {
 			const res = await this.networkGraphListNodes();
 			let nodes: TNetworkGraphNodeInfo[] = [];
@@ -640,9 +640,7 @@ class LDK {
 	 * @param shortChannelId
 	 * @returns {Promise<Ok<Ok<TNetworkGraphChannelInfo> | Err<string>> | Err<unknown>>}
 	 */
-	async completeNetworkGraphChannels(): Promise<
-		Result<TNetworkGraphChannelInfo[]>
-		> {
+	async completeGraphChannels(): Promise<Result<TNetworkGraphChannelInfo[]>> {
 		try {
 			const res = await this.networkGraphListChannels();
 			let channels: TNetworkGraphChannelInfo[] = [];

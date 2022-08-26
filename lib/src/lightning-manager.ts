@@ -254,9 +254,9 @@ class LightningManager {
 
 		// Set fee estimates
 		const feeUpdateRes = await ldk.updateFees({
-			highPriority: 1000,
-			normal: 500,
-			background: 250,
+			highPriority: 12500,
+			normal: 12500,
+			background: 12500,
 		});
 		if (feeUpdateRes.isErr()) {
 			return feeUpdateRes;

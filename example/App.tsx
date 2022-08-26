@@ -387,12 +387,12 @@ const App = (): ReactElement => {
 					<Button
 						title={'Get network graph'}
 						onPress={async (): Promise<void> => {
-							const nodesRes = await ldk.completeNetworkGraphNodes();
+							const nodesRes = await ldk.completeGraphNodes();
 							if (nodesRes.isErr()) {
 								return setMessage(nodesRes.error.message);
 							}
 
-							const channelRes = await ldk.completeNetworkGraphChannels();
+							const channelRes = await ldk.completeGraphChannels();
 							if (channelRes.isErr()) {
 								return setMessage(channelRes.error.message);
 							}
