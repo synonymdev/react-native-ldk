@@ -157,10 +157,11 @@ class Ldk: NSObject {
         
         let channelHandshakeConfig = ChannelHandshakeConfig()
         channelHandshakeConfig.set_minimum_depth(val: UInt32(minChannelHandshakeDepth))
+        channelHandshakeConfig.set_announced_channel(val: announcedChannels)
         userConfig!.set_channel_handshake_config(val: channelHandshakeConfig)
 
         let channelHandshakeLimits = ChannelHandshakeLimits()
-        channelHandshakeLimits.set_force_announced_channel_preference(val: announcedChannels)
+        channelHandshakeLimits.set_force_announced_channel_preference(val: true)
         userConfig!.set_channel_handshake_limits(val: channelHandshakeLimits)
 
         return handleResolve(resolve, .config_init_success)
@@ -175,8 +176,6 @@ class Ldk: NSObject {
         if serializedBackup == "" {
             networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
         } else {
-            print("serializedBackup:")
-            print(serializedBackup)
             let read = NetworkGraph.read(ser: String(serializedBackup).hexaBytes, arg: logger)
             if read.isOk() {
                 networkGraph = read.getValue()
@@ -184,7 +183,7 @@ class Ldk: NSObject {
                 return handleReject(reject, .network_graph_restore_failed)
             }
         }
-                
+                        
         return handleResolve(resolve, .network_graph_init_success)
     }
 
@@ -242,7 +241,8 @@ class Ldk: NSObject {
                     chain_monitor: chainMonitor,
                     net_graph: networkGraph,
                     tx_broadcaster: broadcaster,
-                    logger: logger
+                    logger: logger,
+                    enableP2PGossip: true
                 )
             } else {
                 //Restoring node
@@ -255,25 +255,30 @@ class Ldk: NSObject {
                     filter: filter,
                     net_graph_serialized: networkGraph.write(),
                     tx_broadcaster: broadcaster,
-                    logger: logger
+                    logger: logger,
+                    enableP2PGossip: true
                 )
             }
+            
         } catch {
             return handleReject(reject, .unknown_error, error)
         }
 
         channelManager = channelManagerConstructor!.channelManager
         self.networkGraph = channelManagerConstructor!.net_graph
-
+                
         //Scorer setup
-        let scorer = MultiThreadedLockableScore(score: Score())
+        let scoringParams = ProbabilisticScoringParameters()
+        let probabalisticScorer = ProbabilisticScorer(params: scoringParams, network_graph: self.networkGraph!, logger: logger)
+        let score = probabalisticScorer.as_Score()
+        let scorer = MultiThreadedLockableScore(score: score)
         
         channelManagerConstructor!.chain_sync_completed(persister: channelManagerPersister, scorer: scorer)
         peerManager = channelManagerConstructor!.peerManager
 
         peerHandler = channelManagerConstructor!.getTCPPeerHandler()
         invoicePayer = channelManagerConstructor!.payer
-
+        
         return handleResolve(resolve, .channel_manager_init_success)
     }
     
@@ -644,6 +649,42 @@ class Ldk: NSObject {
         }
 
         return resolve(channelManager.list_usable_channels().map { $0.asJson })
+    }
+    
+    @objc
+    func networkGraphListNodes(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+                
+        return resolve(networkGraph.list_nodes().map { Data($0.as_slice()).hexEncodedString() })
+    }
+    
+    @objc
+    func networkGraphNode(_ nodeId: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+                
+        return resolve(networkGraph.node(node_id: NodeId(pubkey: String(nodeId).hexaBytes)).asJson)
+    }
+    
+    @objc
+    func networkGraphListChannels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+        
+        return resolve(networkGraph.list_channels().map { String($0) })
+    }
+    
+    @objc
+    func networkGraphChannel(_ shortChannelId: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+        
+        return resolve(networkGraph.channel(short_channel_id: UInt64(shortChannelId as String)!).asJson)
     }
 }
 

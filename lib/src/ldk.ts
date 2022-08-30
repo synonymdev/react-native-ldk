@@ -23,6 +23,8 @@ import {
 	TInitNetworkGraphReq,
 	TCloseChannelReq,
 	TSpendOutputsReq,
+	TNetworkGraphChannelInfo,
+	TNetworkGraphNodeInfo,
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -405,6 +407,7 @@ class LDK {
 		description,
 		expiryDeltaSeconds,
 	}: TCreatePaymentReq): Promise<Result<TInvoice>> {
+		//TODO confirm we have enough incoming capacity
 		try {
 			const res = await NativeLDK.createPaymentRequest(
 				(amountSats || 0) * 1000,
@@ -537,6 +540,124 @@ class LDK {
 		try {
 			const res = await NativeLDK.listUsableChannels();
 			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Fetches list of node IDs in network graph
+	 * https://docs.rs/lightning/latest/lightning/routing/gossip/struct.ReadOnlyNetworkGraph.html#method.nodes
+	 * @returns {Promise<Ok<Ok<string[]> | Err<string[]>> | Err<unknown>>}
+	 */
+	async networkGraphListNodes(): Promise<Result<string[]>> {
+		try {
+			const res = await NativeLDK.networkGraphListNodes();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Fetches node details from network graph
+	 * https://docs.rs/lightning/latest/lightning/routing/gossip/struct.ChannelInfo.html
+	 * @param shortChannelId
+	 * @returns {Promise<Ok<Ok<string> | Err<string>> | Err<unknown>>}
+	 */
+	async networkGraphNode(
+		nodeId: string,
+	): Promise<Result<TNetworkGraphNodeInfo>> {
+		try {
+			const res = await NativeLDK.networkGraphNode(nodeId);
+			return ok({ ...res, nodeId });
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Fetches full list of nodes and their details
+	 * @param nodeId
+	 * @returns {Promise<Ok<Ok<TNetworkGraphChannelInfo> | Err<string>> | Err<unknown>>}
+	 */
+	async completeGraphNodes(): Promise<Result<TNetworkGraphNodeInfo[]>> {
+		try {
+			const res = await this.networkGraphListNodes();
+			let nodes: TNetworkGraphNodeInfo[] = [];
+			if (res.isErr()) {
+				return err(res.error);
+			}
+
+			for (let index = 0; index < res.value.length; index++) {
+				const nodeRes = await this.networkGraphNode(res.value[index]);
+				if (nodeRes.isErr()) {
+					return err(nodeRes.error);
+				}
+
+				nodes.push(nodeRes.value);
+			}
+
+			return ok(nodes);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Fetches list of short channel IDs in network graph
+	 * https://docs.rs/lightning/latest/lightning/routing/gossip/struct.ReadOnlyNetworkGraph.html#method.channels
+	 * @returns {Promise<Ok<string[]>> | Err<unknown>>}
+	 */
+	async networkGraphListChannels(): Promise<Result<string[]>> {
+		try {
+			const res = await NativeLDK.networkGraphListChannels();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Fetches channel details from network graph
+	 * https://docs.rs/lightning/latest/lightning/routing/gossip/struct.ChannelInfo.html
+	 * @param shortChannelId
+	 * @returns {Promise<Ok<Ok<string> | Err<string>> | Err<unknown>>}
+	 */
+	async networkGraphChannel(
+		shortChannelId: string,
+	): Promise<Result<TNetworkGraphChannelInfo>> {
+		try {
+			const res = await NativeLDK.networkGraphChannel(shortChannelId);
+			return ok({ ...res, shortChannelId });
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Fetches full list of channels and their details
+	 * @param shortChannelId
+	 * @returns {Promise<Ok<Ok<TNetworkGraphChannelInfo> | Err<string>> | Err<unknown>>}
+	 */
+	async completeGraphChannels(): Promise<Result<TNetworkGraphChannelInfo[]>> {
+		try {
+			const res = await this.networkGraphListChannels();
+			let channels: TNetworkGraphChannelInfo[] = [];
+			if (res.isErr()) {
+				return err(res.error);
+			}
+
+			for (let index = 0; index < res.value.length; index++) {
+				const channelRes = await this.networkGraphChannel(res.value[index]);
+				if (channelRes.isErr()) {
+					return err(channelRes.error);
+				}
+
+				channels.push(channelRes.value);
+			}
+
+			return ok(channels);
 		} catch (e) {
 			return err(e);
 		}

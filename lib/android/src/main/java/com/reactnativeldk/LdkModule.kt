@@ -16,6 +16,7 @@ import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCr
 import org.ldk.structs.Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK
 import java.net.InetSocketAddress
 
+
 //MARK: ************Replicate in typescript and swift************
 enum class EventTypes {
     ldk_log,
@@ -175,12 +176,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val channelConfig = ChannelConfig.with_default()
         userConfig!!._channel_config = channelConfig
 
-        val channelChannelHandshake = ChannelHandshakeConfig.with_default()
-        channelChannelHandshake._minimum_depth = minChannelHandshakeDepth.toInt()
-        userConfig!!._channel_handshake_config = channelChannelHandshake
+        val channelHandshakeConfig = ChannelHandshakeConfig.with_default()
+        channelHandshakeConfig._minimum_depth = minChannelHandshakeDepth.toInt()
+        channelHandshakeConfig._announced_channel = announcedChannels
+        userConfig!!._channel_handshake_config = channelHandshakeConfig
 
         val channelHandshakeLimits = ChannelHandshakeLimits.with_default()
-        channelHandshakeLimits._force_announced_channel_preference = announcedChannels
+        channelHandshakeLimits._force_announced_channel_preference = true
         userConfig!!._channel_handshake_limits = channelHandshakeLimits
 
         handleResolve(promise, LdkCallbackResponses.config_init_success)
@@ -254,7 +256,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     chainMonitor,
                     networkGraph,
                     broadcaster.broadcaster,
-                    logger.logger
+                    logger.logger,
                 )
             } else {
                 //Restoring node
@@ -618,6 +620,41 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         channelManager!!.list_usable_channels().iterator().forEach { list.pushMap(it.asJson) }
 
         promise.resolve(list)
+    }
+
+    @ReactMethod
+    fun networkGraphListNodes(promise: Promise) {
+        val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
+
+        val list = Arguments.createArray()
+        graph.list_nodes().iterator().forEach { list.pushHexString(it.as_slice()) }
+
+        promise.resolve(list)
+    }
+
+    @ReactMethod
+    fun networkGraphNode(nodeId: String, promise: Promise) {
+        val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
+
+        val id = NodeId.from_pubkey(nodeId.hexa())
+        promise.resolve(graph.node(id)?.asJson)
+    }
+
+    @ReactMethod
+    fun networkGraphListChannels(promise: Promise) {
+        val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
+
+        val list = Arguments.createArray()
+        graph.list_channels().iterator().forEach { list.pushString(it.toString()) }
+
+        promise.resolve(list)
+    }
+
+    @ReactMethod
+    fun networkGraphChannel(shortChannelId: String, promise: Promise) {
+        val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
+
+        promise.resolve(graph.channel(shortChannelId.toLong())?.asJson)
     }
 }
 

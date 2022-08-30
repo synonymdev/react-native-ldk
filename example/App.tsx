@@ -15,12 +15,16 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import { backupAccount, importAccount, setupLdk, syncLdk } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
-import lm, { EEventTypes } from '@synonymdev/react-native-ldk';
+import lm, {
+	EEventTypes,
+	TChannelManagerPayment,
+} from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
 import { createNewAccount } from './utils/helpers';
 import RNFS from 'react-native-fs';
 
 let logSubscription: EmitterSubscription | undefined;
+let paymentSubscription: EmitterSubscription | undefined;
 
 const App = (): ReactElement => {
 	const [message, setMessage] = useState('...');
@@ -80,7 +84,18 @@ const App = (): ReactElement => {
 			);
 		}
 
-		return (): void => logSubscription && logSubscription.remove();
+		if (!paymentSubscription) {
+			paymentSubscription = ldk.onEvent(
+				EEventTypes.channel_manager_payment_claimed,
+				(res: TChannelManagerPayment) =>
+					alert(`Received ${res.amount_sat} sats`),
+			);
+		}
+
+		return (): void => {
+			logSubscription && logSubscription.remove();
+			paymentSubscription && paymentSubscription.remove();
+		};
 	}, []);
 
 	return (
@@ -291,7 +306,7 @@ const App = (): ReactElement => {
 								}
 							};
 
-							const amountSats = 1234;
+							const amountSats = 100;
 							Alert.alert('Create invoice', 'Specify amount?', [
 								{
 									text: 'Cancel',
@@ -366,6 +381,30 @@ const App = (): ReactElement => {
 							console.log(nodeIdRes.value);
 
 							setMessage(`Node ID: ${nodeIdRes.value}`);
+						}}
+					/>
+
+					<Button
+						title={'Get network graph'}
+						onPress={async (): Promise<void> => {
+							const nodesRes = await ldk.completeGraphNodes();
+							if (nodesRes.isErr()) {
+								return setMessage(nodesRes.error.message);
+							}
+
+							const channelRes = await ldk.completeGraphChannels();
+							if (channelRes.isErr()) {
+								return setMessage(channelRes.error.message);
+							}
+
+							const nodes = `Nodes:\n\n${nodesRes.value.map(
+								(node) => `\n${JSON.stringify(node)}`,
+							)}`;
+							const channels = `Channels:\n\n${channelRes.value.map(
+								(channel) => `\n${JSON.stringify(channel)}`,
+							)}`;
+
+							setMessage(`${nodes}\n${channels}`);
 						}}
 					/>
 
