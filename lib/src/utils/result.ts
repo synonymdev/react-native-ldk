@@ -13,7 +13,10 @@ export class Ok<T> {
 }
 
 export class Err<T> {
-	public constructor(public readonly error: Error) {
+	public constructor(
+		public readonly error: Error,
+		public readonly code: string = '',
+	) {
 		// Don't console log for unit tests or if we're not in dev mode
 		if (process.env.JEST_WORKER_ID === undefined && __DEV__) {
 			console.info(error);
@@ -39,8 +42,23 @@ export const ok = <T>(value: T): Ok<T> => new Ok(value);
  */
 export const err = <T>(error: Error | string | any): Err<T> => {
 	if (typeof error === 'string') {
-		return new Err(new Error(error));
+		return new Err(new Error(error), fallBackErrorCode(error));
 	}
 
-	return new Err(error);
+	return new Err(error, error.code || fallBackErrorCode(error.message));
+};
+
+/**
+ * Creates a slug type code for default error.code
+ * @param text
+ * @returns {string}
+ */
+const fallBackErrorCode = (text: string): string => {
+	if (!text) {
+		return '';
+	}
+	return text
+		.toLowerCase()
+		.replace(/[^\w ]+/g, '')
+		.replace(/ +/g, '-');
 };
