@@ -53,6 +53,26 @@ val Invoice.asJson: WritableMap
         result.putInt("currency", currency().ordinal)
         result.putString("to_str", signedInv.to_str())
 
+        val hints = Arguments.createArray()
+        route_hints().iterator().forEach { routeHint ->
+            val hops = Arguments.createArray()
+            routeHint._a.iterator().forEach { hop ->
+                hops.pushMap(hop.asJson)
+            }
+            hints.pushArray(hops)
+        }
+        result.putArray("route_hints", hints)
+
+        return result
+    }
+
+val RouteHintHop.asJson: WritableMap
+    get() {
+        val result = Arguments.createMap()
+
+        result.putHexString("src_node_id", _src_node_id)
+        result.putString("short_channel_id", _short_channel_id.toString())
+
         return result
     }
 

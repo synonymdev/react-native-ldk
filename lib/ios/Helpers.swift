@@ -41,7 +41,17 @@ extension Invoice {
             "timestamp": timestamp(),
             "features": Data(features().write()).hexEncodedString(),
             "currency": currency().rawValue,
-            "to_str": to_str()
+            "to_str": to_str(),
+            "route_hints": route_hints().map({ $0.get_a().map({ $0.asJson }) }),
+        ]
+    }
+}
+
+extension RouteHintHop {
+    var asJson: Any {
+        return [
+            "src_node_id": Data(get_src_node_id()).hexEncodedString(),
+            "short_channel_id": String(get_short_channel_id())
         ]
     }
 }
