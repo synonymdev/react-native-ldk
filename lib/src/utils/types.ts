@@ -170,6 +170,14 @@ export type TInvoice = {
 	features?: string;
 	currency: number;
 	to_str: string; //Actual bolt11 invoice string
+	route_hints: RouteHints[];
+};
+
+export type RouteHints = RouteHintHop[];
+
+export type RouteHintHop = {
+	src_node_id: string;
+	short_channel_id: string;
 };
 
 export type TLogListener = {
