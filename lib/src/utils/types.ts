@@ -12,9 +12,7 @@ export enum EEventTypes {
 	broadcast_transaction = 'broadcast_transaction',
 	persist_manager = 'persist_manager',
 	persist_new_channel = 'persist_new_channel',
-	persist_graph = 'persist_graph',
 	update_persisted_channel = 'update_persisted_channel',
-	//>>LdkChannelManagerPersister.handle_event()
 	channel_manager_funding_generation_ready = 'channel_manager_funding_generation_ready',
 	channel_manager_payment_received = 'channel_manager_payment_received',
 	channel_manager_payment_sent = 'channel_manager_payment_sent',
@@ -38,7 +36,6 @@ export type TRegisterOutputEvent = {
 	script_pubkey: string;
 };
 export type TPersistManagerEvent = { channel_manager: string };
-export type TPersistGraphEvent = { network_graph: string };
 export type TBroadcastTransactionEvent = { tx: string };
 
 //LDK channel manager event responses
@@ -252,8 +249,7 @@ export type TInitChannelManagerReq = {
 };
 
 export type TInitNetworkGraphReq = {
-	serializedBackup?: string;
-	genesisHash?: string;
+	genesisHash: string;
 };
 
 export type TInitConfig = {
@@ -354,8 +350,9 @@ export type TLdkStart = {
 	account: TAccount;
 	genesisHash: string;
 	getBestBlock: TGetBestBlock;
-	getItem: TStorage;
-	setItem: TStorage;
+	getItem: TStorage; //TODO remove after persistence is native
+	setItem: TStorage; //TODO remove after persistence is native
+	storagePath: string;
 	getTransactionData: TGetTransactionData;
 	network?: ENetworks;
 };

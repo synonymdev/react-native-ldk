@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as electrum from 'rn-electrum-client/helpers';
 import { err, ok, Result } from '../utils/result';
 import Clipboard from '@react-native-clipboard/clipboard';
+import RNFS from 'react-native-fs';
 import {
 	getBlockHashFromHeight,
 	getBlockHeader,
@@ -104,6 +105,7 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			genesisHash: genesisHash.value,
 			setItem,
 			getItem,
+			storagePath: `${RNFS.DocumentDirectoryPath}/ldk/`,
 			account,
 			getTransactionData,
 		});

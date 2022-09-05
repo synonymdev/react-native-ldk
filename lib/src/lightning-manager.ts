@@ -32,7 +32,6 @@ import {
 	TLdkPeers,
 	TLdkStart,
 	TPeer,
-	TPersistGraphEvent,
 	TPersistManagerEvent,
 	TRegisterOutputEvent,
 	TRegisterTxEvent,
@@ -110,7 +109,6 @@ class LightningManager {
 			EEventTypes.persist_new_channel,
 			this.onPersistNewChannel.bind(this),
 		);
-		ldk.onEvent(EEventTypes.persist_graph, this.onPersistGraph.bind(this));
 		ldk.onEvent(
 			EEventTypes.update_persisted_channel,
 			this.onUpdatePersistedChannel.bind(this),
@@ -184,6 +182,7 @@ class LightningManager {
 		getBestBlock,
 		getItem,
 		setItem,
+		storagePath,
 		getTransactionData,
 		network = ENetworks.regtest,
 	}: TLdkStart): Promise<Result<string>> {
@@ -226,6 +225,7 @@ class LightningManager {
 			getBestBlock,
 			getItem,
 			setItem,
+			storagePath,
 			getTransactionData,
 			network,
 		});
@@ -247,6 +247,12 @@ class LightningManager {
 		this.currentBlock = bestBlock;
 		this.watchTxs = [];
 		this.watchOutputs = [];
+
+		//The path all wallet and network graph persistence will be saved to
+		const storagePathRes = await ldk.setStoragePath(storagePath);
+		if (storagePathRes.isErr()) {
+			return storagePathRes;
+		}
 
 		// Step 1: Initialize the FeeEstimator
 		// Lazy loaded in native code
@@ -299,33 +305,17 @@ class LightningManager {
 		// Handled in initChannelManager below
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
-		const networkGraph = await this.getLdkNetworkGraph();
-
-		if (networkGraph) {
-			const networkGraphRes = await ldk.initNetworkGraph({
-				serializedBackup: networkGraph,
-			});
-			if (networkGraphRes.isErr()) {
-				console.log(
-					`Network graph restore failed (${networkGraphRes.error.message}). Syncing from scratch.`,
-				);
-				//Restore failed, re-sync graph from scratch
-				const newNetworkGraphRes = await ldk.initNetworkGraph({ genesisHash });
-				if (newNetworkGraphRes.isErr()) {
-					return newNetworkGraphRes;
-				}
-			}
-		} else {
-			const newNetworkGraphRes = await ldk.initNetworkGraph({ genesisHash });
-			if (newNetworkGraphRes.isErr()) {
-				return newNetworkGraphRes;
-			}
+		const networkGraphRes = await ldk.initNetworkGraph({
+			genesisHash,
+		});
+		if (networkGraphRes.isErr()) {
+			return networkGraphRes;
 		}
 
 		// Step 8: Initialize the UserConfig ChannelManager
 		const confRes = await ldk.initConfig({
 			acceptInboundChannels: true,
-			manuallyAcceptInboundChannels: false, //TODO might need to be true if we want to set closing address when blocktank opens with us
+			manuallyAcceptInboundChannels: false,
 			announcedChannels: false,
 			minChannelHandshakeDepth: 1, //TODO Verify correct min
 		});
@@ -491,7 +481,7 @@ class LightningManager {
 	importAccount = async ({
 		backup,
 		setItem,
-		getItem,
+		getItem, //TODO pass storage path instead
 		overwrite = false,
 	}: {
 		backup: string | TAccountBackup;
@@ -725,19 +715,6 @@ class LightningManager {
 		this.updateStorage(storageKey, JSON.stringify(peers));
 	};
 
-	/**
-	 * Caches network graph.
-	 * @param {string} data
-	 * @returns {Promise<void>}
-	 */
-	private saveNetworkGraph = async (data: string): Promise<void> => {
-		const storageKey = getLdkStorageKey(
-			this.account.name,
-			ELdkData.networkGraph,
-		);
-		this.updateStorage(storageKey, JSON.stringify(data));
-	};
-
 	private getLdkChannelManager = async (): Promise<TLdkChannelManager> => {
 		const ldkDataKey = ELdkData.channelManager;
 		const storageKey = getLdkStorageKey(this.account.name, ldkDataKey);
@@ -805,10 +782,6 @@ class LightningManager {
 
 	private onUpdatePersistedChannel(res: TChannelBackupEvent): void {
 		this.saveLdkChannelData(res.id, res.data).then().catch(console.error);
-	}
-
-	private onPersistGraph(res: TPersistGraphEvent): void {
-		this.saveNetworkGraph(res.network_graph).then().catch(console.error);
 	}
 
 	//LDK channel manager events

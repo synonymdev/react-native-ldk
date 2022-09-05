@@ -10,7 +10,6 @@ enum EventTypes: String, CaseIterable {
     case broadcast_transaction = "broadcast_transaction"
     case persist_manager = "persist_manager"
     case persist_new_channel = "persist_new_channel"
-    case persist_graph = "persist_graph"
     case update_persisted_channel = "update_persisted_channel"
     case channel_manager_funding_generation_ready = "channel_manager_funding_generation_ready"
     case channel_manager_payment_received = "channel_manager_payment_received"
@@ -24,13 +23,14 @@ enum EventTypes: String, CaseIterable {
     case channel_manager_channel_closed = "channel_manager_channel_closed"
     case channel_manager_discard_funding = "channel_manager_discard_funding"
     case channel_manager_payment_claimed = "channel_manager_payment_claimed"
-    //<<
 }
 //*****************************************************************
 
 enum LdkErrors: String {
     case unknown_error = "unknown_error"
     case already_init = "already_init"
+    case create_storage_dir_fail = "create_storage_dir_fail"
+    case init_storage_path = "init_storage_path"
     case invalid_seed_hex = "invalid_seed_hex"
     case init_chain_monitor = "init_chain_monitor"
     case init_keys_manager = "init_keys_manager"
@@ -62,6 +62,7 @@ enum LdkErrors: String {
 }
 
 enum LdkCallbackResponses: String {
+    case storage_path_set = "storage_path_set"
     case fees_updated = "fees_updated"
     case log_level_updated = "log_level_updated"
     case log_path_updated = "log_path_updated"
@@ -79,6 +80,11 @@ enum LdkCallbackResponses: String {
     case claim_funds_success = "claim_funds_success"
     case ldk_reset = "ldk_reset"
     case close_channel_success = "close_channel_success"
+}
+
+enum LdkFileNames: String {
+    case network_graph = "network_graph.bin"
+    //TODO channel manager and monitors
 }
 
 @objc(Ldk)
@@ -103,8 +109,33 @@ class Ldk: NSObject {
     var invoicePayer: InvoicePayer?
     var ldkNetwork: LDKNetwork?
     var ldkCurrency: LDKCurrency?
+    
+    //Static to be accessed from other classes
+    static var baseStoragePath: URL?
 
     //MARK: Startup methods
+    
+    @objc
+    func setStoragePath(_ storagePath: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard Ldk.baseStoragePath == nil else {
+            return handleReject(reject, .already_init)
+        }
+        
+        let path = String(storagePath)
+        
+        do {
+            if !FileManager().fileExists(atPath: path) {
+                try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
+            }
+        } catch {
+            return handleReject(reject, .create_storage_dir_fail)
+        }
+        
+
+        Ldk.baseStoragePath = URL(fileURLWithPath: path)
+
+        return handleResolve(resolve, .storage_path_set)
+    }
 
     @objc
     func initChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -168,22 +199,30 @@ class Ldk: NSObject {
     }
 
     @objc
-    func initNetworkGraph(_ genesisHash: NSString, serializedBackup: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard networkGraph == nil else {
             return handleReject(reject, .already_init)
         }
         
-        if serializedBackup == "" {
-            networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
-        } else {
-            let read = NetworkGraph.read(ser: String(serializedBackup).hexaBytes, arg: logger)
+        guard let baseStoragePath = Ldk.baseStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        do {
+            let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: baseStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL)), arg: logger)
             if read.isOk() {
                 networkGraph = read.getValue()
             } else {
                 return handleReject(reject, .network_graph_restore_failed)
             }
+        } catch {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch.")
         }
-                        
+        
+        if networkGraph == nil {
+            networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
+        }
+        
         return handleResolve(resolve, .network_graph_init_success)
     }
 
@@ -295,7 +334,8 @@ class Ldk: NSObject {
         peerHandler = nil
         ldkNetwork = nil
         ldkCurrency = nil
-       
+        Ldk.baseStoragePath = nil
+        
         return handleResolve(resolve, .ldk_reset)
     }
 

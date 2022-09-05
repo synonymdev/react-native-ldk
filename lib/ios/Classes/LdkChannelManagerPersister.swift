@@ -222,9 +222,19 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     }
     
     override func persist_graph(network_graph: NetworkGraph) -> Result_NoneErrorZ {
-        LdkEventEmitter.shared.send(withEvent: .persist_graph, body: ["network_graph": Data(network_graph.write()).hexEncodedString()])
-
-        return Result_NoneErrorZ.ok()
+        guard let graphStorage = Ldk.baseStoragePath?.appendingPathComponent(LdkFileNames.network_graph.rawValue) else {
+            return Result_NoneErrorZ.ok() // TODO find out which error to return here
+        }
+                
+        do {
+            try Data(network_graph.write()).write(to: graphStorage)
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted network graph to disk")
+        
+            return Result_NoneErrorZ.ok()
+        } catch {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist network graph to disk Error \(error.localizedDescription).")
+            return Result_NoneErrorZ.ok() // TODO find out which error to return here
+        }
     }
     
     override func persist_scorer(scorer: MultiThreadedLockableScore) -> Result_NoneErrorZ {

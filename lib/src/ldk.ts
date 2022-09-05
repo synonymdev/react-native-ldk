@@ -54,6 +54,20 @@ class LDK {
 	}
 
 	/**
+	 * Sets the wallet storage path. Will create directories if they do not exist.
+	 * @param path
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async setStoragePath(path: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.setStoragePath(path);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
 	 * Connected and disconnected blocks must be provided
 	 * https://docs.rs/lightning/latest/lightning/chain/chainmonitor/struct.ChainMonitor.html
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
@@ -100,25 +114,16 @@ class LDK {
 	}
 
 	/**
-	 * Must provide either a serialized backup OR genesis block hash to sync from scratch
+	 * Inits the network graph from previous cache or syncs from scratch using genesis block hash.
 	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetworkGraph.html
-	 * @param serializedBackup
 	 * @param genesisHash
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async initNetworkGraph({
-		serializedBackup,
 		genesisHash,
 	}: TInitNetworkGraphReq): Promise<Result<string>> {
-		if (!serializedBackup && !genesisHash) {
-			return err('Must provide serializedBackup or genesisHash as a backup');
-		}
-
 		try {
-			const res = await NativeLDK.initNetworkGraph(
-				genesisHash || '',
-				serializedBackup || '',
-			);
+			const res = await NativeLDK.initNetworkGraph(genesisHash);
 			return ok(res);
 		} catch (e) {
 			return err(e);

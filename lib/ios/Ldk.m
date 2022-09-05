@@ -4,6 +4,9 @@
 @interface RCT_EXTERN_MODULE(Ldk, NSObject)
 
 //MARK: Startup methods
+RCT_EXTERN_METHOD(setStoragePath:(NSString *)storagePath
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
@@ -16,7 +19,6 @@ RCT_EXTERN_METHOD(initConfig:(BOOL *)acceptInboundChannels
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)genesisHash
-                  serializedBackup:(NSString *)serializedBackup
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChannelManager:(NSString *)network

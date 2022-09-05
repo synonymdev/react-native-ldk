@@ -107,8 +107,9 @@ export const getDefaultLdkStorageShape = (seed: string): TLdkStorage => {
  * @param {string} seed
  * @param {string} genesisHash
  * @param {TGetBestBlock} getBestBlock
- * @param {TStorage} getItem
- * @param {TStorage} setItem
+ * @param {TStorage} getItem //TODO remove
+ * @param {TStorage} setItem //TODO remove
+ * @param {string} storagePath
  * @param {TGetTransactionData} getTransactionData
  * @param {ENetworks} network
  * @returns {Promise<Result<string>>}
@@ -119,6 +120,7 @@ export const startParamCheck = async ({
 	getBestBlock,
 	getItem,
 	setItem,
+	storagePath,
 	getTransactionData,
 	network = ENetworks.regtest,
 }: TLdkStart): Promise<Result<string>> => {
@@ -151,9 +153,6 @@ export const startParamCheck = async ({
 		if (typeof genesisHash !== 'string') {
 			return err('genesisHash must be a string.');
 		}
-		if (typeof genesisHash !== 'string') {
-			return err('genesisHash must be a string.');
-		}
 
 		// Test getBestBlock
 		if (!isFunction(getBestBlock)) {
@@ -161,7 +160,7 @@ export const startParamCheck = async ({
 		}
 		const bestBlock = await getBestBlock();
 		if (!bestBlock?.hex || !bestBlock.height || !bestBlock.hash) {
-			return err('getBestBlock is not providing the expected data.}');
+			return err('getBestBlock is not providing the expected data.');
 		}
 
 		// Test setItem & getItem
@@ -171,6 +170,10 @@ export const startParamCheck = async ({
 		});
 		if (setAndGetCheckResponse.isErr()) {
 			return err(setAndGetCheckResponse.error.message);
+		}
+
+		if (!storagePath) {
+			return err('storagePath required for wallet persistence');
 		}
 
 		// Test getTransactionData
