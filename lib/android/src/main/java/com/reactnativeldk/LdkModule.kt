@@ -14,6 +14,7 @@ import org.ldk.structs.*
 import org.ldk.structs.Result_InvoiceParseOrSemanticErrorZ.Result_InvoiceParseOrSemanticErrorZ_OK
 import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCreationErrorZ_OK
 import org.ldk.structs.Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK
+import java.io.File
 import java.net.InetSocketAddress
 
 
@@ -26,7 +27,6 @@ enum class EventTypes {
     broadcast_transaction,
     persist_manager,
     persist_new_channel,
-    persist_graph,
     update_persisted_channel,
     channel_manager_funding_generation_ready,
     channel_manager_payment_received,
@@ -46,6 +46,8 @@ enum class EventTypes {
 enum class LdkErrors {
     unknown_error,
     already_init,
+    create_storage_dir_fail,
+    init_storage_path,
     invalid_seed_hex,
     init_chain_monitor,
     init_keys_manager,
@@ -70,13 +72,13 @@ enum class LdkErrors {
     invoice_payment_fail_path_parameter_error,
     init_ldk_currency,
     invoice_create_failed,
-    network_graph_restore_failed,
     init_scorer_failed,
     channel_close_fail,
     spend_outputs_fail
 }
 
 enum class LdkCallbackResponses {
+    storage_path_set,
     fees_updated,
     log_level_updated,
     log_path_updated,
@@ -94,6 +96,11 @@ enum class LdkCallbackResponses {
     claim_funds_success,
     ldk_reset,
     close_channel_success
+}
+
+enum class LdkFileNames(val fileName: String) {
+    network_graph("network_graph.bin")
+    //TODO channel manager and monitors
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -126,7 +133,37 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private var ldkNetwork: Network? = null
     private var ldkCurrency: Currency? = null
 
+    //Static to be accessed from other classes
+    companion object {
+        lateinit var baseStoragePath: String
+    }
+
+    init {
+        baseStoragePath = ""
+    }
+
     //Startup methods
+
+    @ReactMethod
+    fun setStoragePath(storagePath: String, promise: Promise) {
+        if (baseStoragePath != "") {
+            return handleReject(promise, LdkErrors.already_init)
+        }
+
+        try {
+            val directory = File(storagePath)
+            if (!directory.exists()) {
+                directory.mkdirs()
+            }
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.create_storage_dir_fail, Error(e))
+        }
+
+        LdkModule.baseStoragePath = if (storagePath.last().equals("/")) storagePath else "$storagePath/"
+
+        handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
+    }
+
     @ReactMethod
     fun initChainMonitor(promise: Promise) {
         if (chainMonitor !== null) {
@@ -189,21 +226,21 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initNetworkGraph(genesisHash: String, serializedBackup: String, promise: Promise) {
+    fun initNetworkGraph(genesisHash: String, promise: Promise) {
         if (networkGraph !== null) {
             return handleReject(promise, LdkErrors.already_init)
         }
 
-        if (serializedBackup == "") {
-            networkGraph = NetworkGraph.of(genesisHash.hexa(), logger.logger)
-        } else {
-            (NetworkGraph.read(serializedBackup.hexa(), logger.logger) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
+        val file = File(LdkModule.baseStoragePath + LdkFileNames.network_graph.fileName)
+        if (file.exists()) {
+            (NetworkGraph.read(file.readBytes(), logger.logger) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
                 networkGraph = res.res
             }
+        }
 
-            if (networkGraph == null) {
-                return handleReject(promise, LdkErrors.network_graph_restore_failed)
-            }
+        if (networkGraph == null) {
+            LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached network graph from disk. Will sync from scratch.")
+            networkGraph = NetworkGraph.of(genesisHash.hexa(), logger.logger)
         }
 
         handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
@@ -315,6 +352,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         peerHandler = null
         ldkNetwork = null
         ldkCurrency = null
+        LdkModule.baseStoragePath = ""
+
         handleResolve(promise, LdkCallbackResponses.ldk_reset)
     }
 

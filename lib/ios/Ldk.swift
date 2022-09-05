@@ -56,7 +56,6 @@ enum LdkErrors: String {
     case init_ldk_currency = "init_ldk_currency"
     case invoice_create_failed = "invoice_create_failed"
     case claim_funds_failed = "claim_funds_failed"
-    case network_graph_restore_failed = "network_graph_restore_failed"
     case channel_close_fail = "channel_close_fail"
     case spend_outputs_fail = "spend_outputs_fail"
 }
@@ -212,14 +211,13 @@ class Ldk: NSObject {
             let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: baseStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL)), arg: logger)
             if read.isOk() {
                 networkGraph = read.getValue()
-            } else {
-                return handleReject(reject, .network_graph_restore_failed)
             }
         } catch {
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch.")
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch. \(error.localizedDescription)")
         }
         
         if networkGraph == nil {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch.")
             networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
         }
         

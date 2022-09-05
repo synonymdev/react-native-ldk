@@ -6,6 +6,7 @@ import org.ldk.batteries.ChannelManagerConstructor
 import org.ldk.structs.Event
 import org.ldk.structs.Option_u64Z
 import org.ldk.structs.PaymentPurpose
+import java.io.File
 
 class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
     override fun handle_event(event: Event) {
@@ -145,10 +146,11 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
     }
 
     override fun persist_network_graph(network_graph: ByteArray?) {
-        if (network_graph != null) {
-            val body = Arguments.createMap()
-            body.putHexString("network_graph", network_graph)
-            LdkEventEmitter.send(EventTypes.persist_graph, body)
+        if (network_graph != null && LdkModule.baseStoragePath != "") {
+            File(LdkModule.baseStoragePath + LdkFileNames.network_graph.fileName).writeBytes(network_graph)
+            LdkEventEmitter.send(EventTypes.native_log, "Persisted network graph to disk")
+        } else {
+            LdkEventEmitter.send(EventTypes.native_log, "Error. Failed to persist network graph to disk.")
         }
     }
 
