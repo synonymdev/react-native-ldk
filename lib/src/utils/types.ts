@@ -289,12 +289,14 @@ export type TTransactionData = {
 	header: string;
 	height: number;
 	transaction: string;
+	vout: TVout[];
 };
 
 export const DefaultTransactionDataShape: TTransactionData = {
 	header: '',
 	height: 0,
 	transaction: '',
+	vout: [],
 };
 
 export type TStorage = (key: string, ...args: Array<any>) => any;
@@ -310,6 +312,9 @@ export enum ELdkData {
 	channelData = 'channelData',
 	peers = 'peers',
 	networkGraph = 'networkGraph',
+	confirmedTxs = 'confirmedTxs',
+	confirmedOutputs = 'confirmedOutputs',
+	broadcastedTxs = '',
 	timestamp = 'timestamp',
 }
 
@@ -335,6 +340,10 @@ export type TLdkChannelData = {
 export type TLdkPeers = TPeer[];
 
 export type TLdkNetworkGraph = string;
+
+export type TLdkConfirmedTxs = string[];
+
+export type TLdkConfirmedOutputs = string[];
 
 export type TLdkStorage = {
 	[key: string]: TLdkData;
@@ -365,9 +374,25 @@ export type TLdkStart = {
 	getItem: TStorage;
 	setItem: TStorage;
 	getTransactionData: TGetTransactionData;
+	getAddress: TGetAddress;
+	getScriptPubKeyHistory: TGetScriptPubKeyHistory;
+	broadcastTransaction: TBroadcastTransaction;
 	network?: ENetworks;
+	feeRate?: number;
 };
 
 export type TLdkStorageKeys = {
 	[key in ELdkData]: string;
 };
+
+export type TGetAddress = () => Promise<string>;
+
+export type TGetScriptPubKeyHistory = (
+	address: string,
+) => Promise<TGetScriptPubKeyHistoryResponse[]>;
+
+export type TGetScriptPubKeyHistoryResponse = { height: number; txid: string };
+
+export type TBroadcastTransaction = (rawTx: string) => Promise<any>;
+
+export type TVout = { hex: string; n: number; value: number };

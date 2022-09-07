@@ -11,6 +11,8 @@ import { err, ok, Result } from './result';
 import { randomBytes } from 'react-native-randombytes';
 import * as bitcoin from 'bitcoinjs-lib';
 import { selectedNetwork } from './constants';
+import * as bip32 from 'bip32';
+import * as bip39 from 'bip39';
 
 /**
  * Use Keychain to save LDK name & seed.
@@ -133,6 +135,15 @@ export const getNetwork = (
 };
 
 /**
+ * Converts address to output script.
+ * @param {string} address
+ */
+export const getOutputScript = (address: string): string => {
+	const _network = getNetwork(selectedNetwork);
+	return bitcoin.address.toOutputScript(address, _network).toString('hex');
+};
+
+/**
  * Get scriptHash for a given address
  * @param {string} address
  * @returns {string}
@@ -159,5 +170,25 @@ export const getAddressFromScriptPubKey = (scriptPubKey: string): string => {
 	return bitcoin.address.fromOutputScript(
 		Buffer.from(scriptPubKey, 'hex'),
 		getNetwork(selectedNetwork),
+	);
+};
+
+export const getMnemonicPhraseFromSeed = (accountSeed: string): string => {
+	return bip39.entropyToMnemonic(accountSeed);
+};
+
+/**
+ * Returns test address used for channel closures.
+ */
+export const getAddress = async (): Promise<string> => {
+	const network = getNetwork(selectedNetwork);
+	const { seed: accountSeed } = await getAccount();
+	const mnemonic = getMnemonicPhraseFromSeed(accountSeed);
+	const mnemonicSeed = await bip39.mnemonicToSeed(mnemonic);
+	const root = bip32.fromSeed(mnemonicSeed, network);
+	const keyPair = root.derivePath("m/84'/1'/0'/0/0");
+	return (
+		bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network }).address ??
+		''
 	);
 };

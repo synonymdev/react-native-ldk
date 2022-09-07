@@ -1,7 +1,7 @@
 {
   "name": "@synonymdev/react-native-ldk",
   "title": "React Native LDK",
-  "version": "0.0.53",
+  "version": "0.0.54",
   "description": "React Native wrapper for LDK",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -60,7 +60,9 @@
     "react": "^16.9.0",
     "typescript": "^4.2.4"
   },
-  "dependencies": {},
+  "dependencies": {
+    "bitcoinjs-lib": "^6.0.2"
+  },
   "bugs": {
     "url": "https://github.com/synonymdev/react-native-ldk/issues"
   },

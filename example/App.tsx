@@ -12,7 +12,14 @@ import {
 	View,
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { backupAccount, importAccount, setupLdk, syncLdk } from './ldk';
+import {
+	backupAccount,
+	getAddressBalance,
+	importAccount,
+	setupLdk,
+	syncLdk,
+	updateHeader,
+} from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm, {
@@ -20,7 +27,7 @@ import lm, {
 	TChannelManagerPayment,
 } from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
-import { createNewAccount } from './utils/helpers';
+import { createNewAccount, getAddress } from './utils/helpers';
 import RNFS from 'react-native-fs';
 
 let logSubscription: EmitterSubscription | undefined;
@@ -55,7 +62,7 @@ const App = (): ReactElement => {
 				return;
 			}
 			// Subscribe to new blocks and sync LDK accordingly.
-			await subscribeToHeader({
+			const headerInfo = await subscribeToHeader({
 				onReceive: async (): Promise<void> => {
 					const syncRes = await syncLdk();
 					if (syncRes.isErr()) {
@@ -65,6 +72,11 @@ const App = (): ReactElement => {
 					setMessage(syncRes.value);
 				},
 			});
+			if (headerInfo.isErr()) {
+				setMessage(headerInfo.error.message);
+				return;
+			}
+			await updateHeader({ header: headerInfo.value });
 			// Setup LDK
 			const setupResponse = await setupLdk();
 			if (setupResponse.isErr()) {
@@ -79,12 +91,14 @@ const App = (): ReactElement => {
 
 	useEffect(() => {
 		if (!logSubscription) {
+			// @ts-ignore
 			logSubscription = ldk.onEvent(EEventTypes.ldk_log, (log: string) =>
 				setLogContent((logs) => `${logs}${log}`),
 			);
 		}
 
 		if (!paymentSubscription) {
+			// @ts-ignore
 			paymentSubscription = ldk.onEvent(
 				EEventTypes.channel_manager_payment_claimed,
 				(res: TChannelManagerPayment) =>
@@ -280,10 +294,20 @@ const App = (): ReactElement => {
 					/>
 
 					<Button
+						title={'Get Address Balance'}
+						onPress={async (): Promise<void> => {
+							setMessage('Getting Address Balance...');
+							const address = await getAddress();
+							const balance = await getAddressBalance(address);
+							setMessage(`Balance: ${balance}`);
+						}}
+					/>
+
+					<Button
 						title={'Create invoice'}
 						onPress={async (): Promise<void> => {
 							const createInvoice = async (
-								amountSats: number | undefined = undefined,
+								amountSats?: number,
 							): Promise<void> => {
 								try {
 									const createPaymentRequest = await ldk.createPaymentRequest({
