@@ -120,20 +120,35 @@ class Ldk: NSObject {
             return handleReject(reject, .already_init)
         }
         
-        let path = String(storagePath)
+        let baseStoragePath = URL(fileURLWithPath: String(storagePath))
         
         do {
-            if !FileManager().fileExists(atPath: path) {
-                try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
+            if !FileManager().fileExists(atPath: baseStoragePath.path) {
+                try FileManager.default.createDirectory(atPath: baseStoragePath.path, withIntermediateDirectories: true, attributes: nil)
+            }
+        } catch {
+            return handleReject(reject, .create_storage_dir_fail)
+        }
+
+        Ldk.baseStoragePath = baseStoragePath
+
+        return handleResolve(resolve, .storage_path_set)
+    }
+    
+    @objc
+    func setLogFilePath(_ path: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let logFile = URL(fileURLWithPath: String(path))
+        
+        do {
+            if !FileManager().fileExists(atPath: logFile.deletingLastPathComponent().path) {
+                try FileManager.default.createDirectory(atPath: logFile.deletingLastPathComponent().path, withIntermediateDirectories: true, attributes: nil)
             }
         } catch {
             return handleReject(reject, .create_storage_dir_fail)
         }
         
-
-        Ldk.baseStoragePath = URL(fileURLWithPath: path)
-
-        return handleResolve(resolve, .storage_path_set)
+        Logfile.log.setFilePath(logFile)
+        return handleResolve(resolve, .log_path_updated)
     }
 
     @objc
@@ -349,12 +364,6 @@ class Ldk: NSObject {
     func setLogLevel(_ level: NSInteger, active: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         logger.setLevel(level: UInt32(level), active: active)
         return handleResolve(resolve, .log_level_updated)
-    }
-    
-    @objc
-    func setLogFilePath(_ path: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        Logfile.log.setFilePath(String(path))
-        return handleResolve(resolve, .log_path_updated)
     }
 
     @objc

@@ -91,6 +91,7 @@ class LightningManager {
 	getTransactionData: TGetTransactionData =
 		async (): Promise<TTransactionData> => DefaultTransactionDataShape;
 	network: ENetworks = ENetworks.regtest;
+	logFilePath = '';
 
 	constructor() {
 		// Step 0: Subscribe to all events
@@ -252,6 +253,12 @@ class LightningManager {
 		const storagePathRes = await ldk.setStoragePath(storagePath);
 		if (storagePathRes.isErr()) {
 			return storagePathRes;
+		}
+
+		this.logFilePath = `${storagePath}/logs/${Date.now()}.log`;
+		const logFilePathRes = await ldk.setLogFilePath(this.logFilePath);
+		if (logFilePathRes.isErr()) {
+			return logFilePathRes;
 		}
 
 		// Step 1: Initialize the FeeEstimator

@@ -34,8 +34,8 @@ class LdkLogger: Logger {
 class Logfile: TextOutputStream {
     var logfile: URL?
     
-    func setFilePath(_ path: String) {
-        logfile = URL(fileURLWithPath: path)
+    func setFilePath(_ file: URL) {
+        logfile = file
     }
     
     func write(_ str: String) {

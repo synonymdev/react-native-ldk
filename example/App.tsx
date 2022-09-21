@@ -29,7 +29,6 @@ let paymentSubscription: EmitterSubscription | undefined;
 const App = (): ReactElement => {
 	const [message, setMessage] = useState('...');
 	const [nodeStarted, setNodeStarted] = useState(false);
-	const [logFilePath, setLogFilePath] = useState('');
 	const [showLogs, setShowLogs] = useState(false);
 	const [logContent, setLogContent] = useState('');
 
@@ -40,12 +39,6 @@ const App = (): ReactElement => {
 		}
 
 		(async (): Promise<void> => {
-			//Set only if you want logging to be saved to a file.
-			const logPath = `${RNFS.DocumentDirectoryPath}/ldk-${Date.now()}.log`;
-			await ldk.setLogFilePath(logPath);
-			setLogFilePath(logPath);
-			console.log(`LDK logs writing to ${logPath}`);
-
 			// Connect to Electrum Server
 			const electrumResponse = await connectToElectrum({});
 			if (electrumResponse.isErr()) {
@@ -423,11 +416,11 @@ const App = (): ReactElement => {
 					<Button
 						title={'Show LDK logs'}
 						onPress={async (): Promise<void> => {
-							if (!logFilePath) {
+							if (!lm.logFilePath) {
 								return;
 							}
 							try {
-								const content = await RNFS.readFile(logFilePath, 'utf8');
+								const content = await RNFS.readFile(lm.logFilePath, 'utf8');
 								setLogContent(content);
 								setShowLogs(true);
 							} catch (e) {
