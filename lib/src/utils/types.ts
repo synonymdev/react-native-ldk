@@ -10,7 +10,6 @@ export enum EEventTypes {
 	register_tx = 'register_tx',
 	register_output = 'register_output',
 	broadcast_transaction = 'broadcast_transaction',
-	persist_manager = 'persist_manager',
 	persist_new_channel = 'persist_new_channel',
 	update_persisted_channel = 'update_persisted_channel',
 	channel_manager_funding_generation_ready = 'channel_manager_funding_generation_ready',
@@ -35,7 +34,6 @@ export type TRegisterOutputEvent = {
 	index: number;
 	script_pubkey: string;
 };
-export type TPersistManagerEvent = { channel_manager: string };
 export type TBroadcastTransactionEvent = { tx: string };
 
 //LDK channel manager event responses
@@ -248,7 +246,6 @@ export type TCreatePaymentReq = {
 
 export type TInitChannelManagerReq = {
 	network: ENetworks;
-	channelManagerSerialized: string;
 	channelMonitorsSerialized: string[];
 	bestBlock: {
 		hash: string;
@@ -302,7 +299,6 @@ export enum ELdkStorage {
 }
 
 export enum ELdkData {
-	channelManager = 'channelManager',
 	channelData = 'channelData',
 	peers = 'peers',
 	networkGraph = 'networkGraph',
@@ -310,7 +306,6 @@ export enum ELdkData {
 }
 
 export type TLdkData = {
-	[ELdkData.channelManager]: TLdkChannelManager;
 	[ELdkData.channelData]: TLdkChannelData;
 	[ELdkData.peers]: TLdkPeers;
 	[ELdkData.networkGraph]: TLdkNetworkGraph;
@@ -321,8 +316,6 @@ export type TAccountBackup = {
 	account: TAccount;
 	data: TLdkData;
 };
-
-export type TLdkChannelManager = string;
 
 export type TLdkChannelData = {
 	[id: string]: string;
@@ -337,7 +330,6 @@ export type TLdkStorage = {
 };
 
 export const DefaultLdkDataShape: TLdkData = {
-	[ELdkData.channelManager]: '',
 	[ELdkData.channelData]: {},
 	[ELdkData.peers]: [],
 	[ELdkData.networkGraph]: '',

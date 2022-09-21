@@ -27,12 +27,10 @@ import {
 	TGetTransactionData,
 	THeader,
 	TLdkChannelData,
-	TLdkChannelManager,
 	TLdkNetworkGraph,
 	TLdkPeers,
 	TLdkStart,
 	TPeer,
-	TPersistManagerEvent,
 	TRegisterOutputEvent,
 	TRegisterTxEvent,
 	TStorage,
@@ -105,7 +103,6 @@ class LightningManager {
 			EEventTypes.broadcast_transaction,
 			this.onBroadcastTransaction.bind(this),
 		);
-		ldk.onEvent(EEventTypes.persist_manager, this.onPersistManager.bind(this));
 		ldk.onEvent(
 			EEventTypes.persist_new_channel,
 			this.onPersistNewChannel.bind(this),
@@ -330,11 +327,9 @@ class LightningManager {
 			return confRes;
 		}
 
-		const channelManagerSerialized = await this.getLdkChannelManager();
 		const channelData = await this.getLdkChannelData();
 		const channelManagerRes = await ldk.initChannelManager({
 			network: this.network,
-			channelManagerSerialized,
 			channelMonitorsSerialized: Object.values(channelData),
 			bestBlock,
 		});
@@ -523,13 +518,12 @@ class LightningManager {
 				return err('No data was provided in the accountBackup object.');
 			}
 			if (
-				!(ELdkData.channelManager in accountBackup.data) ||
 				!(ELdkData.channelData in accountBackup.data) ||
 				!(ELdkData.peers in accountBackup.data) ||
 				!(ELdkData.networkGraph in accountBackup.data)
 			) {
 				return err(
-					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.channelManager}, ${ELdkData.channelData}, ${ELdkData.peers}, ${ELdkData.networkGraph}`,
+					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.channelData}, ${ELdkData.peers}, ${ELdkData.networkGraph}`,
 				);
 			}
 
@@ -558,10 +552,7 @@ class LightningManager {
 			}
 
 			//Save the provided backup data using the storage keys.
-			setItem(
-				storageKeys[ELdkData.channelManager],
-				JSON.stringify(accountBackup.data[ELdkData.channelManager]),
-			);
+			//TODO write channel manager to file natively
 			setItem(
 				storageKeys[ELdkData.channelData],
 				JSON.stringify(accountBackup.data[ELdkData.channelData]),
@@ -630,9 +621,7 @@ class LightningManager {
 				return err(setAndGetCheckResponse.error.message);
 			}
 			const storageKeys = await getAllStorageKeys(account.name);
-			const channelManager = await getItem(
-				storageKeys[ELdkData.channelManager],
-			);
+			const channelManager = ''; //TODO get natively
 			const channelData = await getItem(storageKeys[ELdkData.channelData]);
 			const peers = await getItem(storageKeys[ELdkData.peers]);
 			const timestamp = await getItem(storageKeys[ELdkData.timestamp]);
@@ -647,10 +636,10 @@ class LightningManager {
 			const accountBackup: TAccountBackup = {
 				account,
 				data: {
-					[ELdkData.channelManager]: parseData(
-						channelManager,
-						DefaultLdkDataShape[ELdkData.channelManager],
-					),
+					// [ELdkData.channelManager]: parseData(
+					// 	channelManager,
+					// 	DefaultLdkDataShape[ELdkData.channelManager],
+					// ),
 					[ELdkData.channelData]: parseData(
 						channelData,
 						DefaultLdkDataShape[ELdkData.channelData],
@@ -692,19 +681,6 @@ class LightningManager {
 	};
 
 	/**
-	 * Saves channel manager data to storage.
-	 * @param {string} data
-	 * @returns {Promise<void>}
-	 */
-	private saveLdkChannelManagerData = async (data: string): Promise<void> => {
-		const storageKey = getLdkStorageKey(
-			this.account.name,
-			ELdkData.channelManager,
-		);
-		this.updateStorage(storageKey, JSON.stringify(data));
-	};
-
-	/**
 	 * Adds an individual peer to storage.
 	 * @param {TPeer} peer
 	 * @returns {Promise<void>}
@@ -720,17 +696,6 @@ class LightningManager {
 		peers.push(peer);
 		const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
 		this.updateStorage(storageKey, JSON.stringify(peers));
-	};
-
-	private getLdkChannelManager = async (): Promise<TLdkChannelManager> => {
-		const ldkDataKey = ELdkData.channelManager;
-		const storageKey = getLdkStorageKey(this.account.name, ldkDataKey);
-		try {
-			const ldkData = await this.getItem(storageKey);
-			return parseData(ldkData, DefaultLdkDataShape[ldkDataKey]);
-		} catch {
-			return DefaultLdkDataShape[ldkDataKey];
-		}
 	};
 
 	private getLdkChannelData = async (): Promise<TLdkChannelData> => {
@@ -774,13 +739,6 @@ class LightningManager {
 
 	private onBroadcastTransaction(res: TBroadcastTransactionEvent): void {
 		console.log(`onBroadcastTransaction: ${res.tx}`); //TODO
-	}
-
-	private onPersistManager(res: TPersistManagerEvent): void {
-		//Around 8kb for one channel backup stored as a hex string
-		this.saveLdkChannelManagerData(res.channel_manager)
-			.then()
-			.catch(console.error);
 	}
 
 	private onPersistNewChannel(res: TChannelBackupEvent): void {

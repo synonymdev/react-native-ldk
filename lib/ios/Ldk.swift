@@ -8,7 +8,7 @@ enum EventTypes: String, CaseIterable {
     case register_tx = "register_tx"
     case register_output = "register_output"
     case broadcast_transaction = "broadcast_transaction"
-    case persist_manager = "persist_manager"
+    case backup = "backup" //TODO send backup details visa event to JS
     case persist_new_channel = "persist_new_channel"
     case update_persisted_channel = "update_persisted_channel"
     case channel_manager_funding_generation_ready = "channel_manager_funding_generation_ready"
@@ -83,7 +83,7 @@ enum LdkCallbackResponses: String {
 
 enum LdkFileNames: String {
     case network_graph = "network_graph.bin"
-    //TODO channel manager and monitors
+    case channel_manager = "channel_manager.bin"
 }
 
 @objc(Ldk)
@@ -240,7 +240,7 @@ class Ldk: NSObject {
     }
 
     @objc
-    func initChannelManager(_ network: NSString, channelManagerSerialized: NSString, channelMonitorsSerialized: NSArray, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initChannelManager(_ network: NSString, channelMonitorsSerialized: NSArray, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
         }
@@ -261,6 +261,10 @@ class Ldk: NSObject {
             return handleReject(reject, .init_network_graph)
         }
 
+        guard let baseStoragePath = Ldk.baseStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
         switch network {
         case "regtest":
             ldkNetwork = LDKNetwork_Regtest
@@ -279,10 +283,28 @@ class Ldk: NSObject {
         for monitor in channelMonitorsSerialized {
             channelMonitorsBytes.append((monitor as! String).hexaBytes)
         }
-
+        
+        let storedChannelManager = try? Data(contentsOf: baseStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
+        
         do {
-            if channelManagerSerialized == "" {
+            if let channelManagerSerialized = storedChannelManager {
+                //Restoring node
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring channel manager from file")
+                channelManagerConstructor = try ChannelManagerConstructor(
+                    channel_manager_serialized: [UInt8](channelManagerSerialized),
+                    channel_monitors_serialized: channelMonitorsBytes,
+                    keys_interface: keysManager.as_KeysInterface(),
+                    fee_estimator: feeEstimator,
+                    chain_monitor: chainMonitor,
+                    filter: filter,
+                    net_graph_serialized: networkGraph.write(),
+                    tx_broadcaster: broadcaster,
+                    logger: logger,
+                    enableP2PGossip: true
+                )
+            } else {
                 //New node
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Creating new channel manager")
                 channelManagerConstructor = ChannelManagerConstructor(
                     network: ldkNetwork!,
                     config: userConfig,
@@ -296,22 +318,7 @@ class Ldk: NSObject {
                     logger: logger,
                     enableP2PGossip: true
                 )
-            } else {
-                //Restoring node
-                channelManagerConstructor = try ChannelManagerConstructor(
-                    channel_manager_serialized: String(channelManagerSerialized).hexaBytes,
-                    channel_monitors_serialized: channelMonitorsBytes,
-                    keys_interface: keysManager.as_KeysInterface(),
-                    fee_estimator: feeEstimator,
-                    chain_monitor: chainMonitor,
-                    filter: filter,
-                    net_graph_serialized: networkGraph.write(),
-                    tx_broadcaster: broadcaster,
-                    logger: logger,
-                    enableP2PGossip: true
-                )
             }
-            
         } catch {
             return handleReject(reject, .unknown_error, error)
         }

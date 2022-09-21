@@ -216,9 +216,19 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     }
     
     override func persist_manager(channel_manager: ChannelManager) -> Result_NoneErrorZ {
-        LdkEventEmitter.shared.send(withEvent: .persist_manager, body: ["channel_manager": Data(channel_manager.write()).hexEncodedString()])
+        guard let managerStorage = Ldk.baseStoragePath?.appendingPathComponent(LdkFileNames.channel_manager.rawValue) else {
+            return Result_NoneErrorZ.ok() // TODO find out which error to return here
+        }
         
-        return Result_NoneErrorZ.ok()
+        do {
+            try Data(channel_manager.write()).write(to: managerStorage)
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")
+        
+            return Result_NoneErrorZ.ok()
+        } catch {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel manager to disk Error \(error.localizedDescription).")
+            return Result_NoneErrorZ.ok() // TODO find out which error to return here
+        }        
     }
     
     override func persist_graph(network_graph: NetworkGraph) -> Result_NoneErrorZ {

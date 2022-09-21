@@ -288,7 +288,6 @@ export const getAllStorageKeys = async (
 	accountName = '',
 ): Promise<TLdkStorageKeys> => {
 	const storageKeys: TLdkStorageKeys = {
-		[ELdkData.channelManager]: '',
 		[ELdkData.channelData]: '',
 		[ELdkData.peers]: '',
 		[ELdkData.networkGraph]: '',
