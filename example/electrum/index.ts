@@ -89,7 +89,7 @@ export const connectToElectrum = async ({
 
 	const startResponse = await electrum.start({
 		network: selectedNetwork,
-		customPeers,
+		customPeers: customPeers[selectedNetwork],
 		net,
 		tls: _tls,
 	});
@@ -98,7 +98,7 @@ export const connectToElectrum = async ({
 		//Attempt one more time
 		const { error, data } = await electrum.start({
 			network: selectedNetwork,
-			customPeers,
+			customPeers: customPeers[selectedNetwork],
 			net,
 			tls: _tls,
 		});

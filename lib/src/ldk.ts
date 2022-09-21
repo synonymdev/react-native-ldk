@@ -461,10 +461,69 @@ class LDK {
 		paymentRequest,
 		amountSats,
 	}: TPaymentReq): Promise<Result<string>> {
+		//If no usable channels don't even attempt payment
+		const channelsRes = await this.listUsableChannels();
+		if (channelsRes.isOk() && channelsRes.value.length === 0) {
+			return err('No usable channels found');
+		}
+
 		try {
 			const res = await NativeLDK.pay(paymentRequest, amountSats || 0);
+
 			return ok(res);
 		} catch (e) {
+			let resultError = err(e);
+			//Add additional context to the error message for debugging if routing is failing.
+			if (resultError.code === 'invoice_payment_fail_routing') {
+				const decodedRes = await this.decode({ paymentRequest });
+				if (decodedRes.isErr()) {
+					//Return original payment error if we can't decode
+					return err(e);
+				}
+
+				const { route_hints, recover_payee_pub_key, amount_satoshis } =
+					decodedRes.value;
+
+				let useFullMessage = `${resultError.error.message}.`;
+
+				//Check route hints
+				if (route_hints.length === 0) {
+					useFullMessage = `${useFullMessage} No route hints found in payment request.`;
+				}
+
+				//Check if node is in our network graph
+				const graphRes = await this.networkGraphListNodes();
+				if (graphRes.isOk()) {
+					let nodeInNetworkGraph = false;
+					graphRes.value.forEach((node) => {
+						if (node === recover_payee_pub_key) {
+							nodeInNetworkGraph = true;
+						}
+					});
+
+					if (!nodeInNetworkGraph) {
+						useFullMessage = `${useFullMessage} Node not found in network graph.`;
+					}
+				}
+
+				//Check we have enough outgoing balance in a single usable channel
+				if (channelsRes.isOk()) {
+					let highestOutgoing = 0;
+					channelsRes.value.forEach(({ outbound_capacity_sat }) => {
+						if (outbound_capacity_sat > highestOutgoing) {
+							highestOutgoing = outbound_capacity_sat;
+						}
+					});
+
+					let amountToSendSats = amountSats || amount_satoshis || 0;
+					if (amountToSendSats > highestOutgoing) {
+						useFullMessage = `${useFullMessage} Not enough outgoing capacity.`;
+					}
+				}
+
+				return err(useFullMessage);
+			}
+
 			return err(e);
 		}
 	}
