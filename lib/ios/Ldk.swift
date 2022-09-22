@@ -9,8 +9,6 @@ enum EventTypes: String, CaseIterable {
     case register_output = "register_output"
     case broadcast_transaction = "broadcast_transaction"
     case backup = "backup" //TODO send backup details visa event to JS
-    case persist_new_channel = "persist_new_channel"
-    case update_persisted_channel = "update_persisted_channel"
     case channel_manager_funding_generation_ready = "channel_manager_funding_generation_ready"
     case channel_manager_payment_received = "channel_manager_payment_received"
     case channel_manager_payment_sent = "channel_manager_payment_sent"
@@ -97,7 +95,7 @@ class Ldk: NSObject {
     lazy var channelManagerPersister = {LdkChannelManagerPersister()}()
    
     //Config required to setup below objects
-    var chainMonitor: ChainMonitor?
+    var chainMonitor: ChainMonitor? //TODO lazy load chainMonitor
     var keysManager: KeysManager?
     var channelManager: ChannelManager?
     var userConfig: UserConfig?
@@ -111,6 +109,7 @@ class Ldk: NSObject {
     
     //Static to be accessed from other classes
     static var baseStoragePath: URL?
+    static var channelStoragePath: URL?
 
     //MARK: Startup methods
     
@@ -121,16 +120,22 @@ class Ldk: NSObject {
         }
         
         let baseStoragePath = URL(fileURLWithPath: String(storagePath))
-        
+        let channelStoragePath = baseStoragePath.appendingPathComponent("channels")
+
         do {
             if !FileManager().fileExists(atPath: baseStoragePath.path) {
                 try FileManager.default.createDirectory(atPath: baseStoragePath.path, withIntermediateDirectories: true, attributes: nil)
+            }
+            
+            if !FileManager().fileExists(atPath: channelStoragePath.path) {
+                try FileManager.default.createDirectory(atPath: channelStoragePath.path, withIntermediateDirectories: true, attributes: nil)
             }
         } catch {
             return handleReject(reject, .create_storage_dir_fail)
         }
 
         Ldk.baseStoragePath = baseStoragePath
+        Ldk.channelStoragePath = channelStoragePath
 
         return handleResolve(resolve, .storage_path_set)
     }
@@ -240,7 +245,7 @@ class Ldk: NSObject {
     }
 
     @objc
-    func initChannelManager(_ network: NSString, channelMonitorsSerialized: NSArray, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initChannelManager(_ network: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
         }
@@ -265,6 +270,10 @@ class Ldk: NSObject {
             return handleReject(reject, .init_storage_path)
         }
         
+        guard let channelStoragePath = Ldk.channelStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
         switch network {
         case "regtest":
             ldkNetwork = LDKNetwork_Regtest
@@ -279,20 +288,22 @@ class Ldk: NSObject {
             return handleReject(reject, .invalid_network)
         }
         
-        var channelMonitorsBytes: Array<[UInt8]> = []
-        for monitor in channelMonitorsSerialized {
-            channelMonitorsBytes.append((monitor as! String).hexaBytes)
-        }
-        
         let storedChannelManager = try? Data(contentsOf: baseStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
         
         do {
             if let channelManagerSerialized = storedChannelManager {
                 //Restoring node
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring channel manager from file")
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring node from disk")
+                var channelMonitorsSerialized: Array<[UInt8]> = []
+                let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
+                for channelFile in channelFiles {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel from file \(channelFile.lastPathComponent)")
+                    channelMonitorsSerialized.append([UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)))
+                }
+                
                 channelManagerConstructor = try ChannelManagerConstructor(
                     channel_manager_serialized: [UInt8](channelManagerSerialized),
-                    channel_monitors_serialized: channelMonitorsBytes,
+                    channel_monitors_serialized: channelMonitorsSerialized,
                     keys_interface: keysManager.as_KeysInterface(),
                     fee_estimator: feeEstimator,
                     chain_monitor: chainMonitor,

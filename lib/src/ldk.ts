@@ -176,13 +176,11 @@ class LDK {
 	 */
 	async initChannelManager({
 		network,
-		channelMonitorsSerialized,
 		bestBlock,
 	}: TInitChannelManagerReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initChannelManager(
 				network,
-				channelMonitorsSerialized,
 				bestBlock.hash,
 				bestBlock.height,
 			);

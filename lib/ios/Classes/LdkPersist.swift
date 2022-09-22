@@ -13,27 +13,29 @@ class LdkPersister: Persist {
         //TODO find out what this is for
     }
     
+    private func saveChannel(_ channel_id: OutPoint, _ data: ChannelMonitor) -> Result_NoneChannelMonitorUpdateErrZ {
+        let channelId = Data(channel_id.write()).hexEncodedString()
+        
+        guard let channelStoragePath = Ldk.channelStoragePath?.appendingPathComponent("\(channelId).bin") else {
+            return Result_NoneChannelMonitorUpdateErrZ.ok() // TODO find out which error to return here
+        }
+        
+        do {
+            try Data(data.write()).write(to: channelStoragePath)
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel (\(channelId)) to disk")
+        
+            return Result_NoneChannelMonitorUpdateErrZ.ok()
+        } catch {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel (\(channelId)) to disk Error \(error.localizedDescription).")
+            return Result_NoneChannelMonitorUpdateErrZ.ok() // TODO find out which error to return here
+        }
+    }
+    
     override func persist_new_channel(channel_id: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId) -> Result_NoneChannelMonitorUpdateErrZ {
-        LdkEventEmitter.shared.send(
-            withEvent: .persist_new_channel,
-            body: [
-                "id": Data(channel_id.write()).hexEncodedString(),
-                "data": Data(data.write()).hexEncodedString()
-            ]
-        )
-                                                               
-        return Result_NoneChannelMonitorUpdateErrZ.ok()
+        return saveChannel(channel_id, data)
     }
     
     override func update_persisted_channel(channel_id: OutPoint, update: ChannelMonitorUpdate, data: ChannelMonitor, update_id: MonitorUpdateId) -> Result_NoneChannelMonitorUpdateErrZ {
-        LdkEventEmitter.shared.send(
-            withEvent: .update_persisted_channel,
-            body: [
-                "id": Data(channel_id.write()).hexEncodedString(),
-                "data": Data(data.write()).hexEncodedString()
-            ]
-        )
-
-        return Result_NoneChannelMonitorUpdateErrZ.ok()
+        return saveChannel(channel_id, data)
     }
 }
