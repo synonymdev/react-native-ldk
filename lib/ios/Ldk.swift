@@ -56,6 +56,9 @@ enum LdkErrors: String {
     case claim_funds_failed = "claim_funds_failed"
     case channel_close_fail = "channel_close_fail"
     case spend_outputs_fail = "spend_outputs_fail"
+    case write_fail = "write_fail"
+    case read_fail = "read_fail"
+    case file_does_not_exist = "file_does_not_exist"
 }
 
 enum LdkCallbackResponses: String {
@@ -77,6 +80,7 @@ enum LdkCallbackResponses: String {
     case claim_funds_success = "claim_funds_success"
     case ldk_reset = "ldk_reset"
     case close_channel_success = "close_channel_success"
+    case file_write_success = "file_write_success"
 }
 
 enum LdkFileNames: String {
@@ -179,6 +183,8 @@ class Ldk: NSObject {
             return handleReject(reject, .already_init)
         }
 
+        //TODO check seed is correct
+        
         let seconds = UInt64(NSDate().timeIntervalSince1970)
         let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
         let seedBytes = String(seed).hexaBytes
@@ -750,6 +756,52 @@ class Ldk: NSObject {
         }
         
         return resolve(networkGraph.channel(short_channel_id: UInt64(shortChannelId as String)!).asJson)
+    }
+    
+    //MARK: Misc functions
+    @objc
+    func writeToFile(_ fileName: NSString, content: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let baseStoragePath = Ldk.baseStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        let fileUrl = baseStoragePath.appendingPathComponent(String(fileName))
+        
+        do {
+            let fileContent = String(content)
+            if format == "hex" {
+                try Data(fileContent.hexaBytes).write(to: fileUrl)
+            } else {
+                try fileContent.data(using: .utf8)?.write(to: fileUrl)
+            }
+            
+            return handleResolve(resolve, .file_write_success)
+        } catch {
+            return handleReject(reject, .write_fail, error, "Failed to write content to file \(fileName)")
+        }
+    }
+        
+    @objc
+    func readFromFile(_ fileName: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let baseStoragePath = Ldk.baseStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        let fileUrl = baseStoragePath.appendingPathComponent(String(fileName))
+        
+        if !FileManager().fileExists(atPath: fileUrl.path) {
+            return handleReject(reject, .file_does_not_exist)
+        }
+        
+        do {
+            if format == "hex" {
+                resolve(try Data(contentsOf: fileUrl).hexEncodedString())
+            } else {
+                resolve(try String(contentsOf: fileUrl, encoding: .utf8))
+            }
+        } catch {
+            return handleReject(reject, .read_fail, error, "Failed to read content from file \(fileName)")
+        }
     }
 }
 

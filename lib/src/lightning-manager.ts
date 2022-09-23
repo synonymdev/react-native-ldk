@@ -247,6 +247,25 @@ class LightningManager {
 			return logFilePathRes;
 		}
 
+		//Validate we didn't change the seed for this account if one exists
+		const readSeed = await ldk.readFromFile('seed', 'hex');
+		if (readSeed.isErr()) {
+			if (readSeed.code === 'file_does_not_exist') {
+				//Have not yet saved the seed to disk
+				const writeRes = await ldk.writeToFile('seed', account.seed, 'hex');
+				if (writeRes.isErr()) {
+					return err(writeRes.error);
+				}
+			} else {
+				return err(readSeed.error);
+			}
+		} else {
+			//Cannot start an existing node with a different seed
+			if (readSeed.value !== account.seed) {
+				return err('Seed for current node cannot be changed.');
+			}
+		}
+
 		// Step 1: Initialize the FeeEstimator
 		// Lazy loaded in native code
 		// https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html

@@ -72,6 +72,17 @@ RCT_EXTERN_METHOD(spendOutputs:(NSArray *)descriptorsSerialized
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
+//MARK: Misc methods
+RCT_EXTERN_METHOD(writeToFile:(NSString *)fileName
+                  content:(NSString *)content
+                  format:(NSString *)format
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(readFromFile:(NSString *)fileName
+                  format:(NSString *)format
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+
 //MARK: Fetch methods
 RCT_EXTERN_METHOD(version:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)

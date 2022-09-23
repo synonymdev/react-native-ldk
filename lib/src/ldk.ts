@@ -722,6 +722,49 @@ class LDK {
 			return err(e);
 		}
 	}
+
+	/**
+	 * Write string to file in current directory set by setStoragePath.
+	 * If format is set to "hex" then it is assumed content is a hex string and
+	 * the raw bytes will be saved to file.
+	 * @param fileName
+	 * @param content
+	 * @param format
+	 * @returns {Promise<Ok<boolean> | Err<unknown>>}
+	 */
+	async writeToFile(
+		fileName: string,
+		content: string,
+		format: 'hex' | 'string' = 'string',
+	): Promise<Result<boolean>> {
+		try {
+			await NativeLDK.writeToFile(fileName, content, format);
+			return ok(true);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Read from file in current directory set by setStoragePath.
+	 * If format is set to "hex" then it is assumed content of file is raw
+	 * bytes and hex version will be returned as result.
+	 * Will return empty string if file does not exist yet.
+	 * @param fileName
+	 * @param format
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async readFromFile(
+		fileName: string,
+		format: 'hex' | 'string' = 'string',
+	): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.readFromFile(fileName, format);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
 }
 
 export default new LDK();
