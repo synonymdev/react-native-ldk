@@ -112,33 +112,33 @@ class Ldk: NSObject {
     var ldkCurrency: LDKCurrency?
     
     //Static to be accessed from other classes
-    static var baseStoragePath: URL?
+    static var accountStoragePath: URL?
     static var channelStoragePath: URL?
 
     //MARK: Startup methods
     
     @objc
-    func setStoragePath(_ storagePath: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard Ldk.baseStoragePath == nil else {
+    func setAccountStoragePath(_ storagePath: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard Ldk.accountStoragePath == nil else {
             return handleReject(reject, .already_init)
         }
         
-        let baseStoragePath = URL(fileURLWithPath: String(storagePath))
-        let channelStoragePath = baseStoragePath.appendingPathComponent("channels")
+        let accountStoragePath = URL(fileURLWithPath: String(storagePath))
+        let channelStoragePath = accountStoragePath.appendingPathComponent("channels")
 
         do {
-            if !FileManager().fileExists(atPath: baseStoragePath.path) {
-                try FileManager.default.createDirectory(atPath: baseStoragePath.path, withIntermediateDirectories: true, attributes: nil)
+            if !FileManager().fileExists(atPath: accountStoragePath.path) {
+                try FileManager.default.createDirectory(atPath: accountStoragePath.path, withIntermediateDirectories: true, attributes: nil)
             }
             
             if !FileManager().fileExists(atPath: channelStoragePath.path) {
                 try FileManager.default.createDirectory(atPath: channelStoragePath.path, withIntermediateDirectories: true, attributes: nil)
             }
         } catch {
-            return handleReject(reject, .create_storage_dir_fail)
+            return handleReject(reject, .create_storage_dir_fail, error)
         }
 
-        Ldk.baseStoragePath = baseStoragePath
+        Ldk.accountStoragePath = accountStoragePath
         Ldk.channelStoragePath = channelStoragePath
 
         return handleResolve(resolve, .storage_path_set)
@@ -229,7 +229,7 @@ class Ldk: NSObject {
             return handleReject(reject, .already_init)
         }
         
-        guard let baseStoragePath = Ldk.baseStoragePath else {
+        guard let baseStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
         
@@ -272,7 +272,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_network_graph)
         }
 
-        guard let baseStoragePath = Ldk.baseStoragePath else {
+        guard let baseStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
         
@@ -371,7 +371,7 @@ class Ldk: NSObject {
         peerHandler = nil
         ldkNetwork = nil
         ldkCurrency = nil
-        Ldk.baseStoragePath = nil
+        Ldk.accountStoragePath = nil
         
         return handleResolve(resolve, .ldk_reset)
     }
@@ -761,7 +761,7 @@ class Ldk: NSObject {
     //MARK: Misc functions
     @objc
     func writeToFile(_ fileName: NSString, content: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let baseStoragePath = Ldk.baseStoragePath else {
+        guard let baseStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
         
@@ -783,7 +783,7 @@ class Ldk: NSObject {
         
     @objc
     func readFromFile(_ fileName: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let baseStoragePath = Ldk.baseStoragePath else {
+        guard let baseStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
         

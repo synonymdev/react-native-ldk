@@ -58,9 +58,9 @@ class LDK {
 	 * @param path
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async setStoragePath(path: string): Promise<Result<string>> {
+	async setAccountStoragePath(path: string): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.setStoragePath(path);
+			const res = await NativeLDK.setAccountStoragePath(path);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -724,7 +724,7 @@ class LDK {
 	}
 
 	/**
-	 * Write string to file in current directory set by setStoragePath.
+	 * Write string to file in current directory set by setAccountStoragePath.
 	 * If format is set to "hex" then it is assumed content is a hex string and
 	 * the raw bytes will be saved to file.
 	 * @param fileName
@@ -746,7 +746,7 @@ class LDK {
 	}
 
 	/**
-	 * Read from file in current directory set by setStoragePath.
+	 * Read from file in current directory set by setAccountStoragePath.
 	 * If format is set to "hex" then it is assumed content of file is raw
 	 * bytes and hex version will be returned as result.
 	 * Will return empty string if file does not exist yet.

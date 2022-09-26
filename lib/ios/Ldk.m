@@ -4,7 +4,7 @@
 @interface RCT_EXTERN_MODULE(Ldk, NSObject)
 
 //MARK: Startup methods
-RCT_EXTERN_METHOD(setStoragePath:(NSString *)storagePath
+RCT_EXTERN_METHOD(setAccountStoragePath:(NSString *)storagePath
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setLogFilePath:(NSString *)path

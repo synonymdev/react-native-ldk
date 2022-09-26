@@ -286,22 +286,22 @@ export const DefaultTransactionDataShape: TTransactionData = {
 	transaction: '',
 };
 
-export type TStorage = (key: string, ...args: Array<any>) => any;
 export type TGetTransactionData = (txid: string) => Promise<TTransactionData>;
 export type TGetBestBlock = () => Promise<THeader>;
 
-export enum ELdkStorage {
-	key = 'LDKStorage',
-}
-
-export enum ELdkData {
-	peers = 'peers',
-	timestamp = 'timestamp',
+export enum ELdkFiles {
+	peers = 'peers.json',
+	watch_transactions = 'watch_transactions.json',
+	watch_outputs = 'watch_outputs.json',
 }
 
 export type TLdkData = {
-	[ELdkData.peers]: TLdkPeers;
-	[ELdkData.timestamp]: number;
+	channel_manager: string;
+	channel_monitors: string[];
+	seed: string;
+	peers: TLdkPeers;
+	watch_transactions: TRegisterTxEvent[];
+	watch_outputs: TRegisterOutputEvent[];
 };
 
 export type TAccountBackup = {
@@ -311,15 +311,13 @@ export type TAccountBackup = {
 
 export type TLdkPeers = TPeer[];
 
-export type TLdkNetworkGraph = string;
-
-export type TLdkStorage = {
-	[key: string]: TLdkData;
-};
-
 export const DefaultLdkDataShape: TLdkData = {
-	[ELdkData.peers]: [],
-	[ELdkData.timestamp]: 0,
+	channel_manager: '',
+	channel_monitors: [],
+	seed: '',
+	peers: [],
+	watch_transactions: [],
+	watch_outputs: [],
 };
 
 export type TAvailableNetworks =
@@ -336,13 +334,6 @@ export type TLdkStart = {
 	account: TAccount;
 	genesisHash: string;
 	getBestBlock: TGetBestBlock;
-	getItem: TStorage; //TODO remove after persistence is native
-	setItem: TStorage; //TODO remove after persistence is native
-	storagePath: string;
 	getTransactionData: TGetTransactionData;
 	network?: ENetworks;
-};
-
-export type TLdkStorageKeys = {
-	[key in ELdkData]: string;
 };

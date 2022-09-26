@@ -4,7 +4,7 @@ import {
 	DefaultLdkDataShape,
 	DefaultTransactionDataShape,
 	EEventTypes,
-	ELdkData,
+	ELdkFiles,
 	ELdkLogLevels,
 	ENetworks,
 	TAccount,
@@ -30,16 +30,9 @@ import {
 	TPeer,
 	TRegisterOutputEvent,
 	TRegisterTxEvent,
-	TStorage,
 	TTransactionData,
 } from './utils/types';
-import {
-	getAllStorageKeys,
-	getLdkStorageKey,
-	parseData,
-	setAndGetMethodCheck,
-	startParamCheck,
-} from './utils/helpers';
+import { parseData, startParamCheck } from './utils/helpers';
 
 //TODO startup steps
 // Step 0: Listen for events ✅
@@ -52,15 +45,15 @@ import {
 // Step 7: Read ChannelMonitor state from disk ✅
 // Step 8: Initialize the ChannelManager ✅
 // Step 9: Sync ChannelMonitors and ChannelManager to chain tip ✅
-// Step 10: Give ChannelMonitors to ChainMonitor
+// Step 10: Give ChannelMonitors to ChainMonitor ✅
 // Step 11: Optional: Initialize the NetGraphMsgHandler [Not required for a non routing node]
 // Step 12: Initialize the PeerManager ✅
 // Step 13: Initialize networking ✅
 // Step 14: Connect and Disconnect Blocks ✅
-// Step 15: Handle LDK Events [WIP]
+// Step 15: Handle LDK Events ✅
 // Step 16: Initialize routing ProbabilisticScorer [Not sure if required]
 // Step 17: Create InvoicePayer ✅
-// Step 18: Persist ChannelManager and NetworkGraph
+// Step 18: Persist ChannelManager and NetworkGraph ✅
 // Step 19: Background Processing
 
 class LightningManager {
@@ -80,12 +73,10 @@ class LightningManager {
 		name: '',
 		seed: '',
 	};
-	getItem: TStorage = (): null => null;
-	setItem: TStorage = (): null => null;
-	updateStorage: TStorage = (): null => null;
 	getTransactionData: TGetTransactionData =
 		async (): Promise<TTransactionData> => DefaultTransactionDataShape;
 	network: ENetworks = ENetworks.regtest;
+	baseStoragePath = '';
 	logFilePath = '';
 
 	constructor() {
@@ -153,12 +144,23 @@ class LightningManager {
 	}
 
 	/**
+	 * Sets storage path on disk where all wallet accounts will be
+	 * stored in subdirectories
+	 * @param path
+	 * @returns {Promise<Ok<string>>}
+	 */
+	async setBaseStoragePath(path: string): Promise<Result<string>> {
+		const storagePath = `${path}${path.slice(-1) !== '/' ? '' : '/'}`;
+		//Storage path will be validated and created when calling ldk.setAccountStoragePath
+		this.baseStoragePath = storagePath;
+		return ok('Storage set');
+	}
+
+	/**
 	 * Spins up and syncs all processes
 	 * @param {string} seed
 	 * @param {string} genesisHash
 	 * @param {TGetBestBlock} getBestBlock
-	 * @param {TStorage} getItem
-	 * @param {TStorage} setItem
 	 * @param {TGetTransactionData} getTransactionData
 	 * @param {ENetworks} network
 	 * @returns {Promise<Result<string>>}
@@ -167,9 +169,6 @@ class LightningManager {
 		account,
 		genesisHash,
 		getBestBlock,
-		getItem,
-		setItem,
-		storagePath,
 		getTransactionData,
 		network = ENetworks.regtest,
 	}: TLdkStart): Promise<Result<string>> {
@@ -191,16 +190,6 @@ class LightningManager {
 				'No genesisHash provided. Please pass genesisHash to the start method and try again.',
 			);
 		}
-		if (!setItem) {
-			return err(
-				'No setItem method provided. Please pass setItem to the start method and try again.',
-			);
-		}
-		if (!getItem) {
-			return err(
-				'No getItem method provided. Please pass getItem to the start method and try again.',
-			);
-		}
 		if (!getTransactionData) {
 			return err('getTransactionData is not set in start method.');
 		}
@@ -210,9 +199,6 @@ class LightningManager {
 			account,
 			genesisHash,
 			getBestBlock,
-			getItem,
-			setItem,
-			storagePath,
 			getTransactionData,
 			network,
 		});
@@ -223,25 +209,26 @@ class LightningManager {
 		this.getBestBlock = getBestBlock;
 		this.account = account;
 		this.network = network;
-		this.setItem = setItem;
-		this.updateStorage = (key, value): void => {
-			this.setItem(key, value);
-			this.updateTimestamp();
-		};
-		this.getItem = getItem;
 		this.getTransactionData = getTransactionData;
 		const bestBlock = await this.getBestBlock();
 		this.currentBlock = bestBlock;
 		this.watchTxs = [];
 		this.watchOutputs = [];
 
+		if (!this.baseStoragePath) {
+			return err(
+				'baseStoragePath required for wallet persistence. Call setBaseStoragePath(path) first.',
+			);
+		}
+
 		//The path all wallet and network graph persistence will be saved to
-		const storagePathRes = await ldk.setStoragePath(storagePath);
+		let accountStoragePath = `${this.baseStoragePath}${account.name}`;
+		const storagePathRes = await ldk.setAccountStoragePath(accountStoragePath);
 		if (storagePathRes.isErr()) {
 			return storagePathRes;
 		}
 
-		this.logFilePath = `${storagePath}/logs/${Date.now()}.log`;
+		this.logFilePath = `${accountStoragePath}/logs/${Date.now()}.log`;
 		const logFilePathRes = await ldk.setLogFilePath(this.logFilePath);
 		if (logFilePathRes.isErr()) {
 			return logFilePathRes;
@@ -439,7 +426,7 @@ class LightningManager {
 		if (addPeerResponse.isErr()) {
 			return err(addPeerResponse.error.message);
 		}
-		this.saveLdkPeerData(peer).then().catch(console.error);
+		await this.saveLdkPeerData(peer);
 		return ok(addPeerResponse.value);
 	};
 
@@ -459,8 +446,15 @@ class LightningManager {
 		const newPeers = peers.filter(
 			(p) => p.pubKey !== pubKey && p.address !== address && p.port !== port,
 		);
-		const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
-		this.updateStorage(storageKey, JSON.stringify(newPeers));
+
+		const writeRes = await ldk.writeToFile(
+			ELdkFiles.peers,
+			JSON.stringify(newPeers),
+		);
+		if (writeRes.isErr()) {
+			return err(writeRes.error);
+		}
+
 		return ok(newPeers);
 	};
 
@@ -469,34 +463,34 @@ class LightningManager {
 	 * @returns {Promise<TLdkPeers>}
 	 */
 	getPeers = async (): Promise<TLdkPeers> => {
-		try {
-			const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
-			const peers = await this.getItem(storageKey);
-			return parseData(peers, DefaultLdkDataShape[ELdkData.peers]);
-		} catch {
-			return DefaultLdkDataShape[ELdkData.peers];
+		const res = await ldk.readFromFile(ELdkFiles.peers);
+		if (res.isOk()) {
+			return parseData(res.value, DefaultLdkDataShape.peers);
 		}
+
+		return DefaultLdkDataShape.peers;
 	};
 
 	/**
 	 * This method is used to import backups provided by react-native-ldk's backupAccount method.
 	 * @param {TAccountBackup} accountData
-	 * @param {Function} setItem
-	 * @param {Function} getItem
+	 * @param {string} storagePath Default LDK storage path on disk
 	 * @param {boolean} [overwrite] Determines if this function should overwrite an existing account of the same name.
 	 * @returns {Promise<Result<TAccount>>} TAccount is used to start the node using the newly imported and saved data.
 	 */
 	importAccount = async ({
 		backup,
-		setItem,
-		getItem, //TODO pass storage path instead
 		overwrite = false,
 	}: {
 		backup: string | TAccountBackup;
-		setItem: TStorage;
-		getItem: TStorage;
 		overwrite?: boolean;
 	}): Promise<Result<TAccount>> => {
+		if (!this.baseStoragePath) {
+			return err(
+				'baseStoragePath required for wallet persistence. Call setBaseStoragePath(path) first.',
+			);
+		}
+
 		try {
 			if (!backup) {
 				return err('No backup was provided for import.');
@@ -523,47 +517,41 @@ class LightningManager {
 			if (!accountBackup?.data) {
 				return err('No data was provided in the accountBackup object.');
 			}
-			if (!(ELdkData.peers in accountBackup.data)) {
-				return err(
-					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.peers}`,
-				);
-			}
+
+			//TODO add back
+			// if (!(ELdkData.peers in accountBackup.data)) {
+			// 	return err(
+			// 		`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.peers}`,
+			// 	);
+			// }
 
 			//Retrieve all storage keys for the provided account name.
-			const storageKeys = await getAllStorageKeys(accountBackup.account.name);
+			// const storageKeys = await getAllStorageKeys(accountBackup.account.name);
 
 			// Check that an account of this name doesn't already exist.
-			const timestamp = await getItem(storageKeys[ELdkData.timestamp]);
+			// const timestamp = await getItem(storageKeys[ELdkData.timestamp]);
 
 			// Ensure the user is not attempting to import an old/stale backup.
-			if (!overwrite && accountBackup.data?.timestamp <= timestamp) {
-				const msg =
-					accountBackup.data?.timestamp < timestamp
-						? 'This appears to be an old backup. The stored backup is more recent than the backup trying to be imported.'
-						: 'No need to import. The backup timestamps match.';
-				return err(msg);
-			}
-
-			// Check that we're properly connected to the device's storage and that the setItem & getItem methods work as expected.
-			const setAndGetCheckResponse = await setAndGetMethodCheck({
-				setItem,
-				getItem,
-			});
-			if (setAndGetCheckResponse.isErr()) {
-				return err(setAndGetCheckResponse.error.message);
-			}
+			//TODO check timestamp of channel manager locally
+			// if (!overwrite && accountBackup.data?.timestamp <= timestamp) {
+			// 	const msg =
+			// 		accountBackup.data?.timestamp < timestamp
+			// 			? 'This appears to be an old backup. The stored backup is more recent than the backup trying to be imported.'
+			// 			: 'No need to import. The backup timestamps match.';
+			// 	return err(msg);
+			// }
 
 			//Save the provided backup data using the storage keys.
 			//TODO write channel manager to file natively
-			setItem(
-				storageKeys[ELdkData.peers],
-				JSON.stringify(accountBackup.data[ELdkData.peers]),
-			);
-
-			setItem(
-				storageKeys[ELdkData.timestamp],
-				JSON.stringify(accountBackup.data[ELdkData.timestamp]),
-			);
+			// setItem(
+			// 	storageKeys[ELdkData.peers],
+			// 	JSON.stringify(accountBackup.data[ELdkData.peers]),
+			// );
+			//
+			// setItem(
+			// 	storageKeys[ELdkData.timestamp],
+			// 	JSON.stringify(accountBackup.data[ELdkData.timestamp]),
+			// );
 
 			//Return the saved account info.
 			return ok(accountBackup.account);
@@ -581,13 +569,15 @@ class LightningManager {
 	 */
 	backupAccount = async ({
 		account,
-		setItem,
-		getItem,
 	}: {
 		account: TAccount;
-		setItem: TStorage;
-		getItem: TStorage;
 	}): Promise<Result<string>> => {
+		if (!this.baseStoragePath) {
+			return err(
+				'baseStoragePath required for wallet persistence. Call setBaseStoragePath(path) first.',
+			);
+		}
+
 		try {
 			if (!account || !this?.account) {
 				return err(
@@ -602,34 +592,26 @@ class LightningManager {
 					'No account name or seed provided. Please pass an account object containing the name & seed to the start method and try again.',
 				);
 			}
-			//Check that we're properly connected to the device's storage.
-			//While setItem is not needed in the backupAccount method we still need to check that the getItem method works as expected.
-			const setAndGetCheckResponse = await setAndGetMethodCheck({
-				setItem,
-				getItem,
-			});
-			if (setAndGetCheckResponse.isErr()) {
-				return err(setAndGetCheckResponse.error.message);
-			}
-			const storageKeys = await getAllStorageKeys(account.name);
-			const channelManager = ''; //TODO get natively
-			const channelData = ''; //TODO get natively
-			const peers = await getItem(storageKeys[ELdkData.peers]);
-			const timestamp = await getItem(storageKeys[ELdkData.timestamp]);
-			const accountBackup: TAccountBackup = {
-				account,
-				data: {
-					[ELdkData.peers]: parseData(
-						peers,
-						DefaultLdkDataShape[ELdkData.peers],
-					),
-					[ELdkData.timestamp]: parseData(
-						timestamp,
-						DefaultLdkDataShape[ELdkData.timestamp],
-					),
-				},
-			};
-			return ok(JSON.stringify(accountBackup));
+
+			// const storageKeys = await getAllStorageKeys(account.name);
+			// const channelManager = ''; //TODO get natively
+			// const channelData = ''; //TODO get natively
+			// const peers = ''; //TODO get natively
+			// const timestamp = ''; //TODO get natively
+			// const accountBackup: TAccountBackup = {
+			// 	account,
+			// 	data: {
+			// 		[ELdkData.peers]: parseData(
+			// 			peers,
+			// 			DefaultLdkDataShape[ELdkData.peers],
+			// 		),
+			// 		[ELdkData.timestamp]: parseData(
+			// 			timestamp,
+			// 			DefaultLdkDataShape[ELdkData.timestamp],
+			// 		),
+			// 	},
+			// };
+			return ok(JSON.stringify('accountBackup')); //TODO
 		} catch (e) {
 			return err(e);
 		}
@@ -640,23 +622,17 @@ class LightningManager {
 	 * @param {TPeer} peer
 	 * @returns {Promise<void>}
 	 */
-	private saveLdkPeerData = async (peer: TPeer): Promise<void> => {
+	private saveLdkPeerData = async (peer: TPeer): Promise<Result<boolean>> => {
 		const peers = await this.getPeers();
 		const duplicatePeerArr = peers.filter(
 			(p) => p.pubKey === peer.pubKey && p.address === peer.address,
 		);
 		if (duplicatePeerArr.length > 0) {
-			return;
+			return ok(true);
 		}
 		peers.push(peer);
-		const storageKey = getLdkStorageKey(this.account.name, ELdkData.peers);
-		this.updateStorage(storageKey, JSON.stringify(peers));
-	};
 
-	private updateTimestamp = (): void => {
-		const storageKey = getLdkStorageKey(this.account.name, ELdkData.timestamp);
-		const date = Date.now();
-		this.setItem(storageKey, JSON.stringify(date));
+		return await ldk.writeToFile(ELdkFiles.peers, JSON.stringify(peers));
 	};
 
 	//LDK events
