@@ -29,6 +29,8 @@ import {
 	DefaultLdkDataShape,
 	TLdkData,
 	TFileReadRes,
+	TFileReadReq,
+	TFileWriteReq,
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -732,17 +734,24 @@ class LDK {
 	 * If format is set to "hex" then it is assumed content is a hex string and
 	 * the raw bytes will be saved to file.
 	 * @param fileName
+	 * @param path (optional) will use current account path as default if not provided
 	 * @param content
 	 * @param format
 	 * @returns {Promise<Ok<boolean> | Err<unknown>>}
 	 */
-	async writeToFile(
-		fileName: string,
-		content: string,
-		format: 'hex' | 'string' = 'string',
-	): Promise<Result<boolean>> {
+	async writeToFile({
+		fileName,
+		path,
+		content,
+		format,
+	}: TFileWriteReq): Promise<Result<boolean>> {
 		try {
-			await NativeLDK.writeToFile(fileName, content, format);
+			await NativeLDK.writeToFile(
+				fileName,
+				path || '',
+				content,
+				format || 'string',
+			);
 			return ok(true);
 		} catch (e) {
 			return err(e);
@@ -755,20 +764,20 @@ class LDK {
 	 * bytes and hex version will be returned as result.
 	 * Will return empty string if file does not exist yet.
 	 * @param fileName
-	 * @param format
 	 * @param path (optional) will use current account path as default if not provided
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param format
+	 * @returns {Promise<Ok<{content: string, timestamp: number}> | Err<unknown>>}
 	 */
-	async readFromFile(
-		fileName: string,
-		format: 'hex' | 'string' = 'string',
-		path: string = '',
-	): Promise<Result<TFileReadRes>> {
+	async readFromFile({
+		fileName,
+		format,
+		path,
+	}: TFileReadReq): Promise<Result<TFileReadRes>> {
 		try {
 			const res: TFileReadRes = await NativeLDK.readFromFile(
 				fileName,
-				format,
-				path,
+				path || '',
+				format || 'string',
 			);
 			return ok({ ...res, timestamp: Math.round(res.timestamp) });
 		} catch (e) {

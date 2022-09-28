@@ -280,6 +280,19 @@ export type TTransactionData = {
 	transaction: string;
 };
 
+export type TFileWriteReq = {
+	fileName: string;
+	path?: string;
+	content: string;
+	format?: 'hex' | 'string';
+};
+
+export type TFileReadReq = {
+	fileName: string;
+	format?: 'hex' | 'string';
+	path?: string;
+};
+
 export type TFileReadRes = {
 	content: string;
 	timestamp: number;
@@ -295,11 +308,12 @@ export type TGetTransactionData = (txid: string) => Promise<TTransactionData>;
 export type TGetBestBlock = () => Promise<THeader>;
 
 export enum ELdkFiles {
-	channel_manager = 'channel_manager.bin',
-	channels = 'channels',
-	peers = 'peers.json',
-	watch_transactions = 'watch_transactions.json',
-	watch_outputs = 'watch_outputs.json',
+	seed = 'seed', //32 bytes of entropy saved natively
+	channel_manager = 'channel_manager.bin', //Serialised rust object
+	channels = 'channels', //Path containing multiple files of serialised channels
+	peers = 'peers.json', //JSON file saved from JS
+	watch_transactions = 'watch_transactions.json', //JSON file saved from JS
+	watch_outputs = 'watch_outputs.json', //JSON file saved from JS
 }
 
 export enum ELdkData {

@@ -115,13 +115,14 @@ RCT_EXTERN_METHOD(claimFunds:(NSString *)paymentPreimage
 
 //MARK: Misc methods
 RCT_EXTERN_METHOD(writeToFile:(NSString *)fileName
+                  path:(NSString *)path
                   content:(NSString *)content
                   format:(NSString *)format
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(readFromFile:(NSString *)fileName
-                  format:(NSString *)format
                   path:(NSString *)path
+                  format:(NSString *)format
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 @end

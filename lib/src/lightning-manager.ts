@@ -236,11 +236,18 @@ class LightningManager {
 		}
 
 		//Validate we didn't change the seed for this account if one exists
-		const readSeed = await ldk.readFromFile('seed', 'hex');
+		const readSeed = await ldk.readFromFile({
+			fileName: ELdkFiles.seed,
+			format: 'hex',
+		});
 		if (readSeed.isErr()) {
 			if (readSeed.code === 'file_does_not_exist') {
 				//Have not yet saved the seed to disk
-				const writeRes = await ldk.writeToFile('seed', account.seed, 'hex');
+				const writeRes = await ldk.writeToFile({
+					fileName: ELdkFiles.seed,
+					content: account.seed,
+					format: 'hex',
+				});
 				if (writeRes.isErr()) {
 					return err(writeRes.error);
 				}
@@ -448,10 +455,11 @@ class LightningManager {
 			(p) => p.pubKey !== pubKey && p.address !== address && p.port !== port,
 		);
 
-		const writeRes = await ldk.writeToFile(
-			ELdkFiles.peers,
-			JSON.stringify(newPeers),
-		);
+		const writeRes = await ldk.writeToFile({
+			fileName: ELdkFiles.peers,
+			content: JSON.stringify(newPeers),
+		});
+
 		if (writeRes.isErr()) {
 			return err(writeRes.error);
 		}
@@ -464,7 +472,7 @@ class LightningManager {
 	 * @returns {Promise<TLdkPeers>}
 	 */
 	getPeers = async (): Promise<TLdkPeers> => {
-		const res = await ldk.readFromFile(ELdkFiles.peers);
+		const res = await ldk.readFromFile({ fileName: ELdkFiles.peers });
 		if (res.isOk()) {
 			return parseData(res.value.content, DefaultLdkDataShape.peers);
 		}
@@ -538,15 +546,22 @@ class LightningManager {
 			);
 
 			// Ensure the user is not attempting to import an old/stale backup.
-			const channelManagerRes = await ldk.readFromFile(
-				ELdkFiles.channel_manager,
-				'hex',
-				accountPath,
-			);
-			if (channelManagerRes.isErr()) {
+			let timestamp = 0;
+			const channelManagerRes = await ldk.readFromFile({
+				fileName: ELdkFiles.channel_manager,
+				path: accountPath,
+				format: 'hex',
+			});
+			if (
+				channelManagerRes.isErr() &&
+				channelManagerRes.code !== 'file_does_not_exist' // If the file doesn't exist assume there's no backup to be overwritten
+			) {
 				return err(channelManagerRes.error);
 			}
-			const { timestamp } = channelManagerRes.value;
+
+			if (channelManagerRes.isOk()) {
+				channelManagerRes.value;
+			}
 
 			if (!overwrite && accountBackup.data?.timestamp <= timestamp) {
 				const msg =
@@ -557,6 +572,43 @@ class LightningManager {
 			}
 
 			//Save the provided backup data to files
+			const saveChannelManagerRes = await ldk.writeToFile({
+				fileName: ELdkFiles.channel_manager,
+				path: accountPath,
+				content: accountBackup.data.channel_manager,
+				format: 'hex',
+			});
+			if (saveChannelManagerRes.isErr()) {
+				return err(saveChannelManagerRes.error);
+			}
+
+			let channelIds = Object.keys(accountBackup.data.channel_monitors);
+			for (let index = 0; index < channelIds.length; index++) {
+				const channelId = channelIds[index];
+
+				const saveChannelRes = await ldk.writeToFile({
+					fileName: `${channelId}.bin`,
+					path: appendPath(accountPath, ELdkFiles.channels),
+					content: accountBackup.data.channel_monitors[channelId],
+					format: 'hex',
+				});
+				if (saveChannelRes.isErr()) {
+					return err(saveChannelRes.error);
+				}
+			}
+
+			const savePeersRes = await ldk.writeToFile({
+				fileName: ELdkFiles.peers,
+				path: accountPath,
+				content: JSON.stringify(accountBackup.data.peers),
+			});
+			if (savePeersRes.isErr()) {
+				return err(savePeersRes.error);
+			}
+
+			//TODO save watch txs
+
+			//TODO save watch outputs
 
 			//Return the saved account info.
 			return ok(accountBackup.account);
@@ -599,11 +651,11 @@ class LightningManager {
 			const accountPath = appendPath(this.baseStoragePath, account.name);
 
 			//Get serialised channel manager
-			const channelManagerRes = await ldk.readFromFile(
-				ELdkFiles.channel_manager,
-				'hex',
-				accountPath,
-			);
+			const channelManagerRes = await ldk.readFromFile({
+				fileName: ELdkFiles.channel_manager,
+				path: accountPath,
+				format: 'hex',
+			});
 			if (channelManagerRes.isErr()) {
 				return err(channelManagerRes.error);
 			}
@@ -618,11 +670,11 @@ class LightningManager {
 			for (let index = 0; index < listChannelsRes.value.length; index++) {
 				const { channel_id } = listChannelsRes.value[index];
 
-				const serialisedChannelRes = await ldk.readFromFile(
-					`${channel_id}.bin`,
-					'hex',
-					appendPath(accountPath, ELdkFiles.channels),
-				);
+				const serialisedChannelRes = await ldk.readFromFile({
+					fileName: `${channel_id}.bin`,
+					path: appendPath(accountPath, ELdkFiles.channels),
+					format: 'hex',
+				});
 				if (serialisedChannelRes.isErr()) {
 					return err(serialisedChannelRes.error);
 				}
@@ -662,7 +714,10 @@ class LightningManager {
 		}
 		peers.push(peer);
 
-		return await ldk.writeToFile(ELdkFiles.peers, JSON.stringify(peers));
+		return await ldk.writeToFile({
+			fileName: ELdkFiles.peers,
+			content: JSON.stringify(peers),
+		});
 	};
 
 	//LDK events

@@ -760,14 +760,29 @@ class Ldk: NSObject {
     
     //MARK: Misc functions
     @objc
-    func writeToFile(_ fileName: NSString, content: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let baseStoragePath = Ldk.accountStoragePath else {
-            return handleReject(reject, .init_storage_path)
-        }
+    func writeToFile(_ fileName: NSString, path: NSString, content: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         
-        let fileUrl = baseStoragePath.appendingPathComponent(String(fileName))
+        let fileUrl: URL
         
         do {
+            if path != "" {
+                //Make sure custom path exists by creating if missing
+                let pathUrl = URL(fileURLWithPath: String(path), isDirectory: true)
+                
+                if !FileManager().fileExists(atPath: pathUrl.path) {
+                    try FileManager.default.createDirectory(atPath: pathUrl.path, withIntermediateDirectories: true, attributes: nil)
+                }
+                
+                fileUrl = URL(fileURLWithPath: String(path)).appendingPathComponent(String(fileName))
+            } else {
+                //Assume default directory if no path was set
+                guard let baseStoragePath = Ldk.accountStoragePath else {
+                    return handleReject(reject, .init_storage_path)
+                }
+                
+                fileUrl = baseStoragePath.appendingPathComponent(String(fileName))
+            }
+        
             let fileContent = String(content)
             if format == "hex" {
                 try Data(fileContent.hexaBytes).write(to: fileUrl)
@@ -782,7 +797,7 @@ class Ldk: NSObject {
     }
         
     @objc
-    func readFromFile(_ fileName: NSString, format: NSString, path: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func readFromFile(_ fileName: NSString, path: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         let fileUrl: URL
         
         if path != "" {
