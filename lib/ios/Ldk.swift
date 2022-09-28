@@ -782,25 +782,35 @@ class Ldk: NSObject {
     }
         
     @objc
-    func readFromFile(_ fileName: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let baseStoragePath = Ldk.accountStoragePath else {
-            return handleReject(reject, .init_storage_path)
+    func readFromFile(_ fileName: NSString, format: NSString, path: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let fileUrl: URL
+        
+        if path != "" {
+            fileUrl = URL(fileURLWithPath: String(path)).appendingPathComponent(String(fileName))
+        } else {
+            //Assume default directory if no path was set
+            guard let baseStoragePath = Ldk.accountStoragePath else {
+                return handleReject(reject, .init_storage_path)
+            }
+            
+            fileUrl = baseStoragePath.appendingPathComponent(String(fileName))
         }
         
-        let fileUrl = baseStoragePath.appendingPathComponent(String(fileName))
-        
         if !FileManager().fileExists(atPath: fileUrl.path) {
-            return handleReject(reject, .file_does_not_exist)
+            return handleReject(reject, .file_does_not_exist, nil, "Could not locate file at \(fileUrl.path)")
         }
         
         do {
+            let attr = try FileManager.default.attributesOfItem(atPath: fileUrl.path)
+            let timestamp = ((attr[FileAttributeKey.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0).rounded()
+                        
             if format == "hex" {
-                resolve(try Data(contentsOf: fileUrl).hexEncodedString())
+                resolve(["content": try Data(contentsOf: fileUrl).hexEncodedString(), "timestamp": timestamp])
             } else {
-                resolve(try String(contentsOf: fileUrl, encoding: .utf8))
+                resolve(["content": try String(contentsOf: fileUrl, encoding: .utf8), "timestamp": timestamp])
             }
         } catch {
-            return handleReject(reject, .read_fail, error, "Failed to read content from file \(fileName)")
+            return handleReject(reject, .read_fail, error, "Failed to read \(format) content from file \(fileUrl.path)")
         }
     }
 }

@@ -14,7 +14,7 @@ class LdkPersister: Persist {
     }
     
     private func saveChannel(_ channel_id: OutPoint, _ data: ChannelMonitor) -> Result_NoneChannelMonitorUpdateErrZ {
-        let channelId = Data(channel_id.write()).hexEncodedString()
+        let channelId = Data(channel_id.to_channel_id()).hexEncodedString()
         
         guard let channelStoragePath = Ldk.channelStoragePath?.appendingPathComponent("\(channelId).bin") else {
             return Result_NoneChannelMonitorUpdateErrZ.ok() // TODO find out which error to return here

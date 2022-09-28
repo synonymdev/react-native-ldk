@@ -456,11 +456,10 @@ const App = (): ReactElement => {
 								return;
 							}
 							console.log(backupResponse.value);
-							Clipboard.setString(backupResponse.value);
-							const account = JSON.parse(backupResponse.value).account;
+							Clipboard.setString(JSON.stringify(backupResponse.value));
 							setMessage(
 								`Backup of the following account copied to clipboard:\n${JSON.stringify(
-									account,
+									backupResponse.value.account,
 								)}`,
 							);
 						}}

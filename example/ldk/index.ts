@@ -209,7 +209,7 @@ export const getTransactionData = async (
  */
 export const backupAccount = async (
 	account?: TAccount,
-): Promise<Result<string>> => {
+): Promise<Result<TAccountBackup>> => {
 	if (!account) {
 		account = await getAccount();
 	}

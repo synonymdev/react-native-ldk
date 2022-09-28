@@ -280,6 +280,11 @@ export type TTransactionData = {
 	transaction: string;
 };
 
+export type TFileReadRes = {
+	content: string;
+	timestamp: number;
+};
+
 export const DefaultTransactionDataShape: TTransactionData = {
 	header: '',
 	height: 0,
@@ -290,18 +295,29 @@ export type TGetTransactionData = (txid: string) => Promise<TTransactionData>;
 export type TGetBestBlock = () => Promise<THeader>;
 
 export enum ELdkFiles {
+	channel_manager = 'channel_manager.bin',
+	channels = 'channels',
 	peers = 'peers.json',
 	watch_transactions = 'watch_transactions.json',
 	watch_outputs = 'watch_outputs.json',
 }
 
+export enum ELdkData {
+	channel_manager = 'channel_manager',
+	channel_monitors = 'channel_monitors',
+	peers = 'peers',
+	watch_transactions = 'watch_transactions',
+	watch_outputs = 'watch_outputs',
+	timestamp = 'timestamp',
+}
+
 export type TLdkData = {
-	channel_manager: string;
-	channel_monitors: string[];
-	seed: string;
-	peers: TLdkPeers;
-	watch_transactions: TRegisterTxEvent[];
-	watch_outputs: TRegisterOutputEvent[];
+	[ELdkData.channel_manager]: string;
+	[ELdkData.channel_monitors]: { [key: string]: string };
+	[ELdkData.peers]: TLdkPeers;
+	[ELdkData.watch_transactions]: TRegisterTxEvent[];
+	[ELdkData.watch_outputs]: TRegisterOutputEvent[];
+	[ELdkData.timestamp]: number;
 };
 
 export type TAccountBackup = {
@@ -312,12 +328,12 @@ export type TAccountBackup = {
 export type TLdkPeers = TPeer[];
 
 export const DefaultLdkDataShape: TLdkData = {
-	channel_manager: '',
-	channel_monitors: [],
-	seed: '',
-	peers: [],
-	watch_transactions: [],
-	watch_outputs: [],
+	[ELdkData.channel_manager]: '',
+	[ELdkData.channel_monitors]: {},
+	[ELdkData.peers]: [],
+	[ELdkData.watch_transactions]: [],
+	[ELdkData.watch_outputs]: [],
+	[ELdkData.timestamp]: 0,
 };
 
 export type TAvailableNetworks =

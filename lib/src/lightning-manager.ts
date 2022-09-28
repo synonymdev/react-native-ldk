@@ -4,6 +4,7 @@ import {
 	DefaultLdkDataShape,
 	DefaultTransactionDataShape,
 	EEventTypes,
+	ELdkData,
 	ELdkFiles,
 	ELdkLogLevels,
 	ENetworks,
@@ -32,7 +33,7 @@ import {
 	TRegisterTxEvent,
 	TTransactionData,
 } from './utils/types';
-import { parseData, startParamCheck } from './utils/helpers';
+import { appendPath, parseData, startParamCheck } from './utils/helpers';
 
 //TODO startup steps
 // Step 0: Listen for events ✅
@@ -150,7 +151,7 @@ class LightningManager {
 	 * @returns {Promise<Ok<string>>}
 	 */
 	async setBaseStoragePath(path: string): Promise<Result<string>> {
-		const storagePath = `${path}${path.slice(-1) !== '/' ? '' : '/'}`;
+		const storagePath = appendPath(path, ''); //Adds slash if missing
 		//Storage path will be validated and created when calling ldk.setAccountStoragePath
 		this.baseStoragePath = storagePath;
 		return ok('Storage set');
@@ -248,7 +249,7 @@ class LightningManager {
 			}
 		} else {
 			//Cannot start an existing node with a different seed
-			if (readSeed.value !== account.seed) {
+			if (readSeed.value.content !== account.seed) {
 				return err('Seed for current node cannot be changed.');
 			}
 		}
@@ -465,7 +466,7 @@ class LightningManager {
 	getPeers = async (): Promise<TLdkPeers> => {
 		const res = await ldk.readFromFile(ELdkFiles.peers);
 		if (res.isOk()) {
-			return parseData(res.value, DefaultLdkDataShape.peers);
+			return parseData(res.value.content, DefaultLdkDataShape.peers);
 		}
 
 		return DefaultLdkDataShape.peers;
@@ -518,40 +519,44 @@ class LightningManager {
 				return err('No data was provided in the accountBackup object.');
 			}
 
-			//TODO add back
-			// if (!(ELdkData.peers in accountBackup.data)) {
-			// 	return err(
-			// 		`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.peers}`,
-			// 	);
-			// }
+			if (
+				!(ELdkData.channel_manager in accountBackup.data) ||
+				!(ELdkData.channel_monitors in accountBackup.data) ||
+				!(ELdkData.peers in accountBackup.data) ||
+				!(ELdkData.watch_transactions in accountBackup.data) ||
+				!(ELdkData.watch_outputs in accountBackup.data) ||
+				!(ELdkData.timestamp in accountBackup.data)
+			) {
+				return err(
+					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.channel_manager}, ${ELdkData.channel_monitors}, ${ELdkData.peers}, ${ELdkData.watch_transactions}, , ${ELdkData.watch_outputs}`,
+				);
+			}
 
-			//Retrieve all storage keys for the provided account name.
-			// const storageKeys = await getAllStorageKeys(accountBackup.account.name);
-
-			// Check that an account of this name doesn't already exist.
-			// const timestamp = await getItem(storageKeys[ELdkData.timestamp]);
+			const accountPath = appendPath(
+				this.baseStoragePath,
+				accountBackup.account.name,
+			);
 
 			// Ensure the user is not attempting to import an old/stale backup.
-			//TODO check timestamp of channel manager locally
-			// if (!overwrite && accountBackup.data?.timestamp <= timestamp) {
-			// 	const msg =
-			// 		accountBackup.data?.timestamp < timestamp
-			// 			? 'This appears to be an old backup. The stored backup is more recent than the backup trying to be imported.'
-			// 			: 'No need to import. The backup timestamps match.';
-			// 	return err(msg);
-			// }
+			const channelManagerRes = await ldk.readFromFile(
+				ELdkFiles.channel_manager,
+				'hex',
+				accountPath,
+			);
+			if (channelManagerRes.isErr()) {
+				return err(channelManagerRes.error);
+			}
+			const { timestamp } = channelManagerRes.value;
 
-			//Save the provided backup data using the storage keys.
-			//TODO write channel manager to file natively
-			// setItem(
-			// 	storageKeys[ELdkData.peers],
-			// 	JSON.stringify(accountBackup.data[ELdkData.peers]),
-			// );
-			//
-			// setItem(
-			// 	storageKeys[ELdkData.timestamp],
-			// 	JSON.stringify(accountBackup.data[ELdkData.timestamp]),
-			// );
+			if (!overwrite && accountBackup.data?.timestamp <= timestamp) {
+				const msg =
+					accountBackup.data?.timestamp < timestamp
+						? 'This appears to be an old backup. The stored backup is more recent than the backup trying to be imported.'
+						: 'No need to import. The backup timestamps match.';
+				return err(msg);
+			}
+
+			//Save the provided backup data to files
 
 			//Return the saved account info.
 			return ok(accountBackup.account);
@@ -561,17 +566,15 @@ class LightningManager {
 	};
 
 	/**
-	 * Used to backup the data that corresponds with the provided account.
+	 * Used to back up the data that corresponds with the provided account.
 	 * @param {TAccount} account
-	 * @param {TStorage} setItem
-	 * @param {TStorage} getItem
-	 * @returns {string} This string can be used to import/restore this LDK account via importAccount.
+	 * @returns {TAccountBackup} This object can be stringified and used to import/restore this LDK account via importAccount.
 	 */
 	backupAccount = async ({
 		account,
 	}: {
 		account: TAccount;
-	}): Promise<Result<string>> => {
+	}): Promise<Result<TAccountBackup>> => {
 		if (!this.baseStoragePath) {
 			return err(
 				'baseStoragePath required for wallet persistence. Call setBaseStoragePath(path) first.',
@@ -593,25 +596,52 @@ class LightningManager {
 				);
 			}
 
-			// const storageKeys = await getAllStorageKeys(account.name);
-			// const channelManager = ''; //TODO get natively
-			// const channelData = ''; //TODO get natively
-			// const peers = ''; //TODO get natively
-			// const timestamp = ''; //TODO get natively
-			// const accountBackup: TAccountBackup = {
-			// 	account,
-			// 	data: {
-			// 		[ELdkData.peers]: parseData(
-			// 			peers,
-			// 			DefaultLdkDataShape[ELdkData.peers],
-			// 		),
-			// 		[ELdkData.timestamp]: parseData(
-			// 			timestamp,
-			// 			DefaultLdkDataShape[ELdkData.timestamp],
-			// 		),
-			// 	},
-			// };
-			return ok(JSON.stringify('accountBackup')); //TODO
+			const accountPath = appendPath(this.baseStoragePath, account.name);
+
+			//Get serialised channel manager
+			const channelManagerRes = await ldk.readFromFile(
+				ELdkFiles.channel_manager,
+				'hex',
+				accountPath,
+			);
+			if (channelManagerRes.isErr()) {
+				return err(channelManagerRes.error);
+			}
+
+			//Get serialised channels
+			const listChannelsRes = await ldk.listChannels();
+			if (listChannelsRes.isErr()) {
+				return err(listChannelsRes.error);
+			}
+
+			let channel_monitors: { [key: string]: string } = {};
+			for (let index = 0; index < listChannelsRes.value.length; index++) {
+				const { channel_id } = listChannelsRes.value[index];
+
+				const serialisedChannelRes = await ldk.readFromFile(
+					`${channel_id}.bin`,
+					'hex',
+					appendPath(accountPath, ELdkFiles.channels),
+				);
+				if (serialisedChannelRes.isErr()) {
+					return err(serialisedChannelRes.error);
+				}
+
+				channel_monitors[channel_id] = serialisedChannelRes.value.content;
+			}
+
+			const accountBackup: TAccountBackup = {
+				account,
+				data: {
+					channel_manager: channelManagerRes.value.content,
+					channel_monitors: channel_monitors,
+					peers: await this.getPeers(),
+					watch_outputs: [], //TODO add here when outputs are persisted
+					watch_transactions: [], //TODO add here when outputs are persisted
+					timestamp: Date.now(),
+				},
+			};
+			return ok(accountBackup);
 		} catch (e) {
 			return err(e);
 		}

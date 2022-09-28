@@ -117,3 +117,7 @@ export const parseData = (data: string, fallback: any): any => {
 		return fallback;
 	}
 };
+
+export const appendPath = (path1: string, path2: string): string => {
+	return `${path1}${path1.slice(-1) === '/' ? '' : '/'}${path2}`;
+};

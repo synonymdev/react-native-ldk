@@ -25,6 +25,10 @@ import {
 	TSpendOutputsReq,
 	TNetworkGraphChannelInfo,
 	TNetworkGraphNodeInfo,
+	TAccountBackup,
+	DefaultLdkDataShape,
+	TLdkData,
+	TFileReadRes,
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -752,15 +756,21 @@ class LDK {
 	 * Will return empty string if file does not exist yet.
 	 * @param fileName
 	 * @param format
+	 * @param path (optional) will use current account path as default if not provided
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async readFromFile(
 		fileName: string,
 		format: 'hex' | 'string' = 'string',
-	): Promise<Result<string>> {
+		path: string = '',
+	): Promise<Result<TFileReadRes>> {
 		try {
-			const res = await NativeLDK.readFromFile(fileName, format);
-			return ok(res);
+			const res: TFileReadRes = await NativeLDK.readFromFile(
+				fileName,
+				format,
+				path,
+			);
+			return ok({ ...res, timestamp: Math.round(res.timestamp) });
 		} catch (e) {
 			return err(e);
 		}
