@@ -10,6 +10,7 @@ export enum EEventTypes {
 	register_tx = 'register_tx',
 	register_output = 'register_output',
 	broadcast_transaction = 'broadcast_transaction',
+	backup = 'backup',
 	channel_manager_funding_generation_ready = 'channel_manager_funding_generation_ready',
 	channel_manager_payment_received = 'channel_manager_payment_received',
 	channel_manager_payment_sent = 'channel_manager_payment_sent',

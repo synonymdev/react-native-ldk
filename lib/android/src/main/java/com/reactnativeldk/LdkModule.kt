@@ -27,7 +27,7 @@ enum class EventTypes {
     register_tx,
     register_output,
     broadcast_transaction,
-    backup, //TODO
+    backup,
     channel_manager_funding_generation_ready,
     channel_manager_payment_received,
     channel_manager_payment_sent,
@@ -305,7 +305,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             }
         }
 
-        //TODO read channel manager
         var channelManagerSerialized: ByteArray? = null
         val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.channel_manager.fileName)
         if (channelManagerFile.exists()) {

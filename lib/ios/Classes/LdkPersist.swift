@@ -23,6 +23,7 @@ class LdkPersister: Persist {
         do {
             try Data(data.write()).write(to: channelStoragePath)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel (\(channelId)) to disk")
+            LdkEventEmitter.shared.send(withEvent: .backup, body: "")
         
             return Result_NoneChannelMonitorUpdateErrZ.ok()
         } catch {

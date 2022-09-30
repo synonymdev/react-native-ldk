@@ -12,6 +12,10 @@ class LdkPersister {
         if (LdkModule.channelStoragePath != "") {
             File(LdkModule.channelStoragePath + "/" + id.to_channel_id().hexEncodedString() + ".bin").writeBytes(data.write())
         }
+
+        LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${id.to_channel_id().hexEncodedString()}) to disk")
+        LdkEventEmitter.send(EventTypes.backup, "")
+
         return Result_NoneChannelMonitorUpdateErrZ.ok();
     }
 

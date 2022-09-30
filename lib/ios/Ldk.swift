@@ -8,7 +8,7 @@ enum EventTypes: String, CaseIterable {
     case register_tx = "register_tx"
     case register_output = "register_output"
     case broadcast_transaction = "broadcast_transaction"
-    case backup = "backup" //TODO send backup details visa event to JS
+    case backup = "backup"
     case channel_manager_funding_generation_ready = "channel_manager_funding_generation_ready"
     case channel_manager_payment_received = "channel_manager_payment_received"
     case channel_manager_payment_sent = "channel_manager_payment_sent"

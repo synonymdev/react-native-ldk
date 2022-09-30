@@ -93,6 +93,10 @@ class LightningManager {
 			this.onBroadcastTransaction.bind(this),
 		);
 
+		ldk.onEvent(EEventTypes.backup, () =>
+			console.log('LDK state requires backup'),
+		);
+
 		//Channel manager handle events:
 		ldk.onEvent(
 			EEventTypes.channel_manager_funding_generation_ready,

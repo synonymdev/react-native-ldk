@@ -140,6 +140,8 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
     override fun persist_manager(channel_manager_bytes: ByteArray?) {
         if (channel_manager_bytes != null && LdkModule.accountStoragePath != "") {
             File(LdkModule.accountStoragePath + "/" + LdkFileNames.channel_manager.fileName).writeBytes(channel_manager_bytes)
+            LdkEventEmitter.send(EventTypes.native_log, "Persisted channel manager to disk")
+            LdkEventEmitter.send(EventTypes.backup, "")
         }
     }
 
