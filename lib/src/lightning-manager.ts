@@ -223,7 +223,7 @@ class LightningManager {
 		}
 
 		//The path all wallet and network graph persistence will be saved to
-		let accountStoragePath = `${this.baseStoragePath}${account.name}`;
+		let accountStoragePath = appendPath(this.baseStoragePath, account.name);
 		const storagePathRes = await ldk.setAccountStoragePath(accountStoragePath);
 		if (storagePathRes.isErr()) {
 			return storagePathRes;

@@ -24,8 +24,7 @@ class LdkLogger {
 object LogFile {
     private var logFile: File? = null
 
-    fun setFilePath(path: String) {
-        logFile = File(path)
+    fun setFilePath(logFile: File) {
         if (!logFile!!.isFile) {
             logFile!!.createNewFile()
         }

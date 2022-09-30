@@ -138,16 +138,14 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
     }
 
     override fun persist_manager(channel_manager_bytes: ByteArray?) {
-        if (channel_manager_bytes != null) {
-            val body = Arguments.createMap()
-            body.putHexString("channel_manager", channel_manager_bytes)
-            LdkEventEmitter.send(EventTypes.persist_manager, body)
+        if (channel_manager_bytes != null && LdkModule.accountStoragePath != "") {
+            File(LdkModule.accountStoragePath + "/" + LdkFileNames.channel_manager.fileName).writeBytes(channel_manager_bytes)
         }
     }
 
     override fun persist_network_graph(network_graph: ByteArray?) {
-        if (network_graph != null && LdkModule.baseStoragePath != "") {
-            File(LdkModule.baseStoragePath + LdkFileNames.network_graph.fileName).writeBytes(network_graph)
+        if (network_graph != null && LdkModule.accountStoragePath != "") {
+            File(LdkModule.accountStoragePath + "/" + LdkFileNames.network_graph.fileName).writeBytes(network_graph)
             LdkEventEmitter.send(EventTypes.native_log, "Persisted network graph to disk")
         } else {
             LdkEventEmitter.send(EventTypes.native_log, "Error. Failed to persist network graph to disk.")

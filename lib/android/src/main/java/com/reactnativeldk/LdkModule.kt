@@ -16,6 +16,8 @@ import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCr
 import org.ldk.structs.Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK
 import java.io.File
 import java.net.InetSocketAddress
+import java.nio.file.Files
+import java.nio.file.Paths
 
 
 //MARK: ************Replicate in typescript and swift************
@@ -25,9 +27,7 @@ enum class EventTypes {
     register_tx,
     register_output,
     broadcast_transaction,
-    persist_manager,
-    persist_new_channel,
-    update_persisted_channel,
+    backup, //TODO
     channel_manager_funding_generation_ready,
     channel_manager_payment_received,
     channel_manager_payment_sent,
@@ -74,7 +74,10 @@ enum class LdkErrors {
     invoice_create_failed,
     init_scorer_failed,
     channel_close_fail,
-    spend_outputs_fail
+    spend_outputs_fail,
+    write_fail,
+    read_fail,
+    file_does_not_exist
 }
 
 enum class LdkCallbackResponses {
@@ -95,12 +98,13 @@ enum class LdkCallbackResponses {
     process_pending_htlc_forwards_success,
     claim_funds_success,
     ldk_reset,
-    close_channel_success
+    close_channel_success,
+    file_write_success
 }
 
 enum class LdkFileNames(val fileName: String) {
-    network_graph("network_graph.bin")
-    //TODO channel manager and monitors
+    network_graph("network_graph.bin"),
+    channel_manager("channel_manager.bin")
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -135,33 +139,57 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     //Static to be accessed from other classes
     companion object {
-        lateinit var baseStoragePath: String
+        lateinit var accountStoragePath: String
+        lateinit var channelStoragePath: String
     }
 
     init {
-        baseStoragePath = ""
+        accountStoragePath = ""
+        channelStoragePath = ""
     }
 
     //Startup methods
 
     @ReactMethod
-    fun setStoragePath(storagePath: String, promise: Promise) {
-        if (baseStoragePath != "") {
+    fun setAccountStoragePath(storagePath: String, promise: Promise) {
+        if (accountStoragePath != "") {
             return handleReject(promise, LdkErrors.already_init)
         }
 
+        val accountStoragePath = File(storagePath)
+        val channelStoragePath = File("$storagePath/channels/")
+
         try {
-            val directory = File(storagePath)
-            if (!directory.exists()) {
-                directory.mkdirs()
+            if (!accountStoragePath.exists()) {
+                accountStoragePath.mkdirs()
+            }
+            if (!channelStoragePath.exists()) {
+                channelStoragePath.mkdirs()
             }
         } catch (e: Exception) {
             return handleReject(promise, LdkErrors.create_storage_dir_fail, Error(e))
         }
 
-        LdkModule.baseStoragePath = if (storagePath.last().equals("/")) storagePath else "$storagePath/"
+        LdkModule.accountStoragePath = accountStoragePath.absolutePath
+        LdkModule.channelStoragePath = channelStoragePath.absolutePath
 
         handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
+    }
+
+    @ReactMethod
+    fun setLogFilePath(path: String, promise: Promise) {
+        val logFile = File(path)
+
+        try {
+            if (!logFile.parentFile.exists()) {
+                logFile.parentFile.mkdirs()
+            }
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.create_storage_dir_fail, Error(e))
+        }
+
+        LogFile.setFilePath(logFile)
+        handleResolve(promise, LdkCallbackResponses.log_path_updated)
     }
 
     @ReactMethod
@@ -231,7 +259,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.already_init)
         }
 
-        val file = File(LdkModule.baseStoragePath + LdkFileNames.network_graph.fileName)
+        val file = File(accountStoragePath + "/" + LdkFileNames.network_graph.fileName)
         if (file.exists()) {
             (NetworkGraph.read(file.readBytes(), logger.logger) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
                 networkGraph = res.res
@@ -247,7 +275,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initChannelManager(network: String, channelManagerSerialized: String, channelMonitorsSerialized: ReadableArray, blockHash: String, blockHeight: Double, promise: Promise) {
+    fun initChannelManager(network: String, blockHash: String, blockHeight: Double, promise: Promise) {
         if (channelManager !== null) {
             return handleReject(promise, LdkErrors.already_init)
         }
@@ -256,6 +284,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
         userConfig ?: return handleReject(promise, LdkErrors.init_user_config)
         networkGraph ?: return handleReject(promise, LdkErrors.init_network_graph)
+        accountStoragePath ?: return handleReject(promise, LdkErrors.init_storage_path)
+        channelStoragePath ?: return handleReject(promise, LdkErrors.init_storage_path)
 
         when (network) {
             "regtest" -> {
@@ -270,19 +300,45 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 ldkNetwork = Network.LDKNetwork_Bitcoin
                 ldkCurrency = Currency.LDKCurrency_Bitcoin
             }
-            else -> { // Note the block
+            else -> {
                 return handleReject(promise, LdkErrors.invalid_network)
             }
         }
 
-        var channelMonitors: MutableList<ByteArray> = arrayListOf()
-        channelMonitorsSerialized.toArrayList().iterator().forEach { hex ->
-            channelMonitors.add((hex as String).hexa())
+        //TODO read channel manager
+        var channelManagerSerialized: ByteArray? = null
+        val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.channel_manager.fileName)
+        if (channelManagerFile.exists()) {
+           channelManagerSerialized = channelManagerFile.readBytes()
         }
 
         try {
-            if (channelManagerSerialized == "") {
+            if (channelManagerSerialized != null) {
+                //Restoring node
+                LdkEventEmitter.send(EventTypes.native_log, "Restoring node from disk")
+                var channelMonitors: MutableList<ByteArray> = arrayListOf()
+                Files.walk(Paths.get(channelStoragePath))
+                    .filter { Files.isRegularFile(it) }
+                    .forEach {
+                        LdkEventEmitter.send(EventTypes.native_log, "Loading channel from file " + it.fileName)
+                        channelMonitors.add(it.toFile().readBytes())
+                    }
+
+                channelManagerConstructor = ChannelManagerConstructor(
+                    channelManagerSerialized,
+                    channelMonitors.toTypedArray(),
+                    userConfig,
+                    keysManager!!.as_KeysInterface(),
+                    feeEstimator.feeEstimator,
+                    chainMonitor,
+                    filter.filter,
+                    networkGraph!!.write(),
+                    broadcaster.broadcaster,
+                    logger.logger
+                )
+            } else {
                 //New node
+                LdkEventEmitter.send(EventTypes.native_log, "Creating new channel manager")
                 channelManagerConstructor = ChannelManagerConstructor(
                     ldkNetwork,
                     userConfig,
@@ -295,20 +351,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     broadcaster.broadcaster,
                     logger.logger,
                 )
-            } else {
-                //Restoring node
-                channelManagerConstructor = ChannelManagerConstructor(
-                    channelManagerSerialized.hexa(),
-                    channelMonitors.toTypedArray(),
-                    userConfig,
-                    keysManager!!.as_KeysInterface(),
-                    feeEstimator.feeEstimator,
-                    chainMonitor,
-                    filter.filter,
-                    networkGraph!!.write(),
-                    broadcaster.broadcaster,
-                    logger.logger
-                )
+
             }
         } catch (e: Exception) {
             return handleReject(promise, LdkErrors.unknown_error, Error(e))
@@ -352,7 +395,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         peerHandler = null
         ldkNetwork = null
         ldkCurrency = null
-        LdkModule.baseStoragePath = ""
+        accountStoragePath = ""
+        channelStoragePath = ""
 
         handleResolve(promise, LdkCallbackResponses.ldk_reset)
     }
@@ -369,12 +413,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun setLogLevel(level: Double, active: Boolean, promise: Promise) {
         logger.setLevel(level.toInt(), active)
         handleResolve(promise, LdkCallbackResponses.log_level_updated)
-    }
-
-    @ReactMethod
-    fun setLogFilePath(path: String, promise: Promise) {
-        LogFile.setFilePath(path)
-        handleResolve(promise, LdkCallbackResponses.log_path_updated)
     }
 
     @ReactMethod
@@ -694,6 +732,74 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
 
         promise.resolve(graph.channel(shortChannelId.toLong())?.asJson)
+    }
+
+    //MARK: Misc methods
+    @ReactMethod
+    fun writeToFile(fileName: String, path: String, content: String, format: String, promise: Promise) {
+        val file: File
+
+        try {
+            if (path != "") {
+                //Make sure custom path exists by creating if missing
+                val filePath = File(path)
+                if (!filePath.exists()) {
+                    filePath.mkdirs()
+                }
+
+                file = File("$path/$fileName")
+            } else {
+                //Assume default directory if no path was set
+                if (accountStoragePath == "") {
+                    return handleReject(promise, LdkErrors.init_storage_path)
+                }
+
+                file = File("$accountStoragePath/$fileName")
+            }
+
+            if (format == "hex") {
+                file.writeBytes(content.hexa())
+            } else {
+                file.writeText(content)
+            }
+
+            handleResolve(promise, LdkCallbackResponses.file_write_success)
+        } catch (e: Exception) {
+            handleReject(promise, LdkErrors.write_fail, Error(e))
+        }
+    }
+
+    @ReactMethod
+    fun readFromFile(fileName: String, path: String, format: String, promise: Promise) {
+        val file = if (path != "") {
+            File("$path/$fileName")
+        } else {
+            //Assume default directory if no path was set
+            if (accountStoragePath == "") {
+                return handleReject(promise, LdkErrors.init_storage_path)
+            }
+
+            File("$accountStoragePath/$fileName")
+        }
+
+        if (!file.exists()) {
+            return handleReject(promise, LdkErrors.file_does_not_exist, Error("Could not locate file at ${file.absolutePath}"))
+        }
+
+        try {
+            val result = Arguments.createMap()
+            result.putInt("timestamp", file.lastModified().toInt())
+
+            if (format == "hex") {
+                result.putHexString("content", file.readBytes())
+            } else {
+                result.putString("content", file.readText())
+            }
+
+            promise.resolve(result)
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.read_fail, Error(e))
+        }
     }
 }
 

@@ -182,8 +182,6 @@ class Ldk: NSObject {
         guard keysManager == nil else {
             return handleReject(reject, .already_init)
         }
-
-        //TODO check seed is correct
         
         let seconds = UInt64(NSDate().timeIntervalSince1970)
         let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
@@ -229,12 +227,12 @@ class Ldk: NSObject {
             return handleReject(reject, .already_init)
         }
         
-        guard let baseStoragePath = Ldk.accountStoragePath else {
+        guard let accountStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
         
         do {
-            let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: baseStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL)), arg: logger)
+            let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL)), arg: logger)
             if read.isOk() {
                 networkGraph = read.getValue()
             }
@@ -272,7 +270,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_network_graph)
         }
 
-        guard let baseStoragePath = Ldk.accountStoragePath else {
+        guard let accountStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
         
@@ -294,7 +292,7 @@ class Ldk: NSObject {
             return handleReject(reject, .invalid_network)
         }
         
-        let storedChannelManager = try? Data(contentsOf: baseStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
+        let storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
         
         do {
             if let channelManagerSerialized = storedChannelManager {
@@ -372,7 +370,8 @@ class Ldk: NSObject {
         ldkNetwork = nil
         ldkCurrency = nil
         Ldk.accountStoragePath = nil
-        
+        Ldk.channelStoragePath = nil
+
         return handleResolve(resolve, .ldk_reset)
     }
 
@@ -776,11 +775,11 @@ class Ldk: NSObject {
                 fileUrl = URL(fileURLWithPath: String(path)).appendingPathComponent(String(fileName))
             } else {
                 //Assume default directory if no path was set
-                guard let baseStoragePath = Ldk.accountStoragePath else {
+                guard let accountStoragePath = Ldk.accountStoragePath else {
                     return handleReject(reject, .init_storage_path)
                 }
                 
-                fileUrl = baseStoragePath.appendingPathComponent(String(fileName))
+                fileUrl = accountStoragePath.appendingPathComponent(String(fileName))
             }
         
             let fileContent = String(content)
@@ -804,11 +803,11 @@ class Ldk: NSObject {
             fileUrl = URL(fileURLWithPath: String(path)).appendingPathComponent(String(fileName))
         } else {
             //Assume default directory if no path was set
-            guard let baseStoragePath = Ldk.accountStoragePath else {
+            guard let accountStoragePath = Ldk.accountStoragePath else {
                 return handleReject(reject, .init_storage_path)
             }
             
-            fileUrl = baseStoragePath.appendingPathComponent(String(fileName))
+            fileUrl = accountStoragePath.appendingPathComponent(String(fileName))
         }
         
         if !FileManager().fileExists(atPath: fileUrl.path) {
