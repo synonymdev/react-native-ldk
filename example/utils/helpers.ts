@@ -1,16 +1,12 @@
 import Keychain from 'react-native-keychain';
-import {
-	ELdkData,
-	TAccount,
-	TAvailableNetworks,
-} from '@synonymdev/react-native-ldk';
+import { TAccount, TAvailableNetworks } from '@synonymdev/react-native-ldk';
 import { getItem, setItem } from '../ldk';
 import { EAccount } from './types';
-import { getLdkStorageKey } from '@synonymdev/react-native-ldk/dist/utils/helpers';
 import { err, ok, Result } from './result';
 import { randomBytes } from 'react-native-randombytes';
 import * as bitcoin from 'bitcoinjs-lib';
 import { selectedNetwork } from './constants';
+import RNFS from 'react-native-fs';
 
 /**
  * Use Keychain to save LDK name & seed.
@@ -84,12 +80,10 @@ export const createNewAccount = async (): Promise<Result<TAccount>> => {
 		const currentAccountName = await getCurrentAccountName();
 		let num = Number(currentAccountName.replace('wallet', ''));
 		while (emptyAccount === false) {
-			const channelManagerStorageKey = getLdkStorageKey(
-				`wallet${num}`,
-				ELdkData.channelManager,
+			const accountExists = await RNFS.exists(
+				`${RNFS.DocumentDirectoryPath}/ldk/wallet${num}`,
 			);
-			const channelData = await getItem(channelManagerStorageKey);
-			if (channelData) {
+			if (accountExists) {
 				num++;
 			} else {
 				emptyAccount = true;

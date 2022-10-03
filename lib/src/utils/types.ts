@@ -10,11 +10,7 @@ export enum EEventTypes {
 	register_tx = 'register_tx',
 	register_output = 'register_output',
 	broadcast_transaction = 'broadcast_transaction',
-	persist_manager = 'persist_manager',
-	persist_new_channel = 'persist_new_channel',
-	persist_graph = 'persist_graph',
-	update_persisted_channel = 'update_persisted_channel',
-	//>>LdkChannelManagerPersister.handle_event()
+	backup = 'backup',
 	channel_manager_funding_generation_ready = 'channel_manager_funding_generation_ready',
 	channel_manager_payment_received = 'channel_manager_payment_received',
 	channel_manager_payment_sent = 'channel_manager_payment_sent',
@@ -30,15 +26,12 @@ export enum EEventTypes {
 }
 
 //LDK event responses
-export type TChannelBackupEvent = { id: string; data: string };
 export type TRegisterTxEvent = { txid: string; script_pubkey: string };
 export type TRegisterOutputEvent = {
 	block_hash: string;
 	index: number;
 	script_pubkey: string;
 };
-export type TPersistManagerEvent = { channel_manager: string };
-export type TPersistGraphEvent = { network_graph: string };
 export type TBroadcastTransactionEvent = { tx: string };
 
 //LDK channel manager event responses
@@ -251,8 +244,6 @@ export type TCreatePaymentReq = {
 
 export type TInitChannelManagerReq = {
 	network: ENetworks;
-	channelManagerSerialized: string;
-	channelMonitorsSerialized: string[];
 	bestBlock: {
 		hash: string;
 		height: number;
@@ -260,8 +251,7 @@ export type TInitChannelManagerReq = {
 };
 
 export type TInitNetworkGraphReq = {
-	serializedBackup?: string;
-	genesisHash?: string;
+	genesisHash: string;
 };
 
 export type TInitConfig = {
@@ -291,33 +281,57 @@ export type TTransactionData = {
 	transaction: string;
 };
 
+export type TFileWriteReq = {
+	fileName: string;
+	path?: string;
+	content: string;
+	format?: 'hex' | 'string';
+};
+
+export type TFileReadReq = {
+	fileName: string;
+	format?: 'hex' | 'string';
+	path?: string;
+};
+
+export type TFileReadRes = {
+	content: string;
+	timestamp: number;
+};
+
 export const DefaultTransactionDataShape: TTransactionData = {
 	header: '',
 	height: 0,
 	transaction: '',
 };
 
-export type TStorage = (key: string, ...args: Array<any>) => any;
 export type TGetTransactionData = (txid: string) => Promise<TTransactionData>;
 export type TGetBestBlock = () => Promise<THeader>;
 
-export enum ELdkStorage {
-	key = 'LDKStorage',
+export enum ELdkFiles {
+	seed = 'seed', //32 bytes of entropy saved natively
+	channel_manager = 'channel_manager.bin', //Serialised rust object
+	channels = 'channels', //Path containing multiple files of serialised channels
+	peers = 'peers.json', //JSON file saved from JS
+	watch_transactions = 'watch_transactions.json', //JSON file saved from JS
+	watch_outputs = 'watch_outputs.json', //JSON file saved from JS
 }
 
 export enum ELdkData {
-	channelManager = 'channelManager',
-	channelData = 'channelData',
+	channel_manager = 'channel_manager',
+	channel_monitors = 'channel_monitors',
 	peers = 'peers',
-	networkGraph = 'networkGraph',
+	watch_transactions = 'watch_transactions',
+	watch_outputs = 'watch_outputs',
 	timestamp = 'timestamp',
 }
 
 export type TLdkData = {
-	[ELdkData.channelManager]: TLdkChannelManager;
-	[ELdkData.channelData]: TLdkChannelData;
+	[ELdkData.channel_manager]: string;
+	[ELdkData.channel_monitors]: { [key: string]: string };
 	[ELdkData.peers]: TLdkPeers;
-	[ELdkData.networkGraph]: TLdkNetworkGraph;
+	[ELdkData.watch_transactions]: TRegisterTxEvent[];
+	[ELdkData.watch_outputs]: TRegisterOutputEvent[];
 	[ELdkData.timestamp]: number;
 };
 
@@ -326,25 +340,14 @@ export type TAccountBackup = {
 	data: TLdkData;
 };
 
-export type TLdkChannelManager = string;
-
-export type TLdkChannelData = {
-	[id: string]: string;
-};
-
 export type TLdkPeers = TPeer[];
 
-export type TLdkNetworkGraph = string;
-
-export type TLdkStorage = {
-	[key: string]: TLdkData;
-};
-
 export const DefaultLdkDataShape: TLdkData = {
-	[ELdkData.channelManager]: '',
-	[ELdkData.channelData]: {},
+	[ELdkData.channel_manager]: '',
+	[ELdkData.channel_monitors]: {},
 	[ELdkData.peers]: [],
-	[ELdkData.networkGraph]: '',
+	[ELdkData.watch_transactions]: [],
+	[ELdkData.watch_outputs]: [],
 	[ELdkData.timestamp]: 0,
 };
 
@@ -362,12 +365,6 @@ export type TLdkStart = {
 	account: TAccount;
 	genesisHash: string;
 	getBestBlock: TGetBestBlock;
-	getItem: TStorage;
-	setItem: TStorage;
 	getTransactionData: TGetTransactionData;
 	network?: ENetworks;
-};
-
-export type TLdkStorageKeys = {
-	[key in ELdkData]: string;
 };

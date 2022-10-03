@@ -8,10 +8,7 @@ enum EventTypes: String, CaseIterable {
     case register_tx = "register_tx"
     case register_output = "register_output"
     case broadcast_transaction = "broadcast_transaction"
-    case persist_manager = "persist_manager"
-    case persist_new_channel = "persist_new_channel"
-    case persist_graph = "persist_graph"
-    case update_persisted_channel = "update_persisted_channel"
+    case backup = "backup"
     case channel_manager_funding_generation_ready = "channel_manager_funding_generation_ready"
     case channel_manager_payment_received = "channel_manager_payment_received"
     case channel_manager_payment_sent = "channel_manager_payment_sent"
@@ -24,13 +21,14 @@ enum EventTypes: String, CaseIterable {
     case channel_manager_channel_closed = "channel_manager_channel_closed"
     case channel_manager_discard_funding = "channel_manager_discard_funding"
     case channel_manager_payment_claimed = "channel_manager_payment_claimed"
-    //<<
 }
 //*****************************************************************
 
 enum LdkErrors: String {
     case unknown_error = "unknown_error"
     case already_init = "already_init"
+    case create_storage_dir_fail = "create_storage_dir_fail"
+    case init_storage_path = "init_storage_path"
     case invalid_seed_hex = "invalid_seed_hex"
     case init_chain_monitor = "init_chain_monitor"
     case init_keys_manager = "init_keys_manager"
@@ -56,12 +54,15 @@ enum LdkErrors: String {
     case init_ldk_currency = "init_ldk_currency"
     case invoice_create_failed = "invoice_create_failed"
     case claim_funds_failed = "claim_funds_failed"
-    case network_graph_restore_failed = "network_graph_restore_failed"
     case channel_close_fail = "channel_close_fail"
     case spend_outputs_fail = "spend_outputs_fail"
+    case write_fail = "write_fail"
+    case read_fail = "read_fail"
+    case file_does_not_exist = "file_does_not_exist"
 }
 
 enum LdkCallbackResponses: String {
+    case storage_path_set = "storage_path_set"
     case fees_updated = "fees_updated"
     case log_level_updated = "log_level_updated"
     case log_path_updated = "log_path_updated"
@@ -79,6 +80,12 @@ enum LdkCallbackResponses: String {
     case claim_funds_success = "claim_funds_success"
     case ldk_reset = "ldk_reset"
     case close_channel_success = "close_channel_success"
+    case file_write_success = "file_write_success"
+}
+
+enum LdkFileNames: String {
+    case network_graph = "network_graph.bin"
+    case channel_manager = "channel_manager.bin"
 }
 
 @objc(Ldk)
@@ -92,7 +99,7 @@ class Ldk: NSObject {
     lazy var channelManagerPersister = {LdkChannelManagerPersister()}()
    
     //Config required to setup below objects
-    var chainMonitor: ChainMonitor?
+    var chainMonitor: ChainMonitor? //TODO lazy load chainMonitor
     var keysManager: KeysManager?
     var channelManager: ChannelManager?
     var userConfig: UserConfig?
@@ -103,8 +110,55 @@ class Ldk: NSObject {
     var invoicePayer: InvoicePayer?
     var ldkNetwork: LDKNetwork?
     var ldkCurrency: LDKCurrency?
+    
+    //Static to be accessed from other classes
+    static var accountStoragePath: URL?
+    static var channelStoragePath: URL?
 
     //MARK: Startup methods
+    
+    @objc
+    func setAccountStoragePath(_ storagePath: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard Ldk.accountStoragePath == nil else {
+            return handleReject(reject, .already_init)
+        }
+        
+        let accountStoragePath = URL(fileURLWithPath: String(storagePath))
+        let channelStoragePath = accountStoragePath.appendingPathComponent("channels")
+
+        do {
+            if !FileManager().fileExists(atPath: accountStoragePath.path) {
+                try FileManager.default.createDirectory(atPath: accountStoragePath.path, withIntermediateDirectories: true, attributes: nil)
+            }
+            
+            if !FileManager().fileExists(atPath: channelStoragePath.path) {
+                try FileManager.default.createDirectory(atPath: channelStoragePath.path, withIntermediateDirectories: true, attributes: nil)
+            }
+        } catch {
+            return handleReject(reject, .create_storage_dir_fail, error)
+        }
+
+        Ldk.accountStoragePath = accountStoragePath
+        Ldk.channelStoragePath = channelStoragePath
+
+        return handleResolve(resolve, .storage_path_set)
+    }
+    
+    @objc
+    func setLogFilePath(_ path: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let logFile = URL(fileURLWithPath: String(path))
+        
+        do {
+            if !FileManager().fileExists(atPath: logFile.deletingLastPathComponent().path) {
+                try FileManager.default.createDirectory(atPath: logFile.deletingLastPathComponent().path, withIntermediateDirectories: true, attributes: nil)
+            }
+        } catch {
+            return handleReject(reject, .create_storage_dir_fail)
+        }
+        
+        Logfile.log.setFilePath(logFile)
+        return handleResolve(resolve, .log_path_updated)
+    }
 
     @objc
     func initChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -128,7 +182,7 @@ class Ldk: NSObject {
         guard keysManager == nil else {
             return handleReject(reject, .already_init)
         }
-
+        
         let seconds = UInt64(NSDate().timeIntervalSince1970)
         let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
         let seedBytes = String(seed).hexaBytes
@@ -168,27 +222,34 @@ class Ldk: NSObject {
     }
 
     @objc
-    func initNetworkGraph(_ genesisHash: NSString, serializedBackup: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard networkGraph == nil else {
             return handleReject(reject, .already_init)
         }
         
-        if serializedBackup == "" {
-            networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
-        } else {
-            let read = NetworkGraph.read(ser: String(serializedBackup).hexaBytes, arg: logger)
+        guard let accountStoragePath = Ldk.accountStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        do {
+            let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL)), arg: logger)
             if read.isOk() {
                 networkGraph = read.getValue()
-            } else {
-                return handleReject(reject, .network_graph_restore_failed)
             }
+        } catch {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch. \(error.localizedDescription)")
         }
-                        
+        
+        if networkGraph == nil {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch.")
+            networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
+        }
+        
         return handleResolve(resolve, .network_graph_init_success)
     }
 
     @objc
-    func initChannelManager(_ network: NSString, channelManagerSerialized: NSString, channelMonitorsSerialized: NSArray, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initChannelManager(_ network: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
         }
@@ -209,6 +270,14 @@ class Ldk: NSObject {
             return handleReject(reject, .init_network_graph)
         }
 
+        guard let accountStoragePath = Ldk.accountStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        guard let channelStoragePath = Ldk.channelStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
         switch network {
         case "regtest":
             ldkNetwork = LDKNetwork_Regtest
@@ -223,14 +292,34 @@ class Ldk: NSObject {
             return handleReject(reject, .invalid_network)
         }
         
-        var channelMonitorsBytes: Array<[UInt8]> = []
-        for monitor in channelMonitorsSerialized {
-            channelMonitorsBytes.append((monitor as! String).hexaBytes)
-        }
-
+        let storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
+        
         do {
-            if channelManagerSerialized == "" {
+            if let channelManagerSerialized = storedChannelManager {
+                //Restoring node
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring node from disk")
+                var channelMonitorsSerialized: Array<[UInt8]> = []
+                let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
+                for channelFile in channelFiles {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel from file \(channelFile.lastPathComponent)")
+                    channelMonitorsSerialized.append([UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)))
+                }
+                
+                channelManagerConstructor = try ChannelManagerConstructor(
+                    channel_manager_serialized: [UInt8](channelManagerSerialized),
+                    channel_monitors_serialized: channelMonitorsSerialized,
+                    keys_interface: keysManager.as_KeysInterface(),
+                    fee_estimator: feeEstimator,
+                    chain_monitor: chainMonitor,
+                    filter: filter,
+                    net_graph_serialized: networkGraph.write(),
+                    tx_broadcaster: broadcaster,
+                    logger: logger,
+                    enableP2PGossip: true
+                )
+            } else {
                 //New node
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Creating new channel manager")
                 channelManagerConstructor = ChannelManagerConstructor(
                     network: ldkNetwork!,
                     config: userConfig,
@@ -244,22 +333,7 @@ class Ldk: NSObject {
                     logger: logger,
                     enableP2PGossip: true
                 )
-            } else {
-                //Restoring node
-                channelManagerConstructor = try ChannelManagerConstructor(
-                    channel_manager_serialized: String(channelManagerSerialized).hexaBytes,
-                    channel_monitors_serialized: channelMonitorsBytes,
-                    keys_interface: keysManager.as_KeysInterface(),
-                    fee_estimator: feeEstimator,
-                    chain_monitor: chainMonitor,
-                    filter: filter,
-                    net_graph_serialized: networkGraph.write(),
-                    tx_broadcaster: broadcaster,
-                    logger: logger,
-                    enableP2PGossip: true
-                )
             }
-            
         } catch {
             return handleReject(reject, .unknown_error, error)
         }
@@ -295,7 +369,9 @@ class Ldk: NSObject {
         peerHandler = nil
         ldkNetwork = nil
         ldkCurrency = nil
-       
+        Ldk.accountStoragePath = nil
+        Ldk.channelStoragePath = nil
+
         return handleResolve(resolve, .ldk_reset)
     }
 
@@ -311,12 +387,6 @@ class Ldk: NSObject {
     func setLogLevel(_ level: NSInteger, active: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         logger.setLevel(level: UInt32(level), active: active)
         return handleResolve(resolve, .log_level_updated)
-    }
-    
-    @objc
-    func setLogFilePath(_ path: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        Logfile.log.setFilePath(String(path))
-        return handleResolve(resolve, .log_path_updated)
     }
 
     @objc
@@ -685,6 +755,77 @@ class Ldk: NSObject {
         }
         
         return resolve(networkGraph.channel(short_channel_id: UInt64(shortChannelId as String)!).asJson)
+    }
+    
+    //MARK: Misc functions
+    @objc
+    func writeToFile(_ fileName: NSString, path: NSString, content: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        
+        let fileUrl: URL
+        
+        do {
+            if path != "" {
+                //Make sure custom path exists by creating if missing
+                let pathUrl = URL(fileURLWithPath: String(path), isDirectory: true)
+                
+                if !FileManager().fileExists(atPath: pathUrl.path) {
+                    try FileManager.default.createDirectory(atPath: pathUrl.path, withIntermediateDirectories: true, attributes: nil)
+                }
+                
+                fileUrl = URL(fileURLWithPath: String(path)).appendingPathComponent(String(fileName))
+            } else {
+                //Assume default directory if no path was set
+                guard let accountStoragePath = Ldk.accountStoragePath else {
+                    return handleReject(reject, .init_storage_path)
+                }
+                
+                fileUrl = accountStoragePath.appendingPathComponent(String(fileName))
+            }
+        
+            let fileContent = String(content)
+            if format == "hex" {
+                try Data(fileContent.hexaBytes).write(to: fileUrl)
+            } else {
+                try fileContent.data(using: .utf8)?.write(to: fileUrl)
+            }
+            
+            return handleResolve(resolve, .file_write_success)
+        } catch {
+            return handleReject(reject, .write_fail, error, "Failed to write content to file \(fileName)")
+        }
+    }
+        
+    @objc
+    func readFromFile(_ fileName: NSString, path: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let fileUrl: URL
+        
+        if path != "" {
+            fileUrl = URL(fileURLWithPath: String(path)).appendingPathComponent(String(fileName))
+        } else {
+            //Assume default directory if no path was set
+            guard let accountStoragePath = Ldk.accountStoragePath else {
+                return handleReject(reject, .init_storage_path)
+            }
+            
+            fileUrl = accountStoragePath.appendingPathComponent(String(fileName))
+        }
+        
+        if !FileManager().fileExists(atPath: fileUrl.path) {
+            return handleReject(reject, .file_does_not_exist, nil, "Could not locate file at \(fileUrl.path)")
+        }
+        
+        do {
+            let attr = try FileManager.default.attributesOfItem(atPath: fileUrl.path)
+            let timestamp = ((attr[FileAttributeKey.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0).rounded()
+                        
+            if format == "hex" {
+                resolve(["content": try Data(contentsOf: fileUrl).hexEncodedString(), "timestamp": timestamp])
+            } else {
+                resolve(["content": try String(contentsOf: fileUrl, encoding: .utf8), "timestamp": timestamp])
+            }
+        } catch {
+            return handleReject(reject, .read_fail, error, "Failed to read \(format) content from file \(fileUrl.path)")
+        }
     }
 }
 

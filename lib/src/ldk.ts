@@ -25,6 +25,12 @@ import {
 	TSpendOutputsReq,
 	TNetworkGraphChannelInfo,
 	TNetworkGraphNodeInfo,
+	TAccountBackup,
+	DefaultLdkDataShape,
+	TLdkData,
+	TFileReadRes,
+	TFileReadReq,
+	TFileWriteReq,
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -51,6 +57,20 @@ class LDK {
 	constructor() {
 		this.logListeners = [];
 		this.ldkEvent = new NativeEventEmitter(NativeModules.LdkEventEmitter);
+	}
+
+	/**
+	 * Sets the wallet storage path. Will create directories if they do not exist.
+	 * @param path
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async setAccountStoragePath(path: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.setAccountStoragePath(path);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
 	}
 
 	/**
@@ -100,25 +120,16 @@ class LDK {
 	}
 
 	/**
-	 * Must provide either a serialized backup OR genesis block hash to sync from scratch
+	 * Inits the network graph from previous cache or syncs from scratch using genesis block hash.
 	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetworkGraph.html
-	 * @param serializedBackup
 	 * @param genesisHash
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async initNetworkGraph({
-		serializedBackup,
 		genesisHash,
 	}: TInitNetworkGraphReq): Promise<Result<string>> {
-		if (!serializedBackup && !genesisHash) {
-			return err('Must provide serializedBackup or genesisHash as a backup');
-		}
-
 		try {
-			const res = await NativeLDK.initNetworkGraph(
-				genesisHash || '',
-				serializedBackup || '',
-			);
+			const res = await NativeLDK.initNetworkGraph(genesisHash);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -171,15 +182,11 @@ class LDK {
 	 */
 	async initChannelManager({
 		network,
-		channelManagerSerialized,
-		channelMonitorsSerialized,
 		bestBlock,
 	}: TInitChannelManagerReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initChannelManager(
 				network,
-				channelManagerSerialized,
-				channelMonitorsSerialized,
 				bestBlock.hash,
 				bestBlock.height,
 			);
@@ -717,6 +724,62 @@ class LDK {
 			}
 
 			return ok(channels);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Write string to file in current directory set by setAccountStoragePath.
+	 * If format is set to "hex" then it is assumed content is a hex string and
+	 * the raw bytes will be saved to file.
+	 * @param fileName
+	 * @param path (optional) will use current account path as default if not provided
+	 * @param content
+	 * @param format
+	 * @returns {Promise<Ok<boolean> | Err<unknown>>}
+	 */
+	async writeToFile({
+		fileName,
+		path,
+		content,
+		format,
+	}: TFileWriteReq): Promise<Result<boolean>> {
+		try {
+			await NativeLDK.writeToFile(
+				fileName,
+				path || '',
+				content,
+				format || 'string',
+			);
+			return ok(true);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Read from file in current directory set by setAccountStoragePath.
+	 * If format is set to "hex" then it is assumed content of file is raw
+	 * bytes and hex version will be returned as result.
+	 * Will return empty string if file does not exist yet.
+	 * @param fileName
+	 * @param path (optional) will use current account path as default if not provided
+	 * @param format
+	 * @returns {Promise<Ok<{content: string, timestamp: number}> | Err<unknown>>}
+	 */
+	async readFromFile({
+		fileName,
+		format,
+		path,
+	}: TFileReadReq): Promise<Result<TFileReadRes>> {
+		try {
+			const res: TFileReadRes = await NativeLDK.readFromFile(
+				fileName,
+				path || '',
+				format || 'string',
+			);
+			return ok({ ...res, timestamp: Math.round(res.timestamp) });
 		} catch (e) {
 			return err(e);
 		}

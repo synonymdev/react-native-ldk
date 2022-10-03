@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as electrum from 'rn-electrum-client/helpers';
 import { err, ok, Result } from '../utils/result';
 import Clipboard from '@react-native-clipboard/clipboard';
+import RNFS from 'react-native-fs';
 import {
 	getBlockHashFromHeight,
 	getBlockHeader,
@@ -99,11 +100,16 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			return err(genesisHash.error.message);
 		}
 		const account = await getAccount();
+		const storageRes = await lm.setBaseStoragePath(
+			`${RNFS.DocumentDirectoryPath}/ldk/`,
+		);
+		if (storageRes.isErr()) {
+			return err(storageRes.error);
+		}
+
 		const lmStart = await lm.start({
 			getBestBlock,
 			genesisHash: genesisHash.value,
-			setItem,
-			getItem,
 			account,
 			getTransactionData,
 		});
@@ -203,14 +209,12 @@ export const getTransactionData = async (
  */
 export const backupAccount = async (
 	account?: TAccount,
-): Promise<Result<string>> => {
+): Promise<Result<TAccountBackup>> => {
 	if (!account) {
 		account = await getAccount();
 	}
 	return await lm.backupAccount({
 		account,
-		setItem,
-		getItem,
 	});
 };
 
@@ -224,8 +228,6 @@ export const importAccount = async (
 ): Promise<Result<TAccount>> => {
 	const importResponse = await lm.importAccount({
 		backup,
-		setItem,
-		getItem,
 		overwrite: true,
 	});
 	if (importResponse.isErr()) {

@@ -4,6 +4,12 @@
 @interface RCT_EXTERN_MODULE(Ldk, NSObject)
 
 //MARK: Startup methods
+RCT_EXTERN_METHOD(setAccountStoragePath:(NSString *)storagePath
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(setLogFilePath:(NSString *)path
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
@@ -16,12 +22,9 @@ RCT_EXTERN_METHOD(initConfig:(BOOL *)acceptInboundChannels
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)genesisHash
-                  serializedBackup:(NSString *)serializedBackup
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChannelManager:(NSString *)network
-                  channelManagerSerialized:(NSString *)channelManagerSerialized
-                  channelMonitorsSerialized:(NSArray *)channelMonitorsSerialized
                   blockHash:(NSString *)blockHash
                   blockHeight:(NSInteger *)blockHeight
                   resolve:(RCTPromiseResolveBlock)resolve
@@ -37,9 +40,6 @@ RCT_EXTERN_METHOD(updateFees:(NSInteger *)high
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setLogLevel:(NSInteger *)high
                   active:(BOOL *)active
-                  resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(setLogFilePath:(NSString *)path
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(syncToTip:(NSString *)header
@@ -110,6 +110,19 @@ RCT_EXTERN_METHOD(createPaymentRequest:(NSInteger *)amountSats
 RCT_EXTERN_METHOD(processPendingHtlcForwards:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(claimFunds:(NSString *)paymentPreimage
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+
+//MARK: Misc methods
+RCT_EXTERN_METHOD(writeToFile:(NSString *)fileName
+                  path:(NSString *)path
+                  content:(NSString *)content
+                  format:(NSString *)format
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(readFromFile:(NSString *)fileName
+                  path:(NSString *)path
+                  format:(NSString *)format
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 @end
