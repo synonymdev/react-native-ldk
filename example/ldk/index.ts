@@ -18,9 +18,14 @@ import lm, {
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import { selectedNetwork, peers } from '../utils/constants';
-import { getAccount, setAccount } from '../utils/helpers';
+import {
+	getAccount,
+	getAddress,
+	getNetwork,
+	setAccount,
+} from '../utils/helpers';
 import { EAccount } from '../utils/types';
-
+import * as bitcoin from 'bitcoinjs-lib';
 /**
  * Retrieves data from local storage.
  * @param {string} key
@@ -77,7 +82,6 @@ export const updateHeader = async ({
  */
 export const syncLdk = async (): Promise<Result<string>> => {
 	const syncResponse = await lm.syncLdk();
-	await checkWatchTxs();
 	return syncResponse;
 };
 
@@ -111,7 +115,10 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			getBestBlock,
 			genesisHash: genesisHash.value,
 			account,
+			getAddress,
+			getScriptPubKeyHistory,
 			getTransactionData,
+			broadcastTransaction,
 		});
 
 		if (lmStart.isErr()) {
@@ -148,7 +155,10 @@ export const setupLdk = async (): Promise<Result<string>> => {
 
 		Clipboard.setString(nodeIdRes.value);
 
-		await lm.syncLdk();
+		const syncRes = await lm.syncLdk();
+		if (syncRes.isErr()) {
+			return err(syncRes.error.message);
+		}
 
 		console.log(`Node ID: ${nodeIdRes.value}`);
 		return ok('Running LDK'); //e2e test needs to see this string
@@ -182,7 +192,7 @@ export const getTransactionData = async (
 	if (response.error || !response.data || response.data[0].error) {
 		return transactionData;
 	}
-	const { confirmations, hex: hex_encoded_tx } = response.data[0].result;
+	const { confirmations, hex: hex_encoded_tx, vout } = response.data[0].result;
 	const header = await getBlockHeader();
 	const currentHeight = header.height;
 	let confirmedHeight = 0;
@@ -195,11 +205,60 @@ export const getTransactionData = async (
 	if (hexEncodedHeader.isErr()) {
 		return transactionData;
 	}
+	const voutData = vout.map(({ n, value, scriptPubKey: { hex } }) => {
+		return { n, hex, value };
+	});
 	return {
 		header: hexEncodedHeader.value,
 		height: confirmedHeight,
 		transaction: hex_encoded_tx,
+		vout: voutData,
 	};
+};
+
+/**
+ * Returns the balance in sats of the provided Bitcoin address.
+ * @param {string} [address]
+ * @returns {Promise<number>}
+ */
+export const getAddressBalance = async (address = ''): Promise<number> => {
+	try {
+		const network = getNetwork(selectedNetwork);
+		const script = bitcoin.address.toOutputScript(address, network);
+		let hash = bitcoin.crypto.sha256(script);
+		const reversedHash = new Buffer(hash.reverse());
+		const scriptHash = reversedHash.toString('hex');
+		const response = await electrum.getAddressScriptHashBalance({
+			scriptHash,
+			network: selectedNetwork,
+		});
+		if (response.error) {
+			return 0;
+		}
+		const { confirmed, unconfirmed } = response.data;
+		return confirmed + unconfirmed;
+	} catch {
+		return 0;
+	}
+};
+
+/**
+ * Attempts to broadcast the provided rawTx.
+ * @param {string} rawTx
+ * @returns {Promise<string>}
+ */
+export const broadcastTransaction = async (rawTx: string): Promise<string> => {
+	try {
+		const response = await electrum.broadcastTransaction({
+			rawTx,
+			network: selectedNetwork,
+		});
+		console.log('broadcastTransaction', response);
+		return response.data;
+	} catch (e) {
+		console.log(e);
+		return '';
+	}
 };
 
 /**

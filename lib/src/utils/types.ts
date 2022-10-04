@@ -279,6 +279,7 @@ export type TTransactionData = {
 	header: string;
 	height: number;
 	transaction: string;
+	vout: TVout[];
 };
 
 export type TFileWriteReq = {
@@ -303,6 +304,7 @@ export const DefaultTransactionDataShape: TTransactionData = {
 	header: '',
 	height: 0,
 	transaction: '',
+	vout: [],
 };
 
 export type TGetTransactionData = (txid: string) => Promise<TTransactionData>;
@@ -315,6 +317,9 @@ export enum ELdkFiles {
 	peers = 'peers.json', //JSON file saved from JS
 	watch_transactions = 'watch_transactions.json', //JSON file saved from JS
 	watch_outputs = 'watch_outputs.json', //JSON file saved from JS
+	confirmed_transactions = 'confirmed_transactions.json',
+	confirmed_outputs = 'confirmed_outputs.json',
+	broadcasted_transactions = 'broadcasted_transactions.json',
 }
 
 export enum ELdkData {
@@ -323,6 +328,9 @@ export enum ELdkData {
 	peers = 'peers',
 	watch_transactions = 'watch_transactions',
 	watch_outputs = 'watch_outputs',
+	confirmed_transactions = 'confirmed_transactions',
+	confirmed_outputs = 'confirmed_outputs',
+	broadcasted_transactions = 'broadcasted_transactions',
 	timestamp = 'timestamp',
 }
 
@@ -332,6 +340,9 @@ export type TLdkData = {
 	[ELdkData.peers]: TLdkPeers;
 	[ELdkData.watch_transactions]: TRegisterTxEvent[];
 	[ELdkData.watch_outputs]: TRegisterOutputEvent[];
+	[ELdkData.confirmed_transactions]: TLdkConfirmedTransactions;
+	[ELdkData.confirmed_outputs]: TLdkConfirmedOutputs;
+	[ELdkData.broadcasted_transactions]: TLdkBroadcastedTransactions;
 	[ELdkData.timestamp]: number;
 };
 
@@ -342,12 +353,22 @@ export type TAccountBackup = {
 
 export type TLdkPeers = TPeer[];
 
+export type TLdkConfirmedTransactions = string[];
+
+export type TLdkConfirmedOutputs = string[];
+
+export type TLdkBroadcastedTransactions = string[];
+
 export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.channel_manager]: '',
 	[ELdkData.channel_monitors]: {},
 	[ELdkData.peers]: [],
 	[ELdkData.watch_transactions]: [],
 	[ELdkData.watch_outputs]: [],
+	[ELdkData.confirmed_transactions]: [],
+	[ELdkData.confirmed_outputs]: [],
+	[ELdkData.broadcasted_transactions]: [],
+
 	[ELdkData.timestamp]: 0,
 };
 
@@ -366,5 +387,21 @@ export type TLdkStart = {
 	genesisHash: string;
 	getBestBlock: TGetBestBlock;
 	getTransactionData: TGetTransactionData;
+	getAddress: TGetAddress;
+	getScriptPubKeyHistory: TGetScriptPubKeyHistory;
+	broadcastTransaction: TBroadcastTransaction;
 	network?: ENetworks;
+	feeRate?: number;
 };
+
+export type TGetAddress = () => Promise<string>;
+
+export type TGetScriptPubKeyHistory = (
+	address: string,
+) => Promise<TGetScriptPubKeyHistoryResponse[]>;
+
+export type TGetScriptPubKeyHistoryResponse = { height: number; txid: string };
+
+export type TBroadcastTransaction = (rawTx: string) => Promise<any>;
+
+export type TVout = { hex: string; n: number; value: number };
