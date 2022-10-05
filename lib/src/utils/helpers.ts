@@ -1,5 +1,7 @@
 import { ENetworks, TLdkStart } from './types';
 import { err, ok, Result } from './result';
+import * as bitcoin from 'bitcoinjs-lib';
+import { networks } from 'bitcoinjs-lib';
 
 /**
  * This method runs a check on each parameter passed to the start method
@@ -7,8 +9,10 @@ import { err, ok, Result } from './result';
  * @param {string} seed
  * @param {string} genesisHash
  * @param {TGetBestBlock} getBestBlock
- * @param {string} storagePath
  * @param {TGetTransactionData} getTransactionData
+ * @param {TBroadcastTransaction} broadcastTransaction
+ * @param {TGetAddress} getAddress
+ * @param {TGetScriptPubKeyHistory} getScriptPubKeyHistory
  * @param {ENetworks} network
  * @returns {Promise<Result<string>>}
  */
@@ -17,6 +21,9 @@ export const startParamCheck = async ({
 	genesisHash,
 	getBestBlock,
 	getTransactionData,
+	broadcastTransaction,
+	getAddress,
+	getScriptPubKeyHistory,
 	network = ENetworks.regtest,
 }: TLdkStart): Promise<Result<string>> => {
 	try {
@@ -62,6 +69,21 @@ export const startParamCheck = async ({
 		if (!isFunction(getTransactionData)) {
 			return err('getTransactionData must be a function.');
 		}
+
+		// Test getAddress
+		if (!isFunction(getAddress)) {
+			return err('getAddress must be a function.');
+		}
+
+		// Test getScriptPubKeyHistory
+		if (!isFunction(getScriptPubKeyHistory)) {
+			return err('getScriptPubKeyHistory must be a function.');
+		}
+
+		if (!isFunction(broadcastTransaction)) {
+			return err('broadcastTransaction must be a function.');
+		}
+
 		// Test getTransactionData response if using mainnet or testnet.
 		if (network !== ENetworks.regtest) {
 			const expectedData = {
@@ -95,10 +117,41 @@ export const startParamCheck = async ({
 			) {
 				return err('getTransactionData is not returning the expected data.');
 			}
+
+			const address = await getAddress();
+			if (typeof address !== 'string') {
+				return err('getAddress is not returning the expected data.');
+			}
+			if (!validateAddress({ address, network })) {
+				return err(
+					`getAddress is not returning valid addresses (${address}) for the specified network (${network}).`,
+				);
+			}
 		}
 		return ok('Params passed all checks.');
 	} catch (e) {
 		return err(e);
+	}
+};
+
+/**
+ * Attempts to validate the provided address.
+ * @param {string} address
+ * @param {ENetworks} network
+ */
+const validateAddress = ({
+	address = '',
+	network = ENetworks.mainnet,
+}: {
+	address: string;
+	network: ENetworks;
+}): boolean => {
+	try {
+		// @ts-ignore
+		bitcoin.address.toOutputScript(address, networks[network]);
+		return true;
+	} catch (e) {
+		return false;
 	}
 };
 

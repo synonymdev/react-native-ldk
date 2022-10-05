@@ -11,6 +11,7 @@ import {
 	TAccount,
 	TAccountBackup,
 	TAddPeerReq,
+	TBroadcastTransaction,
 	TBroadcastTransactionEvent,
 	TChannelManagerChannelClosed,
 	TChannelManagerDiscardFunding,
@@ -23,6 +24,9 @@ import {
 	TChannelManagerPaymentSent,
 	TChannelManagerPendingHtlcsForwardable,
 	TChannelManagerSpendableOutputs,
+	TGetAddress,
+	TGetScriptPubKeyHistory,
+	TGetScriptPubKeyHistoryResponse,
 	TGetBestBlock,
 	TGetTransactionData,
 	THeader,
@@ -32,8 +36,13 @@ import {
 	TRegisterOutputEvent,
 	TRegisterTxEvent,
 	TTransactionData,
+	TLdkConfirmedOutputs,
+	TLdkConfirmedTransactions,
+	TLdkBroadcastedTransactions,
 } from './utils/types';
 import { appendPath, parseData, startParamCheck } from './utils/helpers';
+import * as bitcoin from 'bitcoinjs-lib';
+import { networks } from 'bitcoinjs-lib';
 
 //TODO startup steps
 // Step 0: Listen for events ✅
@@ -79,6 +88,12 @@ class LightningManager {
 	network: ENetworks = ENetworks.regtest;
 	baseStoragePath = '';
 	logFilePath = '';
+	getAddress: TGetAddress = async (): Promise<string> => '';
+	getScriptPubKeyHistory: TGetScriptPubKeyHistory = async (): Promise<
+		TGetScriptPubKeyHistoryResponse[]
+	> => [];
+	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
+	feeRate: number = 1000; // feerate_sat_per_1000_weight
 
 	constructor() {
 		// Step 0: Subscribe to all events
@@ -167,6 +182,7 @@ class LightningManager {
 	 * @param {string} genesisHash
 	 * @param {TGetBestBlock} getBestBlock
 	 * @param {TGetTransactionData} getTransactionData
+	 * @param {TGetAddress} getAddress
 	 * @param {ENetworks} network
 	 * @returns {Promise<Result<string>>}
 	 */
@@ -175,7 +191,11 @@ class LightningManager {
 		genesisHash,
 		getBestBlock,
 		getTransactionData,
+		getAddress,
+		getScriptPubKeyHistory,
+		broadcastTransaction,
 		network = ENetworks.regtest,
+		feeRate = this.feeRate,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
 			return err(
@@ -205,6 +225,9 @@ class LightningManager {
 			genesisHash,
 			getBestBlock,
 			getTransactionData,
+			broadcastTransaction,
+			getAddress,
+			getScriptPubKeyHistory,
 			network,
 		});
 		if (paramCheckResponse.isErr()) {
@@ -214,6 +237,10 @@ class LightningManager {
 		this.getBestBlock = getBestBlock;
 		this.account = account;
 		this.network = network;
+		this.feeRate = feeRate;
+		this.getAddress = getAddress;
+		this.getScriptPubKeyHistory = getScriptPubKeyHistory;
+		this.broadcastTransaction = broadcastTransaction;
 		this.getTransactionData = getTransactionData;
 		const bestBlock = await this.getBestBlock();
 		this.currentBlock = bestBlock;
@@ -389,9 +416,13 @@ class LightningManager {
 			this.currentBlock = bestBlock;
 		}
 
+		const confirmedTxs = await this.getLdkConfirmedTxs();
 		// Iterate over watch transactions and set whether they are confirmed or unconfirmed.
 		await Promise.all(
-			this.watchTxs.map(async ({ txid }, i) => {
+			this.watchTxs.map(async ({ txid, script_pubkey }) => {
+				if (confirmedTxs.includes(txid)) {
+					return;
+				}
 				const response = await this.getTransactionData(txid);
 				if (!response?.header || !response.transaction) {
 					return err(
@@ -399,17 +430,68 @@ class LightningManager {
 					);
 				}
 				if (response.height > 0) {
-					const pos = this.watchOutputs[i].index;
-					await ldk.setTxConfirmed({
-						header: response.header,
-						height: response.height,
-						txData: [{ transaction: response.transaction, pos }], //TODO can be used to batch this call
-					});
-				} else {
-					await ldk.setTxUnconfirmed({
-						txId: txid,
-					});
+					await Promise.all(
+						response.vout.map(async (o) => {
+							if (o.hex === script_pubkey) {
+								const pos = o.n;
+								await ldk.setTxConfirmed({
+									header: response.header,
+									height: response.height,
+									txData: [{ transaction: response.transaction, pos }],
+								});
+								await this.saveConfirmedTxs(txid);
+								this.watchTxs = this.watchTxs.filter((tx) => tx.txid !== txid);
+							}
+						}),
+					);
 				}
+			}),
+		);
+
+		const confirmedWatchOutputs = await this.getLdkConfirmedOutputs();
+		await Promise.all(
+			this.watchOutputs.map(async ({ index, script_pubkey }) => {
+				if (confirmedWatchOutputs.includes(script_pubkey)) {
+					return;
+				}
+				const transactions = await this.getScriptPubKeyHistory(script_pubkey);
+				await Promise.all(
+					transactions.map(async ({ txid }) => {
+						const transactionData = await this.getTransactionData(txid);
+						if (
+							!transactionData?.height &&
+							transactionData?.vout?.length < index + 1
+						) {
+							return;
+						}
+
+						const txs = await this.getScriptPubKeyHistory(
+							transactionData?.vout[index].hex,
+						);
+
+						// We're looking for the second transaction from this address.
+						if (txs.length <= 1) {
+							return;
+						}
+
+						// We only need the second transaction.
+						const tx = txs[1];
+						const txData = await this.getTransactionData(tx.txid);
+						if (!txData?.height) {
+							return;
+						}
+						const pos = txData.vout[index].n;
+						await ldk.setTxConfirmed({
+							header: txData.header,
+							height: txData.height,
+							txData: [{ transaction: txData.transaction, pos }],
+						});
+						await this.saveConfirmedOutputs(script_pubkey);
+						this.watchOutputs = this.watchOutputs.filter(
+							(o) => o.script_pubkey !== script_pubkey,
+						);
+					}),
+				);
 			}),
 		);
 
@@ -438,7 +520,7 @@ class LightningManager {
 		if (addPeerResponse.isErr()) {
 			return err(addPeerResponse.error.message);
 		}
-		await this.saveLdkPeerData(peer);
+		this.saveLdkPeerData(peer).then().catch(console.error);
 		return ok(addPeerResponse.value);
 	};
 
@@ -537,6 +619,9 @@ class LightningManager {
 				!(ELdkData.peers in accountBackup.data) ||
 				!(ELdkData.watch_transactions in accountBackup.data) ||
 				!(ELdkData.watch_outputs in accountBackup.data) ||
+				!(ELdkData.confirmed_outputs in accountBackup.data) ||
+				!(ELdkData.confirmed_transactions in accountBackup.data) ||
+				!(ELdkData.broadcasted_transactions in accountBackup.data) ||
 				!(ELdkData.timestamp in accountBackup.data)
 			) {
 				return err(
@@ -610,9 +695,32 @@ class LightningManager {
 				return err(savePeersRes.error);
 			}
 
-			//TODO save watch txs
+			const confirmedTxRes = await ldk.writeToFile({
+				fileName: ELdkFiles.confirmed_transactions,
+				path: accountPath,
+				content: JSON.stringify(accountBackup.data.confirmed_transactions),
+			});
+			if (confirmedTxRes.isErr()) {
+				return err(confirmedTxRes.error);
+			}
 
-			//TODO save watch outputs
+			const confirmedOutRes = await ldk.writeToFile({
+				fileName: ELdkFiles.confirmed_outputs,
+				path: accountPath,
+				content: JSON.stringify(accountBackup.data.confirmed_outputs),
+			});
+			if (confirmedOutRes.isErr()) {
+				return err(confirmedOutRes.error);
+			}
+
+			const broadcastedTxRes = await ldk.writeToFile({
+				fileName: ELdkFiles.broadcasted_transactions,
+				path: accountPath,
+				content: JSON.stringify(accountBackup.data.broadcasted_transactions),
+			});
+			if (broadcastedTxRes.isErr()) {
+				return err(broadcastedTxRes.error);
+			}
 
 			//Return the saved account info.
 			return ok(accountBackup.account);
@@ -694,6 +802,9 @@ class LightningManager {
 					peers: await this.getPeers(),
 					watch_outputs: [], //TODO add here when outputs are persisted
 					watch_transactions: [], //TODO add here when outputs are persisted
+					confirmed_transactions: await this.getLdkConfirmedTxs(),
+					confirmed_outputs: await this.getLdkConfirmedOutputs(),
+					broadcasted_transactions: await this.getLdkBroadcastedTxs(),
 					timestamp: Date.now(),
 				},
 			};
@@ -701,6 +812,139 @@ class LightningManager {
 		} catch (e) {
 			return err(e);
 		}
+	};
+
+	/**
+	 * Returns change destination script for the provided address.
+	 * @param {string} address
+	 * @returns {string}
+	 */
+	private getChangeDestinationScript = (address = ''): string => {
+		try {
+			// @ts-ignore
+			const network = networks[this.network];
+			const script = bitcoin.address.toOutputScript(address, network);
+			return script.toString('hex');
+		} catch (e) {
+			console.log(e);
+			return '';
+		}
+	};
+
+	/**
+	 * Returns previously confirmed transactions from storage.
+	 * @returns {Promise<TLdkConfirmedTransactions>}
+	 */
+	private getLdkConfirmedTxs = async (): Promise<TLdkConfirmedTransactions> => {
+		const res = await ldk.readFromFile({
+			fileName: ELdkFiles.confirmed_transactions,
+		});
+		if (res.isOk()) {
+			return parseData(
+				res.value.content,
+				DefaultLdkDataShape.confirmed_transactions,
+			);
+		}
+		return DefaultLdkDataShape.confirmed_transactions;
+	};
+
+	/**
+	 * Returns previously confirmed outputs from storage.
+	 * @returns {Promise<TLdkConfirmedOutputs>}
+	 */
+	private getLdkConfirmedOutputs = async (): Promise<TLdkConfirmedOutputs> => {
+		const res = await ldk.readFromFile({
+			fileName: ELdkFiles.confirmed_outputs,
+		});
+		if (res.isOk()) {
+			return parseData(
+				res.value.content,
+				DefaultLdkDataShape.confirmed_outputs,
+			);
+		}
+		return DefaultLdkDataShape.confirmed_outputs;
+	};
+
+	/**
+	 * Returns previously broadcasted transactions saved in storgare.
+	 * @returns {Promise<TLdkBroadcastedTransactions>}
+	 */
+	private getLdkBroadcastedTxs =
+		async (): Promise<TLdkBroadcastedTransactions> => {
+			const res = await ldk.readFromFile({
+				fileName: ELdkFiles.broadcasted_transactions,
+			});
+			if (res.isOk()) {
+				return parseData(
+					res.value.content,
+					DefaultLdkDataShape.broadcasted_transactions,
+				);
+			}
+			return DefaultLdkDataShape.broadcasted_transactions;
+		};
+
+	/**
+	 * Saves confirmed transaction txids to storage.
+	 * @param {string} txid
+	 * @returns {Promise<void>}
+	 */
+	private saveConfirmedTxs = async (txid: string): Promise<Result<boolean>> => {
+		if (!txid) {
+			return ok(true);
+		}
+		const confirmedTxs = await this.getLdkConfirmedTxs();
+		if (!confirmedTxs.includes(txid)) {
+			confirmedTxs.push(txid);
+			return await ldk.writeToFile({
+				fileName: ELdkFiles.confirmed_transactions,
+				content: JSON.stringify(confirmedTxs),
+			});
+		}
+		return ok(true);
+	};
+
+	/**
+	 * Saves confirmed output script_pubkeys to storage.
+	 * @param {string} script_pubkey
+	 * @returns {Promise<Result<boolean>>}
+	 */
+	private saveConfirmedOutputs = async (
+		script_pubkey: string,
+	): Promise<Result<boolean>> => {
+		if (!script_pubkey) {
+			return ok(true);
+		}
+		const confirmedOutputs = await this.getLdkConfirmedOutputs();
+		if (!confirmedOutputs.includes(script_pubkey)) {
+			confirmedOutputs.push(script_pubkey);
+			return await ldk.writeToFile({
+				fileName: ELdkFiles.confirmed_outputs,
+				content: JSON.stringify(confirmedOutputs),
+			});
+		}
+		return ok(true);
+	};
+
+	/**
+	 * Saves broadcasted transactions to storage.
+	 * @param {string} rawTx
+	 * @returns {Promise<void>}
+	 */
+	private saveBroadcastedTxs = async (
+		rawTx: string,
+	): Promise<Result<boolean>> => {
+		if (!rawTx) {
+			return ok(true);
+		}
+		const broadcastedTransactions = await this.getLdkBroadcastedTxs();
+		if (!broadcastedTransactions.includes(rawTx)) {
+			broadcastedTransactions.push(rawTx);
+			return await ldk.writeToFile({
+				fileName: ELdkFiles.broadcasted_transactions,
+				content: JSON.stringify(broadcastedTransactions),
+			});
+		}
+		return ok(true);
 	};
 
 	/**
@@ -726,17 +970,38 @@ class LightningManager {
 
 	//LDK events
 
-	private onRegisterTx(res: TRegisterTxEvent): void {
-		this.watchTxs.push(res);
+	private async onRegisterTx(res: TRegisterTxEvent): Promise<void> {
+		const isDuplicate = this.watchTxs.some(
+			(tx) => tx.script_pubkey === res.script_pubkey && tx.txid === res.txid,
+		);
+		const confirmedTxs = await this.getLdkConfirmedTxs();
+		const isAlreadyConfirmed = confirmedTxs.includes(res.txid);
+		if (!isDuplicate && !isAlreadyConfirmed) {
+			this.watchTxs.push(res);
+		}
 	}
 
-	private onRegisterOutput(res: TRegisterOutputEvent): void {
-		//TODO check for duplicates first
-		this.watchOutputs.push(res);
+	private async onRegisterOutput(res: TRegisterOutputEvent): Promise<void> {
+		const isDuplicate = this.watchOutputs.some(
+			(o) => o.script_pubkey === res.script_pubkey && o.index === res.index,
+		);
+		const confirmedOutputs = await this.getLdkConfirmedOutputs();
+		const isAlreadyConfirmed = confirmedOutputs.includes(res.script_pubkey);
+		if (!isDuplicate && !isAlreadyConfirmed) {
+			this.watchOutputs.push(res);
+		}
 	}
 
-	private onBroadcastTransaction(res: TBroadcastTransactionEvent): void {
-		console.log(`onBroadcastTransaction: ${res.tx}`); //TODO
+	private async onBroadcastTransaction(
+		res: TBroadcastTransactionEvent,
+	): Promise<void> {
+		const broadcastedTxs = await this.getLdkBroadcastedTxs();
+		if (broadcastedTxs.includes(res.tx)) {
+			return;
+		}
+		console.log(`onBroadcastTransaction: ${res.tx}`);
+		this.broadcastTransaction(res.tx).then(console.log);
+		this.saveBroadcastedTxs(res.tx).then();
 	}
 
 	//LDK channel manager events
@@ -801,12 +1066,17 @@ class LightningManager {
 	private async onChannelManagerSpendableOutputs(
 		res: TChannelManagerSpendableOutputs,
 	): Promise<void> {
+		const address = await this.getAddress();
+		const change_destination_script = this.getChangeDestinationScript(address);
+		if (!change_destination_script) {
+			console.log('Unable to retrieve change_destination_script.');
+			return;
+		}
 		const spendRes = await ldk.spendOutputs({
 			descriptorsSerialized: res.outputsSerialized,
 			outputs: [], //Shouldn't need to specify this if we're sweeping all funds to dest script
-			change_destination_script:
-				'a91407694cfd2bd43f4e0fe285a4d013456cb58d7eab87', //TODO should be configurable
-			feerate_sat_per_1000_weight: 1000, //TODO should this be rather be priority ('high' | 'normal' | 'low') instead of a value?
+			change_destination_script,
+			feerate_sat_per_1000_weight: this.feeRate,
 		});
 
 		if (spendRes.isErr()) {
@@ -823,7 +1093,7 @@ class LightningManager {
 	private onChannelManagerChannelClosed(
 		res: TChannelManagerChannelClosed,
 	): void {
-		console.log(`onChannelManagerChannelClosed: ${JSON.stringify(res)}`); //TODO remove from storage or mark as closed so we don't try restore
+		console.log(`onChannelManagerChannelClosed: ${JSON.stringify(res)}`);
 	}
 
 	private onChannelManagerDiscardFunding(
@@ -834,7 +1104,9 @@ class LightningManager {
 	}
 
 	private onChannelManagerPaymentClaimed(res: TChannelManagerPayment): void {
-		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`); //TODO
+		// Payment Received/Invoice Paid.
+		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`);
+		this.syncLdk().then();
 	}
 }
 
