@@ -811,6 +811,7 @@ class LightningManager {
 					broadcasted_transactions: await this.getLdkBroadcastedTxs(),
 					timestamp: Date.now(),
 				},
+				package_version: require('../package.json').version,
 			};
 			return ok(accountBackup);
 		} catch (e) {
@@ -821,7 +822,7 @@ class LightningManager {
 	/**
 	 * Subscribe to back up events and receive full backups to callback passed
 	 * @param callback
-	 * @returns {number}
+	 * @returns {string}
 	 */
 	subscribeToBackups(
 		callback: (backup: Result<TAccountBackup>) => void,

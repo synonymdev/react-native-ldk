@@ -349,6 +349,7 @@ export type TLdkData = {
 
 export type TAccountBackup = {
 	account: TAccount;
+	package_version: string;
 	data: TLdkData;
 };
 
