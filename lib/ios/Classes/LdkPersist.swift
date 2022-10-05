@@ -28,7 +28,15 @@ class LdkPersister: Persist {
             return Result_NoneChannelMonitorUpdateErrZ.ok()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel (\(channelId)) to disk Error \(error.localizedDescription).")
-            return Result_NoneChannelMonitorUpdateErrZ.ok() // TODO find out which error to return here
+            LdkEventEmitter.shared.send(
+                withEvent: .emergency_force_close_channel,
+                body: [
+                    "channel_id": channelId,
+                    "counterparty_node_id": Data(data.get_counterparty_node_id()).hexEncodedString()
+                ]
+            )
+
+            return Result_NoneChannelMonitorUpdateErrZ.err(e: LDKChannelMonitorUpdateErr_PermanentFailure)
         }
     }
     

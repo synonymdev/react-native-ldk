@@ -39,6 +39,7 @@ import {
 	TLdkConfirmedOutputs,
 	TLdkConfirmedTransactions,
 	TLdkBroadcastedTransactions,
+	TEmergencyForceCloseChannel,
 } from './utils/types';
 import { appendPath, parseData, startParamCheck } from './utils/helpers';
 import * as bitcoin from 'bitcoinjs-lib';
@@ -160,6 +161,10 @@ class LightningManager {
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_claimed,
 			this.onChannelManagerPaymentClaimed.bind(this),
+		);
+		ldk.onEvent(
+			EEventTypes.emergency_force_close_channel,
+			this.onEmergencyForceCloseChannel.bind(this),
 		);
 	}
 
@@ -1107,6 +1112,31 @@ class LightningManager {
 		// Payment Received/Invoice Paid.
 		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`);
 		this.syncLdk().then();
+	}
+
+	/**
+	 * Best effort attempt to recover funds in the event that a channel monitor is
+	 * not able to be persisted.
+	 * @param res
+	 * @returns {Promise<void>}
+	 */
+	private async onEmergencyForceCloseChannel(
+		res: TEmergencyForceCloseChannel,
+	): Promise<void> {
+		console.warn('Emergency close channel');
+		const { channel_id, counterparty_node_id } = res;
+		const closeRes = await ldk.closeChannel({
+			channelId: channel_id,
+			counterPartyNodeId: counterparty_node_id,
+			force: true,
+		});
+		if (closeRes.isErr()) {
+			return console.error(closeRes.error);
+		}
+
+		console.log(
+			`Emergency closed channel ${channel_id} with peer ${counterparty_node_id}`,
+		);
 	}
 }
 

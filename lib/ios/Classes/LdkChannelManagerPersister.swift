@@ -229,7 +229,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             return Result_NoneErrorZ.ok()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel manager to disk Error \(error.localizedDescription).")
-            return Result_NoneErrorZ.ok() // TODO find out which error to return here
+            return Result_NoneErrorZ.err(e: LDKIOError_Other)
         }
     }
     

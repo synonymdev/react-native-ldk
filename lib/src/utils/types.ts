@@ -23,6 +23,7 @@ export enum EEventTypes {
 	channel_manager_channel_closed = 'channel_manager_channel_closed',
 	channel_manager_discard_funding = 'channel_manager_discard_funding',
 	channel_manager_payment_claimed = 'channel_manager_payment_claimed',
+	emergency_force_close_channel = 'emergency_force_close_channel',
 }
 
 //LDK event responses
@@ -60,6 +61,10 @@ export type TChannelManagerOpenChannelRequest = {
 	push_sat: number;
 	funding_satoshis: number;
 	channel_type: string;
+};
+export type TEmergencyForceCloseChannel = {
+	channel_id: string;
+	counterparty_node_id: string;
 };
 
 type TPath = {
