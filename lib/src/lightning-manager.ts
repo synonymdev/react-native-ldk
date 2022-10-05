@@ -84,6 +84,11 @@ class LightningManager {
 		name: '',
 		seed: '',
 	};
+	backupSubscriptions: {
+		[id: string]: (backup: Result<TAccountBackup>) => void;
+	} = {};
+	backupSubscriptionsId = 0;
+	backupSubscriptionsDebounceTimer: NodeJS.Timeout | undefined = undefined;
 	getTransactionData: TGetTransactionData =
 		async (): Promise<TTransactionData> => DefaultTransactionDataShape;
 	network: ENetworks = ENetworks.regtest;
@@ -109,9 +114,7 @@ class LightningManager {
 			this.onBroadcastTransaction.bind(this),
 		);
 
-		ldk.onEvent(EEventTypes.backup, () =>
-			console.log('LDK state requires backup'),
-		);
+		ldk.onEvent(EEventTypes.backup, this.onLdkBackupEvent.bind(this));
 
 		//Channel manager handle events:
 		ldk.onEvent(
@@ -818,6 +821,53 @@ class LightningManager {
 			return err(e);
 		}
 	};
+
+	/**
+	 * Subscribe to back up events and receive full backups to callback passed
+	 * @param callback
+	 * @returns {number}
+	 */
+	subscribeToBackups(
+		callback: (backup: Result<TAccountBackup>) => void,
+	): string {
+		this.backupSubscriptionsId++;
+		const id = `${this.backupSubscriptionsId}`;
+		this.backupSubscriptions[id] = callback;
+		return id;
+	}
+
+	/**
+	 * Unsubscribe from backup events
+	 * @param id
+	 */
+	unsubscribeFromBackups(id: string): void {
+		if (this.backupSubscriptions[id]) {
+			delete this.backupSubscriptions[id];
+		}
+	}
+
+	/**
+	 * Handle native events triggering backups by debouncing and fetching data after
+	 * a timeout to avoid too many backup events being triggered right after each other.
+	 * @returns {Promise<void>}
+	 */
+	private async onLdkBackupEvent(): Promise<void> {
+		if (this.backupSubscriptionsDebounceTimer) {
+			clearTimeout(this.backupSubscriptionsDebounceTimer);
+		}
+
+		this.backupSubscriptionsDebounceTimer = setTimeout(async () => {
+			const backupRes = await this.backupAccount({ account: this.account });
+
+			//Process all subscriptions
+			Object.keys(this.backupSubscriptions).forEach((id) => {
+				const callback = this.backupSubscriptions[id];
+				if (callback) {
+					callback(backupRes);
+				}
+			});
+		}, 250);
+	}
 
 	/**
 	 * Returns change destination script for the provided address.

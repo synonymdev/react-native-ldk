@@ -32,6 +32,7 @@ import RNFS from 'react-native-fs';
 
 let logSubscription: EmitterSubscription | undefined;
 let paymentSubscription: EmitterSubscription | undefined;
+let backupSubscriptionId: string | undefined;
 
 const App = (): ReactElement => {
 	const [message, setMessage] = useState('...');
@@ -99,9 +100,22 @@ const App = (): ReactElement => {
 			);
 		}
 
+		if (!backupSubscriptionId) {
+			backupSubscriptionId = lm.subscribeToBackups((backupRes) => {
+				if (backupRes.isErr()) {
+					return alert('Backup required but failed to export account');
+				}
+
+				console.log(
+					`Backup updated for account ${backupRes.value.account.name}`,
+				);
+			});
+		}
+
 		return (): void => {
 			logSubscription && logSubscription.remove();
 			paymentSubscription && paymentSubscription.remove();
+			backupSubscriptionId && lm.unsubscribeFromBackups(backupSubscriptionId);
 		};
 	}, []);
 
