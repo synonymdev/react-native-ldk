@@ -625,15 +625,13 @@ class LightningManager {
 				!(ELdkData.channel_manager in accountBackup.data) ||
 				!(ELdkData.channel_monitors in accountBackup.data) ||
 				!(ELdkData.peers in accountBackup.data) ||
-				!(ELdkData.watch_transactions in accountBackup.data) ||
-				!(ELdkData.watch_outputs in accountBackup.data) ||
 				!(ELdkData.confirmed_outputs in accountBackup.data) ||
 				!(ELdkData.confirmed_transactions in accountBackup.data) ||
 				!(ELdkData.broadcasted_transactions in accountBackup.data) ||
 				!(ELdkData.timestamp in accountBackup.data)
 			) {
 				return err(
-					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.channel_manager}, ${ELdkData.channel_monitors}, ${ELdkData.peers}, ${ELdkData.watch_transactions}, , ${ELdkData.watch_outputs}`,
+					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.channel_manager}, ${ELdkData.channel_monitors}, ${ELdkData.peers}, ${ELdkData.confirmed_transactions}, , ${ELdkData.confirmed_outputs}`,
 				);
 			}
 
@@ -808,8 +806,6 @@ class LightningManager {
 					channel_manager: channelManagerRes.value.content,
 					channel_monitors: channel_monitors,
 					peers: await this.getPeers(),
-					watch_outputs: [], //TODO add here when outputs are persisted
-					watch_transactions: [], //TODO add here when outputs are persisted
 					confirmed_transactions: await this.getLdkConfirmedTxs(),
 					confirmed_outputs: await this.getLdkConfirmedOutputs(),
 					broadcasted_transactions: await this.getLdkBroadcastedTxs(),

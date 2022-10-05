@@ -331,8 +331,6 @@ export enum ELdkData {
 	channel_manager = 'channel_manager',
 	channel_monitors = 'channel_monitors',
 	peers = 'peers',
-	watch_transactions = 'watch_transactions',
-	watch_outputs = 'watch_outputs',
 	confirmed_transactions = 'confirmed_transactions',
 	confirmed_outputs = 'confirmed_outputs',
 	broadcasted_transactions = 'broadcasted_transactions',
@@ -343,8 +341,6 @@ export type TLdkData = {
 	[ELdkData.channel_manager]: string;
 	[ELdkData.channel_monitors]: { [key: string]: string };
 	[ELdkData.peers]: TLdkPeers;
-	[ELdkData.watch_transactions]: TRegisterTxEvent[];
-	[ELdkData.watch_outputs]: TRegisterOutputEvent[];
 	[ELdkData.confirmed_transactions]: TLdkConfirmedTransactions;
 	[ELdkData.confirmed_outputs]: TLdkConfirmedOutputs;
 	[ELdkData.broadcasted_transactions]: TLdkBroadcastedTransactions;
@@ -368,8 +364,6 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.channel_manager]: '',
 	[ELdkData.channel_monitors]: {},
 	[ELdkData.peers]: [],
-	[ELdkData.watch_transactions]: [],
-	[ELdkData.watch_outputs]: [],
 	[ELdkData.confirmed_transactions]: [],
 	[ELdkData.confirmed_outputs]: [],
 	[ELdkData.broadcasted_transactions]: [],
