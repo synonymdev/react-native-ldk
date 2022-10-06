@@ -39,6 +39,7 @@ import {
 	TLdkConfirmedOutputs,
 	TLdkConfirmedTransactions,
 	TLdkBroadcastedTransactions,
+	TEmergencyForceCloseChannel,
 } from './utils/types';
 import { appendPath, parseData, startParamCheck } from './utils/helpers';
 import * as bitcoin from 'bitcoinjs-lib';
@@ -83,6 +84,11 @@ class LightningManager {
 		name: '',
 		seed: '',
 	};
+	backupSubscriptions: {
+		[id: string]: (backup: Result<TAccountBackup>) => void;
+	} = {};
+	backupSubscriptionsId = 0;
+	backupSubscriptionsDebounceTimer: NodeJS.Timeout | undefined = undefined;
 	getTransactionData: TGetTransactionData =
 		async (): Promise<TTransactionData> => DefaultTransactionDataShape;
 	network: ENetworks = ENetworks.regtest;
@@ -108,9 +114,7 @@ class LightningManager {
 			this.onBroadcastTransaction.bind(this),
 		);
 
-		ldk.onEvent(EEventTypes.backup, () =>
-			console.log('LDK state requires backup'),
-		);
+		ldk.onEvent(EEventTypes.backup, this.onLdkBackupEvent.bind(this));
 
 		//Channel manager handle events:
 		ldk.onEvent(
@@ -160,6 +164,10 @@ class LightningManager {
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_claimed,
 			this.onChannelManagerPaymentClaimed.bind(this),
+		);
+		ldk.onEvent(
+			EEventTypes.emergency_force_close_channel,
+			this.onEmergencyForceCloseChannel.bind(this),
 		);
 	}
 
@@ -617,15 +625,13 @@ class LightningManager {
 				!(ELdkData.channel_manager in accountBackup.data) ||
 				!(ELdkData.channel_monitors in accountBackup.data) ||
 				!(ELdkData.peers in accountBackup.data) ||
-				!(ELdkData.watch_transactions in accountBackup.data) ||
-				!(ELdkData.watch_outputs in accountBackup.data) ||
 				!(ELdkData.confirmed_outputs in accountBackup.data) ||
 				!(ELdkData.confirmed_transactions in accountBackup.data) ||
 				!(ELdkData.broadcasted_transactions in accountBackup.data) ||
 				!(ELdkData.timestamp in accountBackup.data)
 			) {
 				return err(
-					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.channel_manager}, ${ELdkData.channel_monitors}, ${ELdkData.peers}, ${ELdkData.watch_transactions}, , ${ELdkData.watch_outputs}`,
+					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.channel_manager}, ${ELdkData.channel_monitors}, ${ELdkData.peers}, ${ELdkData.confirmed_transactions}, , ${ELdkData.confirmed_outputs}`,
 				);
 			}
 
@@ -800,19 +806,65 @@ class LightningManager {
 					channel_manager: channelManagerRes.value.content,
 					channel_monitors: channel_monitors,
 					peers: await this.getPeers(),
-					watch_outputs: [], //TODO add here when outputs are persisted
-					watch_transactions: [], //TODO add here when outputs are persisted
 					confirmed_transactions: await this.getLdkConfirmedTxs(),
 					confirmed_outputs: await this.getLdkConfirmedOutputs(),
 					broadcasted_transactions: await this.getLdkBroadcastedTxs(),
 					timestamp: Date.now(),
 				},
+				package_version: require('../package.json').version,
 			};
 			return ok(accountBackup);
 		} catch (e) {
 			return err(e);
 		}
 	};
+
+	/**
+	 * Subscribe to back up events and receive full backups to callback passed
+	 * @param callback
+	 * @returns {string}
+	 */
+	subscribeToBackups(
+		callback: (backup: Result<TAccountBackup>) => void,
+	): string {
+		this.backupSubscriptionsId++;
+		const id = `${this.backupSubscriptionsId}`;
+		this.backupSubscriptions[id] = callback;
+		return id;
+	}
+
+	/**
+	 * Unsubscribe from backup events
+	 * @param id
+	 */
+	unsubscribeFromBackups(id: string): void {
+		if (this.backupSubscriptions[id]) {
+			delete this.backupSubscriptions[id];
+		}
+	}
+
+	/**
+	 * Handle native events triggering backups by debouncing and fetching data after
+	 * a timeout to avoid too many backup events being triggered right after each other.
+	 * @returns {Promise<void>}
+	 */
+	private async onLdkBackupEvent(): Promise<void> {
+		if (this.backupSubscriptionsDebounceTimer) {
+			clearTimeout(this.backupSubscriptionsDebounceTimer);
+		}
+
+		this.backupSubscriptionsDebounceTimer = setTimeout(async () => {
+			const backupRes = await this.backupAccount({ account: this.account });
+
+			//Process all subscriptions
+			Object.keys(this.backupSubscriptions).forEach((id) => {
+				const callback = this.backupSubscriptions[id];
+				if (callback) {
+					callback(backupRes);
+				}
+			});
+		}, 250);
+	}
 
 	/**
 	 * Returns change destination script for the provided address.
@@ -1107,6 +1159,31 @@ class LightningManager {
 		// Payment Received/Invoice Paid.
 		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`);
 		this.syncLdk().then();
+	}
+
+	/**
+	 * Best effort attempt to recover funds in the event that a channel monitor is
+	 * not able to be persisted.
+	 * @param res
+	 * @returns {Promise<void>}
+	 */
+	private async onEmergencyForceCloseChannel(
+		res: TEmergencyForceCloseChannel,
+	): Promise<void> {
+		console.warn('Emergency close channel');
+		const { channel_id, counterparty_node_id } = res;
+		const closeRes = await ldk.closeChannel({
+			channelId: channel_id,
+			counterPartyNodeId: counterparty_node_id,
+			force: true,
+		});
+		if (closeRes.isErr()) {
+			return console.error(closeRes.error);
+		}
+
+		console.log(
+			`Emergency closed channel ${channel_id} with peer ${counterparty_node_id}`,
+		);
 	}
 }
 

@@ -23,6 +23,7 @@ export enum EEventTypes {
 	channel_manager_channel_closed = 'channel_manager_channel_closed',
 	channel_manager_discard_funding = 'channel_manager_discard_funding',
 	channel_manager_payment_claimed = 'channel_manager_payment_claimed',
+	emergency_force_close_channel = 'emergency_force_close_channel',
 }
 
 //LDK event responses
@@ -60,6 +61,10 @@ export type TChannelManagerOpenChannelRequest = {
 	push_sat: number;
 	funding_satoshis: number;
 	channel_type: string;
+};
+export type TEmergencyForceCloseChannel = {
+	channel_id: string;
+	counterparty_node_id: string;
 };
 
 type TPath = {
@@ -326,8 +331,6 @@ export enum ELdkData {
 	channel_manager = 'channel_manager',
 	channel_monitors = 'channel_monitors',
 	peers = 'peers',
-	watch_transactions = 'watch_transactions',
-	watch_outputs = 'watch_outputs',
 	confirmed_transactions = 'confirmed_transactions',
 	confirmed_outputs = 'confirmed_outputs',
 	broadcasted_transactions = 'broadcasted_transactions',
@@ -338,8 +341,6 @@ export type TLdkData = {
 	[ELdkData.channel_manager]: string;
 	[ELdkData.channel_monitors]: { [key: string]: string };
 	[ELdkData.peers]: TLdkPeers;
-	[ELdkData.watch_transactions]: TRegisterTxEvent[];
-	[ELdkData.watch_outputs]: TRegisterOutputEvent[];
 	[ELdkData.confirmed_transactions]: TLdkConfirmedTransactions;
 	[ELdkData.confirmed_outputs]: TLdkConfirmedOutputs;
 	[ELdkData.broadcasted_transactions]: TLdkBroadcastedTransactions;
@@ -348,6 +349,7 @@ export type TLdkData = {
 
 export type TAccountBackup = {
 	account: TAccount;
+	package_version: string;
 	data: TLdkData;
 };
 
@@ -363,8 +365,6 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.channel_manager]: '',
 	[ELdkData.channel_monitors]: {},
 	[ELdkData.peers]: [],
-	[ELdkData.watch_transactions]: [],
-	[ELdkData.watch_outputs]: [],
 	[ELdkData.confirmed_transactions]: [],
 	[ELdkData.confirmed_outputs]: [],
 	[ELdkData.broadcasted_transactions]: [],

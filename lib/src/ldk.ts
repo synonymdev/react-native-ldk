@@ -25,9 +25,6 @@ import {
 	TSpendOutputsReq,
 	TNetworkGraphChannelInfo,
 	TNetworkGraphNodeInfo,
-	TAccountBackup,
-	DefaultLdkDataShape,
-	TLdkData,
 	TFileReadRes,
 	TFileReadReq,
 	TFileWriteReq,
@@ -349,6 +346,24 @@ class LDK {
 		counterPartyNodeId,
 		force,
 	}: TCloseChannelReq): Promise<Result<string>> {
+		//For cooperative closes make sure we're connected to peer
+		if (!force) {
+			const peersRes = await this.listPeers();
+			if (peersRes.isErr()) {
+				return err(peersRes.error);
+			}
+
+			const connectedNodeId = peersRes.value.find(
+				(nodeId) => nodeId === counterPartyNodeId,
+			);
+
+			if (!connectedNodeId) {
+				return err(
+					'Cannot cooperatively close channel as peer is not connected.',
+				);
+			}
+		}
+
 		try {
 			const res = await NativeLDK.closeChannel(
 				channelId,

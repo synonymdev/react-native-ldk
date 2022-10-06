@@ -21,6 +21,7 @@ enum EventTypes: String, CaseIterable {
     case channel_manager_channel_closed = "channel_manager_channel_closed"
     case channel_manager_discard_funding = "channel_manager_discard_funding"
     case channel_manager_payment_claimed = "channel_manager_payment_claimed"
+    case emergency_force_close_channel = "emergency_force_close_channel"
 }
 //*****************************************************************
 
@@ -490,7 +491,7 @@ class Ldk: NSObject {
             case .APIMisuseError:
                 return handleReject(reject, .channel_close_fail, nil, error.getValueAsAPIMisuseError()?.getErr())
             case .ChannelUnavailable:
-                return handleReject(reject, .channel_close_fail, nil, error.getValueAsChannelUnavailable()?.getErr())
+                return handleReject(reject, .channel_close_fail, nil, "Channel unavailable for closing") //Crashes when returning error.getValueAsChannelUnavailable()?.getErr()
             case .FeeRateTooHigh:
                 return handleReject(reject, .channel_close_fail, nil, error.getValueAsFeeRateTooHigh()?.getErr())
             case .IncompatibleShutdownScript:
