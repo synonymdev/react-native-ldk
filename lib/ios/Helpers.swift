@@ -65,7 +65,27 @@ extension ChannelDetails {
             "is_usable": get_is_usable(),
             "is_outbound": get_is_outbound(),
             "balance_sat": get_balance_msat() / 1000,
+            
+            //>>>Counterparty details
             "counterparty_node_id": Data(get_counterparty().get_node_id()).hexEncodedString(),
+            "counterparty_outbound_htlc_maximum_msat": get_counterparty().get_outbound_htlc_maximum_msat().getValue() as Any, //Optional number
+            "counterparty_outbound_htlc_minimum_msat": get_counterparty().get_outbound_htlc_minimum_msat().getValue() as Any, //Optional number
+//            "counterparty_forwarding_info_fee_base_msat": get_counterparty().get_forwarding_info().get_fee_base_msat(), //Number (CRASHES WITH EXC_BAD_ACCESS)
+//            "counterparty_forwarding_info_fee_proportional_millionths": get_counterparty().get_forwarding_info().get_fee_proportional_millionths(), //Number (CRASHES WITH EXC_BAD_ACCESS)
+//            "counterparty_forwarding_info_cltv_expiry_delta": get_counterparty().get_forwarding_info().get_cltv_expiry_delta(), //Number (CRASHES WITH EXC_BAD_ACCESS)
+            //Counterparty features
+            "counterparty_features_initial_routing_sync": get_counterparty().get_features().initial_routing_sync(), //Bool
+            "counterparty_features_requires_basic_mpp": get_counterparty().get_features().requires_basic_mpp(), //Bool
+            "counterparty_features_requires_channel_type": get_counterparty().get_features().requires_channel_type(), //Bool
+            "counterparty_features_requires_data_loss_protect": get_counterparty().get_features().requires_data_loss_protect(), //Bool
+            "counterparty_features_requires_gossip_queries": get_counterparty().get_features().requires_gossip_queries(), //Bool
+            "counterparty_features_requires_payment_secret": get_counterparty().get_features().requires_payment_secret(), //Bool
+            "counterparty_features_requires_scid_privacy": get_counterparty().get_features().requires_scid_privacy(), //Bool
+            "counterparty_features_requires_shutdown_anysegwit": get_counterparty().get_features().requires_shutdown_anysegwit(), //Bool
+            "counterparty_features_requires_static_remote_key": get_counterparty().get_features().requires_static_remote_key(), //Bool
+            "counterparty_features_requires_unknown_bits": get_counterparty().get_features().requires_unknown_bits(), //Bool
+            //<<<
+
             "funding_txo": Data(get_funding_txo()?.write() ?? []).hexEncodedString(),
             "channel_type": Data(get_channel_type().write()).hexEncodedString(),
             "user_channel_id": get_user_channel_id(), //Number
