@@ -111,6 +111,7 @@ export type TChannel = {
 	channel_id: string;
 	is_public: boolean;
 	is_usable: boolean;
+	is_channel_ready: boolean;
 	is_outbound: boolean;
 	balance_sat: number;
 	counterparty_node_id: string;
