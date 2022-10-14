@@ -63,6 +63,7 @@ extension ChannelDetails {
             "channel_id": Data(get_channel_id()).hexEncodedString(),
             "is_public": get_is_public(),
             "is_usable": get_is_usable(),
+            "is_channel_ready": get_is_channel_ready(),
             "is_outbound": get_is_outbound(),
             "balance_sat": get_balance_msat() / 1000,
             "counterparty_node_id": Data(get_counterparty().get_node_id()).hexEncodedString(),
