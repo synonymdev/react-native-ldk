@@ -95,7 +95,13 @@ export const startParamCheck = async ({
 						height: 1,
 						transaction:
 							'01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0704ffff001d0104ffffffff0100f2052a0100000043410496b538e853519c726a2c91e61ec11600ae1390813a627c66fb8be7947be63c52da7589379515d4e0a604f8141781e62294721166bf621e73a82cbf2342c858eeac00000000',
-						vout:[{ n:0, hex:"410496b538e853519c726a2c91e61ec11600ae1390813a627c66fb8be7947be63c52da7589379515d4e0a604f8141781e62294721166bf621e73a82cbf2342c858eeac", value:50 }],
+						vout: [
+							{
+								n: 0,
+								hex: '410496b538e853519c726a2c91e61ec11600ae1390813a627c66fb8be7947be63c52da7589379515d4e0a604f8141781e62294721166bf621e73a82cbf2342c858eeac',
+								value: 50,
+							},
+						],
 					},
 				},
 				[ENetworks.testnet]: {
@@ -106,18 +112,50 @@ export const startParamCheck = async ({
 						height: 1,
 						transaction:
 							'01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0e0420e7494d017f062f503253482fffffffff0100f2052a010000002321021aeaf2f8638a129a3156fbe7e5ef635226b0bafd495ff03afe2c843d7e3a4b51ac00000000',
-						vout:[{ n:0, hex:"21021aeaf2f8638a129a3156fbe7e5ef635226b0bafd495ff03afe2c843d7e3a4b51ac", value:50 }],
+						vout: [
+							{
+								n: 0,
+								hex: '21021aeaf2f8638a129a3156fbe7e5ef635226b0bafd495ff03afe2c843d7e3a4b51ac',
+								value: 50,
+							},
+						],
 					},
 				},
 			};
 			const transactionData = await getTransactionData(
 				expectedData[network].txid,
 			);
-			if (
-				JSON.stringify(transactionData) !==
-				JSON.stringify(expectedData[network].data)
-			) {
-				return err('getTransactionData is not returning the expected data.');
+			const data = expectedData[network].data;
+			if (transactionData?.header !== data.header) {
+				return err('getTransactionData is not returning the expected header.');
+			}
+			if (transactionData?.height !== data.height) {
+				return err('getTransactionData is not returning the expected height.');
+			}
+			if (transactionData?.transaction !== data.transaction) {
+				return err(
+					'getTransactionData is not returning the expected transaction.',
+				);
+			}
+			if (!transactionData?.vout || !Array.isArray(transactionData?.vout)) {
+				return err(
+					'getTransactionData is not returning the expected vout array.',
+				);
+			}
+			if (transactionData.vout[0]?.n !== data.vout[0].n) {
+				return err(
+					'getTransactionData is not returning the expected vout[0].n',
+				);
+			}
+			if (transactionData.vout[0]?.hex !== data.vout[0].hex) {
+				return err(
+					'getTransactionData is not returning the expected vout[0].hex',
+				);
+			}
+			if (transactionData.vout[0]?.value !== data.vout[0].value) {
+				return err(
+					'getTransactionData is not returning the expected vout[0].value',
+				);
 			}
 
 			const address = await getAddress();
