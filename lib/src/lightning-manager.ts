@@ -39,7 +39,7 @@ import {
 	TLdkConfirmedOutputs,
 	TLdkConfirmedTransactions,
 	TLdkBroadcastedTransactions,
-	TEmergencyForceCloseChannel,
+	TChannelUpdate,
 } from './utils/types';
 import { appendPath, parseData, startParamCheck } from './utils/helpers';
 import * as bitcoin from 'bitcoinjs-lib';
@@ -1168,7 +1168,7 @@ class LightningManager {
 	 * @returns {Promise<void>}
 	 */
 	private async onEmergencyForceCloseChannel(
-		res: TEmergencyForceCloseChannel,
+		res: TChannelUpdate,
 	): Promise<void> {
 		console.warn('Emergency close channel');
 		const { channel_id, counterparty_node_id } = res;

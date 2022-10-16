@@ -209,7 +209,6 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
                 ]
             )
-            
         default:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "ERROR: unknown LdkChannelManagerPersister.handle_event type")
         }
