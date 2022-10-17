@@ -28,6 +28,7 @@ import {
 	TFileReadRes,
 	TFileReadReq,
 	TFileWriteReq,
+	TClaimableBalance,
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -739,6 +740,23 @@ class LDK {
 			}
 
 			return ok(channels);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Fetches a list of all channels LDK has ever had. Use ignoreOpenChannels to get
+	 * pending balances for channels no longer included in list_channels (closed/closing channels).
+	 * @param ignoreOpenChannels
+	 * @returns {Promise<Ok<Ok<TClaimableBalance[]> | Err<TClaimableBalance[]>> | Err<unknown>>}
+	 */
+	async claimableBalances(
+		ignoreOpenChannels: boolean,
+	): Promise<Result<TClaimableBalance[]>> {
+		try {
+			const res = await NativeLDK.claimableBalances(ignoreOpenChannels);
+			return ok(res);
 		} catch (e) {
 			return err(e);
 		}

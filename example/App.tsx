@@ -440,6 +440,18 @@ const App = (): ReactElement => {
 					/>
 
 					<Button
+						title={'Show claimable balances for closed/closing channels'}
+						onPress={async (): Promise<void> => {
+							const balances = await ldk.claimableBalances(true);
+							if (balances.isErr()) {
+								return setMessage(balances.error.message);
+							}
+
+							setMessage(JSON.stringify(balances.value));
+						}}
+					/>
+
+					<Button
 						title={'Show version'}
 						onPress={async (): Promise<void> => {
 							const ldkVersion = await ldk.version();

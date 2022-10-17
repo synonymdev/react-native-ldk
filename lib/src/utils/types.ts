@@ -288,6 +288,18 @@ export type TTransactionData = {
 	vout: TVout[];
 };
 
+export type TClaimableBalance = {
+	claimable_amount_satoshis: number;
+	type:
+		| 'ClaimableAwaitingConfirmations'
+		| 'ClaimableOnChannelClose'
+		| 'ContentiousClaimable'
+		| 'MaybeClaimableHTLCAwaitingTimeout';
+	confirmation_height?: number;
+	timeout_height?: number;
+	claimable_height?: number;
+};
+
 export type TFileWriteReq = {
 	fileName: string;
 	path?: string;
