@@ -16,7 +16,6 @@ import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCr
 import org.ldk.structs.Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK
 import java.io.File
 import java.net.InetSocketAddress
-import java.nio.channels.Channel
 import java.nio.file.Files
 import java.nio.file.Paths
 
