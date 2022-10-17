@@ -805,7 +805,7 @@ class Ldk: NSObject {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances()")
             }
         
-            return ["claimable_amount_satoshis": 0]
+            return ["claimable_amount_satoshis": 0, "type": "Unknown"]
         }
         
         return resolve(result)

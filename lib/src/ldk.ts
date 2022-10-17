@@ -748,6 +748,7 @@ class LDK {
 	/**
 	 * Fetches a list of all channels LDK has ever had. Use ignoreOpenChannels to get
 	 * pending balances for channels no longer included in list_channels (closed/closing channels).
+	 * https://docs.rs/lightning/latest/lightning/chain/chainmonitor/struct.ChainMonitor.html#method.get_claimable_balances
 	 * @param ignoreOpenChannels
 	 * @returns {Promise<Ok<Ok<TClaimableBalance[]> | Err<TClaimableBalance[]>> | Err<unknown>>}
 	 */

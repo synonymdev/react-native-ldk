@@ -294,7 +294,8 @@ export type TClaimableBalance = {
 		| 'ClaimableAwaitingConfirmations'
 		| 'ClaimableOnChannelClose'
 		| 'ContentiousClaimable'
-		| 'MaybeClaimableHTLCAwaitingTimeout';
+		| 'MaybeClaimableHTLCAwaitingTimeout'
+		| 'Unknown';
 	confirmation_height?: number;
 	timeout_height?: number;
 	claimable_height?: number;
