@@ -654,10 +654,6 @@ class LightningManager {
 				return err(channelManagerRes.error);
 			}
 
-			if (channelManagerRes.isOk()) {
-				channelManagerRes.value;
-			}
-
 			if (!overwrite && accountBackup.data?.timestamp <= timestamp) {
 				const msg =
 					accountBackup.data?.timestamp < timestamp
@@ -812,6 +808,7 @@ class LightningManager {
 					timestamp: Date.now(),
 				},
 				package_version: require('../package.json').version,
+				network: this.network,
 			};
 			return ok(accountBackup);
 		} catch (e) {
