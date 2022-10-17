@@ -40,7 +40,8 @@ enum class EventTypes {
     channel_manager_channel_closed,
     channel_manager_discard_funding,
     channel_manager_payment_claimed,
-    emergency_force_close_channel
+    emergency_force_close_channel,
+    new_channel
 }
 //*****************************************************************
 

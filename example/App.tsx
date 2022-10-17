@@ -25,6 +25,7 @@ import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm, {
 	EEventTypes,
 	TChannelManagerPayment,
+	TChannelUpdate,
 } from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
 import { createNewAccount, getAddress } from './utils/helpers';
@@ -32,6 +33,7 @@ import RNFS from 'react-native-fs';
 
 let logSubscription: EmitterSubscription | undefined;
 let paymentSubscription: EmitterSubscription | undefined;
+let onChannelSubscription: EmitterSubscription | undefined;
 let backupSubscriptionId: string | undefined;
 
 const App = (): ReactElement => {
@@ -100,6 +102,17 @@ const App = (): ReactElement => {
 			);
 		}
 
+		if (!onChannelSubscription) {
+			// @ts-ignore
+			onChannelSubscription = ldk.onEvent(
+				EEventTypes.new_channel,
+				(res: TChannelUpdate) =>
+					alert(
+						`Channel received from ${res.counterparty_node_id} Channel ${res.channel_id}`,
+					),
+			);
+		}
+
 		if (!backupSubscriptionId) {
 			backupSubscriptionId = lm.subscribeToBackups((backupRes) => {
 				if (backupRes.isErr()) {
@@ -115,6 +128,7 @@ const App = (): ReactElement => {
 		return (): void => {
 			logSubscription && logSubscription.remove();
 			paymentSubscription && paymentSubscription.remove();
+			onChannelSubscription && onChannelSubscription.remove();
 			backupSubscriptionId && lm.unsubscribeFromBackups(backupSubscriptionId);
 		};
 	}, []);

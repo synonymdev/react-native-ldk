@@ -168,3 +168,5 @@ extension LdkEventEmitter {
         return true
     }
 }
+
+extension String: Error {}

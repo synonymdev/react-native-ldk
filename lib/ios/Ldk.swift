@@ -22,6 +22,7 @@ enum EventTypes: String, CaseIterable {
     case channel_manager_discard_funding = "channel_manager_discard_funding"
     case channel_manager_payment_claimed = "channel_manager_payment_claimed"
     case emergency_force_close_channel = "emergency_force_close_channel"
+    case new_channel = "new_channel"
 }
 //*****************************************************************
 
