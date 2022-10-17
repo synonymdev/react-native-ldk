@@ -432,7 +432,7 @@ class LDK {
 		//TODO confirm we have enough incoming capacity
 		try {
 			const res = await NativeLDK.createPaymentRequest(
-				(amountSats || 0) * 1000,
+				amountSats || 0,
 				description,
 				expiryDeltaSeconds,
 			);

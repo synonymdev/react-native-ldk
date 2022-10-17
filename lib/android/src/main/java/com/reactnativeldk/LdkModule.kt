@@ -618,7 +618,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             channelManager,
             keysManager!!.as_KeysInterface(),
             ldkCurrency,
-            if (amountSats == 0.0) Option_u64Z.none() else Option_u64Z.some(amountSats.toLong()),
+            if (amountSats == 0.0) Option_u64Z.none() else Option_u64Z.some((amountSats * 1000).toLong()),
             description,
             expiryDelta.toInt()
         );

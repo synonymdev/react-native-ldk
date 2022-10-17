@@ -633,7 +633,7 @@ class Ldk: NSObject {
             channelmanager: channelManager,
             keys_manager: keysManager.as_KeysInterface(),
             network: ldkCurrency,
-            amt_msat: amountSats == 0 ? Option_u64Z.none() : Option_u64Z(value: UInt64(amountSats)),
+            amt_msat: amountSats == 0 ? Option_u64Z.none() : Option_u64Z(value: UInt64(amountSats * 1000)),
             description: String(description),
             invoice_expiry_delta_secs: UInt32(expiryDelta)
         )
