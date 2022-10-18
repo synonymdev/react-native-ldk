@@ -28,6 +28,7 @@ import {
 	TFileReadRes,
 	TFileReadReq,
 	TFileWriteReq,
+	TClaimableBalance,
 } from './utils/types';
 
 const LINKING_ERROR =
@@ -432,7 +433,7 @@ class LDK {
 		//TODO confirm we have enough incoming capacity
 		try {
 			const res = await NativeLDK.createPaymentRequest(
-				(amountSats || 0) * 1000,
+				amountSats || 0,
 				description,
 				expiryDeltaSeconds,
 			);
@@ -739,6 +740,24 @@ class LDK {
 			}
 
 			return ok(channels);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Fetches a list of all channels LDK has ever had. Use ignoreOpenChannels to get
+	 * pending balances for channels no longer included in list_channels (closed/closing channels).
+	 * https://docs.rs/lightning/latest/lightning/chain/chainmonitor/struct.ChainMonitor.html#method.get_claimable_balances
+	 * @param ignoreOpenChannels
+	 * @returns {Promise<Ok<Ok<TClaimableBalance[]> | Err<TClaimableBalance[]>> | Err<unknown>>}
+	 */
+	async claimableBalances(
+		ignoreOpenChannels: boolean,
+	): Promise<Result<TClaimableBalance[]>> {
+		try {
+			const res = await NativeLDK.claimableBalances(ignoreOpenChannels);
+			return ok(res);
 		} catch (e) {
 			return err(e);
 		}

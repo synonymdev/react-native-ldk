@@ -67,7 +67,7 @@ extension ChannelDetails {
             "is_outbound": get_is_outbound(),
             "balance_sat": get_balance_msat() / 1000,
             "counterparty_node_id": Data(get_counterparty().get_node_id()).hexEncodedString(),
-            "funding_txo": Data(get_funding_txo()?.write() ?? []).hexEncodedString(),
+            "funding_txid": Data(get_funding_txo()?.get_txid().reversed() ?? []).hexEncodedString(),
             "channel_type": Data(get_channel_type().write()).hexEncodedString(),
             "user_channel_id": get_user_channel_id(), //Number
             "confirmations_required": get_confirmations_required().getValue() as Any, // Optional number

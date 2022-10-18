@@ -619,7 +619,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             channelManager,
             keysManager!!.as_KeysInterface(),
             ldkCurrency,
-            if (amountSats == 0.0) Option_u64Z.none() else Option_u64Z.some(amountSats.toLong()),
+            if (amountSats == 0.0) Option_u64Z.none() else Option_u64Z.some((amountSats * 1000).toLong()),
             description,
             expiryDelta.toInt()
         );
@@ -733,6 +733,52 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
 
         promise.resolve(graph.channel(shortChannelId.toLong())?.asJson)
+    }
+
+    @ReactMethod
+    fun claimableBalances(ignoreOpenChannels: Boolean, promise: Promise) {
+        val channelManager = channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        val chainMonitor = chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
+
+        val ignoredChannels = if (ignoreOpenChannels)
+            channelManager.list_channels() else
+            arrayOf<ChannelDetails>()
+
+        val result = Arguments.createArray()
+
+        chainMonitor.get_claimable_balances(ignoredChannels).iterator().forEach { balance ->
+            val map = Arguments.createMap()
+            //Defaults if all castings for balance fail
+            map.putInt("claimable_amount_satoshis", 0)
+            map.putString("type", "Unknown")
+
+            (balance as? Balance.ClaimableAwaitingConfirmations)?.let { claimableAwaitingConfirmations ->
+                map.putInt("claimable_amount_satoshis", claimableAwaitingConfirmations.claimable_amount_satoshis.toInt())
+                map.putInt("confirmation_height", claimableAwaitingConfirmations.confirmation_height)
+                map.putString("type", "ClaimableAwaitingConfirmations")
+            }
+
+            (balance as? Balance.ClaimableOnChannelClose)?.let { claimableOnChannelClose ->
+                map.putInt("claimable_amount_satoshis", claimableOnChannelClose.claimable_amount_satoshis.toInt())
+                map.putString("type", "ClaimableOnChannelClose")
+            }
+
+            (balance as? Balance.ContentiousClaimable)?.let { contentiousClaimable ->
+                map.putInt("claimable_amount_satoshis", contentiousClaimable.claimable_amount_satoshis.toInt())
+                map.putInt("timeout_height", contentiousClaimable.timeout_height)
+                map.putString("type", "ContentiousClaimable")
+            }
+
+            (balance as? Balance.MaybeClaimableHTLCAwaitingTimeout)?.let { maybeClaimableHTLCAwaitingTimeout ->
+                map.putInt("claimable_amount_satoshis", maybeClaimableHTLCAwaitingTimeout.claimable_amount_satoshis.toInt())
+                map.putInt("claimable_height", maybeClaimableHTLCAwaitingTimeout.claimable_height)
+                map.putString("type", "MaybeClaimableHTLCAwaitingTimeout")
+            }
+
+            result.pushMap(map)
+        }
+
+        promise.resolve(result)
     }
 
     //MARK: Misc methods

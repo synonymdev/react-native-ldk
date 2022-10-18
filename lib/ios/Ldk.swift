@@ -634,7 +634,7 @@ class Ldk: NSObject {
             channelmanager: channelManager,
             keys_manager: keysManager.as_KeysInterface(),
             network: ldkCurrency,
-            amt_msat: amountSats == 0 ? Option_u64Z.none() : Option_u64Z(value: UInt64(amountSats)),
+            amt_msat: amountSats == 0 ? Option_u64Z.none() : Option_u64Z(value: UInt64(amountSats * 1000)),
             description: String(description),
             invoice_expiry_delta_secs: UInt32(expiryDelta)
         )
@@ -757,6 +757,59 @@ class Ldk: NSObject {
         }
         
         return resolve(networkGraph.channel(short_channel_id: UInt64(shortChannelId as String)!).asJson)
+    }
+    
+    @objc
+    func claimableBalances(_ ignoreOpenChannels: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        guard let chainMonitor = chainMonitor else {
+            return handleReject(reject, .init_chain_monitor)
+        }
+        
+        let ignoredChannels = ignoreOpenChannels ? [] : channelManager.list_channels()
+        
+        let result: [Any] = chainMonitor.get_claimable_balances(ignored_channels: ignoredChannels).map { balance in
+            switch balance.getValueType() {
+            case .ClaimableAwaitingConfirmations:
+                let b = balance.getValueAsClaimableAwaitingConfirmations()!
+                return [
+                    "claimable_amount_satoshis": b.getClaimable_amount_satoshis(),
+                    "confirmation_height": b.getConfirmation_height(),
+                    "type": "ClaimableAwaitingConfirmations"
+                ]
+            case .ClaimableOnChannelClose:
+                let b = balance.getValueAsClaimableOnChannelClose()!
+                return [
+                    "claimable_amount_satoshis": b.getClaimable_amount_satoshis(),
+                    "type": "ClaimableOnChannelClose"
+                ]
+            case .ContentiousClaimable:
+                let b = balance.getValueAsContentiousClaimable()!
+                return [
+                    "claimable_amount_satoshis": b.getClaimable_amount_satoshis(),
+                    "timeout_height": b.getTimeout_height(),
+                    "type": "ContentiousClaimable"
+                ]
+            case .MaybeClaimableHTLCAwaitingTimeout:
+                let b = balance.getValueAsMaybeClaimableHTLCAwaitingTimeout()!
+                return [
+                    "claimable_amount_satoshis": b.getClaimable_amount_satoshis(),
+                    "claimable_height": b.getClaimable_height(),
+                    "type": "MaybeClaimableHTLCAwaitingTimeout"
+                ]
+            case .none:
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown claimable balance type in claimableBalances()")
+            case .some(_):
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances()")
+            }
+        
+            return ["claimable_amount_satoshis": 0, "type": "Unknown"]
+        }
+        
+        return resolve(result)
     }
     
     //MARK: Misc functions
