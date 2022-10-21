@@ -116,7 +116,7 @@ export type TChannel = {
 	is_outbound: boolean;
 	balance_sat: number;
 	counterparty_node_id: string;
-	funding_txo?: string;
+	funding_txid?: string;
 	channel_type?: string;
 	user_channel_id: number;
 	confirmations_required?: number;
