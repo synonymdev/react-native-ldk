@@ -83,6 +83,7 @@ enum LdkCallbackResponses: String {
     case ldk_reset = "ldk_reset"
     case close_channel_success = "close_channel_success"
     case file_write_success = "file_write_success"
+    case abandon_payment_success = "abandon_payment_success"
 }
 
 enum LdkFileNames: String {
@@ -581,7 +582,7 @@ class Ldk: NSObject {
                     invoicePayer.pay_zero_value_invoice(invoice: invoice, amount_msats: UInt64(amountSats * 1000)) :
                     invoicePayer.pay_invoice(invoice: invoice)
         if res.isOk() {
-            return handleResolve(resolve, .invoice_payment_success)
+            return resolve(Data(res.getValue() ?? []).hexEncodedString())
         }
 
         guard let error = res.getError() else {
@@ -616,6 +617,16 @@ class Ldk: NSObject {
         }
     }
 
+    @objc
+    func abandonPayment(_ paymentId: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        channelManager.abandon_payment(payment_id: String(paymentId).hexaBytes)
+        handleResolve(resolve, .abandon_payment_success)
+    }
+    
     @objc
     func createPaymentRequest(_ amountSats: NSInteger, description: NSString, expiryDelta: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
