@@ -40,10 +40,18 @@ import {
 	TLdkConfirmedTransactions,
 	TLdkBroadcastedTransactions,
 	TChannelUpdate,
+	TPaymentReq,
+	TPaymentTimeoutReq,
 } from './utils/types';
-import { appendPath, parseData, startParamCheck } from './utils/helpers';
+import {
+	appendPath,
+	parseData,
+	promiseTimeout,
+	startParamCheck,
+} from './utils/helpers';
 import * as bitcoin from 'bitcoinjs-lib';
 import { networks } from 'bitcoinjs-lib';
+import { EmitterSubscription } from 'react-native';
 
 //TODO startup steps
 // Step 0: Listen for events ✅
@@ -100,6 +108,9 @@ class LightningManager {
 	> => [];
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
 	feeRate: number = 1000; // feerate_sat_per_1000_weight
+	pathFailedSubscription: EmitterSubscription | undefined;
+	paymentFailedSubscription: EmitterSubscription | undefined;
+	paymentSentSubscription: EmitterSubscription | undefined;
 
 	constructor() {
 		// Step 0: Subscribe to all events
@@ -814,6 +825,77 @@ class LightningManager {
 		} catch (e) {
 			return err(e);
 		}
+	};
+
+	/**
+	 * ldk.pay helper that subscribes to and returns pay event success/failures and times out after a specified period of time.
+	 * @param {string} paymentRequest
+	 * @param {number} [amountSats]
+	 * @param {number} [timeout]
+	 * @returns {Promise<Result<TChannelManagerPaymentSent>>}
+	 */
+	payWithTimeout = async ({
+		paymentRequest,
+		amountSats,
+		timeout = 20000,
+	}: TPaymentTimeoutReq): Promise<Result<TChannelManagerPaymentSent>> => {
+		return promiseTimeout(
+			timeout,
+			this.subscribeAndPay({ paymentRequest, amountSats }),
+		);
+	};
+
+	private subscribeAndPay = async ({
+		paymentRequest,
+		amountSats,
+	}: TPaymentReq): Promise<Result<TChannelManagerPaymentSent>> => {
+		return new Promise(async (resolve) => {
+			this.subscribeToPaymentResponses(resolve).then();
+			const payResponse: Result<string> | undefined = await ldk.pay({
+				paymentRequest,
+				amountSats,
+			});
+			if (!payResponse) {
+				return resolve(err('Unable to pay the provided lightning invoice.'));
+			}
+			if (payResponse.isErr()) {
+				return resolve(err(payResponse.error.message));
+			}
+		});
+	};
+
+	/**
+	 * Subscribes to outgoing lightning payments.
+	 * @returns {Promise<Result<TChannelManagerPaymentSent>>}
+	 */
+	private subscribeToPaymentResponses = async (resolve: any): Promise<void> => {
+		this.pathFailedSubscription = ldk.onEvent(
+			EEventTypes.channel_manager_payment_path_failed,
+			(res: TChannelManagerPaymentPathFailed) => {
+				this.unsubscribeFromPaymentSubscriptions();
+				return resolve(err(res.payment_id));
+			},
+		);
+		this.paymentFailedSubscription = ldk.onEvent(
+			EEventTypes.channel_manager_payment_failed,
+			(res: TChannelManagerPaymentFailed) => {
+				this.unsubscribeFromPaymentSubscriptions();
+				return resolve(err(res.payment_id));
+			},
+		);
+		this.paymentSentSubscription = ldk.onEvent(
+			EEventTypes.channel_manager_payment_sent,
+			(res: TChannelManagerPaymentSent) => {
+				this.unsubscribeFromPaymentSubscriptions();
+				return resolve(ok(res));
+			},
+		);
+	};
+
+	unsubscribeFromPaymentSubscriptions = (): void => {
+		this.pathFailedSubscription && this.pathFailedSubscription.remove();
+		this.paymentFailedSubscription && this.paymentFailedSubscription.remove();
+		this.paymentSentSubscription && this.paymentSentSubscription.remove();
 	};
 
 	/**

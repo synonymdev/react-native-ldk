@@ -413,15 +413,16 @@ const App = (): ReactElement => {
 									{
 										text: 'Pay',
 										onPress: async (): Promise<void> => {
-											const pay = await ldk.pay({
+											const pay = await lm.payWithTimeout({
 												paymentRequest,
 												amountSats: amount_satoshis ? undefined : ownAmountSats,
+												timeout: 20000,
 											});
 											if (pay.isErr()) {
 												return setMessage(pay.error.message);
 											}
 
-											setMessage(pay.value);
+											setMessage(pay.value.payment_id);
 										},
 									},
 								],

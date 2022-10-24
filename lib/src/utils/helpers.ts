@@ -214,3 +214,19 @@ export const parseData = (data: string, fallback: any): any => {
 export const appendPath = (path1: string, path2: string): string => {
 	return `${path1}${path1.slice(-1) === '/' ? '' : '/'}${path2}`;
 };
+
+export const promiseTimeout = <T>(
+	ms: number,
+	promise: Promise<any>,
+): Promise<T> => {
+	let id: NodeJS.Timeout | undefined;
+	let timeout = new Promise((resolve) => {
+		id = setTimeout(() => {
+			resolve(err('Timed Out.'));
+		}, ms);
+	});
+	return Promise.race([promise, timeout]).then((result) => {
+		clearTimeout(id);
+		return result;
+	});
+};
