@@ -105,6 +105,9 @@ RCT_EXTERN_METHOD(pay:(NSString *)paymentRequest
                   amountSats:(NSInteger *)amountSats
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(abandonPayment:(NSString *)paymentId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(createPaymentRequest:(NSInteger *)amountSats
                   description:(NSString *)description
                   expiryDelta:(NSInteger *)expiryDelta

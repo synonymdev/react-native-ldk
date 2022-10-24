@@ -471,7 +471,7 @@ class LDK {
 	}
 
 	/**
-	 * Pays a bolt11 payment request
+	 * Pays a bolt11 payment request and returns paymentId
 	 * @param paymentRequest
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
@@ -542,6 +542,20 @@ class LDK {
 				return err(useFullMessage);
 			}
 
+			return err(e);
+		}
+	}
+
+	/**
+	 * Abandons a payment
+	 * @param paymentId
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async abandonPayment(paymentId: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.abandonPayment(paymentId);
+			return ok(res);
+		} catch (e) {
 			return err(e);
 		}
 	}

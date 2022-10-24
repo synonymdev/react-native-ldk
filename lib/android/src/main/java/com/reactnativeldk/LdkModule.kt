@@ -610,6 +610,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
+    fun abandonPayment(paymentId: String, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        channelManager!!.abandon_payment(paymentId.hexa())
+    }
+
+    @ReactMethod
     fun createPaymentRequest(amountSats: Double, description: String, expiryDelta: Double, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
