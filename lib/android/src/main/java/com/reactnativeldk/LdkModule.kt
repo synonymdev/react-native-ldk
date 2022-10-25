@@ -776,10 +776,21 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 map.putString("type", "ContentiousClaimable")
             }
 
-            (balance as? Balance.MaybeClaimableHTLCAwaitingTimeout)?.let { maybeClaimableHTLCAwaitingTimeout ->
-                map.putInt("claimable_amount_satoshis", maybeClaimableHTLCAwaitingTimeout.claimable_amount_satoshis.toInt())
-                map.putInt("claimable_height", maybeClaimableHTLCAwaitingTimeout.claimable_height)
-                map.putString("type", "MaybeClaimableHTLCAwaitingTimeout")
+            (balance as? Balance.CounterpartyRevokedOutputClaimable)?.let { counterpartyRevokedOutputClaimable ->
+                map.putInt("claimable_amount_satoshis", counterpartyRevokedOutputClaimable.claimable_amount_satoshis.toInt())
+                map.putString("type", "CounterpartyRevokedOutputClaimable")
+            }
+
+            (balance as? Balance.MaybePreimageClaimableHTLC)?.let { maybePreimageClaimableHTLC ->
+                map.putInt("claimable_amount_satoshis", maybePreimageClaimableHTLC.claimable_amount_satoshis.toInt())
+                map.putInt("expiry_height", maybePreimageClaimableHTLC.expiry_height)
+                map.putString("type", "MaybePreimageClaimableHTLC")
+            }
+
+            (balance as? Balance.MaybeTimeoutClaimableHTLC)?.let { maybeTimeoutClaimableHTLC ->
+                map.putInt("claimable_amount_satoshis", maybeTimeoutClaimableHTLC.claimable_amount_satoshis.toInt())
+                map.putInt("claimable_height", maybeTimeoutClaimableHTLC.claimable_height)
+                map.putString("type", "MaybeTimeoutClaimableHTLC")
             }
 
             result.pushMap(map)

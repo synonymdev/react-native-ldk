@@ -83,7 +83,7 @@ export type TChannelManagerPaymentPathSuccessful = {
 export type TChannelManagerPaymentPathFailed = {
 	payment_id: string;
 	payment_hash: string;
-	rejected_by_dest: boolean;
+	payment_failed_permanently: boolean;
 	short_channel_id: string;
 	path: TPath[];
 	network_update: string;
@@ -299,7 +299,9 @@ export type TClaimableBalance = {
 		| 'ClaimableAwaitingConfirmations'
 		| 'ClaimableOnChannelClose'
 		| 'ContentiousClaimable'
-		| 'MaybeClaimableHTLCAwaitingTimeout'
+		| 'CounterpartyRevokedOutputClaimable'
+		| 'MaybePreimageClaimableHTLC'
+		| 'MaybeTimeoutClaimableHTLC'
 		| 'Unknown';
 	confirmation_height?: number;
 	timeout_height?: number;
