@@ -220,6 +220,7 @@ class Ldk: NSObject {
 
         let channelHandshakeLimits = ChannelHandshakeLimits()
         channelHandshakeLimits.set_force_announced_channel_preference(val: true)
+        channelHandshakeLimits.set_max_minimum_depth(val: UInt32(minChannelHandshakeDepth))
         userConfig!.set_channel_handshake_limits(val: channelHandshakeLimits)
 
         return handleResolve(resolve, .config_init_success)
