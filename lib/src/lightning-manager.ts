@@ -856,9 +856,11 @@ class LightningManager {
 				amountSats,
 			});
 			if (!payResponse) {
+				this.unsubscribeFromPaymentSubscriptions();
 				return resolve(err('Unable to pay the provided lightning invoice.'));
 			}
 			if (payResponse.isErr()) {
+				this.unsubscribeFromPaymentSubscriptions();
 				return resolve(err(payResponse.error.message));
 			}
 		});
