@@ -89,6 +89,7 @@ enum LdkCallbackResponses: String {
 enum LdkFileNames: String {
     case network_graph = "network_graph.bin"
     case channel_manager = "channel_manager.bin"
+    case scorer = "scorer.bin"
 }
 
 @objc(Ldk)
@@ -782,42 +783,65 @@ class Ldk: NSObject {
         
         let ignoredChannels = ignoreOpenChannels ? [] : channelManager.list_channels()
         
-        let result: [Any] = chainMonitor.get_claimable_balances(ignored_channels: ignoredChannels).map { balance in
+        var result: [Any] = []
+        
+        let claimable_balances = chainMonitor.get_claimable_balances(ignored_channels: ignoredChannels)
+        for balance in claimable_balances {
             switch balance.getValueType() {
             case .ClaimableAwaitingConfirmations:
                 let b = balance.getValueAsClaimableAwaitingConfirmations()!
-                return [
+                result.append([
                     "claimable_amount_satoshis": b.getClaimable_amount_satoshis(),
                     "confirmation_height": b.getConfirmation_height(),
                     "type": "ClaimableAwaitingConfirmations"
-                ]
+                ])
+                break
             case .ClaimableOnChannelClose:
                 let b = balance.getValueAsClaimableOnChannelClose()!
-                return [
+                result.append([
                     "claimable_amount_satoshis": b.getClaimable_amount_satoshis(),
                     "type": "ClaimableOnChannelClose"
-                ]
+                ])
+                break
             case .ContentiousClaimable:
                 let b = balance.getValueAsContentiousClaimable()!
-                return [
+                result.append([
                     "claimable_amount_satoshis": b.getClaimable_amount_satoshis(),
                     "timeout_height": b.getTimeout_height(),
                     "type": "ContentiousClaimable"
-                ]
-            case .MaybeClaimableHTLCAwaitingTimeout:
-                let b = balance.getValueAsMaybeClaimableHTLCAwaitingTimeout()!
-                return [
+                ])
+                break
+            case .CounterpartyRevokedOutputClaimable:
+                let b = balance.getValueAsCounterpartyRevokedOutputClaimable()!
+                result.append([
+                    "claimable_amount_satoshis": b.getClaimable_amount_satoshis(),
+                    "type": "CounterpartyRevokedOutputClaimable"
+                ])
+                break
+            case .MaybePreimageClaimableHTLC:
+                let b = balance.getValueAsMaybePreimageClaimableHTLC()!
+                result.append([
+                    "claimable_amount_satoshis": b.getClaimable_amount_satoshis(),
+                    "expiry_height": b.getExpiry_height(),
+                    "type": "MaybePreimageClaimableHTLC"
+                ])
+                break
+            case .MaybeTimeoutClaimableHTLC:
+                let b = balance.getValueAsMaybeTimeoutClaimableHTLC()!
+                result.append([
                     "claimable_amount_satoshis": b.getClaimable_amount_satoshis(),
                     "claimable_height": b.getClaimable_height(),
-                    "type": "MaybeClaimableHTLCAwaitingTimeout"
-                ]
+                    "type": "MaybeTimeoutClaimableHTLC"
+                ])
+                break
+                
             case .none:
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown claimable balance type in claimableBalances()")
             case .some(_):
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances()")
             }
         
-            return ["claimable_amount_satoshis": 0, "type": "Unknown"]
+            result.append(["claimable_amount_satoshis": 0, "type": "Unknown"])
         }
         
         return resolve(result)
