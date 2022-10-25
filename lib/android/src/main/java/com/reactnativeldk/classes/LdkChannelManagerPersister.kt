@@ -70,7 +70,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             val body = Arguments.createMap()
             body.putHexString("payment_id", paymentPathFailed.payment_id)
             body.putHexString("payment_hash", paymentPathFailed.payment_hash)
-            body.putBoolean("rejected_by_dest", paymentPathFailed.rejected_by_dest)
+            body.putBoolean("payment_failed_permanently", paymentPathFailed.payment_failed_permanently)
             body.putInt("short_channel_id", (paymentPathFailed.short_channel_id as Option_u64Z.Some).some.toInt())
             val path = Arguments.createArray()
             paymentPathFailed.path.iterator().forEach { path.pushMap(it.asJson) }
