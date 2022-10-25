@@ -243,6 +243,10 @@ export type TPaymentReq = {
 	amountSats?: number;
 };
 
+export type TPaymentTimeoutReq = TPaymentReq & {
+	timeout?: number; //ms
+};
+
 export type TCreatePaymentReq = {
 	amountSats?: number;
 	description: string;
