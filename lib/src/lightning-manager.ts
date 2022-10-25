@@ -723,6 +723,15 @@ class LightningManager {
 				return err(savePeersRes.error);
 			}
 
+			const savePaymentIdsRes = await ldk.writeToFile({
+				fileName: ELdkFiles.payment_ids,
+				path: accountPath,
+				content: JSON.stringify(accountBackup.data.payment_ids),
+			});
+			if (savePaymentIdsRes.isErr()) {
+				return err(savePaymentIdsRes.error);
+			}
+
 			const confirmedTxRes = await ldk.writeToFile({
 				fileName: ELdkFiles.confirmed_transactions,
 				path: accountPath,
