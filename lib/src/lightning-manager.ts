@@ -963,6 +963,15 @@ class LightningManager {
 		}
 	}
 
+	async rebroadcastAllKnownTransactions(): Promise<void> {
+		const broadcastedTransactions = await this.getLdkBroadcastedTxs();
+		await Promise.all(
+			broadcastedTransactions.map((tx) => {
+				this.broadcastTransaction(tx);
+			}),
+		);
+	}
+
 	/**
 	 * Handle native events triggering backups by debouncing and fetching data after
 	 * a timeout to avoid too many backup events being triggered right after each other.
