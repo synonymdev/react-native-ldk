@@ -344,6 +344,7 @@ export enum ELdkFiles {
 	confirmed_transactions = 'confirmed_transactions.json',
 	confirmed_outputs = 'confirmed_outputs.json',
 	broadcasted_transactions = 'broadcasted_transactions.json',
+	payment_ids = 'payment_ids.json',
 }
 
 export enum ELdkData {
@@ -353,6 +354,7 @@ export enum ELdkData {
 	confirmed_transactions = 'confirmed_transactions',
 	confirmed_outputs = 'confirmed_outputs',
 	broadcasted_transactions = 'broadcasted_transactions',
+	payment_ids = 'payment_ids',
 	timestamp = 'timestamp',
 }
 
@@ -363,6 +365,7 @@ export type TLdkData = {
 	[ELdkData.confirmed_transactions]: TLdkConfirmedTransactions;
 	[ELdkData.confirmed_outputs]: TLdkConfirmedOutputs;
 	[ELdkData.broadcasted_transactions]: TLdkBroadcastedTransactions;
+	[ELdkData.payment_ids]: TLdkPaymentIds;
 	[ELdkData.timestamp]: number;
 };
 
@@ -381,6 +384,8 @@ export type TLdkConfirmedOutputs = string[];
 
 export type TLdkBroadcastedTransactions = string[];
 
+export type TLdkPaymentIds = string[];
+
 export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.channel_manager]: '',
 	[ELdkData.channel_monitors]: {},
@@ -388,7 +393,7 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.confirmed_transactions]: [],
 	[ELdkData.confirmed_outputs]: [],
 	[ELdkData.broadcasted_transactions]: [],
-
+	[ELdkData.payment_ids]: [],
 	[ELdkData.timestamp]: 0,
 };
 

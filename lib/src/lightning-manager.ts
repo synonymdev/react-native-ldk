@@ -42,6 +42,7 @@ import {
 	TChannelUpdate,
 	TPaymentReq,
 	TPaymentTimeoutReq,
+	TLdkPaymentIds,
 } from './utils/types';
 import {
 	appendPath,
@@ -388,6 +389,16 @@ class LightningManager {
 			return channelManagerRes;
 		}
 
+		// Attempt to abandon any stored payment ids.
+		const paymentIds = await this.getLdkPaymentIds();
+		if (paymentIds.length) {
+			await Promise.all(
+				paymentIds.map(async (paymentId) => {
+					await ldk.abandonPayment(paymentId);
+				}),
+			);
+		}
+
 		// Add Peers
 		const peers = await this.getPeers();
 		await Promise.all(
@@ -639,6 +650,7 @@ class LightningManager {
 				!(ELdkData.confirmed_outputs in accountBackup.data) ||
 				!(ELdkData.confirmed_transactions in accountBackup.data) ||
 				!(ELdkData.broadcasted_transactions in accountBackup.data) ||
+				!(ELdkData.payment_ids in accountBackup.data) ||
 				!(ELdkData.timestamp in accountBackup.data)
 			) {
 				return err(
@@ -816,6 +828,7 @@ class LightningManager {
 					confirmed_transactions: await this.getLdkConfirmedTxs(),
 					confirmed_outputs: await this.getLdkConfirmedOutputs(),
 					broadcasted_transactions: await this.getLdkBroadcastedTxs(),
+					payment_ids: await this.getLdkPaymentIds(),
 					timestamp: Date.now(),
 				},
 				package_version: require('../package.json').version,
@@ -863,6 +876,11 @@ class LightningManager {
 				this.unsubscribeFromPaymentSubscriptions();
 				return resolve(err(payResponse.error.message));
 			}
+			//Save payment ids to file on payResponse success.
+			await ldk.writeToFile({
+				fileName: ELdkFiles.payment_ids,
+				content: JSON.stringify(payResponse.value),
+			});
 		});
 	};
 
@@ -873,15 +891,23 @@ class LightningManager {
 	private subscribeToPaymentResponses = async (resolve: any): Promise<void> => {
 		this.pathFailedSubscription = ldk.onEvent(
 			EEventTypes.channel_manager_payment_path_failed,
-			(res: TChannelManagerPaymentPathFailed) => {
+			async (res: TChannelManagerPaymentPathFailed) => {
 				this.unsubscribeFromPaymentSubscriptions();
+				const abandonPaymentRes = await ldk.abandonPayment(res.payment_id);
+				if (abandonPaymentRes.isOk()) {
+					this.removeLdkPaymentId(res.payment_id).then();
+				}
 				return resolve(err(res.payment_id));
 			},
 		);
 		this.paymentFailedSubscription = ldk.onEvent(
 			EEventTypes.channel_manager_payment_failed,
-			(res: TChannelManagerPaymentFailed) => {
+			async (res: TChannelManagerPaymentFailed) => {
 				this.unsubscribeFromPaymentSubscriptions();
+				const abandonPaymentRes = await ldk.abandonPayment(res.payment_id);
+				if (abandonPaymentRes.isOk()) {
+					this.removeLdkPaymentId(res.payment_id).then();
+				}
 				return resolve(err(res.payment_id));
 			},
 		);
@@ -889,6 +915,7 @@ class LightningManager {
 			EEventTypes.channel_manager_payment_sent,
 			(res: TChannelManagerPaymentSent) => {
 				this.unsubscribeFromPaymentSubscriptions();
+				this.removeLdkPaymentId(res.payment_id).then();
 				return resolve(ok(res));
 			},
 		);
@@ -979,6 +1006,25 @@ class LightningManager {
 			);
 		}
 		return DefaultLdkDataShape.confirmed_transactions;
+	};
+
+	private getLdkPaymentIds = async (): Promise<TLdkPaymentIds> => {
+		const res = await ldk.readFromFile({
+			fileName: ELdkFiles.payment_ids,
+		});
+		if (res.isOk()) {
+			return parseData(res.value.content, DefaultLdkDataShape.payment_ids);
+		}
+		return DefaultLdkDataShape.payment_ids;
+	};
+
+	private removeLdkPaymentId = async (paymentId: string): Promise<void> => {
+		const paymentIds = await this.getLdkPaymentIds();
+		const newPaymentIds = paymentIds.filter((id) => id !== paymentId);
+		await ldk.writeToFile({
+			fileName: ELdkFiles.payment_ids,
+			content: JSON.stringify(newPaymentIds),
+		});
 	};
 
 	/**
