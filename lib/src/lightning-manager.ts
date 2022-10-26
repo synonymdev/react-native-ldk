@@ -263,7 +263,6 @@ class LightningManager {
 		this.broadcastTransaction = broadcastTransaction;
 		this.getTransactionData = getTransactionData;
 		const bestBlock = await this.getBestBlock();
-		this.currentBlock = bestBlock;
 		this.watchTxs = [];
 		this.watchOutputs = [];
 
@@ -961,15 +960,6 @@ class LightningManager {
 		}
 	}
 
-	async rebroadcastAllKnownTransactions(): Promise<void> {
-		const broadcastedTransactions = await this.getLdkBroadcastedTxs();
-		await Promise.all(
-			broadcastedTransactions.map((tx) => {
-				this.broadcastTransaction(tx);
-			}),
-		);
-	}
-
 	/**
 	 * Handle native events triggering backups by debouncing and fetching data after
 	 * a timeout to avoid too many backup events being triggered right after each other.
@@ -1069,19 +1059,27 @@ class LightningManager {
 	 * Returns previously broadcasted transactions saved in storgare.
 	 * @returns {Promise<TLdkBroadcastedTransactions>}
 	 */
-	private getLdkBroadcastedTxs =
-		async (): Promise<TLdkBroadcastedTransactions> => {
-			const res = await ldk.readFromFile({
-				fileName: ELdkFiles.broadcasted_transactions,
-			});
-			if (res.isOk()) {
-				return parseData(
-					res.value.content,
-					DefaultLdkDataShape.broadcasted_transactions,
-				);
-			}
-			return DefaultLdkDataShape.broadcasted_transactions;
-		};
+	async getLdkBroadcastedTxs(): Promise<TLdkBroadcastedTransactions> {
+		const res = await ldk.readFromFile({
+			fileName: ELdkFiles.broadcasted_transactions,
+		});
+		if (res.isOk()) {
+			return parseData(
+				res.value.content,
+				DefaultLdkDataShape.broadcasted_transactions,
+			);
+		}
+		return DefaultLdkDataShape.broadcasted_transactions;
+	}
+
+	async rebroadcastAllKnownTransactions(): Promise<any[]> {
+		const broadcastedTransactions = await this.getLdkBroadcastedTxs();
+		return await Promise.all(
+			broadcastedTransactions.map(async (tx) => {
+				return await this.broadcastTransaction(tx);
+			}),
+		);
+	}
 
 	/**
 	 * Saves confirmed transaction txids to storage.

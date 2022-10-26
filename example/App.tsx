@@ -144,6 +144,17 @@ const App = (): ReactElement => {
 				</View>
 				<View style={styles.container}>
 					<Button
+						title={'Rebroadcast Known Transactions'}
+						onPress={async (): Promise<void> => {
+							try {
+								const res = await lm.rebroadcastAllKnownTransactions();
+								setMessage(JSON.stringify(res));
+							} catch (e) {
+								setMessage(e.toString());
+							}
+						}}
+					/>
+					<Button
 						title={'Create New Account'}
 						onPress={async (): Promise<void> => {
 							const newAccount = await createNewAccount();
