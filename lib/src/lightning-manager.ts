@@ -394,10 +394,8 @@ class LightningManager {
 		if (paymentIds.length) {
 			await Promise.all(
 				paymentIds.map(async (paymentId) => {
-					const abandonPaymentRes = await ldk.abandonPayment(paymentId);
-					if (abandonPaymentRes.isOk()) {
-						this.removeLdkPaymentId(paymentId).then();
-					}
+					this.removeLdkPaymentId(paymentId).then();
+					await ldk.abandonPayment(paymentId).then();
 				}),
 			);
 		}
@@ -1041,11 +1039,13 @@ class LightningManager {
 
 	private removeLdkPaymentId = async (paymentId: string): Promise<void> => {
 		const paymentIds = await this.getLdkPaymentIds();
-		const newPaymentIds = paymentIds.filter((id) => id !== paymentId);
-		await ldk.writeToFile({
-			fileName: ELdkFiles.payment_ids,
-			content: JSON.stringify(newPaymentIds),
-		});
+		if (paymentId.includes(paymentId)) {
+			const newPaymentIds = paymentIds.filter((id) => id !== paymentId);
+			await ldk.writeToFile({
+				fileName: ELdkFiles.payment_ids,
+				content: JSON.stringify(newPaymentIds),
+			});
+		}
 	};
 
 	/**
