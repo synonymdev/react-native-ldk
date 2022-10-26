@@ -394,8 +394,8 @@ class LightningManager {
 		if (paymentIds.length) {
 			await Promise.all(
 				paymentIds.map(async (paymentId) => {
-					this.removeLdkPaymentId(paymentId).then();
-					await ldk.abandonPayment(paymentId).then();
+					await ldk.abandonPayment(paymentId);
+					await this.removeLdkPaymentId(paymentId);
 				}),
 			);
 		}
