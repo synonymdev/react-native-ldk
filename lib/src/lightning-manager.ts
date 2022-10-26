@@ -263,7 +263,6 @@ class LightningManager {
 		this.broadcastTransaction = broadcastTransaction;
 		this.getTransactionData = getTransactionData;
 		const bestBlock = await this.getBestBlock();
-		this.currentBlock = bestBlock;
 		this.watchTxs = [];
 		this.watchOutputs = [];
 
@@ -396,7 +395,7 @@ class LightningManager {
 				paymentIds.map(async (paymentId) => {
 					const abandonPaymentRes = await ldk.abandonPayment(paymentId);
 					if (abandonPaymentRes.isOk()) {
-						this.removeLdkPaymentId(paymentId).then();
+						await this.removeLdkPaymentId(paymentId);
 					}
 				}),
 			);
