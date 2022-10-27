@@ -120,6 +120,12 @@ class Ldk: NSObject {
     static var accountStoragePath: URL?
     static var channelStoragePath: URL?
 
+    
+    override init () {
+        Bindings.setLogThreshold(severity: .DEBUG)
+        super.init()
+    }
+    
     //MARK: Startup methods
     
     @objc
@@ -237,52 +243,52 @@ class Ldk: NSObject {
             return handleReject(reject, .init_storage_path)
         }
         
-        do {
-            let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL)), arg: logger)
-            if read.isOk() {
-                networkGraph = read.getValue()
-            }
-        } catch {
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch. \(error.localizedDescription)")
-        }
+//        do {
+//            let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL)), arg: logger)
+//            if read.isOk() {
+//                networkGraph = read.getValue()
+//            }
+//        } catch {
+//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch. \(error.localizedDescription)")
+//        }
         
         if networkGraph == nil {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch.")
             networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
         }
         
-        rapidGosipSync = RapidGossipSync(network_graph: networkGraph!)
+//        rapidGosipSync = RapidGossipSync(network_graph: networkGraph!)
         
-        let syncFile = accountStoragePath.appendingPathComponent("rapid_sync.lngossip").standardizedFileURL
-        if !FileManager().fileExists(atPath: syncFile.path) {
-            print(syncFile.path)
-            return handleReject(reject, .init_network_graph)
-        }
-        
-        let bytes = [UInt8](try! Data(contentsOf: syncFile))
-        
-        print(accountStoragePath.appendingPathComponent("rapid_sync.lngossip").standardizedFileURL.path)
-
-        let res = rapidGosipSync!.update_network_graph(update_data: bytes)
-        
-        print("RAPID GOSSIP SYNC")
-        if !res.isOk() {
-            let error = res.getError()
-            switch error?.getValueType() {
-            case .DecodeError:
-                print(error?.getValueAsDecodeError().debugDescription)
-            case .LightningError:
-                print(error?.getValueAsLightningError().debugDescription)
-            default:
-                return handleReject(reject, .init_network_graph)
-            }
-        }
-
-        print("LOADED FILE")
-        
-        print(rapidGosipSync?.is_initial_sync_complete())
-        
-        print("FOUND \(networkGraph!.read_only().list_channels().count) channels in graph")
+//        let syncFile = accountStoragePath.appendingPathComponent("rapid_sync.lngossip").standardizedFileURL
+//        if !FileManager().fileExists(atPath: syncFile.path) {
+//            print(syncFile.path)
+//            return handleReject(reject, .init_network_graph)
+//        }
+//
+//        let bytes = [UInt8](try! Data(contentsOf: syncFile))
+//
+//        print(accountStoragePath.appendingPathComponent("rapid_sync.lngossip").standardizedFileURL.path)
+//
+//        let res = rapidGosipSync!.update_network_graph(update_data: bytes)
+//
+//        print("RAPID GOSSIP SYNC")
+//        if !res.isOk() {
+//            let error = res.getError()
+//            switch error?.getValueType() {
+//            case .DecodeError:
+//                print(error?.getValueAsDecodeError().debugDescription)
+//            case .LightningError:
+//                print(error?.getValueAsLightningError().debugDescription)
+//            default:
+//                return handleReject(reject, .init_network_graph)
+//            }
+//        }
+//
+//        print("LOADED FILE")
+//
+//        print(rapidGosipSync?.is_initial_sync_complete())
+//
+//        print("FOUND \(networkGraph!.read_only().list_channels().count) channels in graph")
         return handleResolve(resolve, .network_graph_init_success)
     }
 
@@ -593,6 +599,75 @@ class Ldk: NSObject {
 
     @objc
     func pay(_ paymentRequest: NSString, amountSats: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        //Bfx hack
+        if true {
+            guard let channelManager = channelManager else {
+                return handleReject(reject, .init_channel_manager)
+            }
+            
+            let parsedInvoice = Invoice.from_str(s: String(paymentRequest))
+            guard parsedInvoice.isOk(), let invoice = parsedInvoice.getValue()  else {
+                let error = parsedInvoice.getError()?.getValueAsParseError()
+                return handleReject(reject, .decode_invoice_fail, nil, error?.to_str())
+            }
+            
+            
+            let isMainnet = ldkNetwork == LDKNetwork_Bitcoin
+            
+            let btPubKey = isMainnet ? "0296b2db342fcf87ea94d981757fdf4d3e545bd5cef4919f58b5d38dfdd73bf5c9" : "032092b9f32cfce4adf95ee82e28a152adb50b3b43327ab9b2cd49077867c3c8a3"
+            let bfxPubKey = isMainnet ? "033d8656219478701227199cbd6f670335c8d408a92ae88b962c49d4dc0e83e025" : "02cee33f5ed9ff0be072de8a2211b20216ead492ae216462b29bdd5afe34cc2273"
+            
+            //Lock to paying bfx
+            if Data(invoice.recover_payee_pub_key()).hexEncodedString() != bfxPubKey {
+                print("bfx: \(Data(invoice.recover_payee_pub_key()).hexEncodedString())")
+                return handleReject(reject, .invoice_payment_fail_routing, nil, "Failed to find path to node ;)")
+            }
+            
+            print("BFX hack...")
+            
+            //Get BT channel
+            let onlineChannels = channelManager.list_usable_channels()
+            if onlineChannels.count == 0 {
+                return handleReject(reject, .invoice_payment_fail_routing, nil, "No online channels")
+            }
+            
+            var bfxChannel: ChannelDetails?
+            onlineChannels.forEach { channel in
+                if Data(channel.get_counterparty().get_node_id()).hexEncodedString() == btPubKey {
+                    bfxChannel = channel
+                }
+            }
+            
+            guard let channel = bfxChannel else {
+                return handleReject(reject, .invoice_payment_fail_routing, nil, "No channel with LSP")
+            }
+            
+            let msats = invoice.amount_milli_satoshis().getValue() ?? UInt64(amountSats * 1000)
+            
+            let btHop = RouteHop(
+                pubkey_arg: bfxPubKey.hexaBytes,
+                node_features_arg: NodeFeatures(),
+                short_channel_id_arg: channel.get_short_channel_id().getValue()!,
+                channel_features_arg: ChannelFeatures(),
+                fee_msat_arg: msats,
+                cltv_expiry_delta_arg: UInt32(invoice.min_final_cltv_expiry())
+            )
+            
+            let receiver = PaymentParameters(payee_pubkey: invoice.recover_payee_pub_key())
+            let route = Route(
+                paths_arg: [],
+                payment_params_arg: receiver
+            )
+            
+            let res = channelManager.send_payment(
+                route: route,
+                payment_hash: invoice.payment_hash(),
+                payment_secret: invoice.payment_secret()
+            )
+
+            return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
+        }
+        
         guard let invoicePayer = invoicePayer else {
             return handleReject(reject, .init_invoice_payer)
         }
@@ -774,7 +849,7 @@ class Ldk: NSObject {
         guard let networkGraph = networkGraph?.read_only() else {
             return handleReject(reject, .init_network_graph)
         }
-                
+                        
         return resolve(networkGraph.list_nodes().map { Data($0.as_slice()).hexEncodedString() })
     }
     
