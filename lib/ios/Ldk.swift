@@ -617,6 +617,8 @@ class Ldk: NSObject {
             let btPubKey = isMainnet ? "0296b2db342fcf87ea94d981757fdf4d3e545bd5cef4919f58b5d38dfdd73bf5c9" : "032092b9f32cfce4adf95ee82e28a152adb50b3b43327ab9b2cd49077867c3c8a3"
             let bfxPubKey = isMainnet ? "033d8656219478701227199cbd6f670335c8d408a92ae88b962c49d4dc0e83e025" : "02cee33f5ed9ff0be072de8a2211b20216ead492ae216462b29bdd5afe34cc2273"
             
+            let btToBfxShortChannelID: UInt64 = 1131397465047040
+            
             //Lock to paying bfx
             if Data(invoice.recover_payee_pub_key()).hexEncodedString() != bfxPubKey {
                 print("bfx: \(Data(invoice.recover_payee_pub_key()).hexEncodedString())")
@@ -644,19 +646,29 @@ class Ldk: NSObject {
             
             let msats = invoice.amount_milli_satoshis().getValue() ?? UInt64(amountSats * 1000)
             
-            let btHop = RouteHop(
-                pubkey_arg: bfxPubKey.hexaBytes,
+            let hopToBt = RouteHop(
+                pubkey_arg: channel.get_counterparty().get_node_id(),
                 node_features_arg: NodeFeatures(),
                 short_channel_id_arg: channel.get_short_channel_id().getValue()!,
                 channel_features_arg: ChannelFeatures(),
-                fee_msat_arg: msats,
+                fee_msat_arg: UInt64(channel.get_counterparty().get_forwarding_info().get_fee_base_msat()),
                 cltv_expiry_delta_arg: UInt32(invoice.min_final_cltv_expiry())
             )
             
-            let receiver = PaymentParameters(payee_pubkey: invoice.recover_payee_pub_key())
+            let hopToBfx = RouteHop(
+                pubkey_arg: bfxPubKey.hexaBytes,
+                node_features_arg: NodeFeatures(),
+                short_channel_id_arg: btToBfxShortChannelID, // channel.get_short_channel_id().getValue()!,
+                channel_features_arg: ChannelFeatures(),
+                fee_msat_arg: 0,
+                cltv_expiry_delta_arg: UInt32(invoice.min_final_cltv_expiry())
+            )
+            
+            let path: [[RouteHop]] = [[hopToBfx]]
+            
             let route = Route(
-                paths_arg: [],
-                payment_params_arg: receiver
+                paths_arg: path,
+                payment_params_arg: PaymentParameters(payee_pubkey: invoice.recover_payee_pub_key())
             )
             
             let res = channelManager.send_payment(
@@ -664,8 +676,32 @@ class Ldk: NSObject {
                 payment_hash: invoice.payment_hash(),
                 payment_secret: invoice.payment_secret()
             )
+            
+            if res.isOk() {
+                return resolve(Data(res.getValue() ?? []).hexEncodedString())
+            }
 
-            return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
+            guard let error = res.getError() else {
+                return handleReject(reject, .invoice_payment_fail_unknown)
+            }
+
+            switch error.getValueType() {
+            case .PathParameterError:
+                return handleReject(reject, .invoice_payment_fail_unknown, nil, error.getValueAsPathParameterError()?.description)
+            case .AllFailedRetrySafe:
+                return handleReject(reject, .invoice_payment_fail_unknown, nil, error.getValueAsAllFailedRetrySafe()?.description)
+            case .ParameterError:
+                switch error.getValueAsParameterError()?.getValueType() {
+                case .APIMisuseError:
+                    return handleReject(reject, .invoice_payment_fail_unknown, nil, error.getValueAsParameterError()?.getValueAsAPIMisuseError()?.getErr())
+                default:
+                    return handleReject(reject, .invoice_payment_fail_unknown, nil, "Parameter error")
+                }
+            default:
+                return handleReject(reject, .invoice_payment_fail_sending, nil, "Default fail")
+            }
+
+            return handleReject(reject, .invoice_payment_fail_sending, nil, "Failed to send payment")
         }
         
         guard let invoicePayer = invoicePayer else {
