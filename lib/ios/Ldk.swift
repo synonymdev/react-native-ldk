@@ -112,6 +112,7 @@ class Ldk: NSObject {
     var peerHandler: TCPPeerHandler?
     var channelManagerConstructor: ChannelManagerConstructor?
     var invoicePayer: InvoicePayer?
+    var rapidGosipSync: RapidGossipSync?
     var ldkNetwork: LDKNetwork?
     var ldkCurrency: LDKCurrency?
     
@@ -250,6 +251,38 @@ class Ldk: NSObject {
             networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
         }
         
+        rapidGosipSync = RapidGossipSync(network_graph: networkGraph!)
+        
+        let syncFile = accountStoragePath.appendingPathComponent("rapid_sync.lngossip").standardizedFileURL
+        if !FileManager().fileExists(atPath: syncFile.path) {
+            print(syncFile.path)
+            return handleReject(reject, .init_network_graph)
+        }
+        
+        let bytes = [UInt8](try! Data(contentsOf: syncFile))
+        
+        print(accountStoragePath.appendingPathComponent("rapid_sync.lngossip").standardizedFileURL.path)
+
+        let res = rapidGosipSync!.update_network_graph(update_data: bytes)
+        
+        print("RAPID GOSSIP SYNC")
+        if !res.isOk() {
+            let error = res.getError()
+            switch error?.getValueType() {
+            case .DecodeError:
+                print(error?.getValueAsDecodeError().debugDescription)
+            case .LightningError:
+                print(error?.getValueAsLightningError().debugDescription)
+            default:
+                return handleReject(reject, .init_network_graph)
+            }
+        }
+
+        print("LOADED FILE")
+        
+        print(rapidGosipSync?.is_initial_sync_complete())
+        
+        print("FOUND \(networkGraph!.read_only().list_channels().count) channels in graph")
         return handleResolve(resolve, .network_graph_init_success)
     }
 
@@ -320,7 +353,7 @@ class Ldk: NSObject {
                     net_graph_serialized: networkGraph.write(),
                     tx_broadcaster: broadcaster,
                     logger: logger,
-                    enableP2PGossip: true
+                    enableP2PGossip: false
                 )
             } else {
                 //New node
@@ -336,7 +369,7 @@ class Ldk: NSObject {
                     net_graph: networkGraph,
                     tx_broadcaster: broadcaster,
                     logger: logger,
-                    enableP2PGossip: true
+                    enableP2PGossip: false
                 )
             }
         } catch {
@@ -522,7 +555,7 @@ class Ldk: NSObject {
             
             guard read.isOk()  else {
                 return handleReject(reject, .spend_outputs_fail, nil, read.getError().debugDescription)
-            }            
+            }
             ldkDescriptors.append(read.getValue()!)
         }
         
