@@ -105,7 +105,7 @@ export const createNewAccount = async (): Promise<Result<TAccount>> => {
 };
 
 export const randomSeed = (): string => {
-	return randomBytes(32).toString('hex');
+	return 'bc30b6bf0368d8a5b7deb14e7c690298de746a279ae6d232a34997deb7af4d9c';
 };
 
 /**

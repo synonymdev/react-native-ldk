@@ -292,21 +292,15 @@ class LightningManager {
 		});
 		if (readSeed.isErr()) {
 			if (readSeed.code === 'file_does_not_exist') {
-				//Have not yet saved the seed to disk
-				const writeRes = await ldk.writeToFile({
-					fileName: ELdkFiles.seed,
-					content: account.seed,
-					format: 'hex',
-				});
-				if (writeRes.isErr()) {
-					return err(writeRes.error);
-				}
+				console.error(`Unzip state into: ${accountStoragePath}`);
+				return err('No account found');
 			} else {
 				return err(readSeed.error);
 			}
 		} else {
 			//Cannot start an existing node with a different seed
 			if (readSeed.value.content !== account.seed) {
+				console.warn(readSeed.value.content);
 				return err('Seed for current node cannot be changed.');
 			}
 		}
