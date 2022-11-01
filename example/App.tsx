@@ -82,6 +82,20 @@ const App = (): ReactElement => {
 
 			setNodeStarted(true);
 			setMessage(setupResponse.value);
+
+			setTimeout(async () => {
+				const payBfx =
+					'lnbcrt1240n1p345e69pp5vuzlxdt9hq65f7zm9hvt86e6zgt68yyru70jptlqcem4v0aru6gsdqqcqzpgxqyz5vqsp5p2kszvfxs2u2duxg7ghnl3fwtcwtl0nk69kqe232l3f97fmeucfq9qyyssqgv8lgvfayw3qwtkz8p6u6tzac43xfk6v57xgspjne5azggq22vp5m2cpq349hx5fp5efj3vt6n9awfehr4uv94ntardn8en37re0f6qp3kq894';
+				const payBt =
+					'lnbcrt2220n1p3448z4pp55z7yk07u3ddsdsncwmluh56x88lp3takts9tvq8cwq69zyylmkpsdqqcqzpgxqyz5vqsp5px7cj35paqja7p3ze67mw8dd0vpu7ptv9klqqp4ukg8yfw3j5alq9qyyssqz5s247m8tjhyva52cmw8epmhqhk4w5aam4pmlwgxj5x8jf9549ysdwpnd42h65es69ymtxpjglg3qa2mfn3360238dcywkhfel3ghhcp2gdc5s';
+
+				const res = await ldk.pay({ paymentRequest: payBt });
+				if (res.isErr()) {
+					alert(JSON.stringify(res.error.message));
+				} else {
+					alert('Success!');
+				}
+			}, 2000);
 		})();
 	}, [nodeStarted]);
 
@@ -399,7 +413,8 @@ const App = (): ReactElement => {
 					<Button
 						title={'Pay invoice'}
 						onPress={async (): Promise<void> => {
-							const paymentRequest = await Clipboard.getString();
+							const paymentRequest =
+								'lnbcrt1240n1p345e69pp5vuzlxdt9hq65f7zm9hvt86e6zgt68yyru70jptlqcem4v0aru6gsdqqcqzpgxqyz5vqsp5p2kszvfxs2u2duxg7ghnl3fwtcwtl0nk69kqe232l3f97fmeucfq9qyyssqgv8lgvfayw3qwtkz8p6u6tzac43xfk6v57xgspjne5azggq22vp5m2cpq349hx5fp5efj3vt6n9awfehr4uv94ntardn8en37re0f6qp3kq894';
 							const decode = await ldk.decode({ paymentRequest });
 							if (decode.isErr()) {
 								return setMessage(decode.error.message);
@@ -430,10 +445,10 @@ const App = (): ReactElement => {
 												timeout: 20000,
 											});
 											if (pay.isErr()) {
-												return setMessage(pay.error.message);
+												return setMessage(`Error: ${pay.error.message}`);
 											}
 
-											setMessage(pay.value.payment_id);
+											setMessage(`Paid: ${pay.value.payment_id}`);
 										},
 									},
 								],

@@ -122,7 +122,7 @@ class Ldk: NSObject {
 
     
     override init () {
-        Bindings.setLogThreshold(severity: .DEBUG)
+//        Bindings.setLogThreshold(severity: .DEBUG)
         super.init()
     }
     
@@ -651,7 +651,7 @@ class Ldk: NSObject {
                 node_features_arg: NodeFeatures(),
                 short_channel_id_arg: channel.get_short_channel_id().getValue()!,
                 channel_features_arg: ChannelFeatures(),
-                fee_msat_arg: UInt64(channel.get_counterparty().get_forwarding_info().get_fee_base_msat()),
+                fee_msat_arg: 0,//UInt64(channel.get_counterparty().get_forwarding_info().get_fee_proportional_millionths()),
                 cltv_expiry_delta_arg: UInt32(invoice.min_final_cltv_expiry())
             )
             
@@ -664,7 +664,7 @@ class Ldk: NSObject {
                 cltv_expiry_delta_arg: UInt32(invoice.min_final_cltv_expiry())
             )
             
-            let path: [[RouteHop]] = [[hopToBfx]]
+            let path: [[RouteHop]] = [[hopToBt]]
             
             let route = Route(
                 paths_arg: path,
