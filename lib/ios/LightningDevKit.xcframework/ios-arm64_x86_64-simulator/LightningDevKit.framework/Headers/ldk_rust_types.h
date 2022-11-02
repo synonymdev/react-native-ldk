@@ -197,8 +197,6 @@ struct nativeOnionMessengerOpaque;
 typedef struct nativeOnionMessengerOpaque LDKnativeOnionMessenger;
 struct nativeRapidGossipSyncOpaque;
 typedef struct nativeRapidGossipSyncOpaque LDKnativeRapidGossipSync;
-struct nativeDecodeErrorOpaque;
-typedef struct nativeDecodeErrorOpaque LDKnativeDecodeError;
 struct nativeInitOpaque;
 typedef struct nativeInitOpaque LDKnativeInit;
 struct nativeErrorMessageOpaque;

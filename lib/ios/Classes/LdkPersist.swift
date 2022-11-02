@@ -13,7 +13,7 @@ class LdkPersister: Persist {
         //TODO find out what this is for
     }
     
-    private func handleChannel(_ channel_id: OutPoint, _ data: ChannelMonitor) -> Result_NoneChannelMonitorUpdateErrZ {
+    private func handleChannel(_ channel_id: OutPoint, _ data: ChannelMonitor) -> LDKChannelMonitorUpdateStatus {
         let channelId = Data(channel_id.to_channel_id()).hexEncodedString()
         let body = [
             "channel_id": channelId,
@@ -38,7 +38,7 @@ class LdkPersister: Persist {
                 )
             }
             
-            return Result_NoneChannelMonitorUpdateErrZ.ok()
+            return LDKChannelMonitorUpdateStatus_Completed
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel (\(channelId)) to disk Error \(error.localizedDescription).")
             LdkEventEmitter.shared.send(
@@ -46,15 +46,15 @@ class LdkPersister: Persist {
                 body: body
             )
 
-            return Result_NoneChannelMonitorUpdateErrZ.err(e: LDKChannelMonitorUpdateErr_PermanentFailure)
+            return LDKChannelMonitorUpdateStatus_PermanentFailure
         }
     }
     
-    override func persist_new_channel(channel_id: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId) -> Result_NoneChannelMonitorUpdateErrZ {
+    override func persist_new_channel(channel_id: Bindings.OutPoint, data: Bindings.ChannelMonitor, update_id: Bindings.MonitorUpdateId) -> LDKChannelMonitorUpdateStatus {
         return handleChannel(channel_id, data)
     }
     
-    override func update_persisted_channel(channel_id: OutPoint, update: ChannelMonitorUpdate, data: ChannelMonitor, update_id: MonitorUpdateId) -> Result_NoneChannelMonitorUpdateErrZ {
+    override func update_persisted_channel(channel_id: Bindings.OutPoint, update: Bindings.ChannelMonitorUpdate, data: Bindings.ChannelMonitor, update_id: Bindings.MonitorUpdateId) -> LDKChannelMonitorUpdateStatus {
         return handleChannel(channel_id, data)
     }
 }
