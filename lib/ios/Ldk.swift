@@ -842,13 +842,10 @@ class Ldk: NSObject {
                     "type": "MaybeTimeoutClaimableHTLC"
                 ])
                 break
-            case .none:
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown claimable balance type in claimableBalances()")
-            case .some(_):
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances()")
+            default:
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances() \(balance.getValueType().debugDescription)")
+                result.append(["claimable_amount_satoshis": 0, "type": "Unknown"])
             }
-        
-            result.append(["claimable_amount_satoshis": 0, "type": "Unknown"])
         }
         
         return resolve(result)
