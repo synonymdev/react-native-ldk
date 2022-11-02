@@ -14,7 +14,7 @@ import lm, {
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import {peers, selectedNetwork} from '../utils/constants';
-import {getAccount, getAddress, getNetwork, setAccount,} from '../utils/helpers';
+import {getAccount, getAddress, getNetwork, ldkNetwork, setAccount,} from '../utils/helpers';
 import {EAccount} from '../utils/types';
 import * as bitcoin from 'bitcoinjs-lib';
 
@@ -111,7 +111,7 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			getScriptPubKeyHistory,
 			getTransactionData,
 			broadcastTransaction,
-			network: ENetworks.mainnet
+			network: ldkNetwork(selectedNetwork)
 		});
 
 		if (lmStart.isErr()) {

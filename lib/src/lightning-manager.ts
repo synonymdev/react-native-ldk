@@ -214,7 +214,7 @@ class LightningManager {
 		getAddress,
 		getScriptPubKeyHistory,
 		broadcastTransaction,
-		network = ENetworks.regtest,
+		network,
 		feeRate = this.feeRate,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {

@@ -417,7 +417,7 @@ export type TLdkStart = {
 	getAddress: TGetAddress;
 	getScriptPubKeyHistory: TGetScriptPubKeyHistory;
 	broadcastTransaction: TBroadcastTransaction;
-	network?: ENetworks;
+	network: ENetworks;
 	feeRate?: number;
 };
 

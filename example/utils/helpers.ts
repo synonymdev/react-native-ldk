@@ -9,6 +9,7 @@ import { selectedNetwork } from './constants';
 import RNFS from 'react-native-fs';
 import * as bip32 from 'bip32';
 import * as bip39 from 'bip39';
+import {ENetworks} from "@synonymdev/react-native-ldk/dist/utils/types";
 
 /**
  * Use Keychain to save LDK name & seed.
@@ -182,6 +183,7 @@ export const getMnemonicPhraseFromSeed = (accountSeed: string): string => {
  */
 export const getAddress = async (): Promise<string> => {
 	const network = getNetwork(selectedNetwork);
+
 	const { seed: accountSeed } = await getAccount();
 	const mnemonic = getMnemonicPhraseFromSeed(accountSeed);
 	const mnemonicSeed = await bip39.mnemonicToSeed(mnemonic);
@@ -192,3 +194,14 @@ export const getAddress = async (): Promise<string> => {
 		''
 	);
 };
+
+export const ldkNetwork = (network: TAvailableNetworks): ENetworks => {
+	switch (network) {
+		case "bitcoinRegtest":
+			return ENetworks.regtest
+		case "bitcoinTestnet":
+			return ENetworks.testnet
+		case "bitcoin":
+			return ENetworks.mainnet
+	}
+}
