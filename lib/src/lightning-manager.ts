@@ -1036,15 +1036,15 @@ class LightningManager {
 
 	private removeLdkPaymentId = async (paymentId: string): Promise<void> => {
 		const paymentIds = await this.getLdkPaymentIds();
-		if (paymentIds.length) {
-			if (paymentId.includes(paymentId)) {
-				const newPaymentIds = paymentIds.filter((id) => id !== paymentId);
-				await ldk.writeToFile({
-					fileName: ELdkFiles.payment_ids,
-					content: JSON.stringify(newPaymentIds),
-				});
-			}
+		if (!paymentIds.length || !paymentId.includes(paymentId)) {
+			return;
 		}
+
+		const newPaymentIds = paymentIds.filter((id) => id !== paymentId);
+		await ldk.writeToFile({
+			fileName: ELdkFiles.payment_ids,
+			content: JSON.stringify(newPaymentIds),
+		});
 	};
 
 	private appendLdkPaymentId = async (paymentId: string): Promise<void> => {

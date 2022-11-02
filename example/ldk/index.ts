@@ -1,21 +1,31 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as electrum from 'rn-electrum-client/helpers';
-import {err, ok, Result} from '../utils/result';
+import { err, ok, Result } from '../utils/result';
 import Clipboard from '@react-native-clipboard/clipboard';
 import RNFS from 'react-native-fs';
-import {getBlockHashFromHeight, getBlockHeader, getBlockHex, getScriptPubKeyHistory,} from '../electrum';
+import {
+	getBlockHashFromHeight,
+	getBlockHeader,
+	getBlockHex,
+	getScriptPubKeyHistory,
+} from '../electrum';
 import lm, {
 	DefaultTransactionDataShape,
-	ENetworks,
 	TAccount,
 	TAccountBackup,
 	THeader,
 	TTransactionData,
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
-import {peers, selectedNetwork} from '../utils/constants';
-import {getAccount, getAddress, getNetwork, ldkNetwork, setAccount,} from '../utils/helpers';
-import {EAccount} from '../utils/types';
+import { peers, selectedNetwork } from '../utils/constants';
+import {
+	getAccount,
+	getAddress,
+	getNetwork,
+	ldkNetwork,
+	setAccount,
+} from '../utils/helpers';
+import { EAccount } from '../utils/types';
 import * as bitcoin from 'bitcoinjs-lib';
 
 /**
@@ -111,7 +121,7 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			getScriptPubKeyHistory,
 			getTransactionData,
 			broadcastTransaction,
-			network: ldkNetwork(selectedNetwork)
+			network: ldkNetwork(selectedNetwork),
 		});
 
 		if (lmStart.isErr()) {

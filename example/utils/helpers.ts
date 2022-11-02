@@ -9,7 +9,7 @@ import { selectedNetwork } from './constants';
 import RNFS from 'react-native-fs';
 import * as bip32 from 'bip32';
 import * as bip39 from 'bip39';
-import {ENetworks} from "@synonymdev/react-native-ldk/dist/utils/types";
+import { ENetworks } from '@synonymdev/react-native-ldk/dist/utils/types';
 
 /**
  * Use Keychain to save LDK name & seed.
@@ -197,11 +197,11 @@ export const getAddress = async (): Promise<string> => {
 
 export const ldkNetwork = (network: TAvailableNetworks): ENetworks => {
 	switch (network) {
-		case "bitcoinRegtest":
-			return ENetworks.regtest
-		case "bitcoinTestnet":
-			return ENetworks.testnet
-		case "bitcoin":
-			return ENetworks.mainnet
+		case 'bitcoinRegtest':
+			return ENetworks.regtest;
+		case 'bitcoinTestnet':
+			return ENetworks.testnet;
+		case 'bitcoin':
+			return ENetworks.mainnet;
 	}
-}
+};
