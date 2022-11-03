@@ -10,22 +10,24 @@ import {
 	getScriptPubKeyHistory,
 } from '../electrum';
 import lm, {
-	THeader,
-	TTransactionData,
 	DefaultTransactionDataShape,
 	TAccount,
 	TAccountBackup,
+	THeader,
+	TTransactionData,
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
-import { selectedNetwork, peers } from '../utils/constants';
+import { peers, selectedNetwork } from '../utils/constants';
 import {
 	getAccount,
 	getAddress,
 	getNetwork,
+	ldkNetwork,
 	setAccount,
 } from '../utils/helpers';
 import { EAccount } from '../utils/types';
 import * as bitcoin from 'bitcoinjs-lib';
+
 /**
  * Retrieves data from local storage.
  * @param {string} key
@@ -119,6 +121,7 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			getScriptPubKeyHistory,
 			getTransactionData,
 			broadcastTransaction,
+			network: ldkNetwork(selectedNetwork),
 		});
 
 		if (lmStart.isErr()) {

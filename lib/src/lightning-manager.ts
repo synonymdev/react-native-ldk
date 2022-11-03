@@ -214,7 +214,7 @@ class LightningManager {
 		getAddress,
 		getScriptPubKeyHistory,
 		broadcastTransaction,
-		network = ENetworks.regtest,
+		network,
 		feeRate = this.feeRate,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
@@ -886,10 +886,7 @@ class LightningManager {
 				return resolve(err(payResponse.error.message));
 			}
 			//Save payment ids to file on payResponse success.
-			await ldk.writeToFile({
-				fileName: ELdkFiles.payment_ids,
-				content: JSON.stringify(payResponse.value),
-			});
+			await this.appendLdkPaymentId(payResponse.value);
 		});
 	};
 
@@ -1022,20 +1019,45 @@ class LightningManager {
 			fileName: ELdkFiles.payment_ids,
 		});
 		if (res.isOk()) {
-			return parseData(res.value.content, DefaultLdkDataShape.payment_ids);
+			let parsed = parseData(
+				res.value.content,
+				DefaultLdkDataShape.payment_ids,
+			);
+
+			//Temp patch for wallets with incorrectly written payment ID file formats. Can be removed after a few releases.
+			if (parsed.length === 64 && res.value.content.length === 66) {
+				parsed = [parsed];
+			}
+
+			return parsed;
 		}
 		return DefaultLdkDataShape.payment_ids;
 	};
 
 	private removeLdkPaymentId = async (paymentId: string): Promise<void> => {
 		const paymentIds = await this.getLdkPaymentIds();
-		if (paymentId.includes(paymentId)) {
-			const newPaymentIds = paymentIds.filter((id) => id !== paymentId);
-			await ldk.writeToFile({
-				fileName: ELdkFiles.payment_ids,
-				content: JSON.stringify(newPaymentIds),
-			});
+		if (!paymentIds.length || !paymentId.includes(paymentId)) {
+			return;
 		}
+
+		const newPaymentIds = paymentIds.filter((id) => id !== paymentId);
+		await ldk.writeToFile({
+			fileName: ELdkFiles.payment_ids,
+			content: JSON.stringify(newPaymentIds),
+		});
+	};
+
+	private appendLdkPaymentId = async (paymentId: string): Promise<void> => {
+		let paymentIds = await this.getLdkPaymentIds();
+		if (paymentId.includes(paymentId)) {
+			return;
+		}
+
+		paymentIds.push(paymentId);
+		await ldk.writeToFile({
+			fileName: ELdkFiles.payment_ids,
+			content: JSON.stringify(paymentIds),
+		});
 	};
 
 	/**

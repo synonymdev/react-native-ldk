@@ -8,8 +8,8 @@ static inline int _ldk_strncmp(const char *s1, const char *s2, uint64_t n) {
 	return 0;
 }
 
-#define _LDK_HEADER_VER "v0.0.111-19-g19708ed606f8192f"
-#define _LDK_C_BINDINGS_HEADER_VER "v0.0.111.0"
+#define _LDK_HEADER_VER "v0.0.112-14-gb9b43ce5c8cb3216"
+#define _LDK_C_BINDINGS_HEADER_VER "v0.0.112.0"
 static inline const char* check_get_ldk_version() {
 	LDKStr bin_ver = _ldk_get_compiled_version();
 	if (_ldk_strncmp(_LDK_HEADER_VER, (const char*)bin_ver.chars, bin_ver.len) != 0) {

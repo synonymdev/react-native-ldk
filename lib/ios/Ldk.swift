@@ -118,6 +118,12 @@ class Ldk: NSObject {
     //Static to be accessed from other classes
     static var accountStoragePath: URL?
     static var channelStoragePath: URL?
+    
+    //Uncomment for sending LDK team debugging output
+//    override init() {
+//        Bindings.setLogThreshold(severity: .DEBUG)
+//        super.init()
+//    }
 
     //MARK: Startup methods
     
@@ -646,6 +652,7 @@ class Ldk: NSObject {
         let res = Bindings.swift_create_invoice_from_channelmanager(
             channelmanager: channelManager,
             keys_manager: keysManager.as_KeysInterface(),
+            logger: logger,
             network: ldkCurrency,
             amt_msat: amountSats == 0 ? Option_u64Z.none() : Option_u64Z(value: UInt64(amountSats * 1000)),
             description: String(description),
@@ -835,14 +842,10 @@ class Ldk: NSObject {
                     "type": "MaybeTimeoutClaimableHTLC"
                 ])
                 break
-                
-            case .none:
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown claimable balance type in claimableBalances()")
-            case .some(_):
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances()")
+            default:
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances() \(balance.getValueType().debugDescription)")
+                result.append(["claimable_amount_satoshis": 0, "type": "Unknown"])
             }
-        
-            result.append(["claimable_amount_satoshis": 0, "type": "Unknown"])
         }
         
         return resolve(result)

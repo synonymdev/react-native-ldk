@@ -2,13 +2,13 @@ package com.reactnativeldk.classes
 
 import com.facebook.react.bridge.Arguments
 import com.reactnativeldk.*
-import org.ldk.enums.ChannelMonitorUpdateErr
 import org.ldk.structs.*
+import org.ldk.enums.*;
 import org.ldk.structs.Persist.PersistInterface
 import java.io.File
 
 class LdkPersister {
-    fun handleChannel(id: OutPoint, data: ChannelMonitor): Result_NoneChannelMonitorUpdateErrZ {
+    fun handleChannel(id: OutPoint, data: ChannelMonitor): ChannelMonitorUpdateStatus {
         val body = Arguments.createMap()
         body.putHexString("channel_id", id.to_channel_id())
         body.putHexString("counterparty_node_id", data._counterparty_node_id)
@@ -31,19 +31,19 @@ class LdkPersister {
                 LdkEventEmitter.send(EventTypes.new_channel, body)
             }
 
-            return Result_NoneChannelMonitorUpdateErrZ.ok();
+            return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_Completed
         } catch (e: Exception) {
             LdkEventEmitter.send(EventTypes.emergency_force_close_channel, body)
-            return Result_NoneChannelMonitorUpdateErrZ.err(ChannelMonitorUpdateErr.LDKChannelMonitorUpdateErr_PermanentFailure)
+            return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_PermanentFailure
         }
     }
 
     var persister = Persist.new_impl(object : PersistInterface {
-        override fun persist_new_channel(id: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): Result_NoneChannelMonitorUpdateErrZ {
+        override fun persist_new_channel(id: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
             return handleChannel(id, data)
         }
 
-        override fun update_persisted_channel(id: OutPoint, update: ChannelMonitorUpdate?, data: ChannelMonitor, update_id: MonitorUpdateId): Result_NoneChannelMonitorUpdateErrZ {
+        override fun update_persisted_channel(id: OutPoint, update: ChannelMonitorUpdate?, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
             return handleChannel(id, data)
         }
     })

@@ -626,6 +626,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val res = UtilMethods.create_invoice_from_channelmanager(
             channelManager,
             keysManager!!.as_KeysInterface(),
+            logger.logger,
             ldkCurrency,
             if (amountSats == 0.0) Option_u64Z.none() else Option_u64Z.some((amountSats * 1000).toLong()),
             description,
