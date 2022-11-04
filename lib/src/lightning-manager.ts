@@ -43,6 +43,7 @@ import {
 	TPaymentReq,
 	TPaymentTimeoutReq,
 	TLdkPaymentIds,
+	TNetworkGraphReady,
 } from './utils/types';
 import {
 	appendPath,
@@ -180,6 +181,10 @@ class LightningManager {
 		ldk.onEvent(
 			EEventTypes.emergency_force_close_channel,
 			this.onEmergencyForceCloseChannel.bind(this),
+		);
+		ldk.onEvent(
+			EEventTypes.network_graph_ready,
+			this.onNetworkGraphReady.bind(this),
 		);
 	}
 
@@ -364,6 +369,7 @@ class LightningManager {
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
 		const networkGraphRes = await ldk.initNetworkGraph({
 			genesisHash,
+			rapidGossipSyncUrl: 'https://rapidsync.lightningdevkit.org/snapshot/',
 		});
 		if (networkGraphRes.isErr()) {
 			return networkGraphRes;
@@ -1352,6 +1358,11 @@ class LightningManager {
 		console.log(
 			`Emergency closed channel ${channel_id} with peer ${counterparty_node_id}`,
 		);
+	}
+
+	private onNetworkGraphReady(res: TNetworkGraphReady): void {
+		console.log(`Network graph nodes: ${res.node_count}`);
+		console.log(`Network graph channels: ${res.channel_count}`);
 	}
 }
 

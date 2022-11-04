@@ -23,6 +23,7 @@ enum EventTypes: String, CaseIterable {
     case channel_manager_payment_claimed = "channel_manager_payment_claimed"
     case emergency_force_close_channel = "emergency_force_close_channel"
     case new_channel = "new_channel"
+    case network_graph_ready = "network_graph_ready"
 }
 //*****************************************************************
 
@@ -61,6 +62,8 @@ enum LdkErrors: String {
     case write_fail = "write_fail"
     case read_fail = "read_fail"
     case file_does_not_exist = "file_does_not_exist"
+    case init_network_graph_fail = "init_network_graph_fail"
+    case data_too_large_for_rn = "data_too_large_for_rn"
 }
 
 enum LdkCallbackResponses: String {
@@ -108,6 +111,7 @@ class Ldk: NSObject {
     var channelManager: ChannelManager?
     var userConfig: UserConfig?
     var networkGraph: NetworkGraph?
+    var rapidGossipSync: RapidGossipSync?
     var peerManager: PeerManager?
     var peerHandler: TCPPeerHandler?
     var channelManagerConstructor: ChannelManagerConstructor?
@@ -233,7 +237,7 @@ class Ldk: NSObject {
     }
 
     @objc
-    func initNetworkGraph(_ genesisHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initNetworkGraph(_ genesisHash: NSString, rapidGossipSyncUrl: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard networkGraph == nil else {
             return handleReject(reject, .already_init)
         }
@@ -246,14 +250,60 @@ class Ldk: NSObject {
             let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL)), arg: logger)
             if read.isOk() {
                 networkGraph = read.getValue()
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded network graph from file")
+
             }
         } catch {
+            networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch. \(error.localizedDescription)")
         }
         
-        if networkGraph == nil {
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch.")
-            networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
+        
+        //Download url passed, enable rapid gossip sync
+        if rapidGossipSyncUrl != "" {
+            do {
+                let rapidGossipSyncStoragePath = accountStoragePath.appendingPathComponent("rapid_gossip_sync")
+                if !FileManager().fileExists(atPath: rapidGossipSyncStoragePath.path) {
+                    try FileManager.default.createDirectory(atPath: rapidGossipSyncStoragePath.path, withIntermediateDirectories: true, attributes: nil)
+                }
+
+                rapidGossipSync = RapidGossipSync(network_graph: networkGraph!)
+                
+                print("***rapidGossipSync: \(rapidGossipSync?.is_initial_sync_complete())")
+                
+                let timestamp = networkGraph?.get_last_rapid_gossip_sync_timestamp().getValue() ?? 0
+                //TODO check if it's been more than 24 hours before trying again
+                
+                rapidGossipSync!.downloadAndUpdateGraph(downloadUrl: String(rapidGossipSyncUrl), tempStoragePath: rapidGossipSyncStoragePath, timestamp: timestamp) { [weak self] error in
+                    guard let self = self else { return }
+                    
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync file downloaded.")
+                    
+                    try? FileManager.default.createDirectory(atPath: rapidGossipSyncStoragePath.path, withIntermediateDirectories: true, attributes: nil)
+                    if let error = error {
+                        return LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to download rapid sync file. \(error.localizedDescription).")
+                    }
+
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync completed.")
+
+                    guard let graph = self.networkGraph?.read_only() else {
+                        return LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to use network graph.")
+                    }
+                    
+                    let persistRes = self.channelManagerPersister.persist_graph(network_graph: self.networkGraph!)
+                    print("persistRes ERROR  \(persistRes.getError())")
+                    
+                    LdkEventEmitter.shared.send(
+                        withEvent: .network_graph_ready,
+                        body: [
+                            "channel_count": graph.list_channels().count,
+                            "node_count": graph.list_nodes().count,
+                        ]
+                    )
+                }
+            } catch {
+                return handleReject(reject, .init_network_graph_fail, error)
+            }
         }
         
         return handleResolve(resolve, .network_graph_init_success)
@@ -303,6 +353,8 @@ class Ldk: NSObject {
             return handleReject(reject, .invalid_network)
         }
         
+        let enableP2PGossip = rapidGossipSync == nil
+        
         let storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
         
         do {
@@ -326,7 +378,7 @@ class Ldk: NSObject {
                     net_graph_serialized: networkGraph.write(),
                     tx_broadcaster: broadcaster,
                     logger: logger,
-                    enableP2PGossip: true
+                    enableP2PGossip: enableP2PGossip
                 )
             } else {
                 //New node
@@ -342,7 +394,7 @@ class Ldk: NSObject {
                     net_graph: networkGraph,
                     tx_broadcaster: broadcaster,
                     logger: logger,
-                    enableP2PGossip: true
+                    enableP2PGossip: enableP2PGossip
                 )
             }
         } catch {
@@ -350,7 +402,7 @@ class Ldk: NSObject {
         }
 
         channelManager = channelManagerConstructor!.channelManager
-        self.networkGraph = channelManagerConstructor!.net_graph
+//        self.networkGraph = channelManagerConstructor!.net_graph
                 
         //Scorer setup
         let scoringParams = ProbabilisticScoringParameters()
@@ -721,7 +773,7 @@ class Ldk: NSObject {
         guard let peerManager = peerManager else {
             return handleReject(reject, .init_peer_manager)
         }
-
+        
         return resolve(peerManager.get_peer_node_ids().map { Data($0).hexEncodedString() })
     }
 
@@ -749,6 +801,11 @@ class Ldk: NSObject {
             return handleReject(reject, .init_network_graph)
         }
                 
+        let total = networkGraph.list_nodes().count
+        if total > 100 {
+            return handleReject(reject, .data_too_large_for_rn, nil, "Too many nodes to return (\(total))")
+        }
+                
         return resolve(networkGraph.list_nodes().map { Data($0.as_slice()).hexEncodedString() })
     }
     
@@ -765,6 +822,11 @@ class Ldk: NSObject {
     func networkGraphListChannels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let networkGraph = networkGraph?.read_only() else {
             return handleReject(reject, .init_network_graph)
+        }
+        
+        let total = networkGraph.list_channels().count
+        if total > 100 {
+            return handleReject(reject, .data_too_large_for_rn, nil, "Too many channels to return (\(total))")
         }
         
         return resolve(networkGraph.list_channels().map { String($0) })

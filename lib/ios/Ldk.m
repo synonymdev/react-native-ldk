@@ -22,6 +22,7 @@ RCT_EXTERN_METHOD(initConfig:(BOOL *)acceptInboundChannels
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)genesisHash
+                  rapidGossipSyncUrl:(NSString *)rapidGossipSyncUrl
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChannelManager:(NSString *)network

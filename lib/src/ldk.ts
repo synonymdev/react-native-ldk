@@ -119,15 +119,21 @@ class LDK {
 
 	/**
 	 * Inits the network graph from previous cache or syncs from scratch using genesis block hash.
+	 * By passing in rapidGossipSyncUrl p2p gossip sync will be disabled in favor out rapid gossip sync.
+	 * For local regtest p2p works fine but for mainnet it is better to enable rapid gossip sync.
 	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetworkGraph.html
 	 * @param genesisHash
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async initNetworkGraph({
 		genesisHash,
+		rapidGossipSyncUrl,
 	}: TInitNetworkGraphReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.initNetworkGraph(genesisHash);
+			const res = await NativeLDK.initNetworkGraph(
+				genesisHash,
+				rapidGossipSyncUrl ?? '',
+			);
 			return ok(res);
 		} catch (e) {
 			return err(e);
