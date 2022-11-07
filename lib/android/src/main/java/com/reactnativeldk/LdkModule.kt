@@ -257,7 +257,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initNetworkGraph(genesisHash: String, promise: Promise) {
+    fun initNetworkGraph(genesisHash: String, rapidGossipSyncUrl: String, promise: Promise) {
         if (networkGraph !== null) {
             return handleReject(promise, LdkErrors.already_init)
         }

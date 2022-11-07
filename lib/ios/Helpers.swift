@@ -214,7 +214,7 @@ extension RapidGossipSync {
         }
 
         let url = URL(string: "\(downloadUrl)\(timestamp)")!
-        
+
         let task = url.downloadTask(destination: destinationFile) { error in
             if let error = error {
                 return completion(error)
@@ -225,7 +225,7 @@ extension RapidGossipSync {
                 var errorMessage = "Failed to update network graph."
                 switch res.getError()?.getValueType() {
                 case .LightningError:
-                    errorMessage = "Rapid sync error. \(res.getError()!.getValueAsLightningError()!.get_err())"
+                    errorMessage = "Rapid sync error. \(res.getError()!.getValueAsLightningError()!.get_err())" //Couldn't find channel for update.
                     break;
                 case .DecodeError:
                     errorMessage = "Rapid sync error. IO error: \(res.getError()!.getValueAsDecodeError()?.getValueAsIo()?.rawValue ?? 0)"

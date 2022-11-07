@@ -25,7 +25,7 @@ export enum EEventTypes {
 	channel_manager_payment_claimed = 'channel_manager_payment_claimed',
 	emergency_force_close_channel = 'emergency_force_close_channel',
 	new_channel = 'new_channel',
-	network_graph_ready = 'network_graph_ready',
+	network_graph_updated = 'network_graph_updated',
 }
 
 //LDK event responses
@@ -174,7 +174,7 @@ export type TInvoice = {
 	route_hints: RouteHints[];
 };
 
-export type TNetworkGraphReady = {
+export type TNetworkGraphUpdated = {
 	channel_count: number;
 	node_count: number;
 };

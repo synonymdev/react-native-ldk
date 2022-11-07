@@ -23,7 +23,7 @@ enum EventTypes: String, CaseIterable {
     case channel_manager_payment_claimed = "channel_manager_payment_claimed"
     case emergency_force_close_channel = "emergency_force_close_channel"
     case new_channel = "new_channel"
-    case network_graph_ready = "network_graph_ready"
+    case network_graph_updated = "network_graph_updated"
 }
 //*****************************************************************
 
@@ -268,18 +268,30 @@ class Ldk: NSObject {
                 }
 
                 rapidGossipSync = RapidGossipSync(network_graph: networkGraph!)
+                                
+                //If it's been more than 24 hours then we need to update RGS
+                var timestamp = networkGraph?.get_last_rapid_gossip_sync_timestamp().getValue() ?? 0
+                let hoursDiffSinceLastRGS = (Calendar.current.dateComponents([.hour], from: Date.init(timeIntervalSince1970: TimeInterval(timestamp)), to: Date()).hour)!
+               
+                guard hoursDiffSinceLastRGS > 24 else {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping rapid gossip sync. Last updated \(hoursDiffSinceLastRGS) hours ago.")
+                    return
+                }
                 
-                print("***rapidGossipSync: \(rapidGossipSync?.is_initial_sync_complete())")
-                
-                let timestamp = networkGraph?.get_last_rapid_gossip_sync_timestamp().getValue() ?? 0
-                //TODO check if it's been more than 24 hours before trying again
+                //TODO remove this incremental updates temp broken. Possibly related to https://github.com/lightningdevkit/rust-lightning/issues/1784
+                //If network graph is older than 24h download from scratch until incremental updates are working
+                //>>>>>> DELETE ME
+                try? FileManager().removeItem(atPath: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).path)
+                networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
+                rapidGossipSync = RapidGossipSync(network_graph: networkGraph!)
+                timestamp = 0
+                //<<<<<< DELETE ME
                 
                 rapidGossipSync!.downloadAndUpdateGraph(downloadUrl: String(rapidGossipSyncUrl), tempStoragePath: rapidGossipSyncStoragePath, timestamp: timestamp) { [weak self] error in
                     guard let self = self else { return }
                     
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync file downloaded.")
                     
-                    try? FileManager.default.createDirectory(atPath: rapidGossipSyncStoragePath.path, withIntermediateDirectories: true, attributes: nil)
                     if let error = error {
                         return LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to download rapid sync file. \(error.localizedDescription).")
                     }
@@ -290,11 +302,10 @@ class Ldk: NSObject {
                         return LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to use network graph.")
                     }
                     
-                    let persistRes = self.channelManagerPersister.persist_graph(network_graph: self.networkGraph!)
-                    print("persistRes ERROR  \(persistRes.getError())")
+                    self.channelManagerPersister.persist_graph(network_graph: self.networkGraph!)
                     
                     LdkEventEmitter.shared.send(
-                        withEvent: .network_graph_ready,
+                        withEvent: .network_graph_updated,
                         body: [
                             "channel_count": graph.list_channels().count,
                             "node_count": graph.list_nodes().count,
@@ -402,7 +413,6 @@ class Ldk: NSObject {
         }
 
         channelManager = channelManagerConstructor!.channelManager
-//        self.networkGraph = channelManagerConstructor!.net_graph
                 
         //Scorer setup
         let scoringParams = ProbabilisticScoringParameters()
