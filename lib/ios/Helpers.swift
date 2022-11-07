@@ -170,3 +170,80 @@ extension LdkEventEmitter {
 }
 
 extension String: Error {}
+
+extension URL {
+    func downloadTask(destination: URL, completion: @escaping (Error?) -> Void) -> URLSessionDataTask? {
+        if FileManager().fileExists(atPath: destination.path) {
+            completion(NSError(domain: "", code: 500, userInfo: [ NSLocalizedDescriptionKey: "File already exists"]))
+            return nil
+        }
+      
+        let session = URLSession(configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: nil)
+        var request = URLRequest(url: self)
+        request.httpMethod = "GET"
+        return session.dataTask(with: request, completionHandler: { data, response, error in
+            guard error == nil else {
+                return completion(error)
+            }
+            
+            guard let response = response as? HTTPURLResponse, let data = data else {
+                return completion(NSError(domain: "", code: 500, userInfo: [ NSLocalizedDescriptionKey: "Failed to get HTTP response"]))
+            }
+            
+            guard response.statusCode == 200 else {
+                return completion(NSError(domain: "", code: response.statusCode, userInfo: [ NSLocalizedDescriptionKey: "Download failed from \(self) with status (\(response.statusCode))"]))
+            }
+            
+            do {
+                try data.write(to: destination, options: Data.WritingOptions.atomic)
+                return completion(nil)
+            } catch {
+               return completion(error)
+            }
+        })
+    }
+}
+
+extension RapidGossipSync {
+    func downloadAndUpdateGraph(downloadUrl: String, tempStoragePath: URL, timestamp: UInt32, completion: @escaping (Error?) -> Void) {
+        let destinationFile = tempStoragePath.appendingPathComponent("\(timestamp).bin")
+      
+        //Cleanup old one
+        if FileManager().fileExists(atPath: destinationFile.path) {
+            try? FileManager().removeItem(atPath: destinationFile.path)
+        }
+
+        let url = URL(string: "\(downloadUrl)\(timestamp)")!
+
+        let task = url.downloadTask(destination: destinationFile) { error in
+            if let error = error {
+                return completion(error)
+            }
+                        
+            let res = self.update_network_graph(update_data: [UInt8](try! Data(contentsOf: destinationFile)))
+            guard res.isOk() else {
+                var errorMessage = "Failed to update network graph."
+                switch res.getError()?.getValueType() {
+                case .LightningError:
+                    errorMessage = "Rapid sync error. \(res.getError()!.getValueAsLightningError()!.get_err())" //Couldn't find channel for update.
+                    break;
+                case .DecodeError:
+                    errorMessage = "Rapid sync error. IO error: \(res.getError()!.getValueAsDecodeError()?.getValueAsIo()?.rawValue ?? 0)"
+                    break;
+                default:
+                    errorMessage = "Unknown rapid sync error."
+                    break;
+                }
+
+                completion(NSError(domain: "", code: 500, userInfo: [ NSLocalizedDescriptionKey: errorMessage]))
+                try? FileManager().removeItem(atPath: destinationFile.path)
+                return
+            }
+            
+            completion(nil)
+            try? FileManager().removeItem(atPath: destinationFile.path)
+        }
+        
+        task?.resume()
+    }
+}

@@ -43,6 +43,7 @@ import {
 	TPaymentReq,
 	TPaymentTimeoutReq,
 	TLdkPaymentIds,
+	TNetworkGraphUpdated,
 } from './utils/types';
 import {
 	appendPath,
@@ -180,6 +181,10 @@ class LightningManager {
 		ldk.onEvent(
 			EEventTypes.emergency_force_close_channel,
 			this.onEmergencyForceCloseChannel.bind(this),
+		);
+		ldk.onEvent(
+			EEventTypes.network_graph_updated,
+			this.onNetworkGraphUpdated.bind(this),
 		);
 	}
 
@@ -361,9 +366,16 @@ class LightningManager {
 		// Step 7: Read ChannelMonitors state from disk
 		// Handled in initChannelManager below
 
+		//TODO allow users to override
+		let rapidGossipSyncUrl = '';
+		if (network === 'mainnet') {
+			rapidGossipSyncUrl = 'https://rapidsync.lightningdevkit.org/snapshot/';
+		}
+
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
 		const networkGraphRes = await ldk.initNetworkGraph({
 			genesisHash,
+			rapidGossipSyncUrl,
 		});
 		if (networkGraphRes.isErr()) {
 			return networkGraphRes;
@@ -1352,6 +1364,11 @@ class LightningManager {
 		console.log(
 			`Emergency closed channel ${channel_id} with peer ${counterparty_node_id}`,
 		);
+	}
+
+	private onNetworkGraphUpdated(res: TNetworkGraphUpdated): void {
+		console.log(`Network graph nodes: ${res.node_count}`);
+		console.log(`Network graph channels: ${res.channel_count}`);
 	}
 }
 
