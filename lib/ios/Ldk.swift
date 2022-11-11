@@ -275,7 +275,7 @@ class Ldk: NSObject {
                
                 guard hoursDiffSinceLastRGS > 24 else {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping rapid gossip sync. Last updated \(hoursDiffSinceLastRGS) hours ago.")
-                    return
+                    return handleResolve(resolve, .network_graph_init_success)
                 }
                 
                 //TODO remove this incremental updates temp broken. Possibly related to https://github.com/lightningdevkit/rust-lightning/issues/1784
