@@ -300,6 +300,8 @@ export type TTransactionData = {
 	vout: TVout[];
 };
 
+export type TTransactionPosition = number;
+
 export type TClaimableBalance = {
 	claimable_amount_satoshis: number;
 	type:
@@ -341,6 +343,10 @@ export const DefaultTransactionDataShape: TTransactionData = {
 };
 
 export type TGetTransactionData = (txid: string) => Promise<TTransactionData>;
+export type TGetTransactionPosition = (params: {
+	tx_hash: string;
+	height: number;
+}) => Promise<TTransactionPosition>;
 export type TGetBestBlock = () => Promise<THeader>;
 
 export enum ELdkFiles {
@@ -421,6 +427,7 @@ export type TLdkStart = {
 	genesisHash: string;
 	getBestBlock: TGetBestBlock;
 	getTransactionData: TGetTransactionData;
+	getTransactionPosition: TGetTransactionPosition;
 	getAddress: TGetAddress;
 	getScriptPubKeyHistory: TGetScriptPubKeyHistory;
 	broadcastTransaction: TBroadcastTransaction;

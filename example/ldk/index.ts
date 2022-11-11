@@ -15,6 +15,7 @@ import lm, {
 	TAccountBackup,
 	THeader,
 	TTransactionData,
+	TTransactionPosition,
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import { peers, selectedNetwork } from '../utils/constants';
@@ -120,6 +121,7 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			getAddress,
 			getScriptPubKeyHistory,
 			getTransactionData,
+			getTransactionPosition,
 			broadcastTransaction,
 			network: ldkNetwork(selectedNetwork),
 		});
@@ -217,6 +219,27 @@ export const getTransactionData = async (
 		transaction: hex_encoded_tx,
 		vout: voutData,
 	};
+};
+
+/**
+ * Returns the position/index of the provided tx_hash within a block.
+ * @param {string} tx_hash
+ * @param {number} height
+ * @returns {Promise<number>}
+ */
+export const getTransactionPosition = async ({
+	tx_hash,
+	height,
+}): Promise<TTransactionPosition> => {
+	const response = await electrum.getTransactionMerkle({
+		tx_hash,
+		height,
+		network: selectedNetwork,
+	});
+	if (response.error || isNaN(response.data?.pos || response.data?.pos < 0)) {
+		return -1;
+	}
+	return response.data.pos;
 };
 
 /**

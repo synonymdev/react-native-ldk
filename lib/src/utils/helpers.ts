@@ -21,6 +21,7 @@ export const startParamCheck = async ({
 	genesisHash,
 	getBestBlock,
 	getTransactionData,
+	getTransactionPosition,
 	broadcastTransaction,
 	getAddress,
 	getScriptPubKeyHistory,
@@ -70,6 +71,11 @@ export const startParamCheck = async ({
 			return err('getTransactionData must be a function.');
 		}
 
+		// Test getTransactionPosition
+		if (!isFunction(getTransactionPosition)) {
+			return err('getTransactionPosition must be a function.');
+		}
+
 		// Test getAddress
 		if (!isFunction(getAddress)) {
 			return err('getAddress must be a function.');
@@ -90,6 +96,7 @@ export const startParamCheck = async ({
 				[ENetworks.mainnet]: {
 					txid: '0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098',
 					data: {
+						pos: 0,
 						header:
 							'010000006fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000982051fd1e4ba744bbbe680e1fee14677ba1a3c3540bf7b1cdb606e857233e0e61bc6649ffff001d01e36299',
 						height: 1,
@@ -107,6 +114,7 @@ export const startParamCheck = async ({
 				[ENetworks.testnet]: {
 					txid: 'f0315ffc38709d70ad5647e22048358dd3745f3ce3874223c80a7c92fab0c8ba',
 					data: {
+						pos: 0,
 						header:
 							'0100000043497fd7f826957108f4a30fd9cec3aeba79972084e90ead01ea330900000000bac8b0fa927c0ac8234287e33c5f74d38d354820e24756ad709d7038fc5f31f020e7494dffff001d03e4b672',
 						height: 1,
@@ -155,6 +163,22 @@ export const startParamCheck = async ({
 			if (transactionData.vout[0]?.value !== data.vout[0].value) {
 				return err(
 					'getTransactionData is not returning the expected vout[0].value',
+				);
+			}
+
+			const transactionPosition = await getTransactionPosition({
+				tx_hash: expectedData[network].txid,
+				height: expectedData[network].data.height,
+			});
+			if (isNaN(transactionPosition)) {
+				return err('getTransactionPosition is not returning a number.');
+			}
+			if (transactionPosition < 0) {
+				return err('getTransactionPosition is returning a negative integer.');
+			}
+			if (transactionPosition !== data.pos) {
+				return err(
+					'getTransactionPosition is not returning the expected transaction position.',
 				);
 			}
 

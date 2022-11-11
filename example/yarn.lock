@@ -6860,9 +6860,9 @@ ripemd160@^2.0.0, ripemd160@^2.0.1, ripemd160@^2.0.2:
     hash-base "^3.0.0"
     inherits "^2.0.1"
 
-"rn-electrum-client@git+http://git@github.com/synonymdev/react-native-electrum-client#1515d57a61bcad5ee70e21cd1a1ca8054d4e34ca":
+rn-electrum-client@synonymdev/react-native-electrum-client#8/head:
   version "0.0.8"
-  resolved "git+http://git@github.com/synonymdev/react-native-electrum-client#1515d57a61bcad5ee70e21cd1a1ca8054d4e34ca"
+  resolved "https://codeload.github.com/synonymdev/react-native-electrum-client/tar.gz/206010a04cfc2a219d04d3faaf4c25a6c4135971"
 
 rn-nodeify@^10.3.0:
   version "10.3.0"

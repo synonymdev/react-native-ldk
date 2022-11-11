@@ -44,6 +44,9 @@ import {
 	TPaymentTimeoutReq,
 	TLdkPaymentIds,
 	TNetworkGraphUpdated,
+	TGetTransactionPosition,
+	TTransactionPosition,
+	TChannel,
 } from './utils/types';
 import {
 	appendPath,
@@ -101,6 +104,8 @@ class LightningManager {
 	backupSubscriptionsDebounceTimer: NodeJS.Timeout | undefined = undefined;
 	getTransactionData: TGetTransactionData =
 		async (): Promise<TTransactionData> => DefaultTransactionDataShape;
+	getTransactionPosition: TGetTransactionPosition =
+		async (): Promise<TTransactionPosition> => -1;
 	network: ENetworks = ENetworks.regtest;
 	baseStoragePath = '';
 	logFilePath = '';
@@ -216,6 +221,7 @@ class LightningManager {
 		genesisHash,
 		getBestBlock,
 		getTransactionData,
+		getTransactionPosition,
 		getAddress,
 		getScriptPubKeyHistory,
 		broadcastTransaction,
@@ -243,6 +249,9 @@ class LightningManager {
 		if (!getTransactionData) {
 			return err('getTransactionData is not set in start method.');
 		}
+		if (!getTransactionPosition) {
+			return err('getTransactionPosition is not set in start method.');
+		}
 
 		// Ensure the start params function as expected.
 		const paramCheckResponse = await startParamCheck({
@@ -250,6 +259,7 @@ class LightningManager {
 			genesisHash,
 			getBestBlock,
 			getTransactionData,
+			getTransactionPosition,
 			broadcastTransaction,
 			getAddress,
 			getScriptPubKeyHistory,
@@ -267,6 +277,7 @@ class LightningManager {
 		this.getScriptPubKeyHistory = getScriptPubKeyHistory;
 		this.broadcastTransaction = broadcastTransaction;
 		this.getTransactionData = getTransactionData;
+		this.getTransactionPosition = getTransactionPosition;
 		const bestBlock = await this.getBestBlock();
 		this.watchTxs = [];
 		this.watchOutputs = [];
@@ -459,33 +470,49 @@ class LightningManager {
 		}
 
 		const confirmedTxs = await this.getLdkConfirmedTxs();
+
+		let channels: TChannel[] = [];
+		if (this.watchTxs.length > 0) {
+			// Get fresh array of channels.
+			const listChannelsResponse = await ldk.listChannels();
+			if (listChannelsResponse.isOk()) {
+				channels = listChannelsResponse.value;
+			}
+		}
+
 		// Iterate over watch transactions and set whether they are confirmed or unconfirmed.
 		await Promise.all(
-			this.watchTxs.map(async ({ txid, script_pubkey }) => {
+			this.watchTxs.map(async ({ txid }) => {
 				if (confirmedTxs.includes(txid)) {
 					return;
 				}
-				const response = await this.getTransactionData(txid);
-				if (!response?.header || !response.transaction) {
+				let requiredConfirmations = 6;
+				const channel = channels.find((c) => c.funding_txid === txid);
+				if (channel && channel?.confirmations_required !== undefined) {
+					requiredConfirmations = channel.confirmations_required;
+				}
+				const txData = await this.getTransactionData(txid);
+				if (!txData?.header || !txData.transaction) {
 					return err(
 						'Unable to retrieve transaction data from the getTransactionData method.',
 					);
 				}
-				if (response.height > 0) {
-					await Promise.all(
-						response.vout.map(async (o) => {
-							if (o.hex === script_pubkey) {
-								const pos = o.n;
-								await ldk.setTxConfirmed({
-									header: response.header,
-									height: response.height,
-									txData: [{ transaction: response.transaction, pos }],
-								});
-								await this.saveConfirmedTxs(txid);
-								this.watchTxs = this.watchTxs.filter((tx) => tx.txid !== txid);
-							}
-						}),
-					);
+				const txConfirmations =
+					txData.height === 0 ? 0 : height - txData.height + 1;
+				if (txConfirmations >= requiredConfirmations) {
+					const pos = await this.getTransactionPosition({
+						tx_hash: txid,
+						height: txData.height,
+					});
+					if (pos >= 0) {
+						await ldk.setTxConfirmed({
+							header: txData.header,
+							height: txData.height,
+							txData: [{ transaction: txData.transaction, pos }],
+						});
+						await this.saveConfirmedTxs(txid);
+						this.watchTxs = this.watchTxs.filter((tx) => tx.txid !== txid);
+					}
 				}
 			}),
 		);
@@ -522,16 +549,21 @@ class LightningManager {
 						if (!txData?.height) {
 							return;
 						}
-						const pos = txData.vout[index].n;
-						await ldk.setTxConfirmed({
-							header: txData.header,
+						const pos = await this.getTransactionPosition({
+							tx_hash: tx.txid,
 							height: txData.height,
-							txData: [{ transaction: txData.transaction, pos }],
 						});
-						await this.saveConfirmedOutputs(script_pubkey);
-						this.watchOutputs = this.watchOutputs.filter(
-							(o) => o.script_pubkey !== script_pubkey,
-						);
+						if (pos >= 0) {
+							await ldk.setTxConfirmed({
+								header: txData.header,
+								height: txData.height,
+								txData: [{ transaction: txData.transaction, pos }],
+							});
+							await this.saveConfirmedOutputs(script_pubkey);
+							this.watchOutputs = this.watchOutputs.filter(
+								(o) => o.script_pubkey !== script_pubkey,
+							);
+						}
 					}),
 				);
 			}),
