@@ -280,6 +280,7 @@ export type TInitConfig = {
 };
 
 export enum ELdkLogLevels {
+	gossip = 0, //LDKLevel_Gossip
 	trace = 1, //LDKLevel_Trace
 	debug = 2, //LDKLevel_Debug
 	info = 3, //LDKLevel_Info
