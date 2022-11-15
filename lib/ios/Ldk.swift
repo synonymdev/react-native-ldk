@@ -861,7 +861,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_chain_monitor)
         }
         
-        let ignoredChannels = ignoreOpenChannels ? [] : channelManager.list_channels()
+        let ignoredChannels = ignoreOpenChannels ? channelManager.list_channels() : []
         
         var result: [Any] = []
         
