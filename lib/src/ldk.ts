@@ -648,6 +648,20 @@ class LDK {
 	}
 
 	/**
+	 * Lists all files in channel directory to be backed up.
+	 * Will include past and current channels.
+	 * @returns {Promise<Ok<Ok<string[]> | Err<string[]>> | Err<unknown>>}
+	 */
+	async listChannelFiles(): Promise<Result<string[]>> {
+		try {
+			const res = await NativeLDK.listChannelFiles();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
 	 * Fetches list of node IDs in network graph
 	 * https://docs.rs/lightning/latest/lightning/routing/gossip/struct.ReadOnlyNetworkGraph.html#method.nodes
 	 * @returns {Promise<Ok<Ok<string[]> | Err<string[]>> | Err<unknown>>}

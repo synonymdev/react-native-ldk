@@ -851,17 +851,17 @@ class LightningManager {
 			}
 
 			//Get serialised channels
-			const listChannelsRes = await ldk.listChannels();
+			const listChannelsRes = await ldk.listChannelFiles();
 			if (listChannelsRes.isErr()) {
 				return err(listChannelsRes.error);
 			}
 
 			let channel_monitors: { [key: string]: string } = {};
 			for (let index = 0; index < listChannelsRes.value.length; index++) {
-				const { channel_id } = listChannelsRes.value[index];
+				const fileName = listChannelsRes.value[index];
 
 				const serialisedChannelRes = await ldk.readFromFile({
-					fileName: `${channel_id}.bin`,
+					fileName,
 					path: appendPath(accountPath, ELdkFiles.channels),
 					format: 'hex',
 				});
@@ -869,7 +869,8 @@ class LightningManager {
 					return err(serialisedChannelRes.error);
 				}
 
-				channel_monitors[channel_id] = serialisedChannelRes.value.content;
+				channel_monitors[fileName.replace('.bin', '')] =
+					serialisedChannelRes.value.content;
 			}
 
 			const accountBackup: TAccountBackup = {
