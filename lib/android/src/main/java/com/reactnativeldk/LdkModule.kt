@@ -79,7 +79,8 @@ enum class LdkErrors {
     spend_outputs_fail,
     write_fail,
     read_fail,
-    file_does_not_exist
+    file_does_not_exist,
+    data_too_large_for_rn
 }
 
 enum class LdkCallbackResponses {
@@ -360,7 +361,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         channelManager = channelManagerConstructor!!.channel_manager
-        this.networkGraph = channelManagerConstructor!!.net_graph
 
         //Scorer setup
         val params = ProbabilisticScoringParameters.with_default()
@@ -713,6 +713,11 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun networkGraphListNodes(promise: Promise) {
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
 
+        val total = graph.list_nodes().count()
+        if (total > 100) {
+            return handleReject(promise, LdkErrors.data_too_large_for_rn, Error("Too many nodes to return (${total})")) //"Too many nodes to return (\(total))"
+        }
+
         val list = Arguments.createArray()
         graph.list_nodes().iterator().forEach { list.pushHexString(it.as_slice()) }
 
@@ -730,6 +735,11 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     @ReactMethod
     fun networkGraphListChannels(promise: Promise) {
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
+
+        val total = graph.list_channels().count()
+        if (total > 100) {
+            return handleReject(promise, LdkErrors.data_too_large_for_rn, Error("Too many channels to return (${total})")) //"Too many nodes to return (\(total))"
+        }
 
         val list = Arguments.createArray()
         graph.list_channels().iterator().forEach { list.pushString(it.toString()) }
