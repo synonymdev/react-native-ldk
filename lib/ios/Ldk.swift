@@ -806,6 +806,15 @@ class Ldk: NSObject {
     }
     
     @objc
+    func listChannelFiles(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelStoragePath = Ldk.channelStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        return resolve(try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil).map { $0.lastPathComponent })
+    }
+    
+    @objc
     func networkGraphListNodes(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let networkGraph = networkGraph?.read_only() else {
             return handleReject(reject, .init_network_graph)

@@ -287,8 +287,12 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
         userConfig ?: return handleReject(promise, LdkErrors.init_user_config)
         networkGraph ?: return handleReject(promise, LdkErrors.init_network_graph)
-        accountStoragePath ?: return handleReject(promise, LdkErrors.init_storage_path)
-        channelStoragePath ?: return handleReject(promise, LdkErrors.init_storage_path)
+        if (accountStoragePath == "") {
+            return handleReject(promise, LdkErrors.init_storage_path)
+        }
+        if (channelStoragePath == "") {
+            return handleReject(promise, LdkErrors.init_storage_path)
+        }
 
         when (network) {
             "regtest" -> {
@@ -705,6 +709,22 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val list = Arguments.createArray()
         channelManager!!.list_usable_channels().iterator().forEach { list.pushMap(it.asJson) }
+
+        promise.resolve(list)
+    }
+
+    @ReactMethod
+    fun listChannelFiles(promise: Promise) {
+        if (channelStoragePath == "") {
+            return handleReject(promise, LdkErrors.init_storage_path)
+        }
+        
+        val list = Arguments.createArray()
+        Files.walk(Paths.get(channelStoragePath))
+            .filter { Files.isRegularFile(it) }
+            .forEach {
+                list.pushString(it.fileName.toString())
+            }
 
         promise.resolve(list)
     }
