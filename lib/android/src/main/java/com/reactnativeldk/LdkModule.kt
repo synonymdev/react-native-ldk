@@ -18,6 +18,9 @@ import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 
 //MARK: ************Replicate in typescript and swift************
@@ -41,7 +44,8 @@ enum class EventTypes {
     channel_manager_discard_funding,
     channel_manager_payment_claimed,
     emergency_force_close_channel,
-    new_channel
+    new_channel,
+    network_graph_updated
 }
 //*****************************************************************
 
@@ -133,6 +137,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private var channelManager: ChannelManager? = null
     private var userConfig: UserConfig? = null
     private var networkGraph: NetworkGraph? = null
+    private var rapidGossipSync: RapidGossipSync? = null
     private var peerManager: PeerManager? = null
     private var peerHandler: NioPeerHandler? = null
     private var channelManagerConstructor: ChannelManagerConstructor? = null
@@ -275,7 +280,55 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             networkGraph = NetworkGraph.of(genesisHash.hexa(), logger.logger)
         }
 
-        handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
+        if (rapidGossipSyncUrl != "") {
+            val rapidGossipSyncStoragePath = File("$accountStoragePath/rapid_gossip_sync/")
+            try {
+                if (!rapidGossipSyncStoragePath.exists()) {
+                    rapidGossipSyncStoragePath.mkdirs()
+                }
+            } catch (e: Exception) {
+                return handleReject(promise, LdkErrors.create_storage_dir_fail, Error(e))
+            }
+
+            rapidGossipSync = RapidGossipSync.of(networkGraph)
+
+            //If it's been more than 24 hours then we need to update RGS
+            val timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
+            val oneDayAgo = System.currentTimeMillis() / 1000 - (60 * 60 * 24)
+            if (timestamp > oneDayAgo) {
+                LdkEventEmitter.send(EventTypes.native_log, "Skipping rapid gossip sync. Last updated ${(timestamp - oneDayAgo) / 60 / 60} hours ago.")
+                return handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
+            }
+
+            //TODO check if incremental updates temp broken.
+
+            println("*** $timestamp > $oneDayAgo")
+
+            rapidGossipSync!!.downloadAndUpdateGraph(rapidGossipSyncUrl, "$accountStoragePath/rapid_gossip_sync/", timestamp) { error ->
+                LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync file downloaded.")
+
+                if (error != null) {
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to download rapid sync file. ${error.localizedMessage}")
+                    return@downloadAndUpdateGraph
+                }
+
+                LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync completed.")
+
+                if (networkGraph == null) {
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to use network graph.")
+                    return@downloadAndUpdateGraph
+                }
+
+                channelManagerPersister.persist_network_graph(networkGraph!!.write())
+
+                val body = Arguments.createMap()
+                body.putInt("channel_count", networkGraph!!.read_only().list_channels().count())
+                body.putInt("node_count", networkGraph!!.read_only().list_nodes().count())
+                LdkEventEmitter.send(EventTypes.network_graph_updated, body)
+            }
+
+            handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
+        }
     }
 
     @ReactMethod
@@ -309,6 +362,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             }
         }
 
+        var enableP2PGossipSync = rapidGossipSync == null
+
         var channelManagerSerialized: ByteArray? = null
         val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.channel_manager.fileName)
         if (channelManagerFile.exists()) {
@@ -335,7 +390,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     feeEstimator.feeEstimator,
                     chainMonitor,
                     filter.filter,
-                    networkGraph!!.write(),
+                    if (enableP2PGossipSync) networkGraph!!.write() else null,
                     broadcaster.broadcaster,
                     logger.logger
                 )
@@ -350,11 +405,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     keysManager!!.as_KeysInterface(),
                     feeEstimator.feeEstimator,
                     chainMonitor,
-                    networkGraph,
+                    if (enableP2PGossipSync) networkGraph!! else null,
                     broadcaster.broadcaster,
                     logger.logger,
                 )
-
             }
         } catch (e: Exception) {
             return handleReject(promise, LdkErrors.unknown_error, Error(e))
