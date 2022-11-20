@@ -188,13 +188,23 @@ fun RapidGossipSync.downloadAndUpdateGraph(downloadUrl: String, tempStoragePath:
     val destinationFile = "$tempStoragePath$timestamp.bin"
 
     URL(downloadUrl + timestamp).downloadFile(destinationFile) {
-
-        println("***SUCCESS file here")
-
         val res = update_network_graph(File(destinationFile).readBytes())
         if (!res.is_ok()) {
-            completion(Error("***FAILED to update graph"))
-            //TODO check errors
+            val error = res as? Result_u32GraphSyncErrorZ.Result_u32GraphSyncErrorZ_Err
+
+            (error?.err as? GraphSyncError.LightningError)?.let { lightningError ->
+                return@downloadFile completion(Error("Rapid sync GraphSyncError.LightningError. " + lightningError.lightning_error._err))
+            }
+
+            (error?.err as? GraphSyncError.DecodeError)?.let { decodeError ->
+                (decodeError.decode_error as? DecodeError.Io)?.let { decodeIOError ->
+                    return@downloadFile completion(Error("Rapid sync GraphSyncError.DecodeError. " + decodeIOError.io.ordinal))
+                }
+
+                return@downloadFile completion(Error("Rapid sync GraphSyncError.DecodeError"))
+            }
+
+            return@downloadFile completion(Error("Unknown rapid sync error."))
         }
 
         val usedFile = File(destinationFile)

@@ -293,22 +293,34 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             rapidGossipSync = RapidGossipSync.of(networkGraph)
 
             //If it's been more than 24 hours then we need to update RGS
-            val timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
-            val oneDayAgo = System.currentTimeMillis() / 1000 - (60 * 60 * 24)
-            if (timestamp > oneDayAgo) {
-                LdkEventEmitter.send(EventTypes.native_log, "Skipping rapid gossip sync. Last updated ${(timestamp - oneDayAgo) / 60 / 60} hours ago.")
+            var timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
+            val hoursDiffSinceLastRGS = (System.currentTimeMillis() / 1000 - timestamp) / 60 / 60
+            if (hoursDiffSinceLastRGS < 24) {
+                LdkEventEmitter.send(EventTypes.native_log, "Skipping rapid gossip sync. Last updated $hoursDiffSinceLastRGS hours ago.")
                 return handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
             }
 
-            //TODO check if incremental updates temp broken.
+            LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync applying update. Last updated $hoursDiffSinceLastRGS hours ago.")
 
-            println("*** $timestamp > $oneDayAgo")
+            //TODO remove this incremental updates temp broken. Possibly related to https://github.com/lightningdevkit/rust-lightning/issues/1784
+            //TODO check if this is still an issue in 0.0.113
+            //If network graph is older than 24h download from scratch until incremental updates are working
+            //>>>>>> DELETE ME
+            val networkGraphFile = File(accountStoragePath + "/" + LdkFileNames.network_graph.fileName)
+            if (networkGraphFile.exists()) {
+                networkGraphFile.delete()
+            }
+            networkGraph = NetworkGraph.of(genesisHash.hexa(), logger.logger)
+            rapidGossipSync = RapidGossipSync.of(networkGraph)
+            timestamp = 0
+            LdkEventEmitter.send(EventTypes.native_log, "Rapid sync from scratch. Try remove in 0.0.113.")
+            //<<<<<< DELETE ME
 
             rapidGossipSync!!.downloadAndUpdateGraph(rapidGossipSyncUrl, "$accountStoragePath/rapid_gossip_sync/", timestamp) { error ->
                 LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync file downloaded.")
 
                 if (error != null) {
-                    LdkEventEmitter.send(EventTypes.native_log, "Failed to download rapid sync file. ${error.localizedMessage}")
+                    LdkEventEmitter.send(EventTypes.native_log, error.localizedMessage)
                     return@downloadAndUpdateGraph
                 }
 
