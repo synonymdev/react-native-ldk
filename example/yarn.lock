@@ -1378,7 +1378,7 @@
     "@sinonjs/commons" "^1.7.0"
 
 "@synonymdev/react-native-ldk@../lib":
-  version "0.0.72"
+  version "0.0.74"
   dependencies:
     bitcoinjs-lib "^6.0.2"
 
@@ -6983,10 +6983,6 @@ ripemd160@^2.0.0, ripemd160@^2.0.1, ripemd160@^2.0.2:
 "rn-electrum-client@git+http://git@github.com/synonymdev/react-native-electrum-client#a32a292d4e4918a04d280137e24e5961c74c543f":
   version "0.0.8"
   resolved "git+http://git@github.com/synonymdev/react-native-electrum-client#a32a292d4e4918a04d280137e24e5961c74c543f"
-
-rn-electrum-client@synonymdev/react-native-electrum-client#8/head:
-  version "0.0.8"
-  resolved "https://codeload.github.com/synonymdev/react-native-electrum-client/tar.gz/206010a04cfc2a219d04d3faaf4c25a6c4135971"
 
 rn-nodeify@^10.3.0:
   version "10.3.0"
