@@ -373,9 +373,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 return handleReject(promise, LdkErrors.invalid_network)
             }
         }
-
-        var enableP2PGossipSync = rapidGossipSync == null
-
+        
         var channelManagerSerialized: ByteArray? = null
         val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.channel_manager.fileName)
         if (channelManagerFile.exists()) {
@@ -402,7 +400,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     feeEstimator.feeEstimator,
                     chainMonitor,
                     filter.filter,
-                    if (enableP2PGossipSync) networkGraph!!.write() else null,
+                    networkGraph!!.write(),
                     broadcaster.broadcaster,
                     logger.logger
                 )
@@ -417,7 +415,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     keysManager!!.as_KeysInterface(),
                     feeEstimator.feeEstimator,
                     chainMonitor,
-                    if (enableP2PGossipSync) networkGraph!! else null,
+                    networkGraph!!,
                     broadcaster.broadcaster,
                     logger.logger,
                 )
