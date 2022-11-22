@@ -258,7 +258,6 @@ class Ldk: NSObject {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch. \(error.localizedDescription)")
         }
         
-        
         //Download url passed, enable rapid gossip sync
         if rapidGossipSyncUrl != "" {
             do {
@@ -278,13 +277,17 @@ class Ldk: NSObject {
                     return handleResolve(resolve, .network_graph_init_success)
                 }
                 
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync applying update. Last updated \(hoursDiffSinceLastRGS) hours ago.")
+                
                 //TODO remove this incremental updates temp broken. Possibly related to https://github.com/lightningdevkit/rust-lightning/issues/1784
+                //TODO check if this is still an issue in 0.0.113
                 //If network graph is older than 24h download from scratch until incremental updates are working
                 //>>>>>> DELETE ME
                 try? FileManager().removeItem(atPath: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).path)
                 networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
                 rapidGossipSync = RapidGossipSync(network_graph: networkGraph!)
                 timestamp = 0
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid sync from scratch. Try remove in 0.0.113.")
                 //<<<<<< DELETE ME
                 
                 rapidGossipSync!.downloadAndUpdateGraph(downloadUrl: String(rapidGossipSyncUrl), tempStoragePath: rapidGossipSyncStoragePath, timestamp: timestamp) { [weak self] error in

@@ -4,6 +4,10 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import org.ldk.structs.*
+import java.io.File
+import java.io.FileOutputStream
+import java.net.URL
+import java.nio.channels.Channels
 
 fun handleResolve(promise: Promise, res: LdkCallbackResponses) {
     LdkEventEmitter.send(EventTypes.native_log, "Success: ${res}")
@@ -163,4 +167,51 @@ fun WritableMap.putHexString(key: String, bytes: ByteArray?) {
 
 fun WritableArray.pushHexString(bytes: ByteArray) {
     pushString(bytes.hexEncodedString())
+}
+
+fun URL.downloadFile(destination: String, completion: (error: Error?) -> Unit) {
+    try {
+        openStream().use {
+            Channels.newChannel(it).use { rbc ->
+                FileOutputStream(destination).use { fos ->
+                    fos.channel.transferFrom(rbc, 0, Long.MAX_VALUE)
+                    completion(null)
+                }
+            }
+        }
+    } catch (e: Exception) {
+        completion(Error(e))
+    }
+}
+
+fun RapidGossipSync.downloadAndUpdateGraph(downloadUrl: String, tempStoragePath: String, timestamp: Long, completion: (error: Error?) -> Unit) {
+    val destinationFile = "$tempStoragePath$timestamp.bin"
+
+    URL(downloadUrl + timestamp).downloadFile(destinationFile) {
+        val res = update_network_graph(File(destinationFile).readBytes())
+        if (!res.is_ok()) {
+            val error = res as? Result_u32GraphSyncErrorZ.Result_u32GraphSyncErrorZ_Err
+
+            (error?.err as? GraphSyncError.LightningError)?.let { lightningError ->
+                return@downloadFile completion(Error("Rapid sync GraphSyncError.LightningError. " + lightningError.lightning_error._err))
+            }
+
+            (error?.err as? GraphSyncError.DecodeError)?.let { decodeError ->
+                (decodeError.decode_error as? DecodeError.Io)?.let { decodeIOError ->
+                    return@downloadFile completion(Error("Rapid sync GraphSyncError.DecodeError. " + decodeIOError.io.ordinal))
+                }
+
+                return@downloadFile completion(Error("Rapid sync GraphSyncError.DecodeError"))
+            }
+
+            return@downloadFile completion(Error("Unknown rapid sync error."))
+        }
+
+        val usedFile = File(destinationFile)
+        if (usedFile.exists()) {
+            usedFile.delete()
+        }
+
+        completion(null)
+    }
 }

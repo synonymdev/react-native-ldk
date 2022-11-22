@@ -18,9 +18,9 @@ class LdkPersister {
                 throw Exception("Channel storage path not set")
             }
 
-            var file = File(LdkModule.channelStoragePath + "/" + id.to_channel_id().hexEncodedString() + ".bin")
+            val file = File(LdkModule.channelStoragePath + "/" + id.to_channel_id().hexEncodedString() + ".bin")
 
-            var isNew = !file.exists()
+            val isNew = !file.exists()
 
             file.writeBytes(data.write())
 
