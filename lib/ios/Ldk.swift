@@ -230,7 +230,6 @@ class Ldk: NSObject {
 
         let channelHandshakeLimits = ChannelHandshakeLimits()
         channelHandshakeLimits.set_force_announced_channel_preference(val: true)
-        channelHandshakeLimits.set_max_minimum_depth(val: UInt32(minChannelHandshakeDepth))
         userConfig!.set_channel_handshake_limits(val: channelHandshakeLimits)
 
         return handleResolve(resolve, .config_init_success)
@@ -371,17 +370,19 @@ class Ldk: NSObject {
         
         let storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
         
+        var channelMonitorsSerialized: Array<[UInt8]> = []
+        let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
+        for channelFile in channelFiles {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel from file \(channelFile.lastPathComponent)")
+            channelMonitorsSerialized.append([UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)))
+        }
+        
         do {
-            if let channelManagerSerialized = storedChannelManager {
+            //Only restore a node if we have existing channel monitors to restore. Else we lose our UserConfig settings when restoring.
+            if let channelManagerSerialized = storedChannelManager, channelMonitorsSerialized.count > 0 {
                 //Restoring node
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring node from disk")
-                var channelMonitorsSerialized: Array<[UInt8]> = []
-                let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
-                for channelFile in channelFiles {
-                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel from file \(channelFile.lastPathComponent)")
-                    channelMonitorsSerialized.append([UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)))
-                }
-                
+               
                 channelManagerConstructor = try ChannelManagerConstructor(
                     channel_manager_serialized: [UInt8](channelManagerSerialized),
                     channel_monitors_serialized: channelMonitorsSerialized,
