@@ -30,6 +30,7 @@ import {
 	TFileWriteReq,
 	TClaimableBalance,
 } from './utils/types';
+import { extractPaymentRequest } from './utils/helpers';
 
 const LINKING_ERROR =
 	"The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n" +
@@ -417,8 +418,9 @@ class LDK {
 	 * @returns {Promise<Ok<any> | Err<unknown>>}
 	 */
 	async decode({ paymentRequest }: TPaymentReq): Promise<Result<TInvoice>> {
+		const cleanedPaymentRequest = extractPaymentRequest(paymentRequest);
 		try {
-			const res = await NativeLDK.decode(paymentRequest);
+			const res = await NativeLDK.decode(cleanedPaymentRequest);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -482,9 +484,11 @@ class LDK {
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async pay({
-		paymentRequest,
+		paymentRequest: anyPaymentRequest,
 		amountSats,
 	}: TPaymentReq): Promise<Result<string>> {
+		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
+
 		//If no usable channels don't even attempt payment
 		const channelsRes = await this.listUsableChannels();
 		if (channelsRes.isOk() && channelsRes.value.length === 0) {
