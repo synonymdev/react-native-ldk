@@ -26,9 +26,15 @@ func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ erro
 
 extension Invoice {
     var asJson: Any {
+        //Break down to get the decription. Will crash if all on a single line.
+        let signedRawInvoice = into_signed_raw()
+        let rawInvoice = signedRawInvoice.raw_invoice()
+        let description = rawInvoice.description()
+        let descriptionString = description.into_inner()
+        
         return [
             "amount_satoshis": amount_milli_satoshis().getValue() != nil ? amount_milli_satoshis().getValue()! / 1000 : nil,
-            "description": into_signed_raw().raw_invoice().description(),
+            "description": descriptionString,
             "check_signature": check_signature().isOk(),
             "is_expired": is_expired(),
             "duration_since_epoch": duration_since_epoch(),
