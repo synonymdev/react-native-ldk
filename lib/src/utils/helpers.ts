@@ -219,6 +219,17 @@ const validateAddress = ({
 	}
 };
 
+/**
+ * Extracts actual invoice string request from common formats that include lightning invoices
+ * @param invoice
+ * @returns {string}
+ */
+export const extractPaymentRequest = (paymentRequest: string): string => {
+	const result = paymentRequest.replace('lightning:', '').toLowerCase();
+	//TODO support bip21 and other common formats
+	return result;
+};
+
 const isFunction = (f: any): boolean => {
 	try {
 		return f && {}.toString.call(f) === '[object Function]';
