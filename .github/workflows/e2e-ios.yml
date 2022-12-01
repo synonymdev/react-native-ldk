@@ -8,17 +8,17 @@ on:
 jobs:
   e2e-test:
     name: E2E iOS test
-    runs-on: macOS-latest
-    timeout-minutes: 35
+    runs-on: macos-12
+    timeout-minutes: 120
 
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
-          node-version: 14
+          node-version: 16
 
       - name: Cache lib node modules
         uses: actions/cache@v3
@@ -75,4 +75,4 @@ jobs:
 
       - name: Test iOS app
         working-directory: example
-        run: sh ../.github/scripts/test-ios.sh
+        run: yarn e2e:ios-test

@@ -144,6 +144,24 @@ const App = (): ReactElement => {
 				</View>
 				<View style={styles.container}>
 					<Button
+						title={'E2E test'}
+						onPress={async (): Promise<void> => {
+							//TODO add more functionality to test
+							const ldkVersion = await ldk.version();
+							if (ldkVersion.isErr()) {
+								return setMessage(ldkVersion.error.message);
+							}
+
+							const nodeIdRes = await ldk.nodeId();
+							if (nodeIdRes.isErr()) {
+								return setMessage(nodeIdRes.error.message);
+							}
+
+							return setMessage('e2e success');
+						}}
+					/>
+
+					<Button
 						title={'Rebroadcast Known Transactions'}
 						onPress={async (): Promise<void> => {
 							try {
@@ -502,24 +520,6 @@ const App = (): ReactElement => {
 							} catch (e) {
 								setMessage(JSON.stringify(e));
 							}
-						}}
-					/>
-
-					<Button
-						title={'E2E test'}
-						onPress={async (): Promise<void> => {
-							//TODO add more functionality to test
-							const ldkVersion = await ldk.version();
-							if (ldkVersion.isErr()) {
-								return setMessage(ldkVersion.error.message);
-							}
-
-							const nodeIdRes = await ldk.nodeId();
-							if (nodeIdRes.isErr()) {
-								return setMessage(nodeIdRes.error.message);
-							}
-
-							return setMessage('e2e success');
 						}}
 					/>
 
