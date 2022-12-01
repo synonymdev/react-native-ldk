@@ -3,10 +3,15 @@
   "runnerConfig": "./e2e/config.json",
   "skipLegacyWorkersInjection": true,
   "apps": {
-    "ios": {
+    "ios.debug": {
       "type": "ios.app",
-      "build": "set -o pipefail && xcodebuild -workspace ios/example.xcworkspace -scheme example -sdk iphonesimulator -destination platform=iOS\\ Simulator,OS=15.2,name=iPhone\\ 13 -derivedDataPath ios/build | xcpretty",
+      "build": "xcodebuild -workspace ios/example.xcworkspace -scheme example -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build",
       "binaryPath": "ios/build/Build/Products/Debug-iphonesimulator/example.app"
+    },
+    "ios.release": {
+      "type": "ios.app",
+      "build": "xcodebuild -workspace ios/example.xcworkspace -scheme example -configuration Release -sdk iphonesimulator -derivedDataPath ios/build",
+      "binaryPath": "ios/build/Build/Products/Release-iphonesimulator/example.app"
     },
     "android.debug": {
       "type": "android.apk",
@@ -25,7 +30,7 @@
     "simulator": {
       "type": "ios.simulator",
       "device": {
-        "type": "iPhone 13"
+        "type": "iPhone 14"
       }
     },
     "emulator": {
@@ -36,9 +41,13 @@
     }
   },
   "configurations": {
-    "ios": {
+    "ios.sim.debug": {
       "device": "simulator",
-      "app": "ios"
+      "app": "ios.debug"
+    },
+    "ios.sim.release": {
+      "device": "simulator",
+      "app": "ios.release"
     },
     "android.debug": {
       "device": "emulator",
