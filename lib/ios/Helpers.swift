@@ -116,10 +116,12 @@ extension ChannelInfo {
 
 //Nodes in our network graph
 extension NodeInfo {
-    var asJson: Any {
+    var asJson: [String: Any] {
         return [
             "shortChannelIds": get_channels().map({ String($0) }),
-            //TODO gathering other details results in EXC_BAD_ACCESS. Test with next version of LDK.
+            "lowest_inbound_channel_fees_base_msat": get_lowest_inbound_channel_fees().get_base_msat(),
+            "lowest_inbound_channel_fees_proportional_millionths": get_lowest_inbound_channel_fees().get_proportional_millionths(),
+            "announcement_info_last_update": get_announcement_info().get_last_update()
         ]
     }
 }

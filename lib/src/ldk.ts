@@ -520,16 +520,9 @@ class LDK {
 				}
 
 				//Check if node is in our network graph
-				const graphRes = await this.networkGraphListNodes();
+				const graphRes = await this.networkGraphNodes([recover_payee_pub_key]);
 				if (graphRes.isOk()) {
-					let nodeInNetworkGraph = false;
-					graphRes.value.forEach((node) => {
-						if (node === recover_payee_pub_key) {
-							nodeInNetworkGraph = true;
-						}
-					});
-
-					if (!nodeInNetworkGraph) {
+					if (graphRes.value.length === 0) {
 						useFullMessage = `${useFullMessage} Node not found in network graph.`;
 					}
 				}
@@ -666,13 +659,13 @@ class LDK {
 	}
 
 	/**
-	 * Fetches list of node IDs in network graph
+	 * Fetches list of all node IDs in network graph
 	 * https://docs.rs/lightning/latest/lightning/routing/gossip/struct.ReadOnlyNetworkGraph.html#method.nodes
 	 * @returns {Promise<Ok<Ok<string[]> | Err<string[]>> | Err<unknown>>}
 	 */
-	async networkGraphListNodes(): Promise<Result<string[]>> {
+	async networkGraphListNodeIds(): Promise<Result<string[]>> {
 		try {
-			const res = await NativeLDK.networkGraphListNodes();
+			const res = await NativeLDK.networkGraphListNodeIds();
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -680,17 +673,17 @@ class LDK {
 	}
 
 	/**
-	 * Fetches node details from network graph
+	 * Fetches array of node details from network graph
 	 * https://docs.rs/lightning/latest/lightning/routing/gossip/struct.ChannelInfo.html
-	 * @param shortChannelId
+	 * @param nodeIds string[]
 	 * @returns {Promise<Ok<Ok<string> | Err<string>> | Err<unknown>>}
 	 */
-	async networkGraphNode(
-		nodeId: string,
-	): Promise<Result<TNetworkGraphNodeInfo>> {
+	async networkGraphNodes(
+		nodeIds: string[],
+	): Promise<Result<TNetworkGraphNodeInfo[]>> {
 		try {
-			const res = await NativeLDK.networkGraphNode(nodeId);
-			return ok({ ...res, nodeId });
+			const res = await NativeLDK.networkGraphNodes(nodeIds);
+			return ok(res);
 		} catch (e) {
 			return err(e);
 		}
@@ -703,29 +696,28 @@ class LDK {
 	 */
 	async completeGraphNodes(): Promise<Result<TNetworkGraphNodeInfo[]>> {
 		try {
-			const res = await this.networkGraphListNodes();
-			let nodes: TNetworkGraphNodeInfo[] = [];
+			const res = await this.networkGraphListNodeIds();
 			if (res.isErr()) {
 				return err(res.error);
 			}
 
-			for (let index = 0; index < res.value.length; index++) {
-				const nodeRes = await this.networkGraphNode(res.value[index]);
-				if (nodeRes.isErr()) {
-					return err(nodeRes.error);
-				}
-
-				nodes.push(nodeRes.value);
+			if (res.value.length > 100) {
+				return err(`Too many nodes to query (${res.value.length})`);
 			}
 
-			return ok(nodes);
+			const nodeRes = await this.networkGraphNodes(res.value);
+			if (nodeRes.isErr()) {
+				return err(nodeRes.error);
+			}
+
+			return ok(nodeRes.value);
 		} catch (e) {
 			return err(e);
 		}
 	}
 
 	/**
-	 * Fetches list of short channel IDs in network graph
+	 * Fetches list of all short channel IDs in network graph
 	 * https://docs.rs/lightning/latest/lightning/routing/gossip/struct.ReadOnlyNetworkGraph.html#method.channels
 	 * @returns {Promise<Ok<string[]>> | Err<unknown>>}
 	 */

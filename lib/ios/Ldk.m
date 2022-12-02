@@ -86,14 +86,14 @@ RCT_EXTERN_METHOD(listUsableChannels:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(listChannelFiles:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(networkGraphListNodes:(RCTPromiseResolveBlock)resolve
+RCT_EXTERN_METHOD(networkGraphListNodeIds:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(networkGraphListChannels:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(networkGraphChannel:(NSString *)shortChannelId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(networkGraphNode:(NSString *)nodeId
+RCT_EXTERN_METHOD(networkGraphNodes:(NSArray *)nodeIds
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(claimableBalances:(BOOL *)ignoreOpenChannels

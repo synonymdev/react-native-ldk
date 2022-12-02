@@ -405,16 +405,15 @@ const App = (): ReactElement => {
 								return setMessage(decode.error.message);
 							}
 
-							const { recover_payee_pub_key, amount_satoshis } = decode.value;
+							const { recover_payee_pub_key, amount_satoshis, description } =
+								decode.value;
 
 							const ownAmountSats = 1000;
 							Alert.alert(
 								amount_satoshis
 									? `Pay ${amount_satoshis ?? 0}`
 									: 'Zero sat invoice found',
-								amount_satoshis
-									? `To pubkey: ${recover_payee_pub_key}`
-									: `Send ${ownAmountSats} sats (Our chosen amount) to send over?`,
+								description,
 								[
 									{
 										text: 'Cancel',
@@ -444,24 +443,29 @@ const App = (): ReactElement => {
 					<Button
 						title={'Get network graph'}
 						onPress={async (): Promise<void> => {
-							const nodesRes = await ldk.completeGraphNodes();
+							const nodesRes = await ldk.networkGraphListNodeIds();
 							if (nodesRes.isErr()) {
 								return setMessage(nodesRes.error.message);
 							}
 
-							const channelRes = await ldk.completeGraphChannels();
-							if (channelRes.isErr()) {
-								return setMessage(channelRes.error.message);
+							let msg = 'Nodes: \n\n';
+
+							for (let index = 0; index < nodesRes.value.length; index++) {
+								const id = nodesRes.value[index];
+
+								const nodes = await ldk.networkGraphNodes([id]);
+								if (nodes.isOk()) {
+									msg += `${JSON.stringify(nodes.value)}`;
+								}
 							}
 
-							const nodes = `Nodes:\n\n${nodesRes.value.map(
-								(node) => `\n${JSON.stringify(node)}`,
-							)}`;
-							const channels = `Channels:\n\n${channelRes.value.map(
-								(channel) => `\n${JSON.stringify(channel)}`,
-							)}`;
+							// const nodes = `Nodes:\n\n${nodesRes.value.map(async (id) => {
+							// 	const res = await ldk.networkGraphNodes([id]);
+							// 	const node = res.isOk() ? res.value : [];
+							// 	return `\n${JSON.stringify(id)}\n${JSON.stringify(node[0])}\n`;
+							// })}`;
 
-							setMessage(`${nodes}\n${channels}`);
+							setMessage(`${msg}`);
 						}}
 					/>
 

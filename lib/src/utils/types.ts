@@ -30,11 +30,13 @@ export enum EEventTypes {
 
 //LDK event responses
 export type TRegisterTxEvent = { txid: string; script_pubkey: string };
+
 export type TRegisterOutputEvent = {
 	block_hash: string;
 	index: number;
 	script_pubkey: string;
 };
+
 export type TBroadcastTransactionEvent = { tx: string };
 
 //LDK channel manager event responses
@@ -44,6 +46,7 @@ export type TChannelManagerFundingGenerationReady = {
 	user_channel_id: number;
 	value_satoshis: number;
 };
+
 export type TChannelManagerPayment = {
 	payment_hash: string;
 	amount_sat: number;
@@ -51,12 +54,14 @@ export type TChannelManagerPayment = {
 	payment_secret: string;
 	spontaneous_payment_preimage: string;
 };
+
 export type TChannelManagerPaymentSent = {
 	payment_id: string;
 	payment_preimage: string;
 	payment_hash: string;
 	fee_paid_sat: number;
 };
+
 export type TChannelManagerOpenChannelRequest = {
 	temp_channel_id: string;
 	counterparty_node_id: string;
@@ -64,6 +69,7 @@ export type TChannelManagerOpenChannelRequest = {
 	funding_satoshis: number;
 	channel_type: string;
 };
+
 export type TChannelUpdate = {
 	channel_id: string;
 	counterparty_node_id: string;
@@ -81,6 +87,7 @@ export type TChannelManagerPaymentPathSuccessful = {
 	payment_hash: string;
 	path: TPath[];
 };
+
 export type TChannelManagerPaymentPathFailed = {
 	payment_id: string;
 	payment_hash: string;
@@ -89,21 +96,26 @@ export type TChannelManagerPaymentPathFailed = {
 	path: TPath[];
 	network_update: string;
 };
+
 export type TChannelManagerPaymentFailed = {
 	payment_id: string;
 	payment_hash: string;
 };
+
 export type TChannelManagerPendingHtlcsForwardable = {
 	time_forwardable: number;
 };
+
 export type TChannelManagerSpendableOutputs = {
 	outputsSerialized: string[];
 };
+
 export type TChannelManagerChannelClosed = {
 	user_channel_id: number;
 	channel_id: string;
 	reason: string;
 };
+
 export type TChannelManagerDiscardFunding = {
 	channel_id: string;
 	tx: string;
@@ -151,8 +163,11 @@ export type TNetworkGraphChannelInfo = {
 };
 
 export type TNetworkGraphNodeInfo = {
-	nodeId: string;
+	id: string;
 	shortChannelIds: string[];
+	lowest_inbound_channel_fees_base_msat: number;
+	lowest_inbound_channel_fees_proportional_millionths: number;
+	announcement_info_last_update: number;
 };
 
 export type TInvoice = {
