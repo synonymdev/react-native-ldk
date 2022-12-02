@@ -441,29 +441,31 @@ const App = (): ReactElement => {
 					/>
 
 					<Button
-						title={'Get network graph'}
+						title={'Get network graph nodes'}
 						onPress={async (): Promise<void> => {
 							const nodesRes = await ldk.networkGraphListNodeIds();
 							if (nodesRes.isErr()) {
 								return setMessage(nodesRes.error.message);
 							}
 
-							let msg = 'Nodes: \n\n';
+							let msg = 'Nodes: \n';
 
-							for (let index = 0; index < nodesRes.value.length; index++) {
-								const id = nodesRes.value[index];
+							const nodes = await ldk.networkGraphNodes(nodesRes.value);
+							if (nodes.isOk()) {
+								nodes.value.forEach((node) => {
+									const {
+										id,
+										shortChannelIds,
+										lowest_inbound_channel_fees_base_sat,
+										announcement_info_last_update,
+									} = node;
+									let time = new Date(announcement_info_last_update);
 
-								const nodes = await ldk.networkGraphNodes([id]);
-								if (nodes.isOk()) {
-									msg += `${JSON.stringify(nodes.value)}`;
-								}
+									msg += `\n\n${id}\nChannels: ${shortChannelIds.length}\n`;
+									msg += `Lowest inbound fee: ${lowest_inbound_channel_fees_base_sat} sat\n`;
+									msg += `Last announcement: ${time}`;
+								});
 							}
-
-							// const nodes = `Nodes:\n\n${nodesRes.value.map(async (id) => {
-							// 	const res = await ldk.networkGraphNodes([id]);
-							// 	const node = res.isOk() ? res.value : [];
-							// 	return `\n${JSON.stringify(id)}\n${JSON.stringify(node[0])}\n`;
-							// })}`;
 
 							setMessage(`${msg}`);
 						}}

@@ -165,7 +165,7 @@ export type TNetworkGraphChannelInfo = {
 export type TNetworkGraphNodeInfo = {
 	id: string;
 	shortChannelIds: string[];
-	lowest_inbound_channel_fees_base_msat: number;
+	lowest_inbound_channel_fees_base_sat: number;
 	lowest_inbound_channel_fees_proportional_millionths: number;
 	announcement_info_last_update: number;
 };
