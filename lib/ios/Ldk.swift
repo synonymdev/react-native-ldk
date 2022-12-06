@@ -71,6 +71,7 @@ enum LdkCallbackResponses: String {
     case fees_updated = "fees_updated"
     case log_level_updated = "log_level_updated"
     case log_path_updated = "log_path_updated"
+    case log_write_success = "log_write_success"
     case chain_monitor_init_success = "chain_monitor_init_success"
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
@@ -174,6 +175,12 @@ class Ldk: NSObject {
         return handleResolve(resolve, .log_path_updated)
     }
 
+    @objc
+    func writeToLogFile(_ line: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        Logfile.log.write(String(line))
+        return handleResolve(resolve, .log_write_success)
+    }
+    
     @objc
     func initChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard chainMonitor == nil else {

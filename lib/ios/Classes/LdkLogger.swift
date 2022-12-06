@@ -21,7 +21,32 @@ class LdkLogger: Logger {
         //Only when the JS code has set the log level to active
         if activeLevels[level] == true {
             LdkEventEmitter.shared.send(withEvent: .ldk_log, body: record.get_args())
-            Logfile.log.write(record.get_args())
+            
+            var levelStr = ""
+            switch level {
+            case 0:
+                levelStr = "GOSSIP"
+                break
+            case 1:
+                levelStr = "TRACE"
+                break
+            case 2:
+                levelStr = "DEBUG"
+                break
+            case 3:
+                levelStr = "INFO"
+                break
+            case 4:
+                levelStr = "WARN"
+                break
+            case 5:
+                levelStr = "ERROR"
+                break
+            default:
+                levelStr = "LEVEL \(level)"
+            }
+                        
+            Logfile.log.write("\(levelStr) (LDK): \(record.get_args())")
         }
     }
     

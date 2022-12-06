@@ -9,7 +9,9 @@ import Foundation
 import LightningDevKit
 
 func handleResolve(_ resolve: RCTPromiseResolveBlock, _ res: LdkCallbackResponses) {
-    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Success: \(res.rawValue)")
+    if res != .log_write_success {
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Success: \(res.rawValue)")
+    }
     resolve(res.rawValue)
 }
 

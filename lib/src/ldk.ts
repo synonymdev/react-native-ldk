@@ -66,8 +66,10 @@ class LDK {
 	async setAccountStoragePath(path: string): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.setAccountStoragePath(path);
+			this.writeDebugToLog('setAccountStoragePath');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('setAccountStoragePath', e);
 			return err(e);
 		}
 	}
@@ -80,8 +82,10 @@ class LDK {
 	async initChainMonitor(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initChainMonitor();
+			this.writeDebugToLog('initChainMonitor');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('initChainMonitor', e);
 			return err(e);
 		}
 	}
@@ -95,8 +99,10 @@ class LDK {
 	async initKeysManager(seed: string): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initKeysManager(seed);
+			this.writeDebugToLog('initKeysManager');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('initKeysManager', e);
 			return err(e);
 		}
 	}
@@ -112,8 +118,13 @@ class LDK {
 	): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.loadChannelMonitors(channelMonitors);
+			this.writeDebugToLog(
+				'loadChannelMonitors',
+				`Loaded ${channelMonitors.length} monitors`,
+			);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('loadChannelMonitors', e);
 			return err(e);
 		}
 	}
@@ -135,8 +146,13 @@ class LDK {
 				genesisHash,
 				rapidGossipSyncUrl ?? '',
 			);
+			this.writeDebugToLog(
+				'initNetworkGraph',
+				`Rapid gossip sync ${rapidGossipSyncUrl ? 'Enabled' : 'Disabled'}`,
+			);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('initNetworkGraph', e);
 			return err(e);
 		}
 	}
@@ -155,12 +171,13 @@ class LDK {
 	 * @param minChannelHandshakeDepth
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async initConfig({
-		acceptInboundChannels,
-		manuallyAcceptInboundChannels,
-		announcedChannels,
-		minChannelHandshakeDepth,
-	}: TInitConfig): Promise<Result<string>> {
+	async initConfig(conf: TInitConfig): Promise<Result<string>> {
+		const {
+			acceptInboundChannels,
+			manuallyAcceptInboundChannels,
+			announcedChannels,
+			minChannelHandshakeDepth,
+		} = conf;
 		try {
 			const res = await NativeLDK.initConfig(
 				acceptInboundChannels,
@@ -168,8 +185,10 @@ class LDK {
 				announcedChannels,
 				minChannelHandshakeDepth,
 			);
+			this.writeDebugToLog('initConfig', conf);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('initConfig', e);
 			return err(e);
 		}
 	}
@@ -185,18 +204,20 @@ class LDK {
 	 * @param bestBlock
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async initChannelManager({
-		network,
-		bestBlock,
-	}: TInitChannelManagerReq): Promise<Result<string>> {
+	async initChannelManager(
+		data: TInitChannelManagerReq,
+	): Promise<Result<string>> {
+		const { network, bestBlock } = data;
 		try {
 			const res = await NativeLDK.initChannelManager(
 				network,
 				bestBlock.hash,
 				bestBlock.height,
 			);
+			this.writeDebugToLog('initChannelManager', data);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('initChannelManager', e);
 			return err(e);
 		}
 	}
@@ -208,8 +229,10 @@ class LDK {
 	async reset(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.reset();
+			this.writeDebugToLog('reset');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('reset', e);
 			return err(e);
 		}
 	}
@@ -249,21 +272,62 @@ class LDK {
 	}
 
 	/**
+	 * Write a line to current LDK log file
+	 * @param line
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async writeToLogFile(
+		type: 'error' | 'info' | 'debug',
+		line: string,
+	): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.writeToLogFile(
+				`${type.toUpperCase()} (JS): ${line}`,
+			);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Writes a JS error to log file
+	 * @param funcName
+	 * @param error
+	 */
+	private writeErrorToLog(funcName: string, error: any | Error): void {
+		this.writeToLogFile('error', `${funcName}() failed: ${error}`).catch(
+			console.error,
+		);
+	}
+
+	/**
+	 * Writes a debug line to log file
+	 * @param funcName
+	 * @param data
+	 */
+	private writeDebugToLog(funcName: string, data: string | object = ''): void {
+		this.writeToLogFile(
+			'debug',
+			`${funcName}() success. ${data ? JSON.stringify(data) : ''}`,
+		).catch(console.error);
+	}
+
+	/**
 	 * Provide fee rate information on a number of time horizons.
 	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/enum.ConfirmationTarget.html
 	 * @param high
 	 * @param normal
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async updateFees({
-		highPriority,
-		normal,
-		background,
-	}: TFeeUpdateReq): Promise<Result<string>> {
+	async updateFees(fees: TFeeUpdateReq): Promise<Result<string>> {
+		const { highPriority, normal, background } = fees;
 		try {
 			const res = await NativeLDK.updateFees(highPriority, normal, background);
+			this.writeDebugToLog('updateFees', fees);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('updateFees', e);
 			return err(e);
 		}
 	}
@@ -274,11 +338,14 @@ class LDK {
 	 * @param height
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async syncToTip({ header, height }: TSyncTipReq): Promise<Result<string>> {
+	async syncToTip(tip: TSyncTipReq): Promise<Result<string>> {
+		const { header, height } = tip;
 		try {
 			const res = await NativeLDK.syncToTip(header, height);
+			this.writeDebugToLog('syncToTip', tip);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('syncToTip', e);
 			return err(e);
 		}
 	}
@@ -291,16 +358,14 @@ class LDK {
 	 * @param timeout (Android only)
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async addPeer({
-		pubKey,
-		address,
-		port,
-		timeout,
-	}: TAddPeerReq): Promise<Result<string>> {
+	async addPeer(peer: TAddPeerReq): Promise<Result<string>> {
+		const { pubKey, address, port, timeout } = peer;
 		try {
 			const res = await NativeLDK.addPeer(address, port, pubKey, timeout);
+			this.writeDebugToLog('addPeer', peer);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('addPeer', e);
 			return err(e);
 		}
 	}
@@ -320,8 +385,10 @@ class LDK {
 	}: TSetTxConfirmedReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.setTxConfirmed(header, txData, height);
+			this.writeDebugToLog('setTxConfirmed');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('setTxConfirmed', e);
 			return err(e);
 		}
 	}
@@ -336,8 +403,10 @@ class LDK {
 	}: TSetTxUnconfirmedReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.setTxUnconfirmed(txId);
+			this.writeDebugToLog('setTxUnconfirmed');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('setTxConfirmed', e);
 			return err(e);
 		}
 	}
@@ -366,9 +435,10 @@ class LDK {
 			);
 
 			if (!connectedNodeId) {
-				return err(
-					'Cannot cooperatively close channel as peer is not connected.',
-				);
+				const peerDisconnectedError =
+					'Cannot cooperatively close channel as peer is not connected.';
+				this.writeErrorToLog('closeChannel', peerDisconnectedError);
+				return err(peerDisconnectedError);
 			}
 		}
 
@@ -378,8 +448,10 @@ class LDK {
 				counterPartyNodeId,
 				!!force,
 			);
+			this.writeDebugToLog('closeChannel');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('closeChannel', e);
 			return err(e);
 		}
 	}
@@ -406,8 +478,10 @@ class LDK {
 				change_destination_script,
 				feerate_sat_per_1000_weight,
 			);
+			this.writeDebugToLog('spendOutputs');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('spendOutputs', e);
 			return err(e);
 		}
 	}
@@ -421,8 +495,10 @@ class LDK {
 		const cleanedPaymentRequest = extractPaymentRequest(paymentRequest);
 		try {
 			const res = await NativeLDK.decode(cleanedPaymentRequest);
+			this.writeDebugToLog('decode');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('decode', e);
 			return err(e);
 		}
 	}
@@ -445,8 +521,10 @@ class LDK {
 				description,
 				expiryDeltaSeconds,
 			);
+			this.writeDebugToLog('createPaymentRequest');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('createPaymentRequest', e);
 			return err(e);
 		}
 	}
@@ -458,8 +536,10 @@ class LDK {
 	async processPendingHtlcForwards(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.processPendingHtlcForwards();
+			this.writeDebugToLog('processPendingHtlcForwards');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('processPendingHtlcForwards', e);
 			return err(e);
 		}
 	}
@@ -472,8 +552,10 @@ class LDK {
 	async claimFunds(paymentPreimage: string): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.claimFunds(paymentPreimage);
+			this.writeDebugToLog('claimFunds');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('claimFunds', e);
 			return err(e);
 		}
 	}
@@ -492,12 +574,14 @@ class LDK {
 		//If no usable channels don't even attempt payment
 		const channelsRes = await this.listUsableChannels();
 		if (channelsRes.isOk() && channelsRes.value.length === 0) {
-			return err('No usable channels found');
+			const noUsableChannelsError = 'No usable channels found';
+			this.writeErrorToLog('pay', noUsableChannelsError);
+			return err(noUsableChannelsError);
 		}
 
 		try {
 			const res = await NativeLDK.pay(paymentRequest, amountSats || 0);
-
+			this.writeDebugToLog('pay');
 			return ok(res);
 		} catch (e) {
 			let resultError = err(e);
@@ -506,24 +590,25 @@ class LDK {
 				const decodedRes = await this.decode({ paymentRequest });
 				if (decodedRes.isErr()) {
 					//Return original payment error if we can't decode
+					this.writeErrorToLog('pay', e);
 					return err(e);
 				}
 
 				const { route_hints, recover_payee_pub_key, amount_satoshis } =
 					decodedRes.value;
 
-				let useFullMessage = `${resultError.error.message}.`;
+				let usefulMessage = `${resultError.error.message}.`;
 
 				//Check route hints
 				if (route_hints.length === 0) {
-					useFullMessage = `${useFullMessage} No route hints found in payment request.`;
+					usefulMessage = `${usefulMessage} No route hints found in payment request.`;
 				}
 
 				//Check if node is in our network graph
 				const graphRes = await this.networkGraphNodes([recover_payee_pub_key]);
 				if (graphRes.isOk()) {
 					if (graphRes.value.length === 0) {
-						useFullMessage = `${useFullMessage} Node not found in network graph.`;
+						usefulMessage = `${usefulMessage} Node not found in network graph.`;
 					}
 				}
 
@@ -538,13 +623,16 @@ class LDK {
 
 					let amountToSendSats = amountSats || amount_satoshis || 0;
 					if (amountToSendSats > highestOutgoing) {
-						useFullMessage = `${useFullMessage} Not enough outgoing capacity.`;
+						usefulMessage = `${usefulMessage} Not enough outgoing capacity.`;
 					}
 				}
 
-				return err(useFullMessage);
+				this.writeErrorToLog('pay', usefulMessage);
+
+				return err(usefulMessage);
 			}
 
+			this.writeErrorToLog('pay', e);
 			return err(e);
 		}
 	}
@@ -557,8 +645,10 @@ class LDK {
 	async abandonPayment(paymentId: string): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.abandonPayment(paymentId);
+			this.writeDebugToLog('abandonPayment', paymentId);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('abandonPayment', e);
 			return err(e);
 		}
 	}
@@ -584,8 +674,10 @@ class LDK {
 	async version(): Promise<Result<{ c_bindings: string; ldk: string }>> {
 		try {
 			const res = await NativeLDK.version();
+			this.writeDebugToLog('version');
 			return ok(JSON.parse(res));
 		} catch (e) {
+			this.writeErrorToLog('version', e);
 			return err(e);
 		}
 	}
@@ -597,8 +689,10 @@ class LDK {
 	async nodeId(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.nodeId();
+			this.writeDebugToLog('nodeId');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('nodeId', e);
 			return err(e);
 		}
 	}
@@ -610,8 +704,10 @@ class LDK {
 	async listPeers(): Promise<Result<string[]>> {
 		try {
 			const res = await NativeLDK.listPeers();
+			this.writeDebugToLog('listPeers', `Peers: ${res.length}`);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('listPeers', e);
 			return err(e);
 		}
 	}
@@ -624,8 +720,10 @@ class LDK {
 	async listChannels(): Promise<Result<TChannel[]>> {
 		try {
 			const res = await NativeLDK.listChannels();
+			this.writeDebugToLog('listChannels', `Channels: ${res.length}`);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('listChannels', e);
 			return err(e);
 		}
 	}
@@ -638,8 +736,13 @@ class LDK {
 	async listUsableChannels(): Promise<Result<TChannel[]>> {
 		try {
 			const res = await NativeLDK.listUsableChannels();
+			this.writeDebugToLog(
+				'listUsableChannels',
+				`Usable channels: ${res.length}`,
+			);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('listUsableChannels', e);
 			return err(e);
 		}
 	}
@@ -652,8 +755,10 @@ class LDK {
 	async listChannelFiles(): Promise<Result<string[]>> {
 		try {
 			const res = await NativeLDK.listChannelFiles();
+			this.writeDebugToLog('listChannelFiles', `Files: ${res.length}`);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('listChannelFiles', e);
 			return err(e);
 		}
 	}
@@ -666,8 +771,10 @@ class LDK {
 	async networkGraphListNodeIds(): Promise<Result<string[]>> {
 		try {
 			const res = await NativeLDK.networkGraphListNodeIds();
+			this.writeDebugToLog('networkGraphListNodeIds');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('networkGraphListNodeIds', e);
 			return err(e);
 		}
 	}
@@ -683,8 +790,10 @@ class LDK {
 	): Promise<Result<TNetworkGraphNodeInfo[]>> {
 		try {
 			const res = await NativeLDK.networkGraphNodes(nodeIds);
+			this.writeDebugToLog('networkGraphNodes');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('networkGraphNodes', e);
 			return err(e);
 		}
 	}
@@ -702,16 +811,21 @@ class LDK {
 			}
 
 			if (res.value.length > 100) {
-				return err(`Too many nodes to query (${res.value.length})`);
+				const tooManyError = `Too many nodes to query (${res.value.length})`;
+				this.writeErrorToLog('completeGraphNodes', tooManyError);
+				return err(tooManyError);
 			}
 
 			const nodeRes = await this.networkGraphNodes(res.value);
 			if (nodeRes.isErr()) {
+				this.writeErrorToLog('completeGraphNodes', nodeRes.error);
 				return err(nodeRes.error);
 			}
 
+			this.writeDebugToLog('completeGraphNodes');
 			return ok(nodeRes.value);
 		} catch (e) {
+			this.writeErrorToLog('networkGraphNodes', e);
 			return err(e);
 		}
 	}
@@ -724,8 +838,10 @@ class LDK {
 	async networkGraphListChannels(): Promise<Result<string[]>> {
 		try {
 			const res = await NativeLDK.networkGraphListChannels();
+			this.writeDebugToLog('networkGraphListChannels');
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('networkGraphNodes', e);
 			return err(e);
 		}
 	}
@@ -741,8 +857,10 @@ class LDK {
 	): Promise<Result<TNetworkGraphChannelInfo>> {
 		try {
 			const res = await NativeLDK.networkGraphChannel(shortChannelId);
+			this.writeDebugToLog('networkGraphChannel');
 			return ok({ ...res, shortChannelId });
 		} catch (e) {
+			this.writeErrorToLog('networkGraphChannel', e);
 			return err(e);
 		}
 	}
@@ -757,20 +875,24 @@ class LDK {
 			const res = await this.networkGraphListChannels();
 			let channels: TNetworkGraphChannelInfo[] = [];
 			if (res.isErr()) {
+				this.writeErrorToLog('completeGraphChannels', res.error);
 				return err(res.error);
 			}
 
 			for (let index = 0; index < res.value.length; index++) {
 				const channelRes = await this.networkGraphChannel(res.value[index]);
 				if (channelRes.isErr()) {
+					this.writeErrorToLog('completeGraphChannels', channelRes.error);
 					return err(channelRes.error);
 				}
 
 				channels.push(channelRes.value);
 			}
 
+			this.writeDebugToLog('completeGraphChannels');
 			return ok(channels);
 		} catch (e) {
+			this.writeErrorToLog('completeGraphChannels', e);
 			return err(e);
 		}
 	}
@@ -787,8 +909,10 @@ class LDK {
 	): Promise<Result<TClaimableBalance[]>> {
 		try {
 			const res = await NativeLDK.claimableBalances(ignoreOpenChannels);
+			this.writeDebugToLog('claimableBalances', res);
 			return ok(res);
 		} catch (e) {
+			this.writeErrorToLog('claimableBalances', e);
 			return err(e);
 		}
 	}
@@ -816,8 +940,10 @@ class LDK {
 				content,
 				format || 'string',
 			);
+			this.writeDebugToLog('writeToFile', fileName);
 			return ok(true);
 		} catch (e) {
+			this.writeErrorToLog('writeToFile', e);
 			return err(e);
 		}
 	}
@@ -843,8 +969,10 @@ class LDK {
 				path || '',
 				format || 'string',
 			);
+			this.writeDebugToLog('readFromFile', fileName);
 			return ok({ ...res, timestamp: Math.round(res.timestamp) });
 		} catch (e) {
+			this.writeErrorToLog('readFromFile', e);
 			return err(e);
 		}
 	}
