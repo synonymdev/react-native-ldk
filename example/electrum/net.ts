@@ -138,4 +138,6 @@ function Socket(this: ISocket): void {
 	};
 }
 
-module.exports.Socket = Socket;
+module.exports = {
+	Socket,
+};
