@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 16
           cache: 'yarn' # cache packages, but not node_modules
-          cache-dependency-path: 'exmpl/yarn.lock'
+          cache-dependency-path: 'example/yarn.lock'
 
       - name: Cache lib node modules
         uses: actions/cache@v3
@@ -58,7 +58,7 @@ jobs:
       #     key: node-modules-${{ hashFiles('**/yarn.lock') }}
 
       - name: Install node_modules
-        working-directory: exmpl
+        working-directory: example
         run: yarn install && yarn rn-setup
 
       - name: Use specific Java version for sdkmanager to work
@@ -68,7 +68,7 @@ jobs:
           java-version: '11'
 
       - name: Build
-        working-directory: exmpl
+        working-directory: example
         run: yarn e2e:build:android-release
 
       - name: run tests
@@ -79,11 +79,11 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none -partition-size 2047
           arch: x86_64
           disable-animations: true
-          working-directory: exmpl
+          working-directory: example
           script: yarn e2e:test:android-release || yarn e2e:test:android-release || yarn e2e:test:android-release
 
       - uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: e2e-test-videos
-          path: ./exmpl/artifacts/
+          path: ./example/artifacts/

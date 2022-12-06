@@ -145,6 +145,7 @@ const App = (): ReactElement => {
 				<View style={styles.container}>
 					<Button
 						title={'E2E test'}
+						testID="E2ETest"
 						onPress={async (): Promise<void> => {
 							//TODO add more functionality to test
 							const ldkVersion = await ldk.version();

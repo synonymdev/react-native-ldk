@@ -1,3 +1,4 @@
+/* global localStorage */
 if (typeof __dirname === 'undefined') {
 	global.__dirname = '/';
 }
