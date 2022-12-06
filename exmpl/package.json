@@ -19,7 +19,7 @@
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "reinstall": "cd ../lib/ && yarn install && yarn build && cd ../example/ && yarn add ../lib && yarn rn-setup",
     "clean": "rm -rf node_modules ios/Pods ios/Podfile.lock ios/build && yarn install && cd ios && pod deintegrate && pod install && cd ../",
-    "postinstall": "rn-nodeify --install buffer,stream,assert,events,crypto,vm,process --hack"
+    "rn-setup": "node rn-setup.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.17.10",

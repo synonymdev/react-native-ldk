@@ -57,7 +57,7 @@ jobs:
       - name: Install Dependencies
         if: steps.cache-nm.outputs.cache-hit != 'true'
         working-directory: exmpl
-        run: yarn install
+        run: yarn install && yarn rn-setup
 
       # - name: Activate react-native-skia-stup
       #   run: |
