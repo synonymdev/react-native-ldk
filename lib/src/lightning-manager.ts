@@ -121,9 +121,13 @@ class LightningManager {
 
 	constructor() {
 		// Step 0: Subscribe to all events
-		ldk.onEvent(EEventTypes.native_log, (line) =>
-			console.log(`react-native-ldk: ${line}`),
-		);
+		ldk.onEvent(EEventTypes.native_log, (line) => {
+			if (line.indexOf('Could not locate file at') > -1) {
+				//Not an important error
+				return;
+			}
+			console.log(`react-native-ldk: ${line}`);
+		});
 		ldk.onEvent(EEventTypes.ldk_log, (line) => console.log(`LDK: ${line}`));
 		ldk.onEvent(EEventTypes.register_tx, this.onRegisterTx.bind(this));
 		ldk.onEvent(EEventTypes.register_output, this.onRegisterOutput.bind(this));
