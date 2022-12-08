@@ -10,7 +10,9 @@ import java.net.URL
 import java.nio.channels.Channels
 
 fun handleResolve(promise: Promise, res: LdkCallbackResponses) {
-    LdkEventEmitter.send(EventTypes.native_log, "Success: ${res}")
+    if (res != LdkCallbackResponses.log_write_success) {
+        LdkEventEmitter.send(EventTypes.native_log, "Success: ${res}")
+    }
     promise.resolve(res.toString());
 }
 

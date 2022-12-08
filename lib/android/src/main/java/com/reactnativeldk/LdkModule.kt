@@ -92,6 +92,7 @@ enum class LdkCallbackResponses {
     fees_updated,
     log_level_updated,
     log_path_updated,
+    log_write_success,
     chain_monitor_init_success,
     keys_manager_init_success,
     channel_manager_init_success,
@@ -198,6 +199,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         LogFile.setFilePath(logFile)
         handleResolve(promise, LdkCallbackResponses.log_path_updated)
+    }
+
+    @ReactMethod
+    fun writeToLogFile(line: String, promise: Promise) {
+        LogFile.write(line)
+
+        handleResolve(promise, LdkCallbackResponses.log_write_success)
     }
 
     @ReactMethod
@@ -338,9 +346,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 body.putInt("node_count", networkGraph!!.read_only().list_nodes().count())
                 LdkEventEmitter.send(EventTypes.network_graph_updated, body)
             }
-
-            handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
         }
+
+        handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
     }
 
     @ReactMethod
@@ -794,7 +802,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun networkGraphListNodes(promise: Promise) {
+    fun networkGraphListNodeIds(promise: Promise) {
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
 
         val total = graph.list_nodes().count()
@@ -809,11 +817,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun networkGraphNode(nodeId: String, promise: Promise) {
+    fun networkGraphNodes(nodeIds: ReadableArray, promise: Promise) {
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
 
-        val id = NodeId.from_pubkey(nodeId.hexa())
-        promise.resolve(graph.node(id)?.asJson)
+        val list = Arguments.createArray()
+        //TODO
+        //        val id = NodeId.from_pubkey(nodeId.hexa())
+        promise.resolve(list)
     }
 
     @ReactMethod
