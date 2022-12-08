@@ -146,8 +146,10 @@ val NodeInfo.asJson: WritableMap
 
         val shortChannelIds = Arguments.createArray()
         _channels.iterator().forEach { shortChannelIds.pushString(it.toString()) }
-        result.putArray("channels", shortChannelIds)
-
+        result.putArray("shortChannelIds", shortChannelIds)
+        result.putInt("lowest_inbound_channel_fees_base_sat", (_lowest_inbound_channel_fees?._base_msat ?: 0) / 1000)
+        result.putInt("lowest_inbound_channel_fees_proportional_millionths", _lowest_inbound_channel_fees?._proportional_millionths ?: 0)
+        result.putDouble("announcement_info_last_update", (_announcement_info?._last_update ?: 0).toDouble() * 1000)
         return result
     }
 

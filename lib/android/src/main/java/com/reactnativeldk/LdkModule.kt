@@ -820,9 +820,20 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun networkGraphNodes(nodeIds: ReadableArray, promise: Promise) {
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
 
+        val graphNodes = graph.list_nodes().map { it.as_slice().hexEncodedString() }
+
+        //Filter out nodes we don't know about as querying unknown nodes will cause a crash
+        val includedList: List<String> = nodeIds.toArrayList().map { it as String }.filter { graphNodes.contains(it) }
+
         val list = Arguments.createArray()
-        //TODO
-        //        val id = NodeId.from_pubkey(nodeId.hexa())
+        includedList.forEach {
+            val node = graph.node(NodeId.from_pubkey(it.hexa()))?.asJson
+            if (node != null) {
+                node.putString("id", it)
+                list.pushMap(node)
+            }
+        }
+
         promise.resolve(list)
     }
 

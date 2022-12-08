@@ -852,9 +852,11 @@ class Ldk: NSObject {
             return handleReject(reject, .init_network_graph)
         }
         
+        let graphNodes = networkGraph.list_nodes().map { Data($0.as_slice()).hexEncodedString() }
+        
         //Filter out nodes we don't know about as querying unknown nodes will cause a crash
         let includedList = nodeIds.map({ $0 as! String }).filter { id in
-            return networkGraph.list_nodes().contains { id == Data($0.as_slice()).hexEncodedString() }
+            return graphNodes.contains { id == $0 }
         }
                 
         return resolve(includedList.map({ id in

@@ -424,8 +424,7 @@ const App = (): ReactElement => {
 								return setMessage(decode.error.message);
 							}
 
-							const { recover_payee_pub_key, amount_satoshis, description } =
-								decode.value;
+							const { amount_satoshis, description } = decode.value;
 
 							const ownAmountSats = 1000;
 							Alert.alert(
@@ -467,7 +466,7 @@ const App = (): ReactElement => {
 								return setMessage(nodesRes.error.message);
 							}
 
-							let msg = 'Nodes: \n';
+							let msg = `Nodes (${nodesRes.value.length}): \n`;
 
 							const nodes = await ldk.networkGraphNodes(nodesRes.value);
 							if (nodes.isOk()) {
@@ -478,7 +477,7 @@ const App = (): ReactElement => {
 										lowest_inbound_channel_fees_base_sat,
 										announcement_info_last_update,
 									} = node;
-									let time = new Date(announcement_info_last_update);
+									const time = new Date(announcement_info_last_update);
 
 									msg += `\n\n${id}\nChannels: ${shortChannelIds.length}\n`;
 									msg += `Lowest inbound fee: ${lowest_inbound_channel_fees_base_sat} sat\n`;
