@@ -1,0 +1,89 @@
+name: e2e-android
+
+on:
+  pull_request:
+    branches:
+      - 'master'
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  e2e-android:
+    runs-on: macos-12
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'yarn' # cache packages, but not node_modules
+          cache-dependency-path: 'example/yarn.lock'
+
+      - name: Cache lib node modules
+        uses: actions/cache@v3
+        id: lib-npmcache
+        with:
+          path: lib/node_modules
+          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Install lib dependencies
+        if: steps.lib-npmcache.outputs.cache-hit != 'true'
+        working-directory: lib
+        run: yarn install
+
+      - name: Build lib
+        working-directory: lib
+        run: yarn build
+
+      - name: Use gradle caches
+        uses: actions/cache@v2
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # - name: Cache node modules
+      #   uses: actions/cache@v3
+      #   id: cache-nm
+      #   with:
+      #     path: node_modules
+      #     key: node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Install node_modules
+        working-directory: example
+        run: yarn install && yarn rn-setup
+
+      - name: Use specific Java version for sdkmanager to work
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Build
+        working-directory: example
+        run: yarn e2e:build:android-release
+
+      - name: run tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 31
+          avd-name: Pixel_API_31_AOSP
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none -partition-size 2047
+          arch: x86_64
+          disable-animations: true
+          working-directory: example
+          script: yarn e2e:test:android-release || yarn e2e:test:android-release || yarn e2e:test:android-release
+
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: e2e-test-videos
+          path: ./example/artifacts/

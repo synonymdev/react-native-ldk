@@ -4,21 +4,27 @@ on:
   pull_request:
     branches:
       - 'master'
+  push:
+    branches:
+      - 'master'
 
 jobs:
-  e2e-test:
-    name: E2E iOS test
-    runs-on: macOS-latest
-    timeout-minutes: 35
+  e2e-ios:
+    runs-on: macos-12
+    timeout-minutes: 120
 
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v2
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v1
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
-          node-version: 14
+          fetch-depth: 1
+
+      - name: Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'yarn' # cache packages, but not node_modules
+          cache-dependency-path: 'example/yarn.lock'
 
       - name: Cache lib node modules
         uses: actions/cache@v3
@@ -38,20 +44,25 @@ jobs:
 
       - name: Cache app node modules
         uses: actions/cache@v3
-        id: app-npmcache
+        id: cache-nm
         with:
           path: example/node_modules
           key: node-modules-${{ hashFiles('**/yarn.lock') }}
 
       - name: Rebuild detox
-        if: steps.app-npmcache.outputs.cache-hit == 'true'
+        if: steps.cache-nm.outputs.cache-hit == 'true'
         working-directory: example
         run: yarn detox clean-framework-cache && yarn detox build-framework-cache
 
-      - name: Install app dependencies
-        if: steps.app-npmcache.outputs.cache-hit != 'true'
+      - name: Install Dependencies
+        if: steps.cache-nm.outputs.cache-hit != 'true'
         working-directory: example
-        run: yarn install
+        run: yarn install && yarn rn-setup
+
+      # - name: Activate react-native-skia-stup
+      #   run: |
+      #     yarn add @shopify/react-native-skia@0.1.156 git+ssh://git@github.com/limpbrains/react-native-skia-stub
+      #     patch -p1 < .github/workflows/react-native-skia-stub.patch
 
       - name: Cache Pods
         uses: actions/cache@v3
@@ -60,19 +71,27 @@ jobs:
           path: example/ios/Pods
           key: pods-${{ hashFiles('**/Podfile.lock') }}
 
-      - name: Install pods and rn-nodify
+      - name: Install pods
         working-directory: example
         run: |
           gem update cocoapods xcodeproj
-          yarn rn-setup
+          cd ios && pod install && cd ..
 
-      - name: Install brew dependencies
-        run: brew tap wix/brew && brew install applesimutils
+      - name: Install applesimutils
+        run: |
+          brew tap wix/brew
+          brew install applesimutils
 
-      - name: Build iOS app
+      - name: Build
         working-directory: example
-        run: yarn e2e:ios-build
+        run: yarn e2e:build:ios-release
 
       - name: Test iOS app
         working-directory: example
-        run: sh ../.github/scripts/test-ios.sh
+        run: yarn e2e:test:ios-release || yarn e2e:test:ios-release || yarn e2e:test:ios-release
+
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: e2e-test-videos
+          path: ./example/artifacts/

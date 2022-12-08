@@ -87,6 +87,8 @@ export const connectToElectrum = async ({
 	const net = options.net ?? global?.net;
 	const _tls = options.tls ?? tls;
 
+	console.info('NET', net);
+
 	const startResponse = await electrum.start({
 		network: selectedNetwork,
 		customPeers: customPeers[selectedNetwork],
