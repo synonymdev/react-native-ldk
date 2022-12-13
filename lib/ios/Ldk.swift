@@ -71,6 +71,7 @@ enum LdkCallbackResponses: String {
     case fees_updated = "fees_updated"
     case log_level_updated = "log_level_updated"
     case log_path_updated = "log_path_updated"
+    case log_write_success = "log_write_success"
     case chain_monitor_init_success = "chain_monitor_init_success"
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
@@ -175,6 +176,12 @@ class Ldk: NSObject {
     }
 
     @objc
+    func writeToLogFile(_ line: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        Logfile.log.write(String(line))
+        return handleResolve(resolve, .log_write_success)
+    }
+    
+    @objc
     func initChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard chainMonitor == nil else {
             return handleReject(reject, .already_init)
@@ -250,12 +257,13 @@ class Ldk: NSObject {
             if read.isOk() {
                 networkGraph = read.getValue()
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded network graph from file")
-
             }
         } catch {
             networkGraph = NetworkGraph(genesis_hash: String(genesisHash).hexaBytes, logger: logger)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch. \(error.localizedDescription)")
         }
+        
+        print("rapidGossipSyncUrl: \(rapidGossipSyncUrl)")
         
         //Download url passed, enable rapid gossip sync
         if rapidGossipSyncUrl != "" {
@@ -377,6 +385,8 @@ class Ldk: NSObject {
             channelMonitorsSerialized.append([UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)))
         }
         
+        print("enableP2PGossip \(enableP2PGossip)")
+        
         do {
             //Only restore a node if we have existing channel monitors to restore. Else we lose our UserConfig settings when restoring.
             if let channelManagerSerialized = storedChannelManager, channelMonitorsSerialized.count > 0 {
@@ -429,6 +439,10 @@ class Ldk: NSObject {
 
         peerHandler = channelManagerConstructor!.getTCPPeerHandler()
         invoicePayer = channelManagerConstructor!.payer
+        
+        if enableP2PGossip {
+            self.networkGraph = channelManagerConstructor!.net_graph
+        }
         
         return handleResolve(resolve, .channel_manager_init_success)
     }
@@ -819,7 +833,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func networkGraphListNodes(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func networkGraphListNodeIds(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let networkGraph = networkGraph?.read_only() else {
             return handleReject(reject, .init_network_graph)
         }
@@ -833,12 +847,23 @@ class Ldk: NSObject {
     }
     
     @objc
-    func networkGraphNode(_ nodeId: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func networkGraphNodes(_ nodeIds: NSArray, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let networkGraph = networkGraph?.read_only() else {
             return handleReject(reject, .init_network_graph)
         }
+        
+        let graphNodes = networkGraph.list_nodes().map { Data($0.as_slice()).hexEncodedString() }
+        
+        //Filter out nodes we don't know about as querying unknown nodes will cause a crash
+        let includedList = nodeIds.map({ $0 as! String }).filter { id in
+            return graphNodes.contains { id == $0 }
+        }
                 
-        return resolve(networkGraph.node(node_id: NodeId(pubkey: String(nodeId).hexaBytes)).asJson)
+        return resolve(includedList.map({ id in
+            var info = networkGraph.node(node_id: NodeId(pubkey: id.hexaBytes)).asJson
+            info["id"] = id
+            return info
+        }))
     }
     
     @objc
@@ -846,7 +871,7 @@ class Ldk: NSObject {
         guard let networkGraph = networkGraph?.read_only() else {
             return handleReject(reject, .init_network_graph)
         }
-        
+                
         let total = networkGraph.list_channels().count
         if total > 100 {
             return handleReject(reject, .data_too_large_for_rn, nil, "Too many channels to return (\(total))")
@@ -861,7 +886,14 @@ class Ldk: NSObject {
             return handleReject(reject, .init_network_graph)
         }
         
-        return resolve(networkGraph.channel(short_channel_id: UInt64(shortChannelId as String)!).asJson)
+        let channelId = String(shortChannelId)
+        
+        let channels = networkGraph.list_channels()
+        if !channels.contains{ channelId == String($0) } {
+            return handleReject(reject, .init_network_graph)
+        }
+        
+        return resolve(networkGraph.channel(short_channel_id: UInt64(channelId)!).asJson)
     }
     
     @objc

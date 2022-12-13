@@ -19,7 +19,7 @@ export class Err<T> {
 	) {
 		// Don't console log for unit tests or if we're not in dev mode
 		if (process.env.JEST_WORKER_ID === undefined && __DEV__) {
-			console.info(error);
+			// console.info(error);
 		}
 	}
 

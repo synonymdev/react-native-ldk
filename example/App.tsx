@@ -424,16 +424,14 @@ const App = (): ReactElement => {
 								return setMessage(decode.error.message);
 							}
 
-							const { recover_payee_pub_key, amount_satoshis } = decode.value;
+							const { amount_satoshis, description } = decode.value;
 
 							const ownAmountSats = 1000;
 							Alert.alert(
 								amount_satoshis
 									? `Pay ${amount_satoshis ?? 0}`
 									: 'Zero sat invoice found',
-								amount_satoshis
-									? `To pubkey: ${recover_payee_pub_key}`
-									: `Send ${ownAmountSats} sats (Our chosen amount) to send over?`,
+								description,
 								[
 									{
 										text: 'Cancel',
@@ -461,26 +459,33 @@ const App = (): ReactElement => {
 					/>
 
 					<Button
-						title={'Get network graph'}
+						title={'Get network graph nodes'}
 						onPress={async (): Promise<void> => {
-							const nodesRes = await ldk.completeGraphNodes();
+							const nodesRes = await ldk.networkGraphListNodeIds();
 							if (nodesRes.isErr()) {
 								return setMessage(nodesRes.error.message);
 							}
 
-							const channelRes = await ldk.completeGraphChannels();
-							if (channelRes.isErr()) {
-								return setMessage(channelRes.error.message);
+							let msg = `Nodes (${nodesRes.value.length}): \n`;
+
+							const nodes = await ldk.networkGraphNodes(nodesRes.value);
+							if (nodes.isOk()) {
+								nodes.value.forEach((node) => {
+									const {
+										id,
+										shortChannelIds,
+										lowest_inbound_channel_fees_base_sat,
+										announcement_info_last_update,
+									} = node;
+									const time = new Date(announcement_info_last_update);
+
+									msg += `\n\n${id}\nChannels: ${shortChannelIds.length}\n`;
+									msg += `Lowest inbound fee: ${lowest_inbound_channel_fees_base_sat} sat\n`;
+									msg += `Last announcement: ${time}`;
+								});
 							}
 
-							const nodes = `Nodes:\n\n${nodesRes.value.map(
-								(node) => `\n${JSON.stringify(node)}`,
-							)}`;
-							const channels = `Channels:\n\n${channelRes.value.map(
-								(channel) => `\n${JSON.stringify(channel)}`,
-							)}`;
-
-							setMessage(`${nodes}\n${channels}`);
+							setMessage(`${msg}`);
 						}}
 					/>
 

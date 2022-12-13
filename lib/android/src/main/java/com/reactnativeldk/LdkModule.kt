@@ -92,6 +92,7 @@ enum class LdkCallbackResponses {
     fees_updated,
     log_level_updated,
     log_path_updated,
+    log_write_success,
     chain_monitor_init_success,
     keys_manager_init_success,
     channel_manager_init_success,
@@ -198,6 +199,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         LogFile.setFilePath(logFile)
         handleResolve(promise, LdkCallbackResponses.log_path_updated)
+    }
+
+    @ReactMethod
+    fun writeToLogFile(line: String, promise: Promise) {
+        LogFile.write(line)
+
+        handleResolve(promise, LdkCallbackResponses.log_write_success)
     }
 
     @ReactMethod
@@ -794,7 +802,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun networkGraphListNodes(promise: Promise) {
+    fun networkGraphListNodeIds(promise: Promise) {
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
 
         val total = graph.list_nodes().count()
@@ -809,11 +817,24 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun networkGraphNode(nodeId: String, promise: Promise) {
+    fun networkGraphNodes(nodeIds: ReadableArray, promise: Promise) {
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
 
-        val id = NodeId.from_pubkey(nodeId.hexa())
-        promise.resolve(graph.node(id)?.asJson)
+        val graphNodes = graph.list_nodes().map { it.as_slice().hexEncodedString() }
+
+        //Filter out nodes we don't know about as querying unknown nodes will cause a crash
+        val includedList: List<String> = nodeIds.toArrayList().map { it as String }.filter { graphNodes.contains(it) }
+
+        val list = Arguments.createArray()
+        includedList.forEach {
+            val node = graph.node(NodeId.from_pubkey(it.hexa()))?.asJson
+            if (node != null) {
+                node.putString("id", it)
+                list.pushMap(node)
+            }
+        }
+
+        promise.resolve(list)
     }
 
     @ReactMethod

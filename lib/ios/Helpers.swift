@@ -9,7 +9,9 @@ import Foundation
 import LightningDevKit
 
 func handleResolve(_ resolve: RCTPromiseResolveBlock, _ res: LdkCallbackResponses) {
-    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Success: \(res.rawValue)")
+    if res != .log_write_success {
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Success: \(res.rawValue)")
+    }
     resolve(res.rawValue)
 }
 
@@ -116,10 +118,12 @@ extension ChannelInfo {
 
 //Nodes in our network graph
 extension NodeInfo {
-    var asJson: Any {
+    var asJson: [String: Any] {
         return [
             "shortChannelIds": get_channels().map({ String($0) }),
-            //TODO gathering other details results in EXC_BAD_ACCESS. Test with next version of LDK.
+            "lowest_inbound_channel_fees_base_sat": get_lowest_inbound_channel_fees().get_base_msat() / 1000,
+            "lowest_inbound_channel_fees_proportional_millionths": get_lowest_inbound_channel_fees().get_proportional_millionths(),
+            "announcement_info_last_update": Int(get_announcement_info().get_last_update()) * 1000
         ]
     }
 }

@@ -121,9 +121,13 @@ class LightningManager {
 
 	constructor() {
 		// Step 0: Subscribe to all events
-		ldk.onEvent(EEventTypes.native_log, (line) =>
-			console.log(`NATIVE LOG: ${line}`),
-		);
+		ldk.onEvent(EEventTypes.native_log, (line) => {
+			if (line.indexOf('Could not locate file at') > -1) {
+				//Not an important error
+				return;
+			}
+			console.log(`react-native-ldk: ${line}`);
+		});
 		ldk.onEvent(EEventTypes.ldk_log, (line) => console.log(`LDK: ${line}`));
 		ldk.onEvent(EEventTypes.register_tx, this.onRegisterTx.bind(this));
 		ldk.onEvent(EEventTypes.register_output, this.onRegisterOutput.bind(this));
@@ -288,17 +292,18 @@ class LightningManager {
 			);
 		}
 
-		//The path all wallet and network graph persistence will be saved to
 		let accountStoragePath = appendPath(this.baseStoragePath, account.name);
-		const storagePathRes = await ldk.setAccountStoragePath(accountStoragePath);
-		if (storagePathRes.isErr()) {
-			return storagePathRes;
-		}
 
 		this.logFilePath = `${accountStoragePath}/logs/${Date.now()}.log`;
 		const logFilePathRes = await ldk.setLogFilePath(this.logFilePath);
 		if (logFilePathRes.isErr()) {
 			return logFilePathRes;
+		}
+
+		//The path all wallet and network graph persistence will be saved to
+		const storagePathRes = await ldk.setAccountStoragePath(accountStoragePath);
+		if (storagePathRes.isErr()) {
+			return storagePathRes;
 		}
 
 		//Validate we didn't change the seed for this account if one exists
