@@ -218,7 +218,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func initConfig(_ acceptInboundChannels: Bool, manuallyAcceptInboundChannels: Bool, announcedChannels: Bool, minChannelHandshakeDepth: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initConfig(_ acceptInboundChannels: Bool, manuallyAcceptInboundChannels: Bool, announcedChannels: Bool, minChannelHandshakeDepth: NSInteger, forceAnnouncedChannelPreference: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard userConfig == nil else {
             return handleReject(reject, .already_init)
         }
@@ -236,7 +236,7 @@ class Ldk: NSObject {
         userConfig!.set_channel_handshake_config(val: channelHandshakeConfig)
 
         let channelHandshakeLimits = ChannelHandshakeLimits()
-        channelHandshakeLimits.set_force_announced_channel_preference(val: true)
+        channelHandshakeLimits.set_force_announced_channel_preference(val: forceAnnouncedChannelPreference)
         userConfig!.set_channel_handshake_limits(val: channelHandshakeLimits)
 
         return handleResolve(resolve, .config_init_success)
