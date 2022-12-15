@@ -348,6 +348,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             }
 
             handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
+        } else {
+            //No graph sync, assume p2p gossip
+            handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
         }
     }
 
