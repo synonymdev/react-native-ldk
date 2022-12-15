@@ -346,9 +346,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 body.putInt("node_count", networkGraph!!.read_only().list_nodes().count())
                 LdkEventEmitter.send(EventTypes.network_graph_updated, body)
             }
-        }
 
-        handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
+            handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
+        }
     }
 
     @ReactMethod
