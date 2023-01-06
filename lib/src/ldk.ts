@@ -637,6 +637,46 @@ class LDK {
 		}
 	}
 
+	async payWithCustomRoute({
+		paymentRequest: anyPaymentRequest,
+		amountSats,
+	}: TPaymentReq): Promise<Result<string>> {
+		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
+		const decodeRes = await this.decode({ paymentRequest });
+		if (decodeRes.isErr()) {
+			return err(decodeRes.error);
+		}
+
+		const {
+			recover_payee_pub_key,
+			route_hints,
+			payment_secret,
+			payment_hash,
+			amount_satoshis,
+			min_final_cltv_expiry,
+		} = decodeRes.value;
+
+		let route = 'todo';
+
+		let sats = amount_satoshis || amountSats; //TODO validate
+
+		try {
+			const res = await NativeLDK.payWithRoute(
+				route,
+				recover_payee_pub_key,
+				sats,
+				min_final_cltv_expiry,
+				payment_hash,
+				payment_secret,
+			);
+			this.writeDebugToLog('pay');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('pay', e);
+			return err(e);
+		}
+	}
+
 	/**
 	 * Abandons a payment
 	 * @param paymentId

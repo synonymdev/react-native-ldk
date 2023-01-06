@@ -257,3 +257,44 @@ extension RapidGossipSync {
         task?.resume()
     }
 }
+
+func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.PaymentSendFailure) {
+    guard let errorType = error.getValueType() else {
+        return handleReject(reject, .invoice_payment_fail_sending)
+    }
+    
+    switch errorType {
+    case .AllFailedRetrySafe:
+//            let errorMessage = ""
+//            error.getValueAsAllFailedRetrySafe()?.forEach({ apiError in
+//                apiError.getValueType() //TODO iterate through all
+//            })
+
+        return handleReject(reject, .invoice_payment_fail_retry_safe, nil, error.getValueAsAllFailedRetrySafe().map { $0.description } )
+    case .ParameterError:
+        guard let parameterError = error.getValueAsParameterError(), let parameterErrorType = parameterError.getValueType() else {
+            return handleReject(reject, .invoice_payment_fail_parameter_error)
+        }
+
+        switch parameterErrorType {
+        case .APIMisuseError:
+            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "parameterError.getValueType().debugDescription")
+        case .FeeRateTooHigh:
+            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsFeeRateTooHigh()?.getErr())
+        case .RouteError:
+            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsRouteError()?.getErr())
+        case .ChannelUnavailable:
+            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsChannelUnavailable()?.getErr())
+        case .IncompatibleShutdownScript:
+            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "IncompatibleShutdownScript")
+        @unknown default:
+            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, error.getValueAsParameterError().debugDescription)
+        }
+    case .PartialFailure:
+        return handleReject(reject, .invoice_payment_fail_partial, nil, error.getValueAsPartialFailure().debugDescription)
+    case .PathParameterError:
+        return handleReject(reject, .invoice_payment_fail_path_parameter_error, nil, error.getValueAsPartialFailure().debugDescription)
+    default:
+        return handleReject(reject, .invoice_payment_fail_sending)
+    }
+}

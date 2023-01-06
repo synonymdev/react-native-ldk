@@ -688,21 +688,208 @@ class Ldk: NSObject {
                 return handleReject(reject, .invoice_payment_fail_sending)
             }
 
-            switch sendingError.getValueType() {
-            case .AllFailedRetrySafe:
-                return handleReject(reject, .invoice_payment_fail_retry_safe, nil, sendingError.getValueAsAllFailedRetrySafe().map { $0.description } )
-            case .ParameterError:
-                return handleReject(reject, .invoice_payment_fail_parameter_error, nil, sendingError.getValueAsParameterError().debugDescription)
-            case .PartialFailure:
-                return handleReject(reject, .invoice_payment_fail_partial, nil, sendingError.getValueAsPartialFailure().debugDescription)
-            case .PathParameterError:
-                return handleReject(reject, .invoice_payment_fail_path_parameter_error, nil, sendingError.getValueAsPartialFailure().debugDescription)
-            default:
-                return handleReject(reject, .invoice_payment_fail_sending)
-            }
+            return handlePaymentSendFailure(reject, error: sendingError)
         default:
             return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
         }
+    }
+    
+    @objc
+    func payWithRoute(_ route: NSString, destinationNodeId: NSString, amountSats: NSInteger, cltvExpiryDelta: NSInteger, paymentHash: NSString, paymentSecret: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        let amountMSats = amountSats * 1000
+    
+        
+        //TODO get from JS
+        let myChannel = channelManager.list_channels().first!
+        let channelShort = myChannel.get_short_channel_id().getValue()!
+                
+        //TODO copied>>>>>>
+        let routeHop = RouteHop(
+            pubkey_arg: String(destinationNodeId).hexaBytes,
+            node_features_arg: NodeFeatures(),
+            short_channel_id_arg: UInt64(channelShort),
+            channel_features_arg: ChannelFeatures(),
+            fee_msat_arg: UInt64(amountMSats),
+            cltv_expiry_delta_arg: UInt32(cltvExpiryDelta)
+        )
+        print("***")
+        print(paymentHash)
+        print(routeHop.asJson)
+     
+        let paths = [routeHop]
+        //<<<<<<<
+                
+        let payee = PaymentParameters(payee_pubkey: String(destinationNodeId).hexaBytes)
+
+        let route = Route(paths_arg: [paths], payment_params_arg: payee)
+        
+        let res = channelManager.send_payment(route: route, payment_hash: String(paymentHash).hexaBytes, payment_secret: String(paymentSecret).hexaBytes)
+        if res.isOk() {
+            return resolve(Data(res.getValue() ?? []).hexEncodedString())
+        }
+        
+        guard let error = res.getError() else {
+            return handleReject(reject, .invoice_payment_fail_unknown)
+        }
+        
+        return handlePaymentSendFailure(reject, error: error)
+    }
+    
+    @objc
+    func payWithRoute1Hop(_ payReq: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+
+        let parsedInvoice = Invoice.from_str(s: String(payReq))
+        guard parsedInvoice.isOk(), let invoice = parsedInvoice.getValue()  else {
+            let error = parsedInvoice.getError()?.getValueAsParseError()
+            return handleReject(reject, .decode_invoice_fail, nil, error?.to_str())
+        }
+        
+        let myChannel = channelManager.list_channels().first!
+        let channelShort = myChannel.get_short_channel_id().getValue()!
+        let destNodeId = invoice.recover_payee_pub_key()
+        
+        let destNode = networkGraph.node(node_id: NodeId(pubkey: destNodeId))
+        
+        print("destNode: \(destNode.asJson)")
+        //TODO will only work if dest node in our graph, check if in graph
+        
+        let nodeFeatures = networkGraph.node(node_id: NodeId(pubkey: destNodeId)).get_announcement_info().get_features()
+        
+        print("nodeFeatures: \(nodeFeatures.requires_basic_mpp())")
+
+        //TODO get dest node features from invoice in case dest is via a private channel
+        
+        print("fee: \(invoice.amount_milli_satoshis().getValue()!)")
+        print("cltv: \(invoice.min_final_cltv_expiry())")
+
+        print("destNodeId: \(destNodeId.count)")
+        print("channelShort: \(channelShort)")
+
+        //TODO consider find_route function
+//        find_route
+        
+        //Direct counterparty >>>>>>
+        let hop = RouteHop(
+            pubkey_arg: destNodeId,
+            node_features_arg: nodeFeatures,
+            short_channel_id_arg: channelShort,
+            channel_features_arg: ChannelFeatures(),
+            fee_msat_arg: invoice.amount_milli_satoshis().getValue()!,
+            cltv_expiry_delta_arg: UInt32(invoice.min_final_cltv_expiry())
+        )
+        let paths: [RouteHop] = [hop]
+        //<<<<<<< Direct counterparty
+        
+        let route = Route(
+            paths_arg: [paths],
+            payment_params_arg: PaymentParameters(payee_pubkey: destNodeId)
+        )
+         
+        let res = channelManager.send_payment(route: route, payment_hash: invoice.payment_hash(), payment_secret: invoice.payment_secret())
+        if res.isOk() {
+            return resolve("Sending...")
+        }
+
+        guard let error = res.getError() else {
+            return handleReject(reject, .invoice_payment_fail_unknown)
+        }
+
+        return handlePaymentSendFailure(reject, error: error)
+    }
+    
+    @objc
+    func payWithRoute2(_ payReq: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+
+        let parsedInvoice = Invoice.from_str(s: String(payReq))
+        guard parsedInvoice.isOk(), let invoice = parsedInvoice.getValue()  else {
+            let error = parsedInvoice.getError()?.getValueAsParseError()
+            return handleReject(reject, .decode_invoice_fail, nil, error?.to_str())
+        }
+        
+        let myChannel = channelManager.list_channels().first!
+        let channelShort = myChannel.get_short_channel_id().getValue()!
+        
+        let aliceNodeId = "0396493deab734833c670ea2a4c63edd5aa3f4a5e229372a148b18b42a287613e5".hexaBytes
+        let aliceNode = networkGraph.node(node_id: NodeId(pubkey: aliceNodeId))
+        let aliceNodeFeatures = aliceNode.get_announcement_info().get_features()
+        let aliceToBobShortChannelId: UInt64 = aliceNode.get_channels().first! //TODO get the one with outgoing cap
+        
+        print("aliceNodeFeatures: \(aliceNodeFeatures.requires_basic_mpp())")
+        print("aliceNodeId: \(Data(aliceNodeId).hexEncodedString())")
+        
+        
+//        print("aliceToBobShortChannelId: \(aliceToBobShortChannelId)")
+        
+        //TODO get node features of first hop from invoice in case dest is via a private channel
+        
+        //Alice
+        let hop1 = RouteHop(
+            pubkey_arg: "0396493deab734833c670ea2a4c63edd5aa3f4a5e229372a148b18b42a287613e5".hexaBytes,
+            node_features_arg: NodeFeatures(), //TODO dest node features but should be the same
+            short_channel_id_arg: channelShort,
+            channel_features_arg: ChannelFeatures(),
+            fee_msat_arg: 10000, //TODO
+            cltv_expiry_delta_arg: UInt32(invoice.min_final_cltv_expiry())
+        )
+        
+//        return handleReject(reject, .invalid_network)
+        
+        let bobNodeId = invoice.recover_payee_pub_key()
+        let bobNode = networkGraph.node(node_id: NodeId(pubkey: bobNodeId))
+        let bobNodeFeatures = bobNode.get_announcement_info().get_features()
+        
+        //Bob the receiver
+        let hop2 = RouteHop(
+            pubkey_arg: bobNodeId,
+            node_features_arg: bobNodeFeatures,
+            short_channel_id_arg: aliceToBobShortChannelId,
+            channel_features_arg: ChannelFeatures(),
+            fee_msat_arg: invoice.amount_milli_satoshis().getValue()!,
+            cltv_expiry_delta_arg: UInt32(invoice.min_final_cltv_expiry())
+        )
+        
+        let paths: [RouteHop] = [hop1, hop2]
+        //<<<<<<< Direct counterparty
+        
+        print("bobNodeFeatures: \(bobNodeFeatures.requires_basic_mpp())")
+        print("fee: \(invoice.amount_milli_satoshis().getValue()!)")
+        print("cltv: \(invoice.min_final_cltv_expiry())")
+        print("bobNodeId: \(Data(bobNodeId).hexEncodedString())")
+        print("channelShort: \(channelShort)")
+        
+        let route = Route(
+            paths_arg: [paths],
+            payment_params_arg: PaymentParameters(payee_pubkey: bobNodeId)
+        )
+         
+        let res = channelManager.send_payment(route: route, payment_hash: invoice.payment_hash(), payment_secret: invoice.payment_secret())
+        if res.isOk() {
+            return resolve("Sending...")
+        }
+
+        guard let error = res.getError() else {
+            return handleReject(reject, .invoice_payment_fail_unknown)
+        }
+
+        return handlePaymentSendFailure(reject, error: error)
     }
 
     @objc
@@ -854,12 +1041,15 @@ class Ldk: NSObject {
         
         let graphNodes = networkGraph.list_nodes().map { Data($0.as_slice()).hexEncodedString() }
         
+        print("Node count: \(graphNodes.count)")
+        
         //Filter out nodes we don't know about as querying unknown nodes will cause a crash
         let includedList = nodeIds.map({ $0 as! String }).filter { id in
             return graphNodes.contains { id == $0 }
         }
                 
         return resolve(includedList.map({ id in
+            print("id: \(id)")
             var info = networkGraph.node(node_id: NodeId(pubkey: id.hexaBytes)).asJson
             info["id"] = id
             return info

@@ -5,6 +5,7 @@ import {
 	Button,
 	EmitterSubscription,
 	Modal,
+	NativeModules,
 	SafeAreaView,
 	ScrollView,
 	StyleSheet,
@@ -25,6 +26,9 @@ import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm, {
 	EEventTypes,
 	TChannelManagerPayment,
+	TChannelManagerPaymentFailed,
+	TChannelManagerPaymentPathFailed,
+	TChannelManagerPaymentPathSuccessful,
 	TChannelUpdate,
 } from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
@@ -34,6 +38,8 @@ import RNFS from 'react-native-fs';
 let logSubscription: EmitterSubscription | undefined;
 let paymentSubscription: EmitterSubscription | undefined;
 let onChannelSubscription: EmitterSubscription | undefined;
+let paymentFailedSubscription: EmitterSubscription | undefined;
+let paymentPathSuccess: EmitterSubscription | undefined;
 let backupSubscriptionId: string | undefined;
 
 const App = (): ReactElement => {
@@ -102,6 +108,28 @@ const App = (): ReactElement => {
 			);
 		}
 
+		if (!paymentFailedSubscription) {
+			// @ts-ignore
+			paymentFailedSubscription = ldk.onEvent(
+				EEventTypes.channel_manager_payment_path_failed,
+				(res: TChannelManagerPaymentPathFailed) =>
+					setMessage(
+						`Payment path failed ${
+							res.payment_failed_permanently ? 'permanently' : 'temporarily'
+						}`,
+					),
+			);
+		}
+
+		if (!paymentPathSuccess) {
+			// @ts-ignore
+			paymentPathSuccess = ldk.onEvent(
+				EEventTypes.channel_manager_payment_path_successful,
+				(res: TChannelManagerPaymentPathSuccessful) =>
+					setMessage(`Payment path success ${res.payment_id}`),
+			);
+		}
+
 		if (!onChannelSubscription) {
 			// @ts-ignore
 			onChannelSubscription = ldk.onEvent(
@@ -128,6 +156,8 @@ const App = (): ReactElement => {
 		return (): void => {
 			logSubscription && logSubscription.remove();
 			paymentSubscription && paymentSubscription.remove();
+			paymentFailedSubscription && paymentFailedSubscription.remove();
+			paymentPathSuccess && paymentPathSuccess.remove();
 			onChannelSubscription && onChannelSubscription.remove();
 			backupSubscriptionId && lm.unsubscribeFromBackups(backupSubscriptionId);
 		};
@@ -412,6 +442,33 @@ const App = (): ReactElement => {
 									onPress: async (): Promise<void> => createInvoice(),
 								},
 							]);
+						}}
+					/>
+
+					<Button
+						title={'Pay with route'}
+						onPress={async (): Promise<void> => {
+							const paymentRequest =
+								'lnbcrt3210n1p3m2s5rpp5s68qaznemsjxazu5u7jfy0hlvaddsa42r6pzvrxqxcq8ku64s8hsdqqcqzpgxqyz5vqsp50f8cshtrralehgxnwzl7pk4nuru8frh5xqvfd5gplyq6fvtv2cjs9qyyssqeurw65c29dencywpeyfyqd0fmt9wztpk7fcdf2ww8859p0efctprtv6t95jynntvw3hlpm8r097kdwmuk4d9rcf6kyw8qwlvmeh5legpgupmaz';
+
+							try {
+								const res = await NativeModules.Ldk.payWithRoute2(
+									paymentRequest,
+								);
+								setMessage(res);
+							} catch (e) {
+								setMessage(JSON.stringify(e));
+							}
+
+							return;
+							const pay = await ldk.payWithCustomRoute({
+								paymentRequest,
+							});
+							if (pay.isErr()) {
+								return setMessage(pay.error.message);
+							}
+
+							setMessage(`Sending... ${JSON.stringify(pay.value)}`);
 						}}
 					/>
 
