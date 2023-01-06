@@ -123,7 +123,7 @@ extension NodeInfo {
             "shortChannelIds": get_channels().map({ String($0) }),
             "lowest_inbound_channel_fees_base_sat": get_lowest_inbound_channel_fees().get_base_msat() / 1000,
             "lowest_inbound_channel_fees_proportional_millionths": get_lowest_inbound_channel_fees().get_proportional_millionths(),
-            "announcement_info_last_update": Int(get_announcement_info().get_last_update()) * 1000
+            "announcement_info_last_update": 0 //Int(get_announcement_info().get_last_update()) * 1000 //TODO causes a crash. Try add back with upgraded bindings.
         ]
     }
 }
