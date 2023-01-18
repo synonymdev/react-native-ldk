@@ -78,7 +78,7 @@ export type TChannelUpdate = {
 type TPath = {
 	pubkey: string;
 	fee_sat: number;
-	short_channel_id: number;
+	short_channel_id: string;
 	cltv_expiry_delta: number;
 };
 
@@ -133,7 +133,7 @@ export type TChannel = {
 	channel_type?: string;
 	user_channel_id: number;
 	confirmations_required?: number;
-	short_channel_id?: number;
+	short_channel_id?: string;
 	inbound_scid_alias?: number;
 	inbound_payment_scid?: number;
 	inbound_capacity_sat: number;
@@ -186,7 +186,7 @@ export type TInvoice = {
 	features?: string;
 	currency: number;
 	to_str: string; //Actual bolt11 invoice string
-	route_hints: RouteHints[];
+	route_hints: TRouteHints[];
 };
 
 export type TNetworkGraphUpdated = {
@@ -194,14 +194,14 @@ export type TNetworkGraphUpdated = {
 	node_count: number;
 };
 
-export type RouteHints = RouteHintHop[];
+export type TRouteHints = TRouteHintHop[];
 
-export type RouteHintHop = {
+export type TRouteHintHop = {
 	src_node_id: string;
 	short_channel_id: string;
 };
 
-export type TPaymentRoute = PaymentHop[];
+export type TPaymentRoute = TPaymentHop[];
 
 export type TPaymentHop = {
 	dest_node_id: string;

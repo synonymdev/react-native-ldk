@@ -67,6 +67,7 @@ extension RouteHintHop {
 //Our own channels
 extension ChannelDetails {
     var asJson: Any {
+        let short_channel_id = get_short_channel_id().getValue()
         return [
             "channel_id": Data(get_channel_id()).hexEncodedString(),
             "is_public": get_is_public(),
@@ -79,7 +80,7 @@ extension ChannelDetails {
             "channel_type": Data(get_channel_type().write()).hexEncodedString(),
             "user_channel_id": get_user_channel_id(), //Number
             "confirmations_required": get_confirmations_required().getValue() as Any, // Optional number
-            "short_channel_id": get_short_channel_id().getValue() as Any, //Optional number
+            "short_channel_id": short_channel_id != nil ? String(short_channel_id!) : nil,
             "inbound_scid_alias": get_inbound_scid_alias().getValue() as Any, //Optional number
             "inbound_payment_scid": get_inbound_payment_scid().getValue() as Any, //Optional number,
             "inbound_capacity_sat": get_inbound_capacity_msat() / 1000,
@@ -133,7 +134,7 @@ extension LightningDevKit.RouteHop {
         return [
             "pubkey": Data(get_pubkey()).hexEncodedString(),
             "fee_sat": get_fee_msat() / 1000,
-            "short_channel_id": get_short_channel_id(),
+            "short_channel_id": String(get_short_channel_id()),
             "cltv_expiry_delta": get_cltv_expiry_delta()
         ]
     }

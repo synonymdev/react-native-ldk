@@ -99,7 +99,7 @@ val ChannelDetails.asJson: WritableMap
         result.putInt("user_channel_id", _user_channel_id.toInt())
         result.putInt("confirmations_required", (_confirmations_required as Option_u32Z.Some).some)
         (_short_channel_id as? Option_u64Z.Some)?.some?.toInt()
-            ?.let { result.putInt("short_channel_id", it) } //Optional number
+            ?.let { result.putString("short_channel_id", it.toString()) } //Optional number
         (_inbound_scid_alias as? Option_u64Z.Some)?.some?.toInt()
             ?.let { result.putInt("inbound_scid_alias", it) }
         (_inbound_scid_alias as? Option_u64Z.Some)?.some?.toInt()
