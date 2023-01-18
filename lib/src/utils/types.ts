@@ -292,6 +292,7 @@ export type TInitConfig = {
 	manuallyAcceptInboundChannels: boolean;
 	announcedChannels: boolean;
 	minChannelHandshakeDepth: number;
+	forceAnnouncedChannelPreference: boolean;
 };
 
 export enum ELdkLogLevels {

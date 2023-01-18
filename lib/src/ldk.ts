@@ -169,6 +169,7 @@ class LDK {
 	 * @param manuallyAcceptInboundChannels
 	 * @param announcedChannels
 	 * @param minChannelHandshakeDepth
+	 * @param forceAnnouncedChannelPreference
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async initConfig(conf: TInitConfig): Promise<Result<string>> {
@@ -177,6 +178,7 @@ class LDK {
 			manuallyAcceptInboundChannels,
 			announcedChannels,
 			minChannelHandshakeDepth,
+			forceAnnouncedChannelPreference,
 		} = conf;
 		try {
 			const res = await NativeLDK.initConfig(
@@ -184,6 +186,7 @@ class LDK {
 				manuallyAcceptInboundChannels,
 				announcedChannels,
 				minChannelHandshakeDepth,
+				forceAnnouncedChannelPreference,
 			);
 			this.writeDebugToLog('initConfig', conf);
 			return ok(res);

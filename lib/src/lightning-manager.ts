@@ -403,6 +403,7 @@ class LightningManager {
 			manuallyAcceptInboundChannels: false,
 			announcedChannels: false,
 			minChannelHandshakeDepth: 1, //TODO Verify correct min
+			forceAnnouncedChannelPreference: false,
 		});
 		if (confRes.isErr()) {
 			return confRes;

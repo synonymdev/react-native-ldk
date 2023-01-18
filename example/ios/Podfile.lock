@@ -302,7 +302,7 @@ PODS:
   - React-jsinspector (0.70.6)
   - React-logger (0.70.6):
     - glog
-  - react-native-ldk (0.0.76):
+  - react-native-ldk (0.0.77):
     - React
   - react-native-randombytes (3.6.1):
     - React-Core
@@ -375,7 +375,7 @@ PODS:
     - React-jsi (= 0.70.6)
     - React-logger (= 0.70.6)
     - React-perflogger (= 0.70.6)
-  - RNCAsyncStorage (1.17.11):
+  - RNCAsyncStorage (1.17.10):
     - React-Core
   - RNCClipboard (1.11.1):
     - React-Core
@@ -593,7 +593,7 @@ SPEC CHECKSUMS:
   React-jsiexecutor: b4a65947391c658450151275aa406f2b8263178f
   React-jsinspector: 60769e5a0a6d4b32294a2456077f59d0266f9a8b
   React-logger: 1623c216abaa88974afce404dc8f479406bbc3a0
-  react-native-ldk: e042f888d7fa13cbbdde1a57fc0226867b7a15a1
+  react-native-ldk: 0d9f1a1c82b55140746c17fdcd85af0507bf7c09
   react-native-randombytes: 421f1c7d48c0af8dbcd471b0324393ebf8fe7846
   react-native-tcp-socket: c1b7297619616b4c9caae6889bcb0aba78086989
   React-perflogger: 8c79399b0500a30ee8152d0f9f11beae7fc36595
@@ -608,7 +608,7 @@ SPEC CHECKSUMS:
   React-RCTVibration: c75ceef7aa60a33b2d5731ebe5800ddde40cefc4
   React-runtimeexecutor: 15437b576139df27635400de0599d9844f1ab817
   ReactCommon: 349be31adeecffc7986a0de875d7fb0dcf4e251c
-  RNCAsyncStorage: 8616bd5a58af409453ea4e1b246521bb76578d60
+  RNCAsyncStorage: 0c357f3156fcb16c8589ede67cc036330b6698ca
   RNCClipboard: 2834e1c4af68697089cdd455ee4a4cdd198fa7dd
   RNFS: 4ac0f0ea233904cb798630b3c077808c06931688
   RNKeychain: ff836453cba46938e0e9e4c22e43d43fa2c90333
