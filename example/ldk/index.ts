@@ -158,7 +158,7 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			return err(nodeIdRes.error.message);
 		}
 
-		Clipboard.setString(nodeIdRes.value);
+		// Clipboard.setString(nodeIdRes.value);
 
 		const syncRes = await lm.syncLdk();
 		if (syncRes.isErr()) {

@@ -201,6 +201,13 @@ export type RouteHintHop = {
 	short_channel_id: string;
 };
 
+export type TPaymentRoute = PaymentHop[];
+
+export type TPaymentHop = {
+	dest_node_id: string;
+	short_channel_id: string;
+};
+
 export type TLogListener = {
 	id: string;
 	callback: (log: string) => void;

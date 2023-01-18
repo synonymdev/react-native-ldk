@@ -700,6 +700,39 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
         
+        print(route)
+        
+        let amountMSats = amountSats * 1000
+    
+        //TODO get from JS
+        let myChannel = channelManager.list_channels().first!
+        let channelShort = myChannel.get_short_channel_id().getValue()!
+        
+        let paths: [RouteHop] = []
+        //<<<<<<<
+                
+        let payee = PaymentParameters(payee_pubkey: String(destinationNodeId).hexaBytes)
+
+        let route = Route(paths_arg: [paths], payment_params_arg: payee)
+        
+        let res = channelManager.send_payment(route: route, payment_hash: String(paymentHash).hexaBytes, payment_secret: String(paymentSecret).hexaBytes)
+        if res.isOk() {
+            return resolve(Data(res.getValue() ?? []).hexEncodedString())
+        }
+        
+        guard let error = res.getError() else {
+            return handleReject(reject, .invoice_payment_fail_unknown)
+        }
+        
+        return handlePaymentSendFailure(reject, error: error)
+    }
+    
+    @objc
+    func payWithRoute_old(_ route: NSString, destinationNodeId: NSString, amountSats: NSInteger, cltvExpiryDelta: NSInteger, paymentHash: NSString, paymentSecret: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
         let amountMSats = amountSats * 1000
     
         
@@ -755,27 +788,23 @@ class Ldk: NSObject {
             return handleReject(reject, .decode_invoice_fail, nil, error?.to_str())
         }
         
+        
+        
+        
         let myChannel = channelManager.list_channels().first!
         let channelShort = myChannel.get_short_channel_id().getValue()!
         let destNodeId = invoice.recover_payee_pub_key()
         
         let destNode = networkGraph.node(node_id: NodeId(pubkey: destNodeId))
         
-        print("destNode: \(destNode.asJson)")
         //TODO will only work if dest node in our graph, check if in graph
         
         let nodeFeatures = networkGraph.node(node_id: NodeId(pubkey: destNodeId)).get_announcement_info().get_features()
         
-        print("nodeFeatures: \(nodeFeatures.requires_basic_mpp())")
-
+      
         //TODO get dest node features from invoice in case dest is via a private channel
         
-        print("fee: \(invoice.amount_milli_satoshis().getValue()!)")
-        print("cltv: \(invoice.min_final_cltv_expiry())")
-
-        print("destNodeId: \(destNodeId.count)")
-        print("channelShort: \(channelShort)")
-
+      
         //TODO consider find_route function
 //        find_route
         

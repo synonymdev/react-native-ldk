@@ -4,35 +4,42 @@ export const selectedNetwork: TAvailableNetworks = 'bitcoinRegtest';
 
 //Lightning Peer Info
 export const peers = {
-	lnd: {
+	alice: {
 		pubKey:
-			'0239af55c86cf84167bc216ffa48687b304a4f0601d6496febf8bbb286a65c814c',
-		address: '127.0.0.1',
+			'0396493deab734833c670ea2a4c63edd5aa3f4a5e229372a148b18b42a287613e5',
+		address: '192.168.0.100',
 		port: 9735,
 	},
-	clightning: {
-		pubKey:
-			'03e8fa0ceb4aa0cc696278189269e01bac22b0549ad62fac726f26cc6c65008ef4',
-		address: '127.0.0.1',
-		port: 9836,
-	},
-	eclair: {
-		pubKey:
-			'03e0588a30b5db6eb91df62a243e179b11f63fe27c44856e510055a9156a845bd2',
-		address: '127.0.0.1',
-		port: 9937,
-	},
+	// bob: {
+	// 	pubKey:
+	// 		'0274a65af6ac433f756d511d07f2a703749161f6ff6a598b67bd59d581ae16ec2e',
+	// 	address: '192.168.0.100',
+	// 	port: 9736,
+	// },
+	// bt: {
+	// 	pubKey:
+	// 		'0296b2db342fcf87ea94d981757fdf4d3e545bd5cef4919f58b5d38dfdd73bf5c9',
+	// 	address: '34.79.58.84',
+	// 	port: 9735,
+	// },
 };
 
 //Electrum Server Info (Synonym Regtest Set By Default)
 export const customPeers = {
-	bitcoin: [],
+	bitcoin: [
+		{
+			host: '35.187.18.233',
+			ssl: 8912,
+			tcp: 8911,
+			protocol: 'tcp',
+		},
+	],
 	bitcoinTestnet: [],
 	bitcoinRegtest: [
 		{
-			host: '35.233.47.252',
+			host: '192.168.0.100',
 			ssl: 18484,
-			tcp: 18483,
+			tcp: 50001,
 			protocol: 'tcp',
 		},
 	],

@@ -29,6 +29,7 @@ import {
 	TFileReadReq,
 	TFileWriteReq,
 	TClaimableBalance,
+	PaymentRoute,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -637,10 +638,84 @@ class LDK {
 		}
 	}
 
-	async payWithCustomRoute({
+	async buildPathToDestination(
+		anyPaymentRequest: string,
+	): Promise<Result<string>> {
+		const channelsRes = await this.listUsableChannels();
+		if (channelsRes.isErr()) {
+			return err(channelsRes.error);
+		}
+
+		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
+		const decodeRes = await this.decode({ paymentRequest });
+		if (decodeRes.isErr()) {
+			return err(decodeRes.error);
+		}
+
+		const { recover_payee_pub_key: destNodeId } = decodeRes.value;
+
+		//Go through channels and find one where the counterparty has a direct channel with final dest node
+		const nodesRes = await this.networkGraphNodes([destNodeId]);
+		if (nodesRes.isErr()) {
+			return err(nodesRes.error);
+		}
+		if (nodesRes.value.length === 0) {
+			return err('Destination node not found in network graph'); //TODO return empty result?
+		}
+
+		let testRes = 'empty path';
+
+		const finalNode = nodesRes.value[0];
+		for (let index = 0; index < finalNode.shortChannelIds.length; index++) {
+			const shortChannelId = finalNode.shortChannelIds[index];
+			const channelToDest = await this.networkGraphChannel(shortChannelId);
+			if (channelToDest.isOk()) {
+				//Check if one of the channels to the final node is to one of our counterparties
+				const { node_one, node_two } = channelToDest.value;
+				channelsRes.value.forEach(
+					({
+						counterparty_node_id: ourCounterPartyNodeId,
+						short_channel_id,
+					}) => {
+						if (
+							ourCounterPartyNodeId === node_one ||
+							ourCounterPartyNodeId === node_two
+						) {
+							testRes = `We have a connection ${short_channel_id}`;
+						}
+					},
+				);
+			}
+		}
+
+		//TODO check channel capacities, assuming might work in the meantime
+
+		return ok(testRes);
+	}
+
+	async payWithLspRoute({
 		paymentRequest: anyPaymentRequest,
 		amountSats,
 	}: TPaymentReq): Promise<Result<string>> {
+		//Validate we only have 1 channel (Assumed LSP)
+		const channelsRes = await this.listUsableChannels();
+		if (channelsRes.isErr()) {
+			return err(channelsRes.error);
+		}
+
+		if (channelsRes.value.length === 0) {
+			return err('No usable channels found');
+		}
+
+		if (channelsRes.value.length > 1) {
+			return err('Multiple channels found, cannot assum LSP route.');
+		}
+
+		const {
+			counterparty_node_id: lspNodeId,
+			short_channel_id: lspShortChannelId,
+		} = channelsRes.value[0];
+
 		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
 		const decodeRes = await this.decode({ paymentRequest });
 		if (decodeRes.isErr()) {
@@ -648,7 +723,7 @@ class LDK {
 		}
 
 		const {
-			recover_payee_pub_key,
+			recover_payee_pub_key: finalDestNodeId,
 			route_hints,
 			payment_secret,
 			payment_hash,
@@ -656,25 +731,30 @@ class LDK {
 			min_final_cltv_expiry,
 		} = decodeRes.value;
 
-		let route = 'todo';
+		// let finalDestNodeId = re
 
-		let sats = amount_satoshis || amountSats; //TODO validate
+		return ok(`${JSON.stringify({ lspNodeId, lspShortChannelId })}`);
 
-		try {
-			const res = await NativeLDK.payWithRoute(
-				route,
-				recover_payee_pub_key,
-				sats,
-				min_final_cltv_expiry,
-				payment_hash,
-				payment_secret,
-			);
-			this.writeDebugToLog('pay');
-			return ok(res);
-		} catch (e) {
-			this.writeErrorToLog('pay', e);
-			return err(e);
-		}
+		//
+		// let route: PaymentRoute = [];
+		//
+		// const sats = amount_satoshis || amountSats; //TODO validate
+		//
+		// try {
+		// 	const res = await NativeLDK.payWithRoute(
+		// 		route,
+		// 		recover_payee_pub_key,
+		// 		sats,
+		// 		min_final_cltv_expiry,
+		// 		payment_hash,
+		// 		payment_secret,
+		// 	);
+		// 	this.writeDebugToLog('pay');
+		// 	return ok(res);
+		// } catch (e) {
+		// 	this.writeErrorToLog('pay', e);
+		// 	return err(e);
+		// }
 	}
 
 	/**
