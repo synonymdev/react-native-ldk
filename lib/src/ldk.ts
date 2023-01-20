@@ -29,7 +29,8 @@ import {
 	TFileReadReq,
 	TFileWriteReq,
 	TClaimableBalance,
-	PaymentRoute,
+	TPaymentRoute,
+	TPaymentHop,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -638,12 +639,17 @@ class LDK {
 		}
 	}
 
-	async buildPathToDestination(
-		anyPaymentRequest: string,
-	): Promise<Result<string>> {
+	async buildPathToDestination({
+		paymentRequest: anyPaymentRequest,
+		amountSats,
+	}: TPaymentReq): Promise<Result<TPaymentRoute>> {
 		const channelsRes = await this.listUsableChannels();
 		if (channelsRes.isErr()) {
 			return err(channelsRes.error);
+		}
+
+		if (channelsRes.value.length < 1) {
+			return err('No usable channels to build path');
 		}
 
 		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
@@ -652,7 +658,10 @@ class LDK {
 			return err(decodeRes.error);
 		}
 
-		const { recover_payee_pub_key: destNodeId } = decodeRes.value;
+		const { recover_payee_pub_key: destNodeId, amount_satoshis } =
+			decodeRes.value;
+
+		const finalAmountSats = amountSats || amount_satoshis || 0;
 
 		//Go through channels and find one where the counterparty has a direct channel with final dest node
 		const nodesRes = await this.networkGraphNodes([destNodeId]);
@@ -663,67 +672,111 @@ class LDK {
 			return err('Destination node not found in network graph'); //TODO return empty result?
 		}
 
-		let testRes = 'empty path';
+		let route: TPaymentRoute = [];
+
+		let hopToDest: TPaymentHop | undefined;
+		let firstHop: TPaymentHop | undefined;
 
 		const finalNode = nodesRes.value[0];
 		for (let index = 0; index < finalNode.shortChannelIds.length; index++) {
-			const shortChannelId = finalNode.shortChannelIds[index];
-			const channelToDest = await this.networkGraphChannel(shortChannelId);
+			if (hopToDest) {
+				//TODO maybe if there are multiple channels to dest, pick the best one
+				continue;
+			}
+
+			const finalHopShortChannelId = finalNode.shortChannelIds[index];
+			const channelToDest = await this.networkGraphChannel(
+				finalHopShortChannelId,
+			);
 			if (channelToDest.isOk()) {
 				//Check if one of the channels to the final node is to one of our counterparties
+				//If it is that'll be the final hop
 				const { node_one, node_two } = channelToDest.value;
-				channelsRes.value.forEach(
-					({
+				channelsRes.value.forEach((myChannel) => {
+					const {
 						counterparty_node_id: ourCounterPartyNodeId,
 						short_channel_id,
-					}) => {
-						if (
-							ourCounterPartyNodeId === node_one ||
-							ourCounterPartyNodeId === node_two
-						) {
-							testRes = `We have a connection ${short_channel_id}`;
-						}
-					},
-				);
+						config_forwarding_fee_base_msat,
+						config_forwarding_fee_proportional_millionths,
+						outbound_capacity_sat,
+					} = myChannel;
+
+					if (outbound_capacity_sat < finalAmountSats) {
+						return;
+					}
+
+					if (!short_channel_id) {
+						return;
+					}
+
+					if (
+						ourCounterPartyNodeId === node_one ||
+						ourCounterPartyNodeId === node_two
+					) {
+						const percentBasedFee = Math.ceil(
+							(finalAmountSats *
+								config_forwarding_fee_proportional_millionths) /
+								1000000,
+						);
+
+						const fee = Math.max(
+							config_forwarding_fee_base_msat,
+							percentBasedFee,
+						);
+
+						firstHop = {
+							dest_node_id: ourCounterPartyNodeId,
+							short_channel_id: short_channel_id!,
+							fee_sats: fee,
+						};
+
+						hopToDest = {
+							dest_node_id: finalNode.id,
+							short_channel_id: finalHopShortChannelId,
+							fee_sats: finalAmountSats,
+						};
+					}
+				});
 			}
 		}
 
+		//TODO check we have hops
+		if (!firstHop) {
+			return err('No first hop found');
+		}
+
+		if (!hopToDest) {
+			return err('No last hop found');
+		}
+
+		route.push(firstHop!);
+		route.push(hopToDest!);
+
 		//TODO check channel capacities, assuming might work in the meantime
 
-		return ok(testRes);
+		return ok(route);
 	}
 
-	async payWithLspRoute({
+	async payWithRoute({
 		paymentRequest: anyPaymentRequest,
 		amountSats,
 	}: TPaymentReq): Promise<Result<string>> {
-		//Validate we only have 1 channel (Assumed LSP)
-		const channelsRes = await this.listUsableChannels();
-		if (channelsRes.isErr()) {
-			return err(channelsRes.error);
-		}
-
-		if (channelsRes.value.length === 0) {
-			return err('No usable channels found');
-		}
-
-		if (channelsRes.value.length > 1) {
-			return err('Multiple channels found, cannot assum LSP route.');
-		}
-
-		const {
-			counterparty_node_id: lspNodeId,
-			short_channel_id: lspShortChannelId,
-		} = channelsRes.value[0];
-
 		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
 		const decodeRes = await this.decode({ paymentRequest });
 		if (decodeRes.isErr()) {
 			return err(decodeRes.error);
 		}
 
+		const routeRes = await this.buildPathToDestination({
+			paymentRequest,
+			amountSats,
+		});
+		if (routeRes.isErr()) {
+			return err(routeRes.error);
+		}
+
 		const {
-			recover_payee_pub_key: finalDestNodeId,
+			recover_payee_pub_key,
 			route_hints,
 			payment_secret,
 			payment_hash,
@@ -731,30 +784,23 @@ class LDK {
 			min_final_cltv_expiry,
 		} = decodeRes.value;
 
-		// let finalDestNodeId = re
+		const sats = amount_satoshis || amountSats; //TODO validate
 
-		return ok(`${JSON.stringify({ lspNodeId, lspShortChannelId })}`);
-
-		//
-		// let route: PaymentRoute = [];
-		//
-		// const sats = amount_satoshis || amountSats; //TODO validate
-		//
-		// try {
-		// 	const res = await NativeLDK.payWithRoute(
-		// 		route,
-		// 		recover_payee_pub_key,
-		// 		sats,
-		// 		min_final_cltv_expiry,
-		// 		payment_hash,
-		// 		payment_secret,
-		// 	);
-		// 	this.writeDebugToLog('pay');
-		// 	return ok(res);
-		// } catch (e) {
-		// 	this.writeErrorToLog('pay', e);
-		// 	return err(e);
-		// }
+		try {
+			const res = await NativeLDK.payWithRoute(
+				routeRes.value,
+				recover_payee_pub_key,
+				sats,
+				min_final_cltv_expiry,
+				payment_hash,
+				payment_secret,
+			);
+			this.writeDebugToLog('pay');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('pay', e);
+			return err(e);
+		}
 	}
 
 	/**

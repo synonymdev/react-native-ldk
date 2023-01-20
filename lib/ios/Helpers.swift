@@ -87,7 +87,9 @@ extension ChannelDetails {
             "outbound_capacity_sat": get_outbound_capacity_msat() / 1000,
             "channel_value_satoshis": get_channel_value_satoshis(),
             "force_close_spend_delay": get_force_close_spend_delay().getValue() as Any, //Optional number
-            "unspendable_punishment_reserve": get_unspendable_punishment_reserve().getValue() as Any //Optional number
+            "unspendable_punishment_reserve": get_unspendable_punishment_reserve().getValue() as Any, //Optional number
+            "config_forwarding_fee_base_msat": get_config().get_forwarding_fee_base_msat() / 1000, //Optional number
+            "config_forwarding_fee_proportional_millionths": get_config().get_forwarding_fee_proportional_millionths() / 1000 //Optional number
         ]
     }
 }

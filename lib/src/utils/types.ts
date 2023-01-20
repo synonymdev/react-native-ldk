@@ -141,6 +141,8 @@ export type TChannel = {
 	channel_value_satoshis: number;
 	force_close_spend_delay?: number;
 	unspendable_punishment_reserve?: number;
+	config_forwarding_fee_base_msat: number;
+	config_forwarding_fee_proportional_millionths: number;
 };
 
 export type TNetworkGraphChannelInfo = {
@@ -206,6 +208,7 @@ export type TPaymentRoute = TPaymentHop[];
 export type TPaymentHop = {
 	dest_node_id: string;
 	short_channel_id: string;
+	fee_sats: number;
 };
 
 export type TLogListener = {

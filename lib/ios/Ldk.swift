@@ -695,7 +695,96 @@ class Ldk: NSObject {
     }
     
     @objc
-    func payWithRoute(_ route: NSString, destinationNodeId: NSString, amountSats: NSInteger, cltvExpiryDelta: NSInteger, paymentHash: NSString, paymentSecret: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func payWithRoute(_ route: NSArray, destinationNodeId: NSString, amountSats: NSInteger, cltvExpiryDelta: NSInteger, paymentHash: NSString, paymentSecret: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        guard let networkGraph = networkGraph?.read_only() else {
+            return handleReject(reject, .init_network_graph)
+        }
+        
+        let amountMSats = UInt64(amountSats) * 1000
+        var paths: [RouteHop] = []
+
+        //TODO try find route
+        
+//        let route = find_route(<#T##LDKPublicKey#>, <#T##LDKRouteParameters#>, <#T##LDKNetworkGraph#>, <#T##LDKCVec_ChannelDetailsZ#>, <#T##LDKLogger#>, <#T##LDKScore#>, <#T##UInt8#>)
+        
+        for hop in route {
+            print("HOP: ")
+            
+            let decodedHop = hop as! [String: Any]
+            
+            let pubKey = decodedHop["dest_node_id"]! as! String
+            let short_channel_id = UInt64(decodedHop["short_channel_id"]! as! String)!
+            let feeMsats = UInt64(exactly: decodedHop["fee_sats"]! as! Int)! * 1000
+
+            var channelFeatures = ChannelFeatures()
+            var nodeFeatures = NodeFeatures()
+
+//            var fee: UInt64 = 1000 //TODO use base fee of node
+            //If it's the last hop then it's the full amount
+            if pubKey == String(destinationNodeId) {
+//                fee = amountMSats
+                
+                //Assume public node
+                let channel = networkGraph.channel(short_channel_id: short_channel_id)
+                channelFeatures = channel.get_features()
+                
+                print("***")
+                print(channelFeatures.write())
+                
+                nodeFeatures = networkGraph.node(node_id: NodeId(pubkey: pubKey.hexaBytes)).get_announcement_info().get_features()
+            }
+            
+            channelManager.list_channels().forEach { channelDetails in
+                channelDetails.get_config().get_forwarding_fee_base_msat()
+                if channelDetails.get_short_channel_id().getValue() == short_channel_id {
+//                    nodeFeatures = = channelDetails.get_counterparty().get_features() //TODO convert this
+                    //TODO get channel features somehow?
+                }
+            }
+            
+            //Check if channel is ours instead of querying graph
+            
+            //TODO Maybe private channel not in graph?
+            print(channelFeatures.requires_unknown_bits())
+            
+            let hop = RouteHop(
+                pubkey_arg: pubKey.hexaBytes,
+                node_features_arg: nodeFeatures,
+                short_channel_id_arg: short_channel_id,
+                channel_features_arg: channelFeatures,
+                fee_msat_arg: feeMsats,
+                cltv_expiry_delta_arg: UInt32(cltvExpiryDelta)
+            )
+
+            paths.append(hop)
+
+            print(hop.asJson)
+        }
+        
+//        return resolve("taking \(route.count) hops...")
+        
+        let payee = PaymentParameters(payee_pubkey: String(destinationNodeId).hexaBytes)
+
+        let route = Route(paths_arg: [paths], payment_params_arg: payee)
+        
+        let res = channelManager.send_payment(route: route, payment_hash: String(paymentHash).hexaBytes, payment_secret: String(paymentSecret).hexaBytes)
+        if res.isOk() {
+            return resolve(Data(res.getValue() ?? []).hexEncodedString())
+        }
+        
+        guard let error = res.getError() else {
+            return handleReject(reject, .invoice_payment_fail_unknown)
+        }
+        
+        return handlePaymentSendFailure(reject, error: error)
+    }
+    
+    @objc
+    func payWithRoute_old_old(_ route: NSString, destinationNodeId: NSString, amountSats: NSInteger, cltvExpiryDelta: NSInteger, paymentHash: NSString, paymentSecret: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
