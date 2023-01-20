@@ -124,9 +124,10 @@ extension NodeInfo {
     var asJson: [String: Any] {
         return [
             "shortChannelIds": get_channels().map({ String($0) }),
-            "lowest_inbound_channel_fees_base_sat": get_lowest_inbound_channel_fees().get_base_msat() / 1000,
-            "lowest_inbound_channel_fees_proportional_millionths": get_lowest_inbound_channel_fees().get_proportional_millionths(),
-            "announcement_info_last_update": Int(get_announcement_info().get_last_update()) * 1000
+            //TODO place back when they stop causing a crash
+            "lowest_inbound_channel_fees_base_sat": 0,//get_lowest_inbound_channel_fees().get_base_msat() / 1000,
+            "lowest_inbound_channel_fees_proportional_millionths": 0,//get_lowest_inbound_channel_fees().get_proportional_millionths(),
+            "announcement_info_last_update": 0//Int(get_announcement_info().get_last_update()) * 1000
         ]
     }
 }

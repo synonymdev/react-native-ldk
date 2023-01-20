@@ -923,10 +923,20 @@ class LightningManager {
 	}: TPaymentReq): Promise<Result<TChannelManagerPaymentSent>> => {
 		return new Promise(async (resolve) => {
 			this.subscribeToPaymentResponses(resolve).then();
-			const payResponse: Result<string> | undefined = await ldk.pay({
+
+			let payResponse: Result<string> | undefined = await ldk.payWithRoute({
 				paymentRequest,
 				amountSats,
 			});
+
+			//Quickly retry with default invoice payer method
+			if (!payResponse.isOk()) {
+				payResponse = await ldk.pay({
+					paymentRequest,
+					amountSats,
+				});
+			}
+
 			if (!payResponse) {
 				this.unsubscribeFromPaymentSubscriptions();
 				return resolve(err('Unable to pay the provided lightning invoice.'));
