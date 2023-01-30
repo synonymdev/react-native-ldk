@@ -924,18 +924,18 @@ class LightningManager {
 		return new Promise(async (resolve) => {
 			this.subscribeToPaymentResponses(resolve).then();
 
-			let payResponse: Result<string> | undefined = await ldk.payWithRoute({
+			let payResponse: Result<string> | undefined = await ldk.pay({
 				paymentRequest,
 				amountSats,
 			});
 
 			//Quickly retry with default invoice payer method
-			if (!payResponse.isOk()) {
-				payResponse = await ldk.pay({
-					paymentRequest,
-					amountSats,
-				});
-			}
+			// if (!payResponse.isOk()) {
+			// 	payResponse = await ldk.pay({
+			// 		paymentRequest,
+			// 		amountSats,
+			// 	});
+			// }
 
 			if (!payResponse) {
 				this.unsubscribeFromPaymentSubscriptions();

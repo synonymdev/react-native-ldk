@@ -29,7 +29,7 @@ class LdkLogger {
         }
     }
 
-    fun setLevel(level: Int, active: Boolean) {
+    fun setLevel(level: String, active: Boolean) {
         activeLevels[level] = active;
         LdkEventEmitter.send(EventTypes.native_log, "Log level ${level} set to ${active}")
     }

@@ -42,7 +42,7 @@ RCT_EXTERN_METHOD(updateFees:(NSInteger *)high
                   low:(NSInteger *)low
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(setLogLevel:(NSInteger *)high
+RCT_EXTERN_METHOD(setLogLevel:(NSString *)level
                   active:(BOOL *)active
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)

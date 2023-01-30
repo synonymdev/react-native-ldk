@@ -12,7 +12,7 @@ export enum EEventTypes {
 	broadcast_transaction = 'broadcast_transaction',
 	backup = 'backup',
 	channel_manager_funding_generation_ready = 'channel_manager_funding_generation_ready',
-	channel_manager_payment_received = 'channel_manager_payment_received',
+	channel_manager_payment_claimable = 'channel_manager_payment_claimable',
 	channel_manager_payment_sent = 'channel_manager_payment_sent',
 	channel_manager_open_channel_request = 'channel_manager_open_channel_request',
 	channel_manager_payment_path_successful = 'channel_manager_payment_path_successful',
@@ -43,7 +43,7 @@ export type TBroadcastTransactionEvent = { tx: string };
 export type TChannelManagerFundingGenerationReady = {
 	temp_channel_id: string;
 	output_script: string;
-	user_channel_id: number;
+	user_channel_id: string;
 	value_satoshis: number;
 };
 
@@ -111,7 +111,7 @@ export type TChannelManagerSpendableOutputs = {
 };
 
 export type TChannelManagerChannelClosed = {
-	user_channel_id: number;
+	user_channel_id: string;
 	channel_id: string;
 	reason: string;
 };
@@ -131,7 +131,7 @@ export type TChannel = {
 	counterparty_node_id: string;
 	funding_txid?: string;
 	channel_type?: string;
-	user_channel_id: number;
+	user_channel_id: string;
 	confirmations_required?: number;
 	short_channel_id?: string;
 	inbound_scid_alias?: number;
@@ -305,12 +305,12 @@ export type TInitConfig = {
 };
 
 export enum ELdkLogLevels {
-	gossip = 0, //LDKLevel_Gossip
-	trace = 1, //LDKLevel_Trace
-	debug = 2, //LDKLevel_Debug
-	info = 3, //LDKLevel_Info
-	warn = 4, //LDKLevel_Warn
-	error = 5, //LDKLevel_Error
+	gossip = 'GOSSIP',
+	trace = 'TRACE',
+	debug = 'DEBUG',
+	info = 'INFO',
+	warn = 'WARN',
+	error = 'ERROR',
 }
 
 export type THeader = {

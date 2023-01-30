@@ -446,33 +446,6 @@ const App = (): ReactElement => {
 					/>
 
 					<Button
-						title={'Pay with route'}
-						onPress={async (): Promise<void> => {
-							const paymentRequest =
-								'lnbcrt3210n1p3m2s5rpp5s68qaznemsjxazu5u7jfy0hlvaddsa42r6pzvrxqxcq8ku64s8hsdqqcqzpgxqyz5vqsp50f8cshtrralehgxnwzl7pk4nuru8frh5xqvfd5gplyq6fvtv2cjs9qyyssqeurw65c29dencywpeyfyqd0fmt9wztpk7fcdf2ww8859p0efctprtv6t95jynntvw3hlpm8r097kdwmuk4d9rcf6kyw8qwlvmeh5legpgupmaz';
-
-							try {
-								const res = await NativeModules.Ldk.payWithRoute2(
-									paymentRequest,
-								);
-								setMessage(res);
-							} catch (e) {
-								setMessage(JSON.stringify(e));
-							}
-
-							return;
-							const pay = await ldk.payWithCustomRoute({
-								paymentRequest,
-							});
-							if (pay.isErr()) {
-								return setMessage(pay.error.message);
-							}
-
-							setMessage(`Sending... ${JSON.stringify(pay.value)}`);
-						}}
-					/>
-
-					<Button
 						title={'Pay invoice'}
 						onPress={async (): Promise<void> => {
 							const paymentRequest = await Clipboard.getString();
@@ -512,6 +485,19 @@ const App = (): ReactElement => {
 									},
 								],
 							);
+						}}
+					/>
+
+					<Button
+						title={'Build route and pay'}
+						onPress={async (): Promise<void> => {
+							const paymentRequest = await Clipboard.getString();
+							const payRes = await ldk.payWithRoute({ paymentRequest });
+							if (payRes.isErr()) {
+								return setMessage(payRes.error.message);
+							}
+
+							setMessage(payRes.value);
 						}}
 					/>
 

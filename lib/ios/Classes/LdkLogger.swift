@@ -8,49 +8,40 @@
 import Foundation
 import LightningDevKit
 
-class LdkLogger: Logger {
-    var activeLevels: [UInt32: Bool] = [:]
-    
-    override func free() {
-        //TODO find out what this is for
+fileprivate func levelString(_ level: Level) -> String {
+    switch level {
+    case .Gossip:
+        return "GOSSIP"
+    case .Trace:
+        return "TRACE"
+    case .Debug:
+        return "DEBUG"
+    case .Info:
+        return "INFO"
+    case .Warn:
+        return "WARN"
+    case .Error:
+        return "ERROR"
+    default:
+        return "LEVEL \(level)"
     }
-  
+}
+
+class LdkLogger: Logger {
+    var activeLevels: [String: Bool] = [:]
+    
     override func log(record: Record) {
-        let level = record.get_level().rawValue
+        let level = levelString(record.getLevel())
         
         //Only when the JS code has set the log level to active
         if activeLevels[level] == true {
-            LdkEventEmitter.shared.send(withEvent: .ldk_log, body: record.get_args())
-            
-            var levelStr = ""
-            switch level {
-            case 0:
-                levelStr = "GOSSIP"
-                break
-            case 1:
-                levelStr = "TRACE"
-                break
-            case 2:
-                levelStr = "DEBUG"
-                break
-            case 3:
-                levelStr = "INFO"
-                break
-            case 4:
-                levelStr = "WARN"
-                break
-            case 5:
-                levelStr = "ERROR"
-                break
-            default:
-                levelStr = "LEVEL \(level)"
-            }
-                        
-            Logfile.log.write("\(levelStr) (LDK): \(record.get_args())")
+            LdkEventEmitter.shared.send(withEvent: .ldk_log, body: record.getArgs())
+                                    
+            Logfile.log.write("\(level) (LDK): \(record.getArgs())")
         }
     }
     
-    func setLevel(level: UInt32, active: Bool) {
+    func setLevel(level: String, active: Bool) {
         self.activeLevels[level] = active
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Log level \(level) set to \(active)")
     }

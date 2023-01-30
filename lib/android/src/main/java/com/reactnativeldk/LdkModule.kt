@@ -32,7 +32,7 @@ enum class EventTypes {
     broadcast_transaction,
     backup,
     channel_manager_funding_generation_ready,
-    channel_manager_payment_received,
+    channel_manager_payment_claimable,
     channel_manager_payment_sent,
     channel_manager_open_channel_request,
     channel_manager_payment_path_successful,
@@ -488,8 +488,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun setLogLevel(level: Double, active: Boolean, promise: Promise) {
-        logger.setLevel(level.toInt(), active)
+    fun setLogLevel(level: String, active: Boolean, promise: Promise) {
+        logger.setLevel(level, active)
         handleResolve(promise, LdkCallbackResponses.log_level_updated)
     }
 

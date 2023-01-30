@@ -29,28 +29,28 @@ func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ erro
 extension Invoice {
     var asJson: Any {
         //Break down to get the decription. Will crash if all on a single line.
-        let signedRawInvoice = into_signed_raw()
-        let rawInvoice = signedRawInvoice.raw_invoice()
+        let signedRawInvoice = intoSignedRaw()
+        let rawInvoice = signedRawInvoice.rawInvoice()
         let description = rawInvoice.description()
         let descriptionString = description.into_inner()
         
         return [
-            "amount_satoshis": amount_milli_satoshis().getValue() != nil ? amount_milli_satoshis().getValue()! / 1000 : nil,
+            "amount_satoshis": amountMilliSatoshis().getValue() != nil ? amountMilliSatoshis().getValue()! / 1000 : nil,
             "description": descriptionString,
-            "check_signature": check_signature().isOk(),
-            "is_expired": is_expired(),
-            "duration_since_epoch": duration_since_epoch(),
-            "expiry_time": expiry_time(),
-            "min_final_cltv_expiry": min_final_cltv_expiry(),
-            "payee_pub_key": Data(payee_pub_key()).hexEncodedString(),
-            "recover_payee_pub_key": Data(recover_payee_pub_key()).hexEncodedString(),
-            "payment_hash": Data(payment_hash()).hexEncodedString(),
-            "payment_secret": Data(payment_secret()).hexEncodedString(),
+            "check_signature": checkSignature().isOk(),
+            "is_expired": isExpired(),
+            "duration_since_epoch": durationSinceEpoch(),
+            "expiry_time": expiryTime(),
+            "min_final_cltv_expiry": minFinalCltvExpiry(),
+            "payee_pub_key": Data(payeePubKey()).hexEncodedString(),
+            "recover_payee_pub_key": Data(recoverPayeePubKey()).hexEncodedString(),
+            "payment_hash": Data(paymentHash()).hexEncodedString(),
+            "payment_secret": Data(paymentSecret()).hexEncodedString(),
             "timestamp": timestamp(),
             "features": Data(features().write()).hexEncodedString(),
             "currency": currency().rawValue,
-            "to_str": to_str(),
-            "route_hints": route_hints().map({ $0.get_a().map({ $0.asJson }) }),
+            "to_str": toStr(),
+            "route_hints": routeHints().map({ $0.get_a().map({ $0.asJson }) }),
         ]
     }
 }
