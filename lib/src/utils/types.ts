@@ -47,7 +47,7 @@ export type TChannelManagerFundingGenerationReady = {
 	value_satoshis: number;
 };
 
-export type TChannelManagerPayment = {
+export type TChannelManagerClaimable = {
 	payment_hash: string;
 	amount_sat: number;
 	payment_preimage: string;
@@ -133,7 +133,7 @@ export type TChannel = {
 	channel_type?: string;
 	user_channel_id: string;
 	confirmations_required?: number;
-	short_channel_id?: string;
+	short_channel_id: string;
 	inbound_scid_alias?: number;
 	inbound_payment_scid?: number;
 	inbound_capacity_sat: number;
@@ -186,7 +186,7 @@ export type TInvoice = {
 	payment_secret: string;
 	timestamp: number;
 	features?: string;
-	currency: number;
+	currency: string;
 	to_str: string; //Actual bolt11 invoice string
 	route_hints: TRouteHints[];
 };

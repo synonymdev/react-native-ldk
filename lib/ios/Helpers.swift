@@ -26,95 +26,112 @@ func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ erro
     reject(ldkError.rawValue, message ?? ldkError.rawValue, NSError(domain: ldkError.rawValue, code: ldkError.hashValue))
 }
 
+func currencyString(_ currency: Currency) -> String {
+    switch currency {
+    case .Bitcoin:
+        return "Bitcoin"
+    case .BitcoinTestnet:
+        return "BitcoinTestnet"
+    case .Regtest:
+        return "Regtest"
+    case .Simnet:
+        return "Simnet"
+    case .Signet:
+        return "Signet"
+    @unknown default:
+        return "Unknown"
+    }
+}
+
 extension Invoice {
-    var asJson: Any {
+    var asJson: [String: Any?] {
         //Break down to get the decription. Will crash if all on a single line.
         let signedRawInvoice = intoSignedRaw()
         let rawInvoice = signedRawInvoice.rawInvoice()
         let description = rawInvoice.description()
-        let descriptionString = description.into_inner()
+        let descriptionString = description?.intoInner() ?? ""
         
         return [
-            "amount_satoshis": amountMilliSatoshis().getValue() != nil ? amountMilliSatoshis().getValue()! / 1000 : nil,
+            "amount_satoshis": amountMilliSatoshis() != nil ? amountMilliSatoshis()! / 1000 : nil,
             "description": descriptionString,
             "check_signature": checkSignature().isOk(),
             "is_expired": isExpired(),
             "duration_since_epoch": durationSinceEpoch(),
             "expiry_time": expiryTime(),
             "min_final_cltv_expiry": minFinalCltvExpiry(),
-            "payee_pub_key": Data(payeePubKey()).hexEncodedString(),
+            "payee_pub_key": Data(payeePubKey() ?? []).hexEncodedString(),
             "recover_payee_pub_key": Data(recoverPayeePubKey()).hexEncodedString(),
-            "payment_hash": Data(paymentHash()).hexEncodedString(),
-            "payment_secret": Data(paymentSecret()).hexEncodedString(),
+            "payment_hash": Data(paymentHash() ?? []).hexEncodedString(),
+            "payment_secret": Data(paymentSecret() ?? []).hexEncodedString(),
             "timestamp": timestamp(),
-            "features": Data(features().write()).hexEncodedString(),
-            "currency": currency().rawValue,
+            "features": Data(features()?.write() ?? []).hexEncodedString(),
+            "currency": currencyString(currency()),
             "to_str": toStr(),
-            "route_hints": routeHints().map({ $0.get_a().map({ $0.asJson }) }),
+            "route_hints": routeHints().map({ $0.getA().map({ $0.asJson }) }),
         ]
     }
 }
 
 extension RouteHintHop {
-    var asJson: Any {
+    var asJson: [String: Any] {
         return [
-            "src_node_id": Data(get_src_node_id()).hexEncodedString(),
-            "short_channel_id": String(get_short_channel_id())
+            "src_node_id": Data(getSrcNodeId()).hexEncodedString(),
+            "short_channel_id": String(getShortChannelId())
         ]
     }
 }
 
 //Our own channels
 extension ChannelDetails {
-    var asJson: Any {
-        let short_channel_id = get_short_channel_id().getValue()
+    var asJson: [String: Any] {
+        let shortChannelId = getShortChannelId()
         return [
-            "channel_id": Data(get_channel_id()).hexEncodedString(),
-            "is_public": get_is_public(),
-            "is_usable": get_is_usable(),
-            "is_channel_ready": get_is_channel_ready(),
-            "is_outbound": get_is_outbound(),
-            "balance_sat": get_balance_msat() / 1000,
-            "counterparty_node_id": Data(get_counterparty().get_node_id()).hexEncodedString(),
-            "funding_txid": Data(get_funding_txo()?.get_txid().reversed() ?? []).hexEncodedString(),
-            "channel_type": Data(get_channel_type().write()).hexEncodedString(),
-            "user_channel_id": get_user_channel_id(), //Number
-            "confirmations_required": get_confirmations_required().getValue() as Any, // Optional number
-            "short_channel_id": short_channel_id != nil ? String(short_channel_id!) : nil,
-            "inbound_scid_alias": get_inbound_scid_alias().getValue() as Any, //Optional number
-            "inbound_payment_scid": get_inbound_payment_scid().getValue() as Any, //Optional number,
-            "inbound_capacity_sat": get_inbound_capacity_msat() / 1000,
-            "outbound_capacity_sat": get_outbound_capacity_msat() / 1000,
-            "channel_value_satoshis": get_channel_value_satoshis(),
-            "force_close_spend_delay": get_force_close_spend_delay().getValue() as Any, //Optional number
-            "unspendable_punishment_reserve": get_unspendable_punishment_reserve().getValue() as Any, //Optional number
-            "config_forwarding_fee_base_msat": get_config().get_forwarding_fee_base_msat() / 1000, //Optional number
-            "config_forwarding_fee_proportional_millionths": get_config().get_forwarding_fee_proportional_millionths() / 1000 //Optional number
+            "channel_id": Data(getChannelId() ?? []).hexEncodedString(),
+            "is_public": getIsPublic(),
+            "is_usable": getIsUsable(),
+            "is_channel_ready": getIsChannelReady(),
+            "is_outbound": getIsOutbound(),
+            "balance_sat": getBalanceMsat() / 1000,
+            "counterparty_node_id": Data(getCounterparty().getNodeId()).hexEncodedString(),
+            "funding_txid": Data(getFundingTxo()?.getTxid()?.reversed() ?? []).hexEncodedString(),
+            "channel_type": Data(getChannelType()?.write() ?? []).hexEncodedString(),
+            "user_channel_id": getUserChannelId(), //Number
+            "confirmations_required": getConfirmationsRequired() as Any, // Optional number
+            "short_channel_id": shortChannelId != nil ? String(shortChannelId!) : "",
+            "inbound_scid_alias": getInboundScidAlias() as Any, //Optional number
+            "inbound_payment_scid": getInboundPaymentScid() as Any, //Optional number,
+            "inbound_capacity_sat": getInboundCapacityMsat() / 1000,
+            "outbound_capacity_sat": getOutboundCapacityMsat() / 1000,
+            "channel_value_satoshis": getChannelValueSatoshis(),
+            "force_close_spend_delay": getForceCloseSpendDelay() as Any, //Optional number
+            "unspendable_punishment_reserve": getUnspendablePunishmentReserve() as Any, //Optional number
+            "config_forwarding_fee_base_msat": getConfig()?.getForwardingFeeBaseMsat() ?? 0 / 1000, //Optional number
+            "config_forwarding_fee_proportional_millionths": getConfig()?.getForwardingFeeProportionalMillionths() ?? 0 / 1000 //Optional number
         ]
     }
 }
 
 //Channels in our network graph
 extension ChannelInfo {
-    var asJson: Any {
+    var asJson: [String: Any] {
         return [
-            "capacity_sats": get_capacity_sats().getValue() as Any, //Optional number
-            "node_one": Data(get_node_one().as_slice()).hexEncodedString(), //String
-            "node_two": Data(get_node_two().as_slice()).hexEncodedString(), //String
+            "capacity_sats": getCapacitySats() as Any, //Optional number
+            "node_one": Data(getNodeOne().asSlice()).hexEncodedString(), //String
+            "node_two": Data(getNodeTwo().asSlice()).hexEncodedString(), //String
             
-            "one_to_two_fees_base_sats": get_one_to_two().get_fees().get_base_msat() / 1000, //Number
-            "one_to_two_fees_proportional_millionths": get_one_to_two().get_fees().get_proportional_millionths(), //Number
-            "one_to_two_enabled": get_one_to_two().get_enabled(), //Bool
-            "one_to_two_last_update": get_one_to_two().get_last_update(), //Number
-            "one_to_two_htlc_maximum_sats": get_one_to_two().get_htlc_maximum_msat() / 1000, //Number
-            "one_to_two_htlc_minimum_sats": get_one_to_two().get_htlc_minimum_msat() / 1000, //Number
+            "one_to_two_fees_base_sats": getOneToTwo()?.getFees().getBaseMsat() ?? 0 / 1000, //Number
+            "one_to_two_fees_proportional_millionths": getOneToTwo()?.getFees().getProportionalMillionths() ?? 0, //Number
+            "one_to_two_enabled": getOneToTwo()?.getEnabled() ?? false, //Bool
+            "one_to_two_last_update": getOneToTwo()?.getLastUpdate() ?? 0, //Number
+            "one_to_two_htlc_maximum_sats": getOneToTwo()?.getHtlcMaximumMsat() ?? 0 / 1000, //Number
+            "one_to_two_htlc_minimum_sats": getOneToTwo()?.getHtlcMinimumMsat() ?? 0 / 1000, //Number
 
-            "two_to_one_fees_base_sats": get_two_to_one().get_fees().get_base_msat() / 1000, //Number
-            "two_to_one_fees_proportional_millionths": get_two_to_one().get_fees().get_proportional_millionths(), //Number
-            "two_to_one_enabled": get_two_to_one().get_enabled(), //Bool
-            "two_to_one_last_update": get_two_to_one().get_last_update(), //Number
-            "two_to_one_htlc_maximum_sats": get_two_to_one().get_htlc_maximum_msat() / 1000, //Number
-            "two_to_one_htlc_minimum_sats": get_two_to_one().get_htlc_minimum_msat() / 1000, //Number
+            "two_to_one_fees_base_sats": getTwoToOne()?.getFees().getBaseMsat() ?? 0 / 1000, //Number
+            "two_to_one_fees_proportional_millionths": getTwoToOne()?.getFees().getProportionalMillionths() ?? 0, //Number
+            "two_to_one_enabled": getTwoToOne()?.getEnabled() ?? false, //Bool
+            "two_to_one_last_update": getTwoToOne()?.getLastUpdate() ?? 0, //Number
+            "two_to_one_htlc_maximum_sats": getTwoToOne()?.getHtlcMaximumMsat() ?? 0 / 1000, //Number
+            "two_to_one_htlc_minimum_sats": getTwoToOne()?.getHtlcMinimumMsat() ?? 0 / 1000, //Number
         ]
     }
 }
@@ -123,22 +140,21 @@ extension ChannelInfo {
 extension NodeInfo {
     var asJson: [String: Any] {
         return [
-            "shortChannelIds": get_channels().map({ String($0) }),
-            //TODO place back when they stop causing a crash
-            "lowest_inbound_channel_fees_base_sat": 0,//get_lowest_inbound_channel_fees().get_base_msat() / 1000,
-            "lowest_inbound_channel_fees_proportional_millionths": 0,//get_lowest_inbound_channel_fees().get_proportional_millionths(),
-            "announcement_info_last_update": 0//Int(get_announcement_info().get_last_update()) * 1000
+            "shortChannelIds": getChannels().map({ String($0) }),
+            "lowest_inbound_channel_fees_base_sat": getLowestInboundChannelFees()?.getBaseMsat() ?? 0 / 1000,
+            "lowest_inbound_channel_fees_proportional_millionths": getLowestInboundChannelFees()?.getProportionalMillionths() ?? 0,
+            "announcement_info_last_update": Int(getAnnouncementInfo()?.getLastUpdate() ?? 0) * 1000
         ]
     }
 }
 
 extension LightningDevKit.RouteHop {
-    var asJson: Any {
+    var asJson: [String: Any] {
         return [
-            "pubkey": Data(get_pubkey()).hexEncodedString(),
-            "fee_sat": get_fee_msat() / 1000,
-            "short_channel_id": String(get_short_channel_id()),
-            "cltv_expiry_delta": get_cltv_expiry_delta()
+            "pubkey": Data(getPubkey()).hexEncodedString(),
+            "fee_sat": getFeeMsat() / 1000,
+            "short_channel_id": String(getShortChannelId()),
+            "cltv_expiry_delta": getCltvExpiryDelta()
         ]
     }
 }
@@ -234,15 +250,15 @@ extension RapidGossipSync {
                 return completion(error)
             }
                         
-            let res = self.update_network_graph(update_data: [UInt8](try! Data(contentsOf: destinationFile)))
+            let res = self.updateNetworkGraph(updateData: [UInt8](try! Data(contentsOf: destinationFile)))
             guard res.isOk() else {
                 var errorMessage = "Failed to update network graph."
                 switch res.getError()?.getValueType() {
                 case .LightningError:
-                    errorMessage = "Rapid sync error. \(res.getError()!.getValueAsLightningError()!.get_err())" //Couldn't find channel for update.
+                    errorMessage = "Rapid sync error. \(res.getError()!.getValueAsLightningError()!.getErr())" //Couldn't find channel for update.
                     break;
                 case .DecodeError:
-                    errorMessage = "Rapid sync error. IO error: \(res.getError()!.getValueAsDecodeError()?.getValueAsIo()?.rawValue ?? 0)"
+                    errorMessage = "Rapid sync error. IO error: \(res.getError()!.getValueAsDecodeError()?.getValueType())"
                     break;
                 default:
                     errorMessage = "Unknown rapid sync error."
@@ -263,34 +279,34 @@ extension RapidGossipSync {
 }
 
 func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.PaymentSendFailure) {
-    guard let errorType = error.getValueType() else {
-        return handleReject(reject, .invoice_payment_fail_sending)
-    }
-    
-    switch errorType {
-    case .AllFailedRetrySafe:
+    switch error.getValueType() {
+    case .AllFailedResendSafe:
 //            let errorMessage = ""
 //            error.getValueAsAllFailedRetrySafe()?.forEach({ apiError in
 //                apiError.getValueType() //TODO iterate through all
 //            })
 
-        return handleReject(reject, .invoice_payment_fail_retry_safe, nil, error.getValueAsAllFailedRetrySafe().map { $0.description } )
+        return handleReject(reject, .invoice_payment_fail_retry_safe, nil, error.getValueAsAllFailedResendSafe().map { $0.description } )
     case .ParameterError:
-        guard let parameterError = error.getValueAsParameterError(), let parameterErrorType = parameterError.getValueType() else {
+        guard let parameterError = error.getValueAsParameterError() else {
             return handleReject(reject, .invoice_payment_fail_parameter_error)
         }
+
+        let parameterErrorType = parameterError.getValueType()
 
         switch parameterErrorType {
         case .APIMisuseError:
             return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "parameterError.getValueType().debugDescription")
         case .FeeRateTooHigh:
             return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsFeeRateTooHigh()?.getErr())
-        case .RouteError:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsRouteError()?.getErr())
+        case .InvalidRoute:
+            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsInvalidRoute()?.getErr())
         case .ChannelUnavailable:
             return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsChannelUnavailable()?.getErr())
         case .IncompatibleShutdownScript:
             return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "IncompatibleShutdownScript")
+        case .MonitorUpdateInProgress:
+            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "MonitorUpdateInProgress")
         @unknown default:
             return handleReject(reject, .invoice_payment_fail_parameter_error, nil, error.getValueAsParameterError().debugDescription)
         }
