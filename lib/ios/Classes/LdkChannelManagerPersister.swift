@@ -46,7 +46,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             let spontaneousPayment = paymentClaimable.getPurpose().getValueAsSpontaneousPayment()
             
             LdkEventEmitter.shared.send(
-                withEvent: .channel_manager_payment_received,
+                withEvent: .channel_manager_payment_claimable,
                 body: [
                     "payment_hash": Data(paymentClaimable.getPaymentHash()).hexEncodedString(),
                     "amount_sat": paymentClaimable.getAmountMsat() / 1000,

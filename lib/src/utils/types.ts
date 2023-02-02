@@ -47,7 +47,7 @@ export type TChannelManagerFundingGenerationReady = {
 	value_satoshis: number;
 };
 
-export type TChannelManagerClaimable = {
+export type TChannelManagerClaim = {
 	payment_hash: string;
 	amount_sat: number;
 	payment_preimage: string;

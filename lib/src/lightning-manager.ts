@@ -17,7 +17,7 @@ import {
 	TChannelManagerDiscardFunding,
 	TChannelManagerFundingGenerationReady,
 	TChannelManagerOpenChannelRequest,
-	TChannelManagerClaimable,
+	TChannelManagerClaim,
 	TChannelManagerPaymentFailed,
 	TChannelManagerPaymentPathFailed,
 	TChannelManagerPaymentPathSuccessful,
@@ -47,7 +47,7 @@ import {
 	TGetTransactionPosition,
 	TTransactionPosition,
 	TChannel,
-} from "./utils/types";
+} from './utils/types';
 import {
 	appendPath,
 	parseData,
@@ -1295,7 +1295,7 @@ class LightningManager {
 		); //TODO
 	}
 
-	private onChannelManagerPaymentClaimable(res: TChannelManagerClaimable): void {
+	private onChannelManagerPaymentClaimable(res: TChannelManagerClaim): void {
 		if (res.spontaneous_payment_preimage) {
 			//https://docs.rs/lightning/latest/lightning/util/events/enum.PaymentPurpose.html#variant.SpontaneousPayment
 			ldk.claimFunds(res.spontaneous_payment_preimage).catch(console.error);
@@ -1383,7 +1383,9 @@ class LightningManager {
 		console.log(`onChannelManagerDiscardFunding: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerPaymentClaimed(res: TChannelManagerPayment): void {
+	private onChannelManagerPaymentClaimed(
+		res: TChannelManagerClaim,
+	): void {
 		// Payment Received/Invoice Paid.
 		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`);
 		this.syncLdk().then();
