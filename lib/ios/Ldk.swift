@@ -50,7 +50,7 @@ enum LdkErrors: String {
     case invoice_payment_fail_invoice = "invoice_payment_fail_invoice"
     case invoice_payment_fail_routing = "invoice_payment_fail_routing"
     case invoice_payment_fail_sending = "invoice_payment_fail_sending"
-    case invoice_payment_fail_retry_safe = "invoice_payment_fail_retry_safe"
+    case invoice_payment_fail_resend_safe = "invoice_payment_fail_resend_safe"
     case invoice_payment_fail_parameter_error = "invoice_payment_fail_parameter_error"
     case invoice_payment_fail_partial = "invoice_payment_fail_partial"
     case invoice_payment_fail_path_parameter_error = "invoice_payment_fail_path_parameter_error"

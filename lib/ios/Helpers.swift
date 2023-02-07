@@ -286,7 +286,7 @@ func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.P
 //                apiError.getValueType() //TODO iterate through all
 //            })
 
-        return handleReject(reject, .invoice_payment_fail_retry_safe, nil, error.getValueAsAllFailedResendSafe().map { $0.description } )
+        return handleReject(reject, .invoice_payment_fail_resend_safe, nil, error.getValueAsAllFailedResendSafe().map { $0.description } )
     case .ParameterError:
         guard let parameterError = error.getValueAsParameterError() else {
             return handleReject(reject, .invoice_payment_fail_parameter_error)

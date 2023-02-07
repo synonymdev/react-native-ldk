@@ -72,7 +72,7 @@ enum class LdkErrors {
     invoice_payment_fail_invoice,
     invoice_payment_fail_routing,
     invoice_payment_fail_sending,
-    invoice_payment_fail_retry_safe,
+    invoice_payment_fail_resend_safe,
     invoice_payment_fail_parameter_error,
     invoice_payment_fail_partial,
     invoice_payment_fail_path_parameter_error,
@@ -660,9 +660,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val sendingError = error?.err as? PaymentError.Sending
         if (sendingError != null) {
-            val paymentAllFailedRetrySafe = sendingError.sending as? PaymentSendFailure.AllFailedRetrySafe
-            if (paymentAllFailedRetrySafe != null) {
-                return handleReject(promise, LdkErrors.invoice_payment_fail_retry_safe, Error(paymentAllFailedRetrySafe.all_failed_retry_safe.map { it.toString() }.toString()))
+            val paymentAllFailedResendSafe = sendingError.sending as? PaymentSendFailure.AllFailedResendSafe
+            if (paymentAllFailedResendSafe != null) {
+                return handleReject(promise, LdkErrors.invoice_payment_fail_resend_safe, Error(paymentAllFailedResendSafe.all_failed_resend_safe.map { it.toString() }.toString()))
             }
 
             val paymentParameterError = sendingError.sending as? PaymentSendFailure.ParameterError
