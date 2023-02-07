@@ -1383,9 +1383,7 @@ class LightningManager {
 		console.log(`onChannelManagerDiscardFunding: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerPaymentClaimed(
-		res: TChannelManagerClaim,
-	): void {
+	private onChannelManagerPaymentClaimed(res: TChannelManagerClaim): void {
 		// Payment Received/Invoice Paid.
 		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`);
 		this.syncLdk().then();

@@ -14,23 +14,23 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             val body = Arguments.createMap()
             body.putHexString("temp_channel_id", fundingGenerationReady.temporary_channel_id)
             body.putHexString("output_script", fundingGenerationReady.output_script)
-            body.putInt("user_channel_id", fundingGenerationReady.user_channel_id.toInt())
+            body.putString("user_channel_id", fundingGenerationReady.user_channel_id.toString())
             body.putInt("value_satoshis", fundingGenerationReady.channel_value_satoshis.toInt())
             return LdkEventEmitter.send(EventTypes.channel_manager_funding_generation_ready, body)
         }
 
-        (event as? Event.PaymentReceived)?.let { paymentReceived ->
+        (event as? Event.PaymentClaimable)?.let { paymentClaimable ->
             val body = Arguments.createMap()
-            body.putHexString("payment_hash", paymentReceived.payment_hash)
-            body.putInt("amount_sat", paymentReceived.amount_msat.toInt() / 1000)
-            (paymentReceived.purpose as? PaymentPurpose.InvoicePayment)?.let {
+            body.putHexString("payment_hash", paymentClaimable.payment_hash)
+            body.putInt("amount_sat", paymentClaimable.amount_msat.toInt() / 1000)
+            (paymentClaimable.purpose as? PaymentPurpose.InvoicePayment)?.let {
                 body.putHexString("payment_preimage", it.payment_preimage)
                 body.putHexString("payment_secret", it.payment_secret)
             }
-            (paymentReceived.purpose as? PaymentPurpose.SpontaneousPayment)?.let {
+            (paymentClaimable.purpose as? PaymentPurpose.SpontaneousPayment)?.let {
                 body.putHexString("spontaneous_payment_preimage", it.spontaneous_payment)
             }
-            return LdkEventEmitter.send(EventTypes.channel_manager_payment_received, body)
+            return LdkEventEmitter.send(EventTypes.channel_manager_payment_claimable, body)
         }
 
         (event as? Event.PaymentSent)?.let { paymentSent ->
@@ -109,7 +109,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
 
         (event as? Event.ChannelClosed)?.let { channelClosed ->
             val body = Arguments.createMap()
-            body.putInt("user_channel_id", channelClosed.user_channel_id.toInt())
+            body.putString("user_channel_id", channelClosed.user_channel_id.toString())
             body.putHexString("channel_id", channelClosed.channel_id)
             body.putHexString("reason", channelClosed.reason.write())
             return LdkEventEmitter.send(EventTypes.channel_manager_channel_closed, body)

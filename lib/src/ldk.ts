@@ -758,10 +758,21 @@ class LDK {
 		return ok(route);
 	}
 
+	/**
+	 * Builds a custom route to ensure a direct path if only 1 hop is required.
+	 * Experimental and shouldn't be required to use if LDK is routing correctly.
+	 * Only available on iOS for now.
+	 * @param paymentRequest
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
 	async payWithRoute({
 		paymentRequest: anyPaymentRequest,
 		amountSats,
 	}: TPaymentReq): Promise<Result<string>> {
+		if (Platform.OS !== 'ios') {
+			return err('Currently only working on iOS');
+		}
+
 		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
 		const decodeRes = await this.decode({ paymentRequest });
 		if (decodeRes.isErr()) {
@@ -778,7 +789,6 @@ class LDK {
 
 		const {
 			recover_payee_pub_key,
-			route_hints,
 			payment_secret,
 			payment_hash,
 			amount_satoshis,
