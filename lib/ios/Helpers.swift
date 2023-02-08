@@ -95,7 +95,7 @@ extension ChannelDetails {
             "counterparty_node_id": Data(getCounterparty().getNodeId()).hexEncodedString(),
             "funding_txid": Data(getFundingTxo()?.getTxid()?.reversed() ?? []).hexEncodedString(),
             "channel_type": Data(getChannelType()?.write() ?? []).hexEncodedString(),
-            "user_channel_id": getUserChannelId(), //Number
+            "user_channel_id": Data(getUserChannelId()).hexEncodedString(), //Sting
             "confirmations_required": getConfirmationsRequired() as Any, // Optional number
             "short_channel_id": shortChannelId != nil ? String(shortChannelId!) : "",
             "inbound_scid_alias": getInboundScidAlias() as Any, //Optional number

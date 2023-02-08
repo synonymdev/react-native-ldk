@@ -5,7 +5,6 @@ import {
 	Button,
 	EmitterSubscription,
 	Modal,
-	NativeModules,
 	SafeAreaView,
 	ScrollView,
 	StyleSheet,
@@ -25,8 +24,7 @@ import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm, {
 	EEventTypes,
-	TChannelManagerPayment,
-	TChannelManagerPaymentFailed,
+	TChannelManagerClaim,
 	TChannelManagerPaymentPathFailed,
 	TChannelManagerPaymentPathSuccessful,
 	TChannelUpdate,
@@ -103,8 +101,7 @@ const App = (): ReactElement => {
 			// @ts-ignore
 			paymentSubscription = ldk.onEvent(
 				EEventTypes.channel_manager_payment_claimed,
-				(res: TChannelManagerPayment) =>
-					alert(`Received ${res.amount_sat} sats`),
+				(res: TChannelManagerClaim) => alert(`Received ${res.amount_sat} sats`),
 			);
 		}
 

@@ -251,7 +251,6 @@ class LDK {
 		active: boolean,
 	): Promise<Result<string>> {
 		try {
-			console.warn(`Check level matches native code [${level}]`);
 			const res = await NativeLDK.setLogLevel(level, active);
 			return ok(res);
 		} catch (e) {

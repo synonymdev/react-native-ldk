@@ -96,7 +96,7 @@ val ChannelDetails.asJson: WritableMap
         result.putHexString("counterparty_node_id", _counterparty._node_id)
         result.putHexString("funding_txid", _funding_txo?._txid?.reversed()?.toByteArray())
         result.putHexString("channel_type", _channel_type?.write())
-        result.putString("user_channel_id", _user_channel_id.toString())
+        result.putString("user_channel_id", _user_channel_id.leBytes.hexEncodedString())
         result.putInt("confirmations_required", (_confirmations_required as Option_u32Z.Some).some)
         (_short_channel_id as? Option_u64Z.Some)?.some?.toInt()
             ?.let { result.putString("short_channel_id", it.toString()) } //Optional number
