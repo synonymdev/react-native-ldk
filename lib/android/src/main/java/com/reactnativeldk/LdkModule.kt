@@ -285,7 +285,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         if (networkGraph == null) {
             LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached network graph from disk. Will sync from scratch.")
-            networkGraph = NetworkGraph.of(genesisHash.hexa(), logger.logger)
+            networkGraph = NetworkGraph.of(genesisHash.hexa().reversedArray(), logger.logger)
         }
 
         if (rapidGossipSyncUrl != "") {
@@ -318,7 +318,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             if (networkGraphFile.exists()) {
                 networkGraphFile.delete()
             }
-            networkGraph = NetworkGraph.of(genesisHash.hexa(), logger.logger)
+            networkGraph = NetworkGraph.of(genesisHash.hexa().reversedArray(), logger.logger)
             rapidGossipSync = RapidGossipSync.of(networkGraph)
             timestamp = 0
             LdkEventEmitter.send(EventTypes.native_log, "Rapid sync from scratch. Try remove in 0.0.113.")
@@ -422,7 +422,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 channelManagerConstructor = ChannelManagerConstructor(
                     ldkNetwork,
                     userConfig,
-                    blockHash.hexa(),
+                    blockHash.hexa().reversedArray(),
                     blockHeight.toInt(),
                     keysManager!!.as_KeysInterface(),
                     feeEstimator.feeEstimator,

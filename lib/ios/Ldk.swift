@@ -270,7 +270,7 @@ class Ldk: NSObject {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded network graph from file")
             }
         } catch {
-            networkGraph = NetworkGraph(genesisHash: String(genesisHash).hexaBytes, logger: logger)
+            networkGraph = NetworkGraph(genesisHash: String(genesisHash).hexaBytes.reversed(), logger: logger)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch. \(error.localizedDescription)")
         }
         
@@ -302,7 +302,7 @@ class Ldk: NSObject {
                 //If network graph is older than 24h download from scratch until incremental updates are working
                 //>>>>>> DELETE ME
                 try? FileManager().removeItem(atPath: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).path)
-                networkGraph = NetworkGraph(genesisHash: String(genesisHash).hexaBytes, logger: logger)
+                networkGraph = NetworkGraph(genesisHash: String(genesisHash).hexaBytes.reversed(), logger: logger)
                 rapidGossipSync = RapidGossipSync(networkGraph: networkGraph!)
                 timestamp = 0
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid sync from scratch. Try remove in 0.0.113.")
@@ -423,7 +423,7 @@ class Ldk: NSObject {
                 channelManagerConstructor = ChannelManagerConstructor(
                     network: ldkNetwork!,
                     config: userConfig,
-                    currentBlockchainTipHash: String(blockHash).hexaBytes,
+                    currentBlockchainTipHash: String(blockHash).hexaBytes.reversed(),
                     currentBlockchainTipHeight: UInt32(blockHeight),
                     keysInterface: keysManager.asKeysInterface(),
                     feeEstimator: feeEstimator,
