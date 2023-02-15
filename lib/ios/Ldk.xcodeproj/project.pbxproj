@@ -3,11 +3,11 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 52;
+	objectVersion = 46;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		962C8075282A8ADF0070AF84 /* LDKFramework.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 962C8074282A8ADF0070AF84 /* LDKFramework.xcframework */; };
+		96C6A1DB299B8734003199C0 /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C6A1D9299B8725003199C0 /* Helpers.swift */; };
 		F4FF95D7245B92E800C19C63 /* Ldk.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4FF95D6245B92E800C19C63 /* Ldk.swift */; };
 /* End PBXBuildFile section */
 
@@ -24,9 +24,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		134814201AA4EA6300B7C361 /* libLdk.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libLdk.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		962C8074282A8ADF0070AF84 /* LDKFramework.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LDKFramework.xcframework; sourceTree = "<group>"; };
+		134814201AA4EA6300B7C361 /* libLdk.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; name = libLdk.a; path = "/Users/jason/Documents/Repositories/react-native-ldk/lib/ios/build/Debug-iphoneos/libLdk.a"; sourceTree = "<absolute>"; };
 		962C808D282BAF9F0070AF84 /* Classes */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Classes; sourceTree = "<group>"; };
+		96C6A1D8299B8715003199C0 /* LightningDevKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LightningDevKit.xcframework; sourceTree = "<group>"; };
+		96C6A1D9299B8725003199C0 /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
+		96C6A1DA299B8730003199C0 /* Ldk-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "Ldk-Bridging-Header.h"; sourceTree = "<group>"; };
 		B3E7B5891CC2AC0600A0062D /* Ldk.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Ldk.m; sourceTree = "<group>"; };
 		F4FF95D5245B92E700C19C63 /* Ldk-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Ldk-Bridging-Header.h"; sourceTree = "<group>"; };
 		F4FF95D6245B92E800C19C63 /* Ldk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ldk.swift; sourceTree = "<group>"; };
@@ -37,30 +39,22 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				962C8075282A8ADF0070AF84 /* LDKFramework.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		134814211AA4EA7D00B7C361 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				134814201AA4EA6300B7C361 /* libLdk.a */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
 		58B511D21A9E6C8500147676 = {
 			isa = PBXGroup;
 			children = (
-				962C8074282A8ADF0070AF84 /* LDKFramework.xcframework */,
+				96C6A1D8299B8715003199C0 /* LightningDevKit.xcframework */,
 				F4FF95D6245B92E800C19C63 /* Ldk.swift */,
+				96C6A1D9299B8725003199C0 /* Helpers.swift */,
 				B3E7B5891CC2AC0600A0062D /* Ldk.m */,
+				96C6A1DA299B8730003199C0 /* Ldk-Bridging-Header.h */,
 				962C808D282BAF9F0070AF84 /* Classes */,
 				F4FF95D5245B92E700C19C63 /* Ldk-Bridging-Header.h */,
-				134814211AA4EA7D00B7C361 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
@@ -122,6 +116,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F4FF95D7245B92E800C19C63 /* Ldk.swift in Sources */,
+				96C6A1DB299B8734003199C0 /* Helpers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
