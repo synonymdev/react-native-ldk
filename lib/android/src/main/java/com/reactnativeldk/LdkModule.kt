@@ -32,7 +32,7 @@ enum class EventTypes {
     broadcast_transaction,
     backup,
     channel_manager_funding_generation_ready,
-    channel_manager_payment_received,
+    channel_manager_payment_claimable,
     channel_manager_payment_sent,
     channel_manager_open_channel_request,
     channel_manager_payment_path_successful,
@@ -72,7 +72,7 @@ enum class LdkErrors {
     invoice_payment_fail_invoice,
     invoice_payment_fail_routing,
     invoice_payment_fail_sending,
-    invoice_payment_fail_retry_safe,
+    invoice_payment_fail_resend_safe,
     invoice_payment_fail_parameter_error,
     invoice_payment_fail_partial,
     invoice_payment_fail_path_parameter_error,
@@ -285,7 +285,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         if (networkGraph == null) {
             LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached network graph from disk. Will sync from scratch.")
-            networkGraph = NetworkGraph.of(genesisHash.hexa(), logger.logger)
+            networkGraph = NetworkGraph.of(genesisHash.hexa().reversedArray(), logger.logger)
         }
 
         if (rapidGossipSyncUrl != "") {
@@ -318,7 +318,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             if (networkGraphFile.exists()) {
                 networkGraphFile.delete()
             }
-            networkGraph = NetworkGraph.of(genesisHash.hexa(), logger.logger)
+            networkGraph = NetworkGraph.of(genesisHash.hexa().reversedArray(), logger.logger)
             rapidGossipSync = RapidGossipSync.of(networkGraph)
             timestamp = 0
             LdkEventEmitter.send(EventTypes.native_log, "Rapid sync from scratch. Try remove in 0.0.113.")
@@ -422,7 +422,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 channelManagerConstructor = ChannelManagerConstructor(
                     ldkNetwork,
                     userConfig,
-                    blockHash.hexa(),
+                    blockHash.hexa().reversedArray(),
                     blockHeight.toInt(),
                     keysManager!!.as_KeysInterface(),
                     feeEstimator.feeEstimator,
@@ -488,8 +488,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun setLogLevel(level: Double, active: Boolean, promise: Promise) {
-        logger.setLevel(level.toInt(), active)
+    fun setLogLevel(level: String, active: Boolean, promise: Promise) {
+        logger.setLevel(level, active)
         handleResolve(promise, LdkCallbackResponses.log_level_updated)
     }
 
@@ -660,9 +660,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val sendingError = error?.err as? PaymentError.Sending
         if (sendingError != null) {
-            val paymentAllFailedRetrySafe = sendingError.sending as? PaymentSendFailure.AllFailedRetrySafe
-            if (paymentAllFailedRetrySafe != null) {
-                return handleReject(promise, LdkErrors.invoice_payment_fail_retry_safe, Error(paymentAllFailedRetrySafe.all_failed_retry_safe.map { it.toString() }.toString()))
+            val paymentAllFailedResendSafe = sendingError.sending as? PaymentSendFailure.AllFailedResendSafe
+            if (paymentAllFailedResendSafe != null) {
+                return handleReject(promise, LdkErrors.invoice_payment_fail_resend_safe, Error(paymentAllFailedResendSafe.all_failed_resend_safe.map { it.toString() }.toString()))
             }
 
             val paymentParameterError = sendingError.sending as? PaymentSendFailure.ParameterError

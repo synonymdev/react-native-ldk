@@ -17,7 +17,7 @@ import {
 	TChannelManagerDiscardFunding,
 	TChannelManagerFundingGenerationReady,
 	TChannelManagerOpenChannelRequest,
-	TChannelManagerPayment,
+	TChannelManagerClaim,
 	TChannelManagerPaymentFailed,
 	TChannelManagerPaymentPathFailed,
 	TChannelManagerPaymentPathSuccessful,
@@ -144,8 +144,8 @@ class LightningManager {
 			this.onChannelManagerFundingGenerationReady.bind(this),
 		);
 		ldk.onEvent(
-			EEventTypes.channel_manager_payment_received,
-			this.onChannelManagerPaymentReceived.bind(this),
+			EEventTypes.channel_manager_payment_claimable,
+			this.onChannelManagerPaymentClaimable.bind(this),
 		);
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_sent,
@@ -923,10 +923,20 @@ class LightningManager {
 	}: TPaymentReq): Promise<Result<TChannelManagerPaymentSent>> => {
 		return new Promise(async (resolve) => {
 			this.subscribeToPaymentResponses(resolve).then();
-			const payResponse: Result<string> | undefined = await ldk.pay({
+
+			let payResponse: Result<string> | undefined = await ldk.pay({
 				paymentRequest,
 				amountSats,
 			});
+
+			//Quickly retry with default invoice payer method
+			// if (!payResponse.isOk()) {
+			// 	payResponse = await ldk.pay({
+			// 		paymentRequest,
+			// 		amountSats,
+			// 	});
+			// }
+
 			if (!payResponse) {
 				this.unsubscribeFromPaymentSubscriptions();
 				return resolve(err('Unable to pay the provided lightning invoice.'));
@@ -1285,7 +1295,7 @@ class LightningManager {
 		); //TODO
 	}
 
-	private onChannelManagerPaymentReceived(res: TChannelManagerPayment): void {
+	private onChannelManagerPaymentClaimable(res: TChannelManagerClaim): void {
 		if (res.spontaneous_payment_preimage) {
 			//https://docs.rs/lightning/latest/lightning/util/events/enum.PaymentPurpose.html#variant.SpontaneousPayment
 			ldk.claimFunds(res.spontaneous_payment_preimage).catch(console.error);
@@ -1373,7 +1383,7 @@ class LightningManager {
 		console.log(`onChannelManagerDiscardFunding: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerPaymentClaimed(res: TChannelManagerPayment): void {
+	private onChannelManagerPaymentClaimed(res: TChannelManagerClaim): void {
 		// Payment Received/Invoice Paid.
 		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`);
 		this.syncLdk().then();

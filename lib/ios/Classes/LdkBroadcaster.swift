@@ -9,11 +9,7 @@ import Foundation
 import LightningDevKit
 
 class LdkBroadcaster: BroadcasterInterface {
-    override func free() {
-        //TODO find out what this is for
-    }
-    
-    override func broadcast_transaction(tx: [UInt8]) {
+    override func broadcastTransaction(tx: [UInt8]) {
         LdkEventEmitter.shared.send(withEvent: .broadcast_transaction, body: ["tx": Data(tx).hexEncodedString()])
     }
 }

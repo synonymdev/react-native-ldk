@@ -24,7 +24,9 @@ import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm, {
 	EEventTypes,
-	TChannelManagerPayment,
+	TChannelManagerClaim,
+	TChannelManagerPaymentPathFailed,
+	TChannelManagerPaymentPathSuccessful,
 	TChannelUpdate,
 } from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
@@ -34,6 +36,8 @@ import RNFS from 'react-native-fs';
 let logSubscription: EmitterSubscription | undefined;
 let paymentSubscription: EmitterSubscription | undefined;
 let onChannelSubscription: EmitterSubscription | undefined;
+let paymentFailedSubscription: EmitterSubscription | undefined;
+let paymentPathSuccess: EmitterSubscription | undefined;
 let backupSubscriptionId: string | undefined;
 
 const App = (): ReactElement => {
@@ -97,8 +101,29 @@ const App = (): ReactElement => {
 			// @ts-ignore
 			paymentSubscription = ldk.onEvent(
 				EEventTypes.channel_manager_payment_claimed,
-				(res: TChannelManagerPayment) =>
-					alert(`Received ${res.amount_sat} sats`),
+				(res: TChannelManagerClaim) => alert(`Received ${res.amount_sat} sats`),
+			);
+		}
+
+		if (!paymentFailedSubscription) {
+			// @ts-ignore
+			paymentFailedSubscription = ldk.onEvent(
+				EEventTypes.channel_manager_payment_path_failed,
+				(res: TChannelManagerPaymentPathFailed) =>
+					setMessage(
+						`Payment path failed ${
+							res.payment_failed_permanently ? 'permanently' : 'temporarily'
+						}`,
+					),
+			);
+		}
+
+		if (!paymentPathSuccess) {
+			// @ts-ignore
+			paymentPathSuccess = ldk.onEvent(
+				EEventTypes.channel_manager_payment_path_successful,
+				(res: TChannelManagerPaymentPathSuccessful) =>
+					setMessage(`Payment path success ${res.payment_id}`),
 			);
 		}
 
@@ -128,6 +153,8 @@ const App = (): ReactElement => {
 		return (): void => {
 			logSubscription && logSubscription.remove();
 			paymentSubscription && paymentSubscription.remove();
+			paymentFailedSubscription && paymentFailedSubscription.remove();
+			paymentPathSuccess && paymentPathSuccess.remove();
 			onChannelSubscription && onChannelSubscription.remove();
 			backupSubscriptionId && lm.unsubscribeFromBackups(backupSubscriptionId);
 		};
@@ -455,6 +482,19 @@ const App = (): ReactElement => {
 									},
 								],
 							);
+						}}
+					/>
+
+					<Button
+						title={'Build route and pay'}
+						onPress={async (): Promise<void> => {
+							const paymentRequest = await Clipboard.getString();
+							const payRes = await ldk.payWithRoute({ paymentRequest });
+							if (payRes.isErr()) {
+								return setMessage(payRes.error.message);
+							}
+
+							setMessage(payRes.value);
 						}}
 					/>
 

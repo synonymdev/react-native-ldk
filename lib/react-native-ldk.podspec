@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
   # optional - use expanded license entry instead:
   # s.license    = { :type => "MIT", :file => "LICENSE" }
   s.authors      = { "synonymdev" => "jason@synonym.to" }
-  s.platforms    = { :ios => "9.0" }
+  s.platforms    = { :ios => "13.0" }
   s.source       = { :git => "https://github.com/synonymdev/react-native-ldk.git", :tag => "#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m,swift}"

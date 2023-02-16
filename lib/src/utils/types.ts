@@ -12,7 +12,7 @@ export enum EEventTypes {
 	broadcast_transaction = 'broadcast_transaction',
 	backup = 'backup',
 	channel_manager_funding_generation_ready = 'channel_manager_funding_generation_ready',
-	channel_manager_payment_received = 'channel_manager_payment_received',
+	channel_manager_payment_claimable = 'channel_manager_payment_claimable',
 	channel_manager_payment_sent = 'channel_manager_payment_sent',
 	channel_manager_open_channel_request = 'channel_manager_open_channel_request',
 	channel_manager_payment_path_successful = 'channel_manager_payment_path_successful',
@@ -43,11 +43,11 @@ export type TBroadcastTransactionEvent = { tx: string };
 export type TChannelManagerFundingGenerationReady = {
 	temp_channel_id: string;
 	output_script: string;
-	user_channel_id: number;
+	user_channel_id: string;
 	value_satoshis: number;
 };
 
-export type TChannelManagerPayment = {
+export type TChannelManagerClaim = {
 	payment_hash: string;
 	amount_sat: number;
 	payment_preimage: string;
@@ -78,7 +78,7 @@ export type TChannelUpdate = {
 type TPath = {
 	pubkey: string;
 	fee_sat: number;
-	short_channel_id: number;
+	short_channel_id: string;
 	cltv_expiry_delta: number;
 };
 
@@ -111,7 +111,7 @@ export type TChannelManagerSpendableOutputs = {
 };
 
 export type TChannelManagerChannelClosed = {
-	user_channel_id: number;
+	user_channel_id: string;
 	channel_id: string;
 	reason: string;
 };
@@ -131,9 +131,9 @@ export type TChannel = {
 	counterparty_node_id: string;
 	funding_txid?: string;
 	channel_type?: string;
-	user_channel_id: number;
+	user_channel_id: string;
 	confirmations_required?: number;
-	short_channel_id?: number;
+	short_channel_id: string;
 	inbound_scid_alias?: number;
 	inbound_payment_scid?: number;
 	inbound_capacity_sat: number;
@@ -141,6 +141,8 @@ export type TChannel = {
 	channel_value_satoshis: number;
 	force_close_spend_delay?: number;
 	unspendable_punishment_reserve?: number;
+	config_forwarding_fee_base_msat: number;
+	config_forwarding_fee_proportional_millionths: number;
 };
 
 export type TNetworkGraphChannelInfo = {
@@ -184,9 +186,9 @@ export type TInvoice = {
 	payment_secret: string;
 	timestamp: number;
 	features?: string;
-	currency: number;
+	currency: string;
 	to_str: string; //Actual bolt11 invoice string
-	route_hints: RouteHints[];
+	route_hints: TRouteHints[];
 };
 
 export type TNetworkGraphUpdated = {
@@ -194,11 +196,19 @@ export type TNetworkGraphUpdated = {
 	node_count: number;
 };
 
-export type RouteHints = RouteHintHop[];
+export type TRouteHints = TRouteHintHop[];
 
-export type RouteHintHop = {
+export type TRouteHintHop = {
 	src_node_id: string;
 	short_channel_id: string;
+};
+
+export type TPaymentRoute = TPaymentHop[];
+
+export type TPaymentHop = {
+	dest_node_id: string;
+	short_channel_id: string;
+	fee_sats: number;
 };
 
 export type TLogListener = {
@@ -295,12 +305,12 @@ export type TInitConfig = {
 };
 
 export enum ELdkLogLevels {
-	gossip = 0, //LDKLevel_Gossip
-	trace = 1, //LDKLevel_Trace
-	debug = 2, //LDKLevel_Debug
-	info = 3, //LDKLevel_Info
-	warn = 4, //LDKLevel_Warn
-	error = 5, //LDKLevel_Error
+	gossip = 'GOSSIP',
+	trace = 'TRACE',
+	debug = 'DEBUG',
+	info = 'INFO',
+	warn = 'WARN',
+	error = 'ERROR',
 }
 
 export type THeader = {

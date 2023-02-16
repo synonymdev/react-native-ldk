@@ -225,7 +225,8 @@ const validateAddress = ({
  * @returns {string}
  */
 export const extractPaymentRequest = (paymentRequest: string): string => {
-	const result = paymentRequest.replace('lightning:', '').toLowerCase();
+	let result = paymentRequest.replace('lightning:', '').toLowerCase();
+	result = result.replace('bitcoin:', '').toLowerCase();
 	//TODO support bip21 and other common formats
 	return result;
 };

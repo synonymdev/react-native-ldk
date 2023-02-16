@@ -42,7 +42,7 @@ RCT_EXTERN_METHOD(updateFees:(NSInteger *)high
                   low:(NSInteger *)low
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(setLogLevel:(NSInteger *)high
+RCT_EXTERN_METHOD(setLogLevel:(NSString *)level
                   active:(BOOL *)active
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
@@ -109,6 +109,17 @@ RCT_EXTERN_METHOD(decode:(NSString *)paymentRequest
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(pay:(NSString *)paymentRequest
                   amountSats:(NSInteger *)amountSats
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(payWithRoute:(NSArray *)route
+                  destinationNodeId:(NSString *)destinationNodeId
+                  amountSats:(NSInteger *)amountSats
+                  cltvExpiryDelta:(NSInteger *)cltvExpiryDelta
+                  paymentHash:(NSString *)paymentHash
+                  paymentSecret:(NSString *)paymentSecret
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(payWithRoute2:(NSString *)payReq
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(abandonPayment:(NSString *)paymentId

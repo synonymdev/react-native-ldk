@@ -9,19 +9,15 @@ import Foundation
 import LightningDevKit
 
 class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
-    override func free() {
-        //TODO find out what this is for
-    }
-    
     //Custom function to manage any unlikely missing info from the event object
     func handleEventError(_ event: Event) {
         LdkEventEmitter.shared.send(
             withEvent: .native_log,
-            body: "Error missing details for handle_event of type \(event.getValueType().debugDescription)"
+            body: "Error missing details for handle_event of type \(event.getValueType())"
         )
     }
     
-    func handle_event(event: Event) {
+    func handleEvent(event: Event) {
         // Follows ldk-sample event handling structure
         // https://github.com/lightningdevkit/ldk-sample/blob/c0a722430b8fbcb30310d64487a32aae839da3e8/src/main.rs#L600
         switch event.getValueType() {
@@ -33,27 +29,27 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_funding_generation_ready,
                 body: [
-                    "temp_channel_id": Data(fundingGeneration.getTemporary_channel_id()).hexEncodedString(),
-                    "output_script": Data(fundingGeneration.getOutput_script()).hexEncodedString(),
-                    "user_channel_id": fundingGeneration.getUser_channel_id(),
-                    "value_satoshis": fundingGeneration.getChannel_value_satoshis(),
+                    "temp_channel_id": Data(fundingGeneration.getTemporaryChannelId()).hexEncodedString(),
+                    "output_script": Data(fundingGeneration.getOutputScript()).hexEncodedString(),
+                    "user_channel_id": Data(fundingGeneration.getUserChannelId()).hexEncodedString(),
+                    "value_satoshis": fundingGeneration.getChannelValueSatoshis(),
                 ]
             )
             return
-        case .PaymentReceived:
-            guard let paymentReceived = event.getValueAsPaymentReceived() else {
+        case .PaymentClaimable:
+            guard let paymentClaimable = event.getValueAsPaymentClaimable() else {
                 return handleEventError(event)
             }
             
-            let paymentPreimage = paymentReceived.getPurpose().getValueAsInvoicePayment()?.getPayment_preimage()
-            let paymentSecret = paymentReceived.getPurpose().getValueAsInvoicePayment()?.getPayment_secret()
-            let spontaneousPayment = paymentReceived.getPurpose().getValueAsSpontaneousPayment()
+            let paymentPreimage = paymentClaimable.getPurpose().getValueAsInvoicePayment()?.getPaymentPreimage()
+            let paymentSecret = paymentClaimable.getPurpose().getValueAsInvoicePayment()?.getPaymentSecret()
+            let spontaneousPayment = paymentClaimable.getPurpose().getValueAsSpontaneousPayment()
             
             LdkEventEmitter.shared.send(
-                withEvent: .channel_manager_payment_received,
+                withEvent: .channel_manager_payment_claimable,
                 body: [
-                    "payment_hash": Data(paymentReceived.getPayment_hash()).hexEncodedString(),
-                    "amount_sat": paymentReceived.getAmount_msat() / 1000,
+                    "payment_hash": Data(paymentClaimable.getPaymentHash()).hexEncodedString(),
+                    "amount_sat": paymentClaimable.getAmountMsat() / 1000,
                     "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
                     "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
                     "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
@@ -68,10 +64,10 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_payment_sent,
                 body: [
-                    "payment_id": Data(paymentSent.getPayment_id()).hexEncodedString(),
-                    "payment_preimage": Data(paymentSent.getPayment_preimage()).hexEncodedString(),
-                    "payment_hash": Data(paymentSent.getPayment_hash()).hexEncodedString(),
-                    "fee_paid_sat": paymentSent.getFee_paid_msat().getValue() ?? 0 / 1000,
+                    "payment_id": Data(paymentSent.getPaymentId()).hexEncodedString(),
+                    "payment_preimage": Data(paymentSent.getPaymentPreimage()).hexEncodedString(),
+                    "payment_hash": Data(paymentSent.getPaymentHash()).hexEncodedString(),
+                    "fee_paid_sat": paymentSent.getFeePaidMsat() ?? 0 / 1000,
                 ]
             )
             return
@@ -83,11 +79,11 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_open_channel_request,
                 body: [
-                    "temp_channel_id": Data(openChannelRequest.getTemporary_channel_id()).hexEncodedString(),
-                    "counterparty_node_id": Data(openChannelRequest.getCounterparty_node_id()).hexEncodedString(),
-                    "push_sat": openChannelRequest.getPush_msat() / 1000,
-                    "funding_satoshis": openChannelRequest.getFunding_satoshis(),
-                    "channel_type": Data(openChannelRequest.getChannel_type().write()).hexEncodedString()
+                    "temp_channel_id": Data(openChannelRequest.getTemporaryChannelId()).hexEncodedString(),
+                    "counterparty_node_id": Data(openChannelRequest.getCounterpartyNodeId()).hexEncodedString(),
+                    "push_sat": openChannelRequest.getPushMsat() / 1000,
+                    "funding_satoshis": openChannelRequest.getFundingSatoshis(),
+                    "channel_type": Data(openChannelRequest.getChannelType().write()).hexEncodedString()
                 ]
             )
             return
@@ -99,8 +95,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_payment_path_successful,
                 body: [
-                    "payment_id": Data(paymentPathSuccessful.getPayment_id()).hexEncodedString(),
-                    "payment_hash": Data(paymentPathSuccessful.getPayment_hash()).hexEncodedString(),
+                    "payment_id": Data(paymentPathSuccessful.getPaymentId()).hexEncodedString(),
+                    "payment_hash": Data(paymentPathSuccessful.getPaymentHash()).hexEncodedString(),
                     "path": paymentPathSuccessful.getPath().map { $0.asJson },
                 ]
             )
@@ -113,12 +109,12 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_payment_path_failed,
                 body: [
-                    "payment_id": Data(paymentPathFailed.getPayment_id()).hexEncodedString(),
-                    "payment_hash": Data(paymentPathFailed.getPayment_hash()).hexEncodedString(),
-                    "payment_failed_permanently": paymentPathFailed.getPayment_failed_permanently(),
-                    "short_channel_id": paymentPathFailed.getShort_channel_id(),
+                    "payment_id": Data(paymentPathFailed.getPaymentId()).hexEncodedString(),
+                    "payment_hash": Data(paymentPathFailed.getPaymentHash()).hexEncodedString(),
+                    "payment_failed_permanently": paymentPathFailed.getPaymentFailedPermanently(),
+                    "short_channel_id": String(paymentPathFailed.getShortChannelId() ?? 0),
                     "path": paymentPathFailed.getPath().map { $0.asJson },
-                    "network_update": paymentPathFailed.getNetwork_update().getValue().debugDescription //TODO could be more detailed
+                    "network_update": paymentPathFailed.getNetworkUpdate().debugDescription //TODO could be more detailed
                 ]
             )
             return
@@ -130,8 +126,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_payment_failed,
                 body: [
-                    "payment_id": Data(paymentFailed.getPayment_id()).hexEncodedString(),
-                    "payment_hash": Data(paymentFailed.getPayment_hash()).hexEncodedString(),
+                    "payment_id": Data(paymentFailed.getPaymentId()).hexEncodedString(),
+                    "payment_hash": Data(paymentFailed.getPaymentHash()).hexEncodedString(),
                 ]
             )
             return
@@ -139,14 +135,14 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             //Unused on mobile
             return
         case .PendingHTLCsForwardable:
-            guard let pendingHTLCsForwardable = event.getValueAsPendingHTLCsForwardable() else {
+            guard let pendingHtlcsForwardable = event.getValueAsPendingHtlcsForwardable() else {
                 return handleEventError(event)
             }
-                        
+            
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_pending_htlcs_forwardable,
                 body: [
-                    "time_forwardable": pendingHTLCsForwardable.getTime_forwardable(),
+                    "time_forwardable": pendingHtlcsForwardable.getTimeForwardable(),
                 ]
             )
             return
@@ -170,8 +166,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_channel_closed,
                 body: [
-                    "user_channel_id": channelClosed.getUser_channel_id(),
-                    "channel_id": Data(channelClosed.getChannel_id()).hexEncodedString(),
+                    "user_channel_id": Data(channelClosed.getUserChannelId()).hexEncodedString(),
+                    "channel_id": Data(channelClosed.getChannelId()).hexEncodedString(),
                     "reason": Data(channelClosed.getReason().write()).hexEncodedString()
                 ]
             )
@@ -185,7 +181,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_discard_funding,
                 body: [
-                    "channel_id": Data(discardFunding.getChannel_id()).hexEncodedString(),
+                    "channel_id": Data(discardFunding.getChannelId()).hexEncodedString(),
                     "tx": Data(discardFunding.getTransaction()).hexEncodedString()
                 ]
             )
@@ -195,15 +191,15 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 return handleEventError(event)
             }
             
-            let paymentPreimage = paymentClaimed.getPurpose().getValueAsInvoicePayment()?.getPayment_preimage()
-            let paymentSecret = paymentClaimed.getPurpose().getValueAsInvoicePayment()?.getPayment_secret()
+            let paymentPreimage = paymentClaimed.getPurpose().getValueAsInvoicePayment()?.getPaymentPreimage()
+            let paymentSecret = paymentClaimed.getPurpose().getValueAsInvoicePayment()?.getPaymentSecret()
             let spontaneousPayment = paymentClaimed.getPurpose().getValueAsSpontaneousPayment()
             
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_payment_claimed,
                 body: [
-                    "payment_hash": Data(paymentClaimed.getPayment_hash()).hexEncodedString(),
-                    "amount_sat": paymentClaimed.getAmount_msat() / 1000,
+                    "payment_hash": Data(paymentClaimed.getPaymentHash()).hexEncodedString(),
+                    "amount_sat": paymentClaimed.getAmountMsat() / 1000,
                     "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
                     "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
                     "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
@@ -214,53 +210,53 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         }
     }
     
-    override func persist_manager(channel_manager: ChannelManager) -> Result_NoneErrorZ {
+    override func persistManager(channelManager: ChannelManager) -> Result_NoneErrorZ {
         guard let managerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channel_manager.rawValue) else {
-            return Result_NoneErrorZ.ok() // TODO find out which error to return here
+            return Result_NoneErrorZ.initWithErr(e: .Other)
         }
         
         do {
-            try Data(channel_manager.write()).write(to: managerStorage)
+            try Data(channelManager.write()).write(to: managerStorage)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")
         
             LdkEventEmitter.shared.send(withEvent: .backup, body: "")
             
-            return Result_NoneErrorZ.ok()
+            return Result_NoneErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel manager to disk Error \(error.localizedDescription).")
-            return Result_NoneErrorZ.err(e: LDKIOError_Other)
+            return Result_NoneErrorZ.initWithErr(e: .Other)
         }
     }
     
-    override func persist_graph(network_graph: NetworkGraph) -> Result_NoneErrorZ {
+    override func persistGraph(networkGraph: NetworkGraph) -> Result_NoneErrorZ {
         guard let graphStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.network_graph.rawValue) else {
-            return Result_NoneErrorZ.ok() // TODO find out which error to return here
+            return Result_NoneErrorZ.initWithErr(e: .Other)
         }
                 
         do {
-            try Data(network_graph.write()).write(to: graphStorage)
+            try Data(networkGraph.write()).write(to: graphStorage)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted network graph to disk")
         
-            return Result_NoneErrorZ.ok()
+            return Result_NoneErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist network graph to disk Error \(error.localizedDescription).")
-            return Result_NoneErrorZ.ok() // TODO find out which error to return here
+            return Result_NoneErrorZ.initWithErr(e: .Other)
         }
     }
     
-    override func persist_scorer(scorer: WriteableScore) -> Bindings.Result_NoneErrorZ {
+    override func persistScorer(scorer: WriteableScore) -> Bindings.Result_NoneErrorZ {
         guard let scorerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.scorer.rawValue) else {
-            return Result_NoneErrorZ.ok() // TODO find out which error to return here
+            return Result_NoneErrorZ.initWithErr(e: .Other)
         }
                 
         do {
-//            try Data(scorer.write()).write(to: scorerStorage)
+            try Data(scorer.write()).write(to: scorerStorage)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "TODO persist scorer to disk")
         
-            return Result_NoneErrorZ.ok()
+            return Result_NoneErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist scorer to disk Error \(error.localizedDescription).")
-            return Result_NoneErrorZ.ok() // TODO find out which error to return here
+            return Result_NoneErrorZ.initWithErr(e: .Other)
         }
     }
 }
