@@ -43,6 +43,36 @@ func currencyString(_ currency: Currency) -> String {
     }
 }
 
+/// Loads the cached scorer from disk or creates a new one
+/// - Parameters:
+///   - path
+///   - networkGraph
+///   - logger
+/// - Returns: ProbabilisticScorer
+func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLogger) -> ProbabilisticScorer {
+    let scoringParams = ProbabilisticScoringParameters.initWithDefault()
+    
+    var probabalisticScorer: ProbabilisticScorer?
+    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
+        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
+        
+        if scorerRead.isOk() {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
+            probabalisticScorer = scorerRead.getValue()
+        } else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
+        }
+    }
+    
+    //Doesn't exist or error reading it
+    if probabalisticScorer == nil {
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting from scratch")
+        probabalisticScorer = ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
+    }
+    
+    return probabalisticScorer!
+}
+
 extension Invoice {
     var asJson: [String: Any?] {
         //Break down to get the decription. Will crash if all on a single line.

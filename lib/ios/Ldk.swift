@@ -223,7 +223,6 @@ class Ldk: NSObject {
             return handleReject(reject, .already_init)
         }
         
-        
         let channelHandshakeDefaults = ChannelHandshakeConfig.initWithDefault()
         let channelHandshakeConfig = ChannelHandshakeConfig(
             minimumDepthArg: UInt32(minChannelHandshakeDepth),
@@ -252,7 +251,7 @@ class Ldk: NSObject {
                         
         return handleResolve(resolve, .config_init_success)
     }
-
+    
     @objc
     func initNetworkGraph(_ genesisHash: NSString, rapidGossipSyncUrl: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard networkGraph == nil else {
@@ -262,7 +261,7 @@ class Ldk: NSObject {
         guard let accountStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
-        
+
         do {
             let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL)), arg: logger)
             if read.isOk() {
@@ -400,6 +399,7 @@ class Ldk: NSObject {
         
         do {
             //Only restore a node if we have existing channel monitors to restore. Else we lose our UserConfig settings when restoring.
+            //TOOD remove this check in 114 which should allow passing in userConfig
             if let channelManagerSerialized = storedChannelManager, channelMonitorsSerialized.count > 0 {
                 //Restoring node
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring node from disk")
@@ -441,9 +441,8 @@ class Ldk: NSObject {
         channelManager = channelManagerConstructor!.channelManager
                 
         //Scorer setup
-        let scoringParams = ProbabilisticScoringParameters.initWithDefault()
-        let probabalisticScorer = ProbabilisticScorer(params: scoringParams, networkGraph: self.networkGraph!, logger: logger)
-        let score = probabalisticScorer.asScore()
+        let probabilisticScorer = getProbabilisticScorer(path: accountStoragePath, networkGraph: networkGraph, logger: logger)
+        let score = probabilisticScorer.asScore()
         let scorer = MultiThreadedLockableScore(score: score)
         
         channelManagerConstructor!.chainSyncCompleted(persister: channelManagerPersister, scorer: scorer)
@@ -455,10 +454,10 @@ class Ldk: NSObject {
         if enableP2PGossip {
             self.networkGraph = channelManagerConstructor!.netGraph
         }
-        
+                
         return handleResolve(resolve, .channel_manager_init_success)
     }
-    
+  
     @objc
     func reset(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         channelManagerConstructor?.interrupt()
@@ -505,7 +504,7 @@ class Ldk: NSObject {
 
         channelManager.asConfirm().bestBlockUpdated(header: String(header).hexaBytes, height: UInt32(height))
         chainMonitor.asConfirm().bestBlockUpdated(header: String(header).hexaBytes, height: UInt32(height))
-
+        
         return handleResolve(resolve, .chain_sync_success)
     }
 
