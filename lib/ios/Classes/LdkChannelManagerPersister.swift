@@ -251,7 +251,6 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 
         do {
             try Data(scorer.write()).write(to: scorerStorage)
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "TODO persist scorer to disk")
         
             return Result_NoneErrorZ.initWithOk()
         } catch {
