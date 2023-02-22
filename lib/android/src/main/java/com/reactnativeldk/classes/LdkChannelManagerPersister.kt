@@ -155,7 +155,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
     }
 
     override fun persist_scorer(p0: ByteArray?) {
-        //TODO
-        println("TODO Kotlin persist scorer")
+        if (p0 != null && LdkModule.accountStoragePath != "") {
+            File(LdkModule.accountStoragePath + "/" + LdkFileNames.scorer.fileName).writeBytes(p0)
+            LdkEventEmitter.send(EventTypes.native_log, "Persisted scorer to disk")
+        }
     }
 }
