@@ -273,71 +273,73 @@ class Ldk: NSObject {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch. \(error.localizedDescription)")
         }
         
+        //Normal p2p gossip sync
+        guard rapidGossipSyncUrl != "" else {
+            return handleResolve(resolve, .network_graph_init_success)
+        }
+        
         print("rapidGossipSyncUrl: \(rapidGossipSyncUrl)")
         
         //Download url passed, enable rapid gossip sync
-        if rapidGossipSyncUrl != "" {
-            do {
-                let rapidGossipSyncStoragePath = accountStoragePath.appendingPathComponent("rapid_gossip_sync")
-                if !FileManager().fileExists(atPath: rapidGossipSyncStoragePath.path) {
-                    try FileManager.default.createDirectory(atPath: rapidGossipSyncStoragePath.path, withIntermediateDirectories: true, attributes: nil)
-                }
-
-                rapidGossipSync = RapidGossipSync(networkGraph: networkGraph!)
-                                
-                //If it's been more than 24 hours then we need to update RGS
-                var timestamp = networkGraph?.getLastRapidGossipSyncTimestamp() ?? 0
-                let hoursDiffSinceLastRGS = (Calendar.current.dateComponents([.hour], from: Date.init(timeIntervalSince1970: TimeInterval(timestamp)), to: Date()).hour)!
-               
-                guard hoursDiffSinceLastRGS > 24 else {
-                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping rapid gossip sync. Last updated \(hoursDiffSinceLastRGS) hours ago.")
-                    return handleResolve(resolve, .network_graph_init_success)
-                }
-                
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync applying update. Last updated \(hoursDiffSinceLastRGS) hours ago.")
-                
-                //TODO remove this incremental updates temp broken. Possibly related to https://github.com/lightningdevkit/rust-lightning/issues/1784
-                //TODO check if this is still an issue in 0.0.113
-                //If network graph is older than 24h download from scratch until incremental updates are working
-                //>>>>>> DELETE ME
-                try? FileManager().removeItem(atPath: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).path)
-                networkGraph = NetworkGraph(genesisHash: String(genesisHash).hexaBytes.reversed(), logger: logger)
-                rapidGossipSync = RapidGossipSync(networkGraph: networkGraph!)
-                timestamp = 0
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid sync from scratch. Try remove in 0.0.113.")
-                //<<<<<< DELETE ME
-                
-                rapidGossipSync!.downloadAndUpdateGraph(downloadUrl: String(rapidGossipSyncUrl), tempStoragePath: rapidGossipSyncStoragePath, timestamp: timestamp) { [weak self] error in
-                    guard let self = self else { return }
-                    
-                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync file downloaded.")
-                    
-                    if let error = error {
-                        return LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to download rapid sync file. \(error.localizedDescription).")
-                    }
-
-                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync completed.")
-
-                    guard let graph = self.networkGraph?.readOnly() else {
-                        return LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to use network graph.")
-                    }
-                    
-                    let _ = self.channelManagerPersister.persistGraph(networkGraph: self.networkGraph!)
-                    
-                    LdkEventEmitter.shared.send(
-                        withEvent: .network_graph_updated,
-                        body: [
-                            "channel_count": graph.listChannels().count,
-                            "node_count": graph.listNodes().count,
-                        ]
-                    )
-                }
-            } catch {
-                return handleReject(reject, .init_network_graph_fail, error)
+        do {
+            let rapidGossipSyncStoragePath = accountStoragePath.appendingPathComponent("rapid_gossip_sync")
+            if !FileManager().fileExists(atPath: rapidGossipSyncStoragePath.path) {
+                try FileManager.default.createDirectory(atPath: rapidGossipSyncStoragePath.path, withIntermediateDirectories: true, attributes: nil)
             }
+
+            rapidGossipSync = RapidGossipSync(networkGraph: networkGraph!)
+                            
+            //If it's been more than 24 hours then we need to update RGS
+            let timestamp = networkGraph?.getLastRapidGossipSyncTimestamp() ?? 0
+            let hoursDiffSinceLastRGS = (Calendar.current.dateComponents([.hour], from: Date.init(timeIntervalSince1970: TimeInterval(timestamp)), to: Date()).hour)!
+           
+            guard hoursDiffSinceLastRGS > 24 else {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping rapid gossip sync. Last updated \(hoursDiffSinceLastRGS) hours ago.")
+                return handleResolve(resolve, .network_graph_init_success)
+            }
+            
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync applying update. Last updated \(hoursDiffSinceLastRGS) hours ago.")
+            
+            //TODO remove this incremental updates temp broken. Possibly related to https://github.com/lightningdevkit/rust-lightning/issues/1784
+            //TODO check if this is still an issue in 0.0.113
+            //If network graph is older than 24h download from scratch until incremental updates are working
+            //>>>>>> DELETE ME
+//                try? FileManager().removeItem(atPath: accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).path)
+//                networkGraph = NetworkGraph(genesisHash: String(genesisHash).hexaBytes.reversed(), logger: logger)
+//                rapidGossipSync = RapidGossipSync(networkGraph: networkGraph!)
+//                timestamp = 0
+//                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid sync from scratch. Try remove in 0.0.113.")
+            //<<<<<< DELETE ME
+            
+            rapidGossipSync!.downloadAndUpdateGraph(downloadUrl: String(rapidGossipSyncUrl), tempStoragePath: rapidGossipSyncStoragePath, timestamp: timestamp) { [weak self] error in
+                guard let self = self else { return }
+                                
+                if let error = error {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to download rapid sync file. \(error.localizedDescription).")
+                    return handleResolve(resolve, .network_graph_init_success) //Continue like normal, likely fine if we don't have the absolute latest state
+                }
+
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync completed.")
+
+                guard let graph = self.networkGraph?.readOnly() else {
+                    return handleReject(reject, .init_network_graph_fail, "Failed to use network graph.")
+                }
+                
+                _ = self.channelManagerPersister.persistGraph(networkGraph: self.networkGraph!)
+                
+                LdkEventEmitter.shared.send(
+                    withEvent: .network_graph_updated,
+                    body: [
+                        "channel_count": graph.listChannels().count,
+                        "node_count": graph.listNodes().count,
+                    ]
+                )
+                
+                return handleResolve(resolve, .network_graph_init_success)
+            }
+        } catch {
+            return handleReject(reject, .init_network_graph_fail, error)
         }
-        
-        return handleResolve(resolve, .network_graph_init_success)
     }
 
     @objc
@@ -394,8 +396,8 @@ class Ldk: NSObject {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel from file \(channelFile.lastPathComponent)")
             channelMonitorsSerialized.append([UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)))
         }
-        
-        print("enableP2PGossip \(enableP2PGossip)")
+                
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Enabled P2P gossip: \(enableP2PGossip)")
         
         do {
             //Only restore a node if we have existing channel monitors to restore. Else we lose our UserConfig settings when restoring.
