@@ -112,7 +112,8 @@ enum class LdkCallbackResponses {
 
 enum class LdkFileNames(val fileName: String) {
     network_graph("network_graph.bin"),
-    channel_manager("channel_manager.bin")
+    channel_manager("channel_manager.bin"),
+    scorer("scorer.bin")
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -439,17 +440,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         channelManager = channelManagerConstructor!!.channel_manager
 
         //Scorer setup
-        val params = ProbabilisticScoringParameters.with_default()
-        val default_scorer = ProbabilisticScorer.of(params, networkGraph, logger.logger)
-        val score_res = ProbabilisticScorer.read(
-            default_scorer.write(), params, networkGraph,
+        val probabilisticScorer = getProbabilisticScorer(
+            accountStoragePath,
+            networkGraph!!,
             logger.logger
-        )
-        if (!score_res.is_ok) {
-            return handleReject(promise, LdkErrors.init_scorer_failed)
-        }
-        val score = (score_res as Result_ProbabilisticScorerDecodeErrorZ_OK).res.as_Score()
-        val scorer = MultiThreadedLockableScore.of(score)
+        ) ?: return handleReject(promise, LdkErrors.init_scorer_failed)
+
+        val scorer = MultiThreadedLockableScore.of(probabilisticScorer.as_Score())
 
         channelManagerConstructor!!.chain_sync_completed(channelManagerPersister, scorer)
         peerManager = channelManagerConstructor!!.peer_manager
