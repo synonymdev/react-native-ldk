@@ -37,6 +37,31 @@ fun String.hexa(): ByteArray {
         .toByteArray()
 }
 
+fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Logger): ProbabilisticScorer? {
+    val params = ProbabilisticScoringParameters.with_default()
+
+    val scorerFile = File(path + "/" + LdkFileNames.scorer.fileName)
+    if (scorerFile.exists()) {
+        val read = ProbabilisticScorer.read(scorerFile.readBytes(), params, networkGraph, logger)
+        if (read.is_ok) {
+            LdkEventEmitter.send(EventTypes.native_log, "Loaded scorer from disk")
+            return (read as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
+        } else {
+            LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached scorer")
+        }
+    }
+
+    val default_scorer = ProbabilisticScorer.of(params, networkGraph, logger)
+    val score_res = ProbabilisticScorer.read(
+        default_scorer.write(), params, networkGraph,
+        logger
+    )
+    if (!score_res.is_ok) {
+        return null
+    }
+    return (score_res as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
+}
+
 val Invoice.asJson: WritableMap
     get() {
         val result = Arguments.createMap()
@@ -192,20 +217,24 @@ fun RapidGossipSync.downloadAndUpdateGraph(downloadUrl: String, tempStoragePath:
     val destinationFile = "$tempStoragePath$timestamp.bin"
 
     URL(downloadUrl + timestamp).downloadFile(destinationFile) {
+        if (it != null) {
+            return@downloadFile completion(it)
+        }
+
         val res = update_network_graph(File(destinationFile).readBytes())
         if (!res.is_ok()) {
             val error = res as? Result_u32GraphSyncErrorZ.Result_u32GraphSyncErrorZ_Err
 
             (error?.err as? GraphSyncError.LightningError)?.let { lightningError ->
-                return@downloadFile completion(Error("Rapid sync GraphSyncError.LightningError. " + lightningError.lightning_error._err))
+                return@downloadFile completion(Error("Rapid sync LightningError. " + lightningError.lightning_error._err))
             }
 
             (error?.err as? GraphSyncError.DecodeError)?.let { decodeError ->
                 (decodeError.decode_error as? DecodeError.Io)?.let { decodeIOError ->
-                    return@downloadFile completion(Error("Rapid sync GraphSyncError.DecodeError. " + decodeIOError.io.ordinal))
+                    return@downloadFile completion(Error("Rapid sync DecodeError. " + decodeIOError.io.ordinal))
                 }
 
-                return@downloadFile completion(Error("Rapid sync GraphSyncError.DecodeError"))
+                return@downloadFile completion(Error("Rapid sync DecodeError"))
             }
 
             return@downloadFile completion(Error("Unknown rapid sync error."))

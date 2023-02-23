@@ -27,8 +27,6 @@ class LdkLogger {
         if (activeLevels[level] == true) {
             LdkEventEmitter.send(EventTypes.ldk_log, record._args)
             LogFile.write( "$level (LDK): ${record._args}")
-        } else {
-            println("Skipping log level $level")
         }
     }
 

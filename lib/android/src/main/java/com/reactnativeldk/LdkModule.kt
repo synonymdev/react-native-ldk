@@ -112,7 +112,8 @@ enum class LdkCallbackResponses {
 
 enum class LdkFileNames(val fileName: String) {
     network_graph("network_graph.bin"),
-    channel_manager("channel_manager.bin")
+    channel_manager("channel_manager.bin"),
+    scorer("scorer.bin")
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -276,9 +277,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.already_init)
         }
 
-        val file = File(accountStoragePath + "/" + LdkFileNames.network_graph.fileName)
-        if (file.exists()) {
-            (NetworkGraph.read(file.readBytes(), logger.logger) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
+        val networkGraphFile = File(accountStoragePath + "/" + LdkFileNames.network_graph.fileName)
+        if (networkGraphFile.exists()) {
+            (NetworkGraph.read(networkGraphFile.readBytes(), logger.logger) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
                 networkGraph = res.res
             }
         }
@@ -288,67 +289,64 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             networkGraph = NetworkGraph.of(genesisHash.hexa().reversedArray(), logger.logger)
         }
 
-        if (rapidGossipSyncUrl != "") {
-            val rapidGossipSyncStoragePath = File("$accountStoragePath/rapid_gossip_sync/")
-            try {
-                if (!rapidGossipSyncStoragePath.exists()) {
-                    rapidGossipSyncStoragePath.mkdirs()
-                }
-            } catch (e: Exception) {
-                return handleReject(promise, LdkErrors.create_storage_dir_fail, Error(e))
-            }
-
-            rapidGossipSync = RapidGossipSync.of(networkGraph)
-
-            //If it's been more than 24 hours then we need to update RGS
-            var timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
-            val hoursDiffSinceLastRGS = (System.currentTimeMillis() / 1000 - timestamp) / 60 / 60
-            if (hoursDiffSinceLastRGS < 24) {
-                LdkEventEmitter.send(EventTypes.native_log, "Skipping rapid gossip sync. Last updated $hoursDiffSinceLastRGS hours ago.")
-                return handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
-            }
-
-            LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync applying update. Last updated $hoursDiffSinceLastRGS hours ago.")
-
-            //TODO remove this incremental updates temp broken. Possibly related to https://github.com/lightningdevkit/rust-lightning/issues/1784
-            //TODO check if this is still an issue in 0.0.113
-            //If network graph is older than 24h download from scratch until incremental updates are working
-            //>>>>>> DELETE ME
-            val networkGraphFile = File(accountStoragePath + "/" + LdkFileNames.network_graph.fileName)
-            if (networkGraphFile.exists()) {
-                networkGraphFile.delete()
-            }
-            networkGraph = NetworkGraph.of(genesisHash.hexa().reversedArray(), logger.logger)
-            rapidGossipSync = RapidGossipSync.of(networkGraph)
-            timestamp = 0
-            LdkEventEmitter.send(EventTypes.native_log, "Rapid sync from scratch. Try remove in 0.0.113.")
-            //<<<<<< DELETE ME
-
-            rapidGossipSync!!.downloadAndUpdateGraph(rapidGossipSyncUrl, "$accountStoragePath/rapid_gossip_sync/", timestamp) { error ->
-                LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync file downloaded.")
-
-                if (error != null) {
-                    LdkEventEmitter.send(EventTypes.native_log, error.localizedMessage)
-                    return@downloadAndUpdateGraph
-                }
-
-                LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync completed.")
-
-                if (networkGraph == null) {
-                    LdkEventEmitter.send(EventTypes.native_log, "Failed to use network graph.")
-                    return@downloadAndUpdateGraph
-                }
-
-                channelManagerPersister.persist_network_graph(networkGraph!!.write())
-
-                val body = Arguments.createMap()
-                body.putInt("channel_count", networkGraph!!.read_only().list_channels().count())
-                body.putInt("node_count", networkGraph!!.read_only().list_nodes().count())
-                LdkEventEmitter.send(EventTypes.network_graph_updated, body)
-            }
+        //Normal p2p gossip sync
+        if (rapidGossipSyncUrl == "") {
+            return handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
         }
 
-        handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
+        val rapidGossipSyncStoragePath = File("$accountStoragePath/rapid_gossip_sync/")
+        try {
+            if (!rapidGossipSyncStoragePath.exists()) {
+                rapidGossipSyncStoragePath.mkdirs()
+            }
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.create_storage_dir_fail, Error(e))
+        }
+
+        rapidGossipSync = RapidGossipSync.of(networkGraph)
+
+        //If it's been more than 24 hours then we need to update RGS
+        var timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
+        val hoursDiffSinceLastRGS = (System.currentTimeMillis() / 1000 - timestamp) / 60 / 60
+        if (hoursDiffSinceLastRGS < 24) {
+            LdkEventEmitter.send(EventTypes.native_log, "Skipping rapid gossip sync. Last updated $hoursDiffSinceLastRGS hours ago.")
+            return handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
+        }
+
+        LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync applying update. Last updated $hoursDiffSinceLastRGS hours ago.")
+
+        rapidGossipSync!!.downloadAndUpdateGraph(rapidGossipSyncUrl, "$accountStoragePath/rapid_gossip_sync/", timestamp) { error ->
+            if (error != null) {
+                LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync fail. " + error.localizedMessage)
+
+                //Temp fix for when a RGS server is changed or reset
+                if (error.localizedMessage.contains("LightningError")) {
+                    if (networkGraphFile.exists()) {
+                        networkGraphFile.delete()
+                    }
+                    LdkEventEmitter.send(EventTypes.native_log, "Deleting persisted graph. Will sync from scratch on next startup.")
+                }
+
+                handleResolve(promise, LdkCallbackResponses.network_graph_init_success) //Continue like normal, likely fine if we don't have the absolute latest state
+                return@downloadAndUpdateGraph
+            }
+
+            LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync completed.")
+
+            if (networkGraph == null) {
+                handleReject(promise, LdkErrors.create_storage_dir_fail, Error("Failed to use network graph."))
+                return@downloadAndUpdateGraph
+            }
+
+            channelManagerPersister.persist_network_graph(networkGraph!!.write())
+
+            val body = Arguments.createMap()
+            body.putInt("channel_count", networkGraph!!.read_only().list_channels().count())
+            body.putInt("node_count", networkGraph!!.read_only().list_nodes().count())
+            LdkEventEmitter.send(EventTypes.network_graph_updated, body)
+
+            handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
+        }
     }
 
     @ReactMethod
@@ -439,17 +437,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         channelManager = channelManagerConstructor!!.channel_manager
 
         //Scorer setup
-        val params = ProbabilisticScoringParameters.with_default()
-        val default_scorer = ProbabilisticScorer.of(params, networkGraph, logger.logger)
-        val score_res = ProbabilisticScorer.read(
-            default_scorer.write(), params, networkGraph,
+        val probabilisticScorer = getProbabilisticScorer(
+            accountStoragePath,
+            networkGraph!!,
             logger.logger
-        )
-        if (!score_res.is_ok) {
-            return handleReject(promise, LdkErrors.init_scorer_failed)
-        }
-        val score = (score_res as Result_ProbabilisticScorerDecodeErrorZ_OK).res.as_Score()
-        val scorer = MultiThreadedLockableScore.of(score)
+        ) ?: return handleReject(promise, LdkErrors.init_scorer_failed)
+
+        val scorer = MultiThreadedLockableScore.of(probabilisticScorer.as_Score())
 
         channelManagerConstructor!!.chain_sync_completed(channelManagerPersister, scorer)
         peerManager = channelManagerConstructor!!.peer_manager
