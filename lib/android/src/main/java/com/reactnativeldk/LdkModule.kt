@@ -277,9 +277,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.already_init)
         }
 
-        val file = File(accountStoragePath + "/" + LdkFileNames.network_graph.fileName)
-        if (file.exists()) {
-            (NetworkGraph.read(file.readBytes(), logger.logger) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
+        val networkGraphFile = File(accountStoragePath + "/" + LdkFileNames.network_graph.fileName)
+        if (networkGraphFile.exists()) {
+            (NetworkGraph.read(networkGraphFile.readBytes(), logger.logger) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
                 networkGraph = res.res
             }
         }
@@ -315,23 +315,18 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync applying update. Last updated $hoursDiffSinceLastRGS hours ago.")
 
-        //TODO remove this incremental updates temp broken. Possibly related to https://github.com/lightningdevkit/rust-lightning/issues/1784
-        //TODO check if this is still an issue in 0.0.113
-        //If network graph is older than 24h download from scratch until incremental updates are working
-        //>>>>>> DELETE ME
-//        val networkGraphFile = File(accountStoragePath + "/" + LdkFileNames.network_graph.fileName)
-//        if (networkGraphFile.exists()) {
-//            networkGraphFile.delete()
-//        }
-//        networkGraph = NetworkGraph.of(genesisHash.hexa().reversedArray(), logger.logger)
-//        rapidGossipSync = RapidGossipSync.of(networkGraph)
-//        timestamp = 0
-//        LdkEventEmitter.send(EventTypes.native_log, "Rapid sync from scratch. Try remove in 0.0.113.")
-        //<<<<<< DELETE ME
-
         rapidGossipSync!!.downloadAndUpdateGraph(rapidGossipSyncUrl, "$accountStoragePath/rapid_gossip_sync/", timestamp) { error ->
             if (error != null) {
-                LdkEventEmitter.send(EventTypes.native_log, error.localizedMessage)
+                LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync fail. " + error.localizedMessage)
+
+                //Temp fix for when a RGS server is changed or reset
+                if (error.localizedMessage.contains("LightningError")) {
+                    if (networkGraphFile.exists()) {
+                        networkGraphFile.delete()
+                    }
+                    LdkEventEmitter.send(EventTypes.native_log, "Deleting persisted graph. Will sync from scratch on next startup.")
+                }
+
                 handleResolve(promise, LdkCallbackResponses.network_graph_init_success) //Continue like normal, likely fine if we don't have the absolute latest state
                 return@downloadAndUpdateGraph
             }

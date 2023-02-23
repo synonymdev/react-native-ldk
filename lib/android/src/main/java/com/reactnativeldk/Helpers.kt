@@ -226,15 +226,15 @@ fun RapidGossipSync.downloadAndUpdateGraph(downloadUrl: String, tempStoragePath:
             val error = res as? Result_u32GraphSyncErrorZ.Result_u32GraphSyncErrorZ_Err
 
             (error?.err as? GraphSyncError.LightningError)?.let { lightningError ->
-                return@downloadFile completion(Error("Rapid sync GraphSyncError.LightningError. " + lightningError.lightning_error._err))
+                return@downloadFile completion(Error("Rapid sync LightningError. " + lightningError.lightning_error._err))
             }
 
             (error?.err as? GraphSyncError.DecodeError)?.let { decodeError ->
                 (decodeError.decode_error as? DecodeError.Io)?.let { decodeIOError ->
-                    return@downloadFile completion(Error("Rapid sync GraphSyncError.DecodeError. " + decodeIOError.io.ordinal))
+                    return@downloadFile completion(Error("Rapid sync DecodeError. " + decodeIOError.io.ordinal))
                 }
 
-                return@downloadFile completion(Error("Rapid sync GraphSyncError.DecodeError"))
+                return@downloadFile completion(Error("Rapid sync DecodeError"))
             }
 
             return@downloadFile completion(Error("Unknown rapid sync error."))

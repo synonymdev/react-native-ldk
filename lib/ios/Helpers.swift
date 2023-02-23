@@ -285,10 +285,10 @@ extension RapidGossipSync {
                 var errorMessage = "Failed to update network graph."
                 switch res.getError()?.getValueType() {
                 case .LightningError:
-                    errorMessage = "Rapid sync error. \(res.getError()!.getValueAsLightningError()!.getErr())" //Couldn't find channel for update.
+                    errorMessage = "Rapid sync LightningError. \(res.getError()!.getValueAsLightningError()!.getErr())" //Couldn't find channel for update.
                     break;
                 case .DecodeError:
-                    errorMessage = "Rapid sync error. IO error: \(res.getError()!.getValueAsDecodeError()?.getValueType())"
+                    errorMessage = "Rapid sync DecodeError. IO error: \(res.getError()!.getValueAsDecodeError()?.getValueType())"
                     break;
                 default:
                     errorMessage = "Unknown rapid sync error."
