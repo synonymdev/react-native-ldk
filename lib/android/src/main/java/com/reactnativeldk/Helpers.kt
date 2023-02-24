@@ -1,8 +1,5 @@
 package com.reactnativeldk
-import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.Promise
-import com.facebook.react.bridge.WritableArray
-import com.facebook.react.bridge.WritableMap
+import com.facebook.react.bridge.*
 import org.ldk.structs.*
 import java.io.File
 import java.io.FileOutputStream
@@ -247,4 +244,127 @@ fun RapidGossipSync.downloadAndUpdateGraph(downloadUrl: String, tempStoragePath:
 
         completion(null)
     }
+}
+
+fun ChannelHandshakeConfig.mergeWithMap(map: ReadableMap?): ChannelHandshakeConfig {
+    if (map == null) {
+        return this
+    }
+
+    try {
+        _minimum_depth = map.getInt("minimum_depth")
+    } catch (_: Exception) {}
+    try {
+        _our_to_self_delay = map.getInt("our_to_self_delay").toShort()
+    } catch (_: Exception) {}
+    try {
+        _our_htlc_minimum_msat = map.getInt("our_htlc_minimum_msat").toLong()
+    } catch (_: Exception) {}
+    try {
+        _max_inbound_htlc_value_in_flight_percent_of_channel = map.getInt("max_inbound_htlc_value_in_flight_percent_of_channel").toByte()
+    } catch (_: Exception) {}
+    try {
+        _negotiate_scid_privacy = map.getBoolean("negotiate_scid_privacy")
+    } catch (_: Exception) {}
+    try {
+        _announced_channel = map.getBoolean("announced_channel")
+    } catch (_: Exception) {}
+    try {
+        _commit_upfront_shutdown_pubkey = map.getBoolean("commit_upfront_shutdown_pubkey")
+    } catch (_: Exception) {}
+    try {
+        _commit_upfront_shutdown_pubkey = map.getBoolean("commit_upfront_shutdown_pubkey")
+    } catch (_: Exception) {}
+    try {
+        _their_channel_reserve_proportional_millionths = map.getInt("their_channel_reserve_proportional_millionths")
+    } catch (_: Exception) {}
+
+    return this
+}
+
+fun ChannelHandshakeLimits.mergeWithMap(map: ReadableMap?): ChannelHandshakeLimits {
+    if (map == null) {
+        return this
+    }
+
+    try {
+        _min_funding_satoshis = map.getInt("min_funding_satoshis").toLong()
+    } catch (_: Exception) {}
+    try {
+        _max_funding_satoshis = map.getInt("max_funding_satoshis").toLong()
+    } catch (_: Exception) {}
+    try {
+        _max_htlc_minimum_msat = map.getInt("max_htlc_minimum_msat").toLong()
+    } catch (_: Exception) {}
+    try {
+        _min_max_htlc_value_in_flight_msat = map.getInt("min_max_htlc_value_in_flight_msat").toLong()
+    } catch (_: Exception) {}
+    try {
+        _max_channel_reserve_satoshis = map.getInt("max_channel_reserve_satoshis").toLong()
+    } catch (_: Exception) {}
+    try {
+        _min_max_accepted_htlcs = map.getInt("min_max_accepted_htlcs").toShort()
+    } catch (_: Exception) {}
+    try {
+        _max_minimum_depth = map.getInt("max_minimum_depth")
+    } catch (_: Exception) {}
+    try {
+        _trust_own_funding_0conf = map.getBoolean("trust_own_funding_0conf")
+    } catch (_: Exception) {}
+    try {
+        _force_announced_channel_preference = map.getBoolean("force_announced_channel_preference")
+    } catch (_: Exception) {}
+    try {
+        _their_to_self_delay = map.getInt("their_to_self_delay").toShort()
+    } catch (_: Exception) {}
+
+    return this
+}
+
+fun ChannelConfig.mergeWithMap(map: ReadableMap?): ChannelConfig {
+    if (map == null) {
+        return this
+    }
+
+    try {
+        _forwarding_fee_base_msat = map.getInt("forwarding_fee_base_msat")
+    } catch (_: Exception) {}
+    try {
+        _forwarding_fee_base_msat = map.getInt("forwarding_fee_base_msat")
+    } catch (_: Exception) {}
+    try {
+        _cltv_expiry_delta = map.getInt("cltv_expiry_delta").toShort()
+    } catch (_: Exception) {}
+    try {
+        _max_dust_htlc_exposure_msat = map.getInt("max_dust_htlc_exposure_msat").toLong()
+    } catch (_: Exception) {}
+    try {
+        _force_close_avoidance_max_fee_satoshis = map.getInt("force_close_avoidance_max_fee_satoshis").toLong()
+    } catch (_: Exception) {}
+
+    return this
+}
+
+fun UserConfig.mergeWithMap(map: ReadableMap): UserConfig {
+    _channel_handshake_config = _channel_handshake_config.mergeWithMap(map.getMap("channel_handshake_config"))
+    _channel_handshake_limits = _channel_handshake_limits.mergeWithMap(map.getMap("channel_handshake_limits"))
+    _channel_config = _channel_config.mergeWithMap(map.getMap("channel_config"))
+
+    try {
+        _accept_forwards_to_priv_channels = map.getBoolean("accept_forwards_to_priv_channels")
+    } catch (_: Exception) {}
+
+    try {
+        _accept_inbound_channels = map.getBoolean("accept_inbound_channels")
+    } catch (_: Exception) {}
+
+    try {
+        _manually_accept_inbound_channels = map.getBoolean("manually_accept_inbound_channels")
+    } catch (_: Exception) {}
+
+    try {
+        _accept_intercept_htlcs = map.getBoolean("accept_intercept_htlcs")
+    } catch (_: Exception) {}
+
+    return this
 }

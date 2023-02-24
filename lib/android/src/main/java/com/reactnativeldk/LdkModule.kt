@@ -246,27 +246,12 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initConfig(acceptInboundChannels: Boolean, manuallyAcceptInboundChannels: Boolean, announcedChannels: Boolean, minChannelHandshakeDepth: Double, promise: Promise) {
-        if (userConfig !== null) {
+    fun initUserConfig(userConfig: ReadableMap, promise: Promise) {
+        if (this.userConfig !== null) {
             return handleReject(promise, LdkErrors.already_init)
         }
 
-        userConfig = UserConfig.with_default()
-        userConfig!!._accept_inbound_channels = acceptInboundChannels
-        userConfig!!._manually_accept_inbound_channels = manuallyAcceptInboundChannels
-
-        val channelConfig = ChannelConfig.with_default()
-        userConfig!!._channel_config = channelConfig
-
-        val channelHandshakeConfig = ChannelHandshakeConfig.with_default()
-        channelHandshakeConfig._minimum_depth = minChannelHandshakeDepth.toInt()
-        channelHandshakeConfig._announced_channel = announcedChannels
-        userConfig!!._channel_handshake_config = channelHandshakeConfig
-
-        val channelHandshakeLimits = ChannelHandshakeLimits.with_default()
-        channelHandshakeLimits._force_announced_channel_preference = true
-        channelHandshakeLimits._max_minimum_depth = minChannelHandshakeDepth.toInt()
-        userConfig!!._channel_handshake_limits = channelHandshakeLimits
+        this.userConfig = UserConfig.with_default().mergeWithMap(userConfig)
 
         handleResolve(promise, LdkCallbackResponses.config_init_success)
     }
