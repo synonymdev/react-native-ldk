@@ -308,6 +308,85 @@ extension RapidGossipSync {
     }
 }
 
+extension ChannelHandshakeConfig {
+    static func initWithDictionary(_ obj: NSDictionary?) -> ChannelHandshakeConfig {
+        let defaults = ChannelHandshakeConfig.initWithDefault()
+        
+        guard let obj = obj else {
+            return defaults
+        }
+        
+        return ChannelHandshakeConfig(
+            minimumDepthArg: obj["minimum_depth"] as? UInt32 ?? defaults.getMinimumDepth(),
+            ourToSelfDelayArg: obj["our_to_self_delay"] as? UInt16 ?? defaults.getOurToSelfDelay(),
+            ourHtlcMinimumMsatArg: obj["our_htlc_minimum_msat"] as? UInt64 ?? defaults.getOurHtlcMinimumMsat(),
+            maxInboundHtlcValueInFlightPercentOfChannelArg: obj["max_htlc_value_in_flight_percent_of_channel"] as? UInt8 ?? defaults.getMaxInboundHtlcValueInFlightPercentOfChannel(),
+            negotiateScidPrivacyArg: obj["negotiate_scid_privacy"] as? Bool ?? defaults.getNegotiateScidPrivacy(),
+            announcedChannelArg: obj["announced_channel"] as? Bool ?? defaults.getAnnouncedChannel(),
+            commitUpfrontShutdownPubkeyArg: obj["commit_upfront_shutdown_pubkey"] as? Bool ?? defaults.getCommitUpfrontShutdownPubkey(),
+            theirChannelReserveProportionalMillionthsArg: obj["their_channel_reserve_proportional_millionths"] as? UInt32 ?? defaults.getTheirChannelReserveProportionalMillionths()
+        )
+    }
+}
+
+extension ChannelHandshakeLimits {
+    static func initWithDictionary(_ obj: NSDictionary?) -> ChannelHandshakeLimits {
+        let defaults = ChannelHandshakeLimits.initWithDefault()
+        
+        guard let obj = obj else {
+            return defaults
+        }
+        
+        return ChannelHandshakeLimits(
+            minFundingSatoshisArg: obj["min_funding_satoshis"] as? UInt64 ?? defaults.getMinFundingSatoshis(),
+            maxFundingSatoshisArg: obj["max_funding_satoshis"] as? UInt64 ?? defaults.getMaxFundingSatoshis(),
+            maxHtlcMinimumMsatArg: obj["max_htlc_minimum_msat"] as? UInt64 ?? defaults.getMaxHtlcMinimumMsat(),
+            minMaxHtlcValueInFlightMsatArg: obj["min_max_htlc_value_in_flight_msat"] as? UInt64 ?? defaults.getMinMaxHtlcValueInFlightMsat(),
+            maxChannelReserveSatoshisArg: obj["max_channel_reserve_satoshis"] as? UInt64 ?? defaults.getMaxChannelReserveSatoshis(),
+            minMaxAcceptedHtlcsArg: obj["min_max_accepted_htlcs"] as? UInt16 ?? defaults.getMinMaxAcceptedHtlcs(),
+            maxMinimumDepthArg: obj["max_minimum_depth"] as? UInt32 ?? defaults.getMaxMinimumDepth(),
+            trustOwnFunding_0confArg: obj["trust_own_funding_0conf"] as? Bool ?? defaults.getTrustOwnFunding_0conf(),
+            forceAnnouncedChannelPreferenceArg: obj["force_announced_channel_preference"] as? Bool ?? defaults.getForceAnnouncedChannelPreference(),
+            theirToSelfDelayArg: obj["their_to_self_delay"] as? UInt16 ?? defaults.getTheirToSelfDelay()
+        )
+    }
+}
+
+extension ChannelConfig {
+    static func initWithDictionary(_ obj: NSDictionary?) -> ChannelConfig {
+        let defaults = ChannelConfig.initWithDefault()
+        
+        guard let obj = obj else {
+            return defaults
+        }
+        
+        return ChannelConfig(
+            forwardingFeeProportionalMillionthsArg: obj["forwarding_fee_proportional_millionths"] as? UInt32 ?? defaults.getForwardingFeeProportionalMillionths(),
+            forwardingFeeBaseMsatArg: obj["forwarding_fee_base_msat"] as? UInt32 ?? defaults.getForwardingFeeBaseMsat(),
+            cltvExpiryDeltaArg: obj["cltv_expiry_delta"] as? UInt16 ?? defaults.getCltvExpiryDelta(),
+            maxDustHtlcExposureMsatArg: obj["max_dust_htlc_exposure_msat"] as? UInt64 ?? defaults.getMaxDustHtlcExposureMsat(),
+            forceCloseAvoidanceMaxFeeSatoshisArg: obj["force_close_avoidance_max_fee_satoshis"] as? UInt64 ?? defaults.getForceCloseAvoidanceMaxFeeSatoshis()
+        )
+    }
+}
+
+extension UserConfig {
+    static func initWithDictionary(_ obj: NSDictionary) -> UserConfig {
+        let defaults = UserConfig.initWithDefault()
+        
+        let userConfig = UserConfig(
+            channelHandshakeConfigArg: .initWithDictionary(obj["channel_handshake_config"] as? NSDictionary),
+            channelHandshakeLimitsArg: .initWithDictionary(obj["channel_handshake_limits"] as? NSDictionary),
+            channelConfigArg: .initWithDictionary(obj["channel_config"] as? NSDictionary),
+            acceptForwardsToPrivChannelsArg: obj["accept_forwards_to_priv_channels"] as? Bool ?? defaults.getAcceptForwardsToPrivChannels(),
+            acceptInboundChannelsArg: obj["accept_inbound_channels"] as? Bool ?? defaults.getAcceptInboundChannels(),
+            manuallyAcceptInboundChannelsArg: obj["manually_accept_inbound_channels"] as? Bool ?? defaults.getAcceptInboundChannels(),
+            acceptInterceptHtlcsArg: obj["accept_intercept_htlcs"] as? Bool ?? defaults.getAcceptInterceptHtlcs())
+
+        return userConfig
+    }
+}
+
 func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.PaymentSendFailure) {
     switch error.getValueType() {
     case .AllFailedResendSafe:

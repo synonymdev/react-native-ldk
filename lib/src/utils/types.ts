@@ -297,11 +297,57 @@ export type TInitNetworkGraphReq = {
 	rapidGossipSyncUrl?: string;
 };
 
-export type TInitConfig = {
-	acceptInboundChannels: boolean;
-	manuallyAcceptInboundChannels: boolean;
-	announcedChannels: boolean;
-	minChannelHandshakeDepth: number;
+export type TChannelHandshakeConfig = {
+	minimum_depth?: number; //UInt32
+	//Snake case because of rust
+	our_to_self_delay?: number; //UInt16
+	our_htlc_minimum_msat?: number; //UInt64
+	max_htlc_value_in_flight_percent_of_channel?: number; //UInt8
+	negotiate_scid_privacy?: boolean;
+	announced_channel?: boolean;
+	commit_upfront_shutdown_pubkey?: boolean;
+	their_channel_reserve_proportional_millionths?: number; //UInt32
+};
+
+export type TChannelHandshakeLimits = {
+	min_funding_satoshis?: number; //UInt64
+	max_funding_satoshis?: number; //UInt64
+	max_htlc_minimum_msat?: number; //UInt64
+	min_max_htlc_value_in_flight_msat?: number; //UInt64,
+	max_channel_reserve_satoshis?: number; //UInt64
+	min_max_accepted_htlcs?: number; //UInt16
+	max_minimum_depth?: number; //UInt32
+	trust_own_funding_0conf?: boolean;
+	force_announced_channel_preference?: boolean;
+	their_to_self_delay?: number; //UInt16
+};
+
+export type TChannelConfig = {
+	forwarding_fee_proportional_millionths?: number; //UInt32
+	forwarding_fee_base_msat?: number; //UInt32
+	cltv_expiry_delta?: number; //UInt16
+	max_dust_htlc_exposure_msat?: number; //UInt64
+	force_close_avoidance_max_fee_satoshis?: number; //UInt64
+};
+
+//Mirrors the rust struct
+export type TUserConfig = {
+	channel_handshake_config?: TChannelHandshakeConfig;
+	channel_handshake_limits?: TChannelHandshakeLimits;
+	channel_config?: TChannelConfig;
+	accept_forwards_to_priv_channels?: boolean;
+	accept_inbound_channels?: boolean;
+	manually_accept_inbound_channels?: boolean;
+	accept_intercept_htlcs?: boolean;
+};
+
+export const defaultUserConfig: TUserConfig = {
+	channel_handshake_config: {
+		announced_channel: false,
+		minimum_depth: 1,
+	},
+	manually_accept_inbound_channels: false,
+	accept_inbound_channels: true,
 };
 
 export enum ELdkLogLevels {
@@ -459,6 +505,7 @@ export type TLdkStart = {
 	broadcastTransaction: TBroadcastTransaction;
 	network: ENetworks;
 	feeRate?: number;
+	userConfig?: TUserConfig;
 };
 
 export type TGetAddress = () => Promise<string>;

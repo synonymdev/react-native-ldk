@@ -18,10 +18,7 @@ RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(initConfig:(BOOL *)acceptInboundChannels
-                  manuallyAcceptInboundChannels:(BOOL *)manuallyAcceptInboundChannels
-                  announcedChannels:(BOOL *)announcedChannels
-                  minChannelHandshakeDepth:(NSInteger *)minChannelHandshakeDepth
+RCT_EXTERN_METHOD(initUserConfig:(NSDictionary *)userConfig
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)genesisHash

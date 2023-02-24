@@ -13,7 +13,6 @@ import {
 	TInvoice,
 	TFeeUpdateReq,
 	TInitChannelManagerReq,
-	TInitConfig,
 	TLogListener,
 	TPaymentReq,
 	TSyncTipReq,
@@ -31,6 +30,7 @@ import {
 	TClaimableBalance,
 	TPaymentRoute,
 	TPaymentHop,
+	TUserConfig,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -163,34 +163,20 @@ class LDK {
 	 * Builds UserConfig, ChannelConfig, ChannelHandshakeConfig and ChannelHandshakeLimits.
 	 * More settings can be added to configure the below structs.
 	 * https://docs.rs/lightning/latest/lightning/util/config/struct.UserConfig.html
-	 * https://docs.rs/lightning/latest/lightning/util/config/struct.ChannelConfig.html
 	 * https://docs.rs/lightning/latest/lightning/util/config/struct.ChannelHandshakeConfig.html
 	 * https://docs.rs/lightning/latest/lightning/util/config/struct.ChannelHandshakeLimits.html
+	 * https://docs.rs/lightning/latest/lightning/util/config/struct.ChannelConfig.html
 	 *
-	 * @param acceptInboundChannels
-	 * @param manuallyAcceptInboundChannels
-	 * @param announcedChannels
-	 * @param minChannelHandshakeDepth
+	 * @param userConfig
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async initConfig(conf: TInitConfig): Promise<Result<string>> {
-		const {
-			acceptInboundChannels,
-			manuallyAcceptInboundChannels,
-			announcedChannels,
-			minChannelHandshakeDepth,
-		} = conf;
+	async initUserConfig(userConfig: TUserConfig): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.initConfig(
-				acceptInboundChannels,
-				manuallyAcceptInboundChannels,
-				announcedChannels,
-				minChannelHandshakeDepth,
-			);
-			this.writeDebugToLog('initConfig', conf);
+			const res = await NativeLDK.initUserConfig(userConfig);
+			this.writeDebugToLog('initUserConfig', userConfig);
 			return ok(res);
 		} catch (e) {
-			this.writeErrorToLog('initConfig', e);
+			this.writeErrorToLog('initUserConfig', e);
 			return err(e);
 		}
 	}

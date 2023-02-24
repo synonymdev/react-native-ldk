@@ -218,37 +218,13 @@ class Ldk: NSObject {
     }
     
     @objc
-    func initConfig(_ acceptInboundChannels: Bool, manuallyAcceptInboundChannels: Bool, announcedChannels: Bool, minChannelHandshakeDepth: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard userConfig == nil else {
+    func initUserConfig(_ userConfig: NSDictionary, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard self.userConfig == nil else {
             return handleReject(reject, .already_init)
         }
+       
+        self.userConfig = UserConfig.initWithDictionary(userConfig)
         
-        let channelHandshakeDefaults = ChannelHandshakeConfig.initWithDefault()
-        let channelHandshakeConfig = ChannelHandshakeConfig(
-            minimumDepthArg: UInt32(minChannelHandshakeDepth),
-            ourToSelfDelayArg: channelHandshakeDefaults.getOurToSelfDelay(),
-            ourHtlcMinimumMsatArg: channelHandshakeDefaults.getOurHtlcMinimumMsat(),
-            maxInboundHtlcValueInFlightPercentOfChannelArg: channelHandshakeDefaults.getMaxInboundHtlcValueInFlightPercentOfChannel(),
-            negotiateScidPrivacyArg: channelHandshakeDefaults.getNegotiateScidPrivacy(),
-            announcedChannelArg: announcedChannels,
-            commitUpfrontShutdownPubkeyArg: channelHandshakeDefaults.getCommitUpfrontShutdownPubkey(),
-            theirChannelReserveProportionalMillionthsArg: channelHandshakeDefaults.getTheirChannelReserveProportionalMillionths()
-        )
-        
-        let channelHandshakeLimits = ChannelHandshakeLimits.initWithDefault()
-        let channelConfig = ChannelConfig.initWithDefault() //TODO allow these options to be set
-        
-        let userConfigDefaults = UserConfig.initWithDefault()
-        userConfig = UserConfig(
-            channelHandshakeConfigArg: channelHandshakeConfig,
-            channelHandshakeLimitsArg: channelHandshakeLimits,
-            channelConfigArg: channelConfig,
-            acceptForwardsToPrivChannelsArg: userConfigDefaults.getAcceptForwardsToPrivChannels(),
-            acceptInboundChannelsArg: acceptInboundChannels,
-            manuallyAcceptInboundChannelsArg: manuallyAcceptInboundChannels,
-            acceptInterceptHtlcsArg: userConfigDefaults.getAcceptInterceptHtlcs()
-        )
-                        
         return handleResolve(resolve, .config_init_success)
     }
     

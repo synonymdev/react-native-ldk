@@ -47,6 +47,7 @@ import {
 	TGetTransactionPosition,
 	TTransactionPosition,
 	TChannel,
+	defaultUserConfig,
 } from './utils/types';
 import {
 	appendPath,
@@ -75,10 +76,10 @@ import { EmitterSubscription } from 'react-native';
 // Step 13: Initialize networking ✅
 // Step 14: Connect and Disconnect Blocks ✅
 // Step 15: Handle LDK Events ✅
-// Step 16: Initialize routing ProbabilisticScorer [Not sure if required]
+// Step 16: Initialize routing ProbabilisticScorer ✅
 // Step 17: Create InvoicePayer ✅
 // Step 18: Persist ChannelManager and NetworkGraph ✅
-// Step 19: Background Processing
+// Step 19: Background Processing ✅
 
 class LightningManager {
 	currentBlock: THeader = {
@@ -231,6 +232,7 @@ class LightningManager {
 		broadcastTransaction,
 		network,
 		feeRate = this.feeRate,
+		userConfig = defaultUserConfig,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
 			return err(
@@ -398,12 +400,8 @@ class LightningManager {
 		}
 
 		// Step 8: Initialize the UserConfig ChannelManager
-		const confRes = await ldk.initConfig({
-			acceptInboundChannels: true,
-			manuallyAcceptInboundChannels: false,
-			announcedChannels: false,
-			minChannelHandshakeDepth: 1, //TODO Verify correct min
-		});
+		const confRes = await ldk.initUserConfig(userConfig);
+
 		if (confRes.isErr()) {
 			return confRes;
 		}
