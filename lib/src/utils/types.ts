@@ -345,6 +345,7 @@ export const defaultUserConfig: TUserConfig = {
 	channel_handshake_config: {
 		announced_channel: false,
 		minimum_depth: 1,
+		max_htlc_value_in_flight_percent_of_channel: 100,
 	},
 	manually_accept_inbound_channels: false,
 	accept_inbound_channels: true,
