@@ -114,7 +114,7 @@ val ChannelDetails.asJson: WritableMap
         result.putBoolean("is_usable", _is_usable)
         result.putBoolean("is_channel_ready", _is_channel_ready)
         result.putBoolean("is_outbound", _is_outbound)
-        result.putInt("balance_sat", _balance_msat.toInt() / 1000)
+        result.putInt("balance_sat", (_balance_msat / 1000).toInt())
         result.putHexString("counterparty_node_id", _counterparty._node_id)
         result.putHexString("funding_txid", _funding_txo?._txid?.reversed()?.toByteArray())
         result.putHexString("channel_type", _channel_type?.write())
@@ -126,8 +126,8 @@ val ChannelDetails.asJson: WritableMap
             ?.let { result.putInt("inbound_scid_alias", it) }
         (_inbound_scid_alias as? Option_u64Z.Some)?.some?.toInt()
             ?.let { result.putInt("inbound_payment_scid", it) }
-        result.putInt("inbound_capacity_sat", _inbound_capacity_msat.toInt() / 1000)
-        result.putInt("outbound_capacity_sat", _outbound_capacity_msat.toInt() / 1000)
+        result.putInt("inbound_capacity_sat", (_inbound_capacity_msat / 1000).toInt())
+        result.putInt("outbound_capacity_sat", (_outbound_capacity_msat / 1000).toInt())
         result.putInt("channel_value_satoshis", _channel_value_satoshis.toInt())
         (_force_close_spend_delay as? Option_u16Z.Some)?.some?.toInt()
             ?.let { result.putInt("force_close_spend_delay", it) }
@@ -149,15 +149,15 @@ val ChannelInfo.asJson: WritableMap
         result.putInt("one_to_two_fees_proportional_millionths", _one_to_two?._fees?._proportional_millionths ?: 0)
         result.putBoolean("one_to_two_enabled", _one_to_two?._enabled ?: false)
         result.putInt("one_to_two_last_update", _one_to_two?._last_update ?: 0)
-        result.putInt("one_to_two_htlc_maximum_sats", (_one_to_two?._htlc_maximum_msat ?: 0).toInt() / 1000)
-        result.putInt("one_to_two_htlc_minimum_sats", (_one_to_two?._htlc_minimum_msat ?: 0).toInt() / 1000)
+        result.putInt("one_to_two_htlc_maximum_sats", ((_one_to_two?._htlc_maximum_msat ?: 0) / 1000).toInt())
+        result.putInt("one_to_two_htlc_minimum_sats", ((_one_to_two?._htlc_minimum_msat ?: 0) / 1000).toInt())
 
         result.putInt("two_to_one_fees_base_sats", _two_to_one?._fees?._base_msat?.div(1000) ?: 0)
         result.putInt("two_to_one_fees_proportional_millionths", _two_to_one?._fees?._proportional_millionths ?: 0)
         result.putBoolean("two_to_one_enabled", _two_to_one?._enabled ?: false)
         result.putInt("two_to_one_last_update", _two_to_one?._last_update ?: 0)
-        result.putInt("two_to_one_htlc_maximum_sats", (_two_to_one?._htlc_maximum_msat ?: 0).toInt() / 1000)
-        result.putInt("two_to_one_htlc_minimum_sats", (_two_to_one?._htlc_minimum_msat ?: 0).toInt() / 1000)
+        result.putInt("two_to_one_htlc_maximum_sats", ((_two_to_one?._htlc_maximum_msat ?: 0) / 1000).toInt())
+        result.putInt("two_to_one_htlc_minimum_sats", ((_two_to_one?._htlc_minimum_msat ?: 0) / 1000).toInt())
 
         return result
     }
@@ -179,7 +179,7 @@ val RouteHop.asJson: WritableMap
     get() {
         val hop = Arguments.createMap()
         hop.putHexString("pubkey", _pubkey)
-        hop.putInt("fee_sat", _fee_msat.toInt() / 1000)
+        hop.putInt("fee_sat", (_fee_msat / 1000).toInt())
         return hop
     }
 
