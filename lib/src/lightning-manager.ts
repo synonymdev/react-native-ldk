@@ -48,6 +48,8 @@ import {
 	TTransactionPosition,
 	TChannel,
 	defaultUserConfig,
+	TGetFees,
+	TFeeUpdateReq,
 } from './utils/types';
 import {
 	appendPath,
@@ -114,8 +116,12 @@ class LightningManager {
 	getScriptPubKeyHistory: TGetScriptPubKeyHistory = async (): Promise<
 		TGetScriptPubKeyHistoryResponse[]
 	> => [];
+	getFees: TGetFees = async (): Promise<TFeeUpdateReq> => ({
+		highPriority: 12500,
+		normal: 12500,
+		background: 12500,
+	});
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
-	feeRate: number = 1000; // feerate_sat_per_1000_weight
 	pathFailedSubscription: EmitterSubscription | undefined;
 	paymentFailedSubscription: EmitterSubscription | undefined;
 	paymentSentSubscription: EmitterSubscription | undefined;
@@ -196,6 +202,10 @@ class LightningManager {
 			EEventTypes.network_graph_updated,
 			this.onNetworkGraphUpdated.bind(this),
 		);
+		ldk.onEvent(
+			EEventTypes.channel_manager_restarted,
+			this.onChannelManagerRestarted.bind(this),
+		);
 	}
 
 	/**
@@ -229,9 +239,9 @@ class LightningManager {
 		getTransactionPosition,
 		getAddress,
 		getScriptPubKeyHistory,
+		getFees,
 		broadcastTransaction,
 		network,
-		feeRate = this.feeRate,
 		userConfig = defaultUserConfig,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
@@ -269,6 +279,7 @@ class LightningManager {
 			broadcastTransaction,
 			getAddress,
 			getScriptPubKeyHistory,
+			getFees,
 			network,
 		});
 		if (paramCheckResponse.isErr()) {
@@ -278,9 +289,9 @@ class LightningManager {
 		this.getBestBlock = getBestBlock;
 		this.account = account;
 		this.network = network;
-		this.feeRate = feeRate;
 		this.getAddress = getAddress;
 		this.getScriptPubKeyHistory = getScriptPubKeyHistory;
+		this.getFees = getFees;
 		this.broadcastTransaction = broadcastTransaction;
 		this.getTransactionData = getTransactionData;
 		this.getTransactionPosition = getTransactionPosition;
@@ -337,16 +348,6 @@ class LightningManager {
 		// Step 1: Initialize the FeeEstimator
 		// Lazy loaded in native code
 		// https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html
-
-		// Set fee estimates
-		const feeUpdateRes = await ldk.updateFees({
-			highPriority: 12500,
-			normal: 12500,
-			background: 12500,
-		});
-		if (feeUpdateRes.isErr()) {
-			return feeUpdateRes;
-		}
 
 		// Step 2: Initialize the Logger
 		// Lazy loaded in native code
@@ -425,13 +426,11 @@ class LightningManager {
 			);
 		}
 
-		// Add Peers
-		const peers = await this.getPeers();
-		await Promise.all(
-			peers.map((peer: TPeer) => {
-				this.addPeer({ ...peer, timeout: 4000 });
-			}),
-		);
+		// Set fee estimates
+		await this.setFees();
+
+		// Add cached peers
+		await this.addPeers();
 
 		// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
 		await this.syncLdk();
@@ -444,6 +443,20 @@ class LightningManager {
 		// Done with initChannelManager
 
 		return ok('Node running');
+	}
+
+	async addPeers(): Promise<void> {
+		const peers = await this.getPeers();
+		await Promise.all(
+			peers.map((peer: TPeer) => {
+				this.addPeer({ ...peer, timeout: 4000 });
+			}),
+		);
+	}
+
+	async setFees(): Promise<void> {
+		const fees = await this.getFees();
+		await ldk.updateFees(fees);
 	}
 
 	/**
@@ -1350,11 +1363,20 @@ class LightningManager {
 			console.log('Unable to retrieve change_destination_script.');
 			return;
 		}
+
+		let feeRate = 0;
+		try {
+			feeRate = (await this.getFees()).normal;
+		} catch (error) {
+			console.log('Unable to retrieve fee for spending output.');
+			return;
+		}
+
 		const spendRes = await ldk.spendOutputs({
 			descriptorsSerialized: res.outputsSerialized,
 			outputs: [], //Shouldn't need to specify this if we're sweeping all funds to dest script
 			change_destination_script,
-			feerate_sat_per_1000_weight: this.feeRate,
+			feerate_sat_per_1000_weight: feeRate,
 		});
 
 		if (spendRes.isErr()) {
@@ -1363,9 +1385,9 @@ class LightningManager {
 			return;
 		}
 
-		this.onBroadcastTransaction({ tx: spendRes.value });
+		await this.onBroadcastTransaction({ tx: spendRes.value });
 
-		console.log(`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`); //TODO
+		console.log(`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`);
 	}
 
 	private onChannelManagerChannelClosed(
@@ -1415,6 +1437,18 @@ class LightningManager {
 	private onNetworkGraphUpdated(res: TNetworkGraphUpdated): void {
 		console.log(`Network graph nodes: ${res.node_count}`);
 		console.log(`Network graph channels: ${res.channel_count}`);
+	}
+
+	/**
+	 * Called when on iOS when the app is backgrounded and brought back to the foreground.
+	 * Channel manager constructor is automatically initialized again, so we need to re-add peers and sync LDK.
+	 * @returns {Promise<void>}
+	 */
+	private async onChannelManagerRestarted(): Promise<void> {
+		// Re add cached peers
+		await this.addPeers();
+		await this.syncLdk();
+		await this.setFees();
 	}
 }
 

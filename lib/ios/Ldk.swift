@@ -24,6 +24,7 @@ enum EventTypes: String, CaseIterable {
     case emergency_force_close_channel = "emergency_force_close_channel"
     case new_channel = "new_channel"
     case network_graph_updated = "network_graph_updated"
+    case channel_manager_restarted = "channel_manager_restarted"
 }
 //*****************************************************************
 
@@ -105,7 +106,7 @@ class Ldk: NSObject {
     lazy var persister = {LdkPersister()}()
     lazy var filter = {LdkFilter()}()
     lazy var channelManagerPersister = {LdkChannelManagerPersister()}()
-   
+    
     //Config required to setup below objects
     var chainMonitor: ChainMonitor? //TODO lazy load chainMonitor
     var keysManager: KeysManager?
@@ -120,16 +121,22 @@ class Ldk: NSObject {
     var ldkNetwork: Network?
     var ldkCurrency: Currency?
     
+    //Keep these in memory for restarting the channel manager constructor
+    var currentNetwork: NSString?
+    var currentBlockchainTipHash: NSString?
+    var currentBlockchainHeight: NSInteger?
+    
+    
     //Static to be accessed from other classes
     static var accountStoragePath: URL?
     static var channelStoragePath: URL?
     
     //Uncomment for sending LDK team debugging output
-//    override init() {
-//        Bindings.setLogThreshold(severity: .DEBUG)
-//        super.init()
-//    }
-
+    //    override init() {
+    //        Bindings.setLogThreshold(severity: .DEBUG)
+    //        super.init()
+    //    }
+    
     //MARK: Startup methods
     
     @objc
@@ -140,7 +147,7 @@ class Ldk: NSObject {
         
         let accountStoragePath = URL(fileURLWithPath: String(storagePath))
         let channelStoragePath = accountStoragePath.appendingPathComponent("channels")
-
+        
         do {
             if !FileManager().fileExists(atPath: accountStoragePath.path) {
                 try FileManager.default.createDirectory(atPath: accountStoragePath.path, withIntermediateDirectories: true, attributes: nil)
@@ -152,10 +159,10 @@ class Ldk: NSObject {
         } catch {
             return handleReject(reject, .create_storage_dir_fail, error)
         }
-
+        
         Ldk.accountStoragePath = accountStoragePath
         Ldk.channelStoragePath = channelStoragePath
-
+        
         return handleResolve(resolve, .storage_path_set)
     }
     
@@ -174,7 +181,7 @@ class Ldk: NSObject {
         Logfile.log.setFilePath(logFile)
         return handleResolve(resolve, .log_path_updated)
     }
-
+    
     @objc
     func writeToLogFile(_ line: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         Logfile.log.write(String(line))
@@ -194,10 +201,10 @@ class Ldk: NSObject {
             feeest: feeEstimator,
             persister: persister
         )
-
+        
         return handleResolve(resolve, .chain_monitor_init_success)
     }
-
+    
     @objc
     func initKeysManager(_ seed: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard keysManager == nil else {
@@ -207,11 +214,11 @@ class Ldk: NSObject {
         let seconds = UInt64(NSDate().timeIntervalSince1970)
         let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
         let seedBytes = String(seed).hexaBytes
-
+        
         guard seedBytes.count == 32 else {
             return handleReject(reject, .invalid_seed_hex)
         }
-
+        
         keysManager = KeysManager(seed: String(seed).hexaBytes, startingTimeSecs: seconds, startingTimeNanos: nanoSeconds)
         
         return handleResolve(resolve, .keys_manager_init_success)
@@ -222,7 +229,7 @@ class Ldk: NSObject {
         guard self.userConfig == nil else {
             return handleReject(reject, .already_init)
         }
-       
+        
         self.userConfig = UserConfig.initWithDictionary(userConfig)
         
         return handleResolve(resolve, .config_init_success)
@@ -237,7 +244,7 @@ class Ldk: NSObject {
         guard let accountStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
-
+        
         let networkGraphStoragePath = accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL
         
         do {
@@ -264,13 +271,13 @@ class Ldk: NSObject {
             if !FileManager().fileExists(atPath: rapidGossipSyncStoragePath.path) {
                 try FileManager.default.createDirectory(atPath: rapidGossipSyncStoragePath.path, withIntermediateDirectories: true, attributes: nil)
             }
-
+            
             rapidGossipSync = RapidGossipSync(networkGraph: networkGraph!)
-                            
+            
             //If it's been more than 24 hours then we need to update RGS
             let timestamp = networkGraph?.getLastRapidGossipSyncTimestamp() ?? 0
             let hoursDiffSinceLastRGS = (Calendar.current.dateComponents([.hour], from: Date.init(timeIntervalSince1970: TimeInterval(timestamp)), to: Date()).hour)!
-           
+            
             guard hoursDiffSinceLastRGS > 24 else {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping rapid gossip sync. Last updated \(hoursDiffSinceLastRGS) hours ago.")
                 return handleResolve(resolve, .network_graph_init_success)
@@ -280,7 +287,7 @@ class Ldk: NSObject {
             
             rapidGossipSync!.downloadAndUpdateGraph(downloadUrl: String(rapidGossipSyncUrl), tempStoragePath: rapidGossipSyncStoragePath, timestamp: timestamp) { [weak self] error in
                 guard let self = self else { return }
-                                
+                
                 if let error = error {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync fail. \(error.localizedDescription).")
                     
@@ -292,9 +299,9 @@ class Ldk: NSObject {
                     
                     return handleResolve(resolve, .network_graph_init_success) //Continue like normal, likely fine if we don't have the absolute latest state
                 }
-
+                
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync completed.")
-
+                
                 guard let graph = self.networkGraph?.readOnly() else {
                     return handleReject(reject, .init_network_graph_fail, "Failed to use network graph.")
                 }
@@ -315,29 +322,29 @@ class Ldk: NSObject {
             return handleReject(reject, .init_network_graph_fail, error)
         }
     }
-
+    
     @objc
     func initChannelManager(_ network: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
         }
-
+        
         guard let chainMonitor = chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
-
+        
         guard let keysManager = keysManager else {
             return handleReject(reject, .init_keys_manager)
         }
-
+        
         guard let userConfig = userConfig else {
             return handleReject(reject, .init_user_config)
         }
-
+        
         guard let networkGraph = networkGraph else {
             return handleReject(reject, .init_network_graph)
         }
-
+        
         guard let accountStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
@@ -370,7 +377,7 @@ class Ldk: NSObject {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel from file \(channelFile.lastPathComponent)")
             channelMonitorsSerialized.append([UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)))
         }
-                
+        
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Enabled P2P gossip: \(enableP2PGossip)")
         
         do {
@@ -379,7 +386,7 @@ class Ldk: NSObject {
             if let channelManagerSerialized = storedChannelManager, channelMonitorsSerialized.count > 0 {
                 //Restoring node
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring node from disk")
-               
+                
                 channelManagerConstructor = try ChannelManagerConstructor(
                     channelManagerSerialized: [UInt8](channelManagerSerialized),
                     channelMonitorsSerialized: channelMonitorsSerialized,
@@ -413,9 +420,9 @@ class Ldk: NSObject {
         } catch {
             return handleReject(reject, .unknown_error, error)
         }
-
+        
         channelManager = channelManagerConstructor!.channelManager
-                
+        
         //Scorer setup
         let probabilisticScorer = getProbabilisticScorer(path: accountStoragePath, networkGraph: networkGraph, logger: logger)
         let score = probabilisticScorer.asScore()
@@ -423,19 +430,65 @@ class Ldk: NSObject {
         
         channelManagerConstructor!.chainSyncCompleted(persister: channelManagerPersister, scorer: scorer)
         peerManager = channelManagerConstructor!.peerManager
-
+        
         peerHandler = channelManagerConstructor!.getTCPPeerHandler()
         invoicePayer = channelManagerConstructor!.payer
         
         if enableP2PGossip {
             self.networkGraph = channelManagerConstructor!.netGraph
         }
-                
+        
+        //Listen for when the app comes into the foreground so we can restart CMC to get a new tcp peer handler
+        currentNetwork = network
+        currentBlockchainTipHash = blockHash
+        currentBlockchainHeight = blockHeight
+        addForegroundObserver()
+        
         return handleResolve(resolve, .channel_manager_init_success)
     }
-  
+    
+    func addForegroundObserver() {
+        removeForegroundObserver()
+        NotificationCenter.default.addObserver(self, selector: #selector(restartChannelManagerConstructor), name: UIApplication.didBecomeActiveNotification, object: nil)
+    }
+    
+    func removeForegroundObserver() {
+        NotificationCenter.default.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
+    }
+    
+    /// Restarts channel manager constructor to get a new TCP peer handler
+    @objc
+    func restartChannelManagerConstructor() {
+        guard let currentNetwork = self.currentNetwork,
+              let currentBlockchainTipHash = self.currentBlockchainTipHash,
+              let currentBlockchainHeight = self.currentBlockchainHeight else {
+            //Node was never started
+            return
+        }
+        
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Stoping LDK background tasks")
+        
+        //Reset only objects created by initChannelManager
+        channelManagerConstructor?.interrupt()
+        channelManagerConstructor = nil
+        channelManager = nil
+        peerManager = nil
+        peerHandler = nil
+        invoicePayer = nil
+        
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting LDK background tasks again")
+        initChannelManager(currentNetwork, blockHash: currentBlockchainTipHash, blockHeight: currentBlockchainHeight) { success in
+            //Notify JS that a sync is required
+            LdkEventEmitter.shared.send(withEvent: .channel_manager_restarted, body: "")
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "LDK restarted successfully")
+        } reject: { errorCode, errorMessage, error in
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error restarting LDK. \(errorCode) \(errorMessage)")
+        }
+    }
+    
     @objc
     func reset(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        removeForegroundObserver() //LDK was intentionally stopped and we shouldn't attempt a restart
         channelManagerConstructor?.interrupt()
         channelManagerConstructor = nil
         chainMonitor = nil
@@ -445,72 +498,73 @@ class Ldk: NSObject {
         networkGraph = nil
         peerManager = nil
         peerHandler = nil
+        invoicePayer = nil
         ldkNetwork = nil
         ldkCurrency = nil
         Ldk.accountStoragePath = nil
         Ldk.channelStoragePath = nil
-
+        
         return handleResolve(resolve, .ldk_reset)
     }
-
+    
     //MARK: Update methods
-
+    
     @objc
     func updateFees(_ high: NSInteger, normal: NSInteger, low: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         feeEstimator.update(high: UInt32(high), normal: UInt32(normal), low: UInt32(low))
         return handleResolve(resolve, .fees_updated)
     }
-
+    
     @objc
     func setLogLevel(_ level: NSString, active: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         logger.setLevel(level: String(level), active: active)
         return handleResolve(resolve, .log_level_updated)
     }
-
+    
     @objc
     func syncToTip(_ header: NSString, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         //Sync ChannelMonitors and ChannelManager to chain tip
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-
+        
         guard let chainMonitor = chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
-
+        
         channelManager.asConfirm().bestBlockUpdated(header: String(header).hexaBytes, height: UInt32(height))
         chainMonitor.asConfirm().bestBlockUpdated(header: String(header).hexaBytes, height: UInt32(height))
         
         return handleResolve(resolve, .chain_sync_success)
     }
-
+    
     @objc
     func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, timeout: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         //timeout param not used. Only for android.
-
+        
         //Sync ChannelMonitors and ChannelManager to chain tip
         guard let peerHandler = peerHandler else {
             return handleReject(reject, .init_peer_handler)
         }
-
+        
         let res = peerHandler.connect(address: String(address), port: UInt16(port), theirNodeId: String(pubKey).hexaBytes)
         if !res {
             return handleReject(reject, .add_peer_fail)
         }
-
+        
         return handleResolve(resolve, .add_peer_success)
     }
-
+    
     @objc
     func setTxConfirmed(_ header: NSString, txData: NSArray, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-
+        
         guard let chainMonitor = chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
-
+        
         var confirmTxData: [(UInt, [UInt8])] = []
         for tx in txData {
             let d = tx as! NSDictionary
@@ -528,23 +582,23 @@ class Ldk: NSObject {
             txdata: confirmTxData,
             height: UInt32(height)
         )
-
+        
         return handleResolve(resolve, .tx_set_confirmed)
     }
-
+    
     @objc
     func setTxUnconfirmed(_ txId: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-
+        
         guard let chainMonitor = chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
-
+        
         channelManager.asConfirm().transactionUnconfirmed(txid: String(txId).hexaBytes)
         chainMonitor.asConfirm().transactionUnconfirmed(txid: String(txId).hexaBytes)
-
+        
         return handleResolve(resolve, .tx_set_unconfirmed)
     }
     
@@ -556,10 +610,10 @@ class Ldk: NSObject {
         
         let channelId = String(channelId).hexaBytes
         let counterpartyNodeId = String(counterPartyNodeId).hexaBytes
-                
+        
         let res = force ?
-                    channelManager.forceCloseBroadcastingLatestTxn(channelId: channelId, counterpartyNodeId: counterpartyNodeId) :
-                    channelManager.closeChannel(channelId: channelId, counterpartyNodeId: counterpartyNodeId)
+        channelManager.forceCloseBroadcastingLatestTxn(channelId: channelId, counterpartyNodeId: counterpartyNodeId) :
+        channelManager.closeChannel(channelId: channelId, counterpartyNodeId: counterpartyNodeId)
         guard res.isOk() else {
             guard let error = res.getError() else {
                 return handleReject(reject, .channel_close_fail)
@@ -580,7 +634,7 @@ class Ldk: NSObject {
                 return handleReject(reject, .channel_close_fail)
             }
         }
-    
+        
         return handleResolve(resolve, .close_channel_success)
     }
     
@@ -596,7 +650,7 @@ class Ldk: NSObject {
             
             guard read.isOk()  else {
                 return handleReject(reject, .spend_outputs_fail, nil, read.getError().debugDescription)
-            }            
+            }
             ldkDescriptors.append(read.getValue()!)
         }
         
@@ -619,7 +673,7 @@ class Ldk: NSObject {
         
         return resolve(Data(res.getValue()!).hexEncodedString())
     }
-
+    
     //MARK: Payments
     @objc
     func decode(_ paymentRequest: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -628,16 +682,16 @@ class Ldk: NSObject {
             let error = parsedInvoice.getError()?.getValueAsParseError()
             return handleReject(reject, .decode_invoice_fail, nil, error?.toStr())
         }
-
+        
         return resolve(invoice.asJson) //Invoice class extended in Helpers file
     }
-
+    
     @objc
     func pay(_ paymentRequest: NSString, amountSats: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let invoicePayer = invoicePayer else {
             return handleReject(reject, .init_invoice_payer)
         }
-
+        
         guard let invoice = Invoice.fromStr(s: String(paymentRequest)).getValue() else {
             return handleReject(reject, .decode_invoice_fail)
         }
@@ -655,16 +709,16 @@ class Ldk: NSObject {
         }
         
         let res = isZeroValueInvoice ?
-                    invoicePayer.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000)) :
-                    invoicePayer.payInvoice(invoice: invoice)
+        invoicePayer.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000)) :
+        invoicePayer.payInvoice(invoice: invoice)
         if res.isOk() {
             return resolve(Data(res.getValue() ?? []).hexEncodedString())
         }
-
+        
         guard let error = res.getError() else {
             return handleReject(reject, .invoice_payment_fail_unknown)
         }
-
+        
         switch error.getValueType() {
         case .Invoice:
             return handleReject(reject, .invoice_payment_fail_invoice, nil, error.getValueAsInvoice())
@@ -675,7 +729,7 @@ class Ldk: NSObject {
             guard let sendingError = error.getValueAsSending() else {
                 return handleReject(reject, .invoice_payment_fail_sending)
             }
-
+            
             return handlePaymentSendFailure(reject, error: sendingError)
         default:
             return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
@@ -689,27 +743,27 @@ class Ldk: NSObject {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-
+        
         guard let networkGraph = networkGraph?.readOnly() else {
             return handleReject(reject, .init_network_graph)
         }
-
+        
         //TODO amountSats no longer required
         let amountMSats = UInt64(amountSats) * 1000
         var paths: [RouteHop] = []
-
+        
         for hop in route {
             print("HOP: ")
-
+            
             let decodedHop = hop as! [String: Any]
-
+            
             let pubKey = decodedHop["dest_node_id"]! as! String
             let shortChannelId = UInt64(decodedHop["short_channel_id"]! as! String)!
             let feeMsats = UInt64(exactly: decodedHop["fee_sats"]! as! Int)! * 1000
-
+            
             var channelFeatures = ChannelFeatures.initWithEmpty()
             var nodeFeatures = NodeFeatures.initWithEmpty()
-
+            
             //If it's the last hop then it's the full amount
             if pubKey == String(destinationNodeId) {
                 //Assume public node
@@ -718,22 +772,22 @@ class Ldk: NSObject {
                 if let cFeatures = channel?.getFeatures() {
                     channelFeatures = cFeatures
                 }
-
+                
                 if let nFeatures = networkGraph.node(nodeId: NodeId.initWithPubkey(pubkey: pubKey.hexaBytes))?.getAnnouncementInfo()?.getFeatures() {
                     nodeFeatures = nFeatures
                 }
             }
-
+            
             channelManager.listChannels().forEach { channelDetails in
                 channelDetails.getConfig()?.getForwardingFeeBaseMsat()
                 if channelDetails.getShortChannelId() == shortChannelId {
-//                    nodeFeatures = = channelDetails.get_counterparty().get_features() //TODO convert this
+                    //                    nodeFeatures = = channelDetails.get_counterparty().get_features() //TODO convert this
                     //TODO get channel features somehow?
                 }
             }
-
+            
             //TODO Check if channel is ours instead of querying graph
-
+            
             let hop = RouteHop(
                 pubkeyArg: pubKey.hexaBytes,
                 nodeFeaturesArg: nodeFeatures,
@@ -745,9 +799,9 @@ class Ldk: NSObject {
             
             paths.append(hop)
         }
-                
+        
         let payee = PaymentParameters.initWithNodeId(payeePubkey: String(destinationNodeId).hexaBytes)
-
+        
         let route = Route(pathsArg: [paths], paymentParamsArg: payee)
         
         let res = channelManager.sendPayment(route: route, paymentHash: String(paymentHash).hexaBytes, paymentSecret: String(paymentSecret).hexaBytes, paymentId: paymentId)
@@ -777,11 +831,11 @@ class Ldk: NSObject {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-
+        
         guard let keysManager = keysManager else {
             return handleReject(reject, .init_keys_manager)
         }
-
+        
         guard let ldkCurrency = ldkCurrency else {
             return handleReject(reject, .init_ldk_currency)
         }
@@ -800,28 +854,28 @@ class Ldk: NSObject {
             guard let invoice = res.getValue() else {
                 return handleReject(reject, .invoice_create_failed)
             }
-
+            
             return resolve(invoice.asJson) //Invoice class extended in Helpers file
         }
-
+        
         guard let error = res.getError(), let creationError = error.getValueAsCreationError()  else {
             return handleReject(reject, .invoice_create_failed)
         }
-
+        
         return handleReject(reject, .invoice_create_failed, nil, "Invoice creation error: \(creationError)")
     }
-
+    
     @objc
     func processPendingHtlcForwards(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-
+        
         channelManager.processPendingHtlcForwards()
-
+        
         return handleResolve(resolve, .process_pending_htlc_forwards_success)
     }
-
+    
     @objc
     func claimFunds(_ paymentPreimage: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
@@ -832,7 +886,7 @@ class Ldk: NSObject {
         
         return handleResolve(resolve, .claim_funds_success)
     }
-
+    
     //MARK: Fetch methods
     @objc
     func version(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -840,19 +894,19 @@ class Ldk: NSObject {
             "c_bindings": Bindings.swiftLdkCBindingsGetCompiledVersion(),
             "ldk": Bindings.swiftLdkGetCompiledVersion(),
         ]
-
+        
         return resolve(String(data: try! JSONEncoder().encode(res), encoding: .utf8)!)
     }
-
+    
     @objc
     func nodeId(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-
+        
         return resolve(Data(channelManager.getOurNodeId()).hexEncodedString())
     }
-
+    
     @objc
     func listPeers(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let peerManager = peerManager else {
@@ -861,22 +915,22 @@ class Ldk: NSObject {
         
         return resolve(peerManager.getPeerNodeIds().map { Data($0).hexEncodedString() })
     }
-
+    
     @objc
     func listChannels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-
+        
         return resolve(channelManager.listChannels().map { $0.asJson })
     }
-
+    
     @objc
     func listUsableChannels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
-
+        
         return resolve(channelManager.listUsableChannels().map { $0.asJson })
     }
     
@@ -894,12 +948,12 @@ class Ldk: NSObject {
         guard let networkGraph = networkGraph?.readOnly() else {
             return handleReject(reject, .init_network_graph)
         }
-                
+        
         let total = networkGraph.listNodes().count
         if total > 100 {
             return handleReject(reject, .data_too_large_for_rn, nil, "Too many nodes to return (\(total))")
         }
-                
+        
         return resolve(networkGraph.listNodes().map { Data($0.asSlice()).hexEncodedString() })
     }
     
@@ -924,7 +978,7 @@ class Ldk: NSObject {
         guard let networkGraph = networkGraph?.readOnly() else {
             return handleReject(reject, .init_network_graph)
         }
-                
+        
         let total = networkGraph.listChannels().count
         if total > 100 {
             return handleReject(reject, .data_too_large_for_rn, nil, "Too many channels to return (\(total))")
@@ -979,7 +1033,7 @@ class Ldk: NSObject {
                 let b = balance.getValueAsClaimableOnChannelClose()!
                 result.append([
                     "claimable_amount_satoshis": b.getClaimableAmountSatoshis(),
-                    "type": "ClaimableOnChannelClose"
+                    "type": "ClaimableOnChannelClose",
                 ])
                 break
             case .ContentiousClaimable:
@@ -1046,7 +1100,7 @@ class Ldk: NSObject {
                 
                 fileUrl = accountStoragePath.appendingPathComponent(String(fileName))
             }
-        
+            
             let fileContent = String(content)
             if format == "hex" {
                 try Data(fileContent.hexaBytes).write(to: fileUrl)
@@ -1059,7 +1113,7 @@ class Ldk: NSObject {
             return handleReject(reject, .write_fail, error, "Failed to write content to file \(fileName)")
         }
     }
-        
+    
     @objc
     func readFromFile(_ fileName: NSString, path: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         let fileUrl: URL
@@ -1082,7 +1136,7 @@ class Ldk: NSObject {
         do {
             let attr = try FileManager.default.attributesOfItem(atPath: fileUrl.path)
             let timestamp = ((attr[FileAttributeKey.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0).rounded()
-                        
+            
             if format == "hex" {
                 resolve(["content": try Data(contentsOf: fileUrl).hexEncodedString(), "timestamp": timestamp])
             } else {
@@ -1098,17 +1152,17 @@ class Ldk: NSObject {
 @objc(LdkEventEmitter)
 class LdkEventEmitter: RCTEventEmitter {
     public static var shared: LdkEventEmitter!
-
+    
     override init() {
         super.init()
         LdkEventEmitter.shared = self
     }
-
+    
     public func send(withEvent eventType: EventTypes, body: Any) {
         //TODO convert all bytes to hex here
         sendEvent(withName: eventType.rawValue, body: body)
     }
-
+    
     override func supportedEvents() -> [String] {
         return EventTypes.allCases.map { $0.rawValue }
     }

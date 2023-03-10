@@ -26,6 +26,7 @@ export enum EEventTypes {
 	emergency_force_close_channel = 'emergency_force_close_channel',
 	new_channel = 'new_channel',
 	network_graph_updated = 'network_graph_updated',
+	channel_manager_restarted = 'channel_manager_restarted',
 }
 
 //LDK event responses
@@ -503,9 +504,9 @@ export type TLdkStart = {
 	getTransactionPosition: TGetTransactionPosition;
 	getAddress: TGetAddress;
 	getScriptPubKeyHistory: TGetScriptPubKeyHistory;
+	getFees: TGetFees;
 	broadcastTransaction: TBroadcastTransaction;
 	network: ENetworks;
-	feeRate?: number;
 	userConfig?: TUserConfig;
 };
 
@@ -518,5 +519,7 @@ export type TGetScriptPubKeyHistory = (
 export type TGetScriptPubKeyHistoryResponse = { height: number; txid: string };
 
 export type TBroadcastTransaction = (rawTx: string) => Promise<any>;
+
+export type TGetFees = () => Promise<TFeeUpdateReq>;
 
 export type TVout = { hex: string; n: number; value: number };

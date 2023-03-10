@@ -25,6 +25,7 @@ export const startParamCheck = async ({
 	broadcastTransaction,
 	getAddress,
 	getScriptPubKeyHistory,
+	getFees,
 	network = ENetworks.regtest,
 }: TLdkStart): Promise<Result<string>> => {
 	try {
@@ -84,6 +85,11 @@ export const startParamCheck = async ({
 		// Test getScriptPubKeyHistory
 		if (!isFunction(getScriptPubKeyHistory)) {
 			return err('getScriptPubKeyHistory must be a function.');
+		}
+
+		// Test getFees
+		if (!isFunction(getFees)) {
+			return err('getFees must be a function.');
 		}
 
 		if (!isFunction(broadcastTransaction)) {
