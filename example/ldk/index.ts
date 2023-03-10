@@ -120,6 +120,12 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			account,
 			getAddress,
 			getScriptPubKeyHistory,
+			getFees: () =>
+				Promise.resolve({
+					highPriority: 12500,
+					normal: 12500,
+					background: 12500,
+				}),
 			getTransactionData,
 			getTransactionPosition,
 			broadcastTransaction,

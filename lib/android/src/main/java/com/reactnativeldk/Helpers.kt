@@ -127,7 +127,6 @@ val ChannelDetails.asJson: WritableMap
         (_inbound_scid_alias as? Option_u64Z.Some)?.some?.toInt()
             ?.let { result.putInt("inbound_payment_scid", it) }
         result.putInt("inbound_capacity_sat", _inbound_capacity_msat.toInt() / 1000)
-        result.putString("inbound_capacity_msat_str", "$_inbound_capacity_msat")
         result.putInt("outbound_capacity_sat", _outbound_capacity_msat.toInt() / 1000)
         result.putInt("channel_value_satoshis", _channel_value_satoshis.toInt())
         (_force_close_spend_delay as? Option_u16Z.Some)?.some?.toInt()
