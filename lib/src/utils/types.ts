@@ -26,6 +26,7 @@ export enum EEventTypes {
 	emergency_force_close_channel = 'emergency_force_close_channel',
 	new_channel = 'new_channel',
 	network_graph_updated = 'network_graph_updated',
+	channel_manager_restarted = 'channel_manager_restarted',
 }
 
 //LDK event responses

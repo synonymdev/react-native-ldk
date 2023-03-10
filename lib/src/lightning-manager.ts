@@ -196,6 +196,10 @@ class LightningManager {
 			EEventTypes.network_graph_updated,
 			this.onNetworkGraphUpdated.bind(this),
 		);
+		ldk.onEvent(
+			EEventTypes.channel_manager_restarted,
+			this.onChannelManagerRestarted.bind(this),
+		);
 	}
 
 	/**
@@ -425,13 +429,8 @@ class LightningManager {
 			);
 		}
 
-		// Add Peers
-		const peers = await this.getPeers();
-		await Promise.all(
-			peers.map((peer: TPeer) => {
-				this.addPeer({ ...peer, timeout: 4000 });
-			}),
-		);
+		// Add cached peers
+		await this.addPeers();
 
 		// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
 		await this.syncLdk();
@@ -444,6 +443,15 @@ class LightningManager {
 		// Done with initChannelManager
 
 		return ok('Node running');
+	}
+
+	async addPeers(): Promise<void> {
+		const peers = await this.getPeers();
+		await Promise.all(
+			peers.map((peer: TPeer) => {
+				this.addPeer({ ...peer, timeout: 4000 });
+			}),
+		);
 	}
 
 	/**
@@ -1415,6 +1423,18 @@ class LightningManager {
 	private onNetworkGraphUpdated(res: TNetworkGraphUpdated): void {
 		console.log(`Network graph nodes: ${res.node_count}`);
 		console.log(`Network graph channels: ${res.channel_count}`);
+	}
+
+	/**
+	 * Called when on iOS when the app is backgrounded and brought back to the foreground.
+	 * Channel manager constructor is automatically initialized again, so we need to re-add peers and sync LDK.
+	 * @returns {Promise<void>}
+	 */
+	private async onChannelManagerRestarted(): Promise<void> {
+		// Re add cached peers
+		await this.addPeers();
+		await this.syncLdk();
+		//TODO set fees
 	}
 }
 
