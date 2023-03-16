@@ -466,7 +466,7 @@ class Ldk: NSObject {
             return
         }
         
-        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Stoping LDK background tasks")
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Stopping LDK background tasks")
         
         //Reset only objects created by initChannelManager
         channelManagerConstructor?.interrupt()
