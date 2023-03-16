@@ -242,6 +242,7 @@ class LightningManager {
 		getFees,
 		broadcastTransaction,
 		network,
+		rapidGossipSyncUrl = 'https://rapidsync.lightningdevkit.org/snapshot/',
 		userConfig = defaultUserConfig,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
@@ -385,10 +386,9 @@ class LightningManager {
 		// Step 7: Read ChannelMonitors state from disk
 		// Handled in initChannelManager below
 
-		//TODO allow users to override
-		let rapidGossipSyncUrl = '';
-		if (network === 'mainnet') {
-			rapidGossipSyncUrl = 'https://rapidsync.lightningdevkit.org/snapshot/';
+		if (network !== 'mainnet') {
+			//RGS only currently working for mainnet
+			rapidGossipSyncUrl = '';
 		}
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler

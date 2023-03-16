@@ -507,6 +507,7 @@ export type TLdkStart = {
 	getFees: TGetFees;
 	broadcastTransaction: TBroadcastTransaction;
 	network: ENetworks;
+	rapidGossipSyncUrl?: string;
 	userConfig?: TUserConfig;
 };
 

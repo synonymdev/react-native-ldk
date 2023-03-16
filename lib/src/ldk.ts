@@ -303,15 +303,21 @@ class LDK {
 
 	/**
 	 * Provide fee rate information on a number of time horizons.
+	 * Values are in satoshis per byte but are represented as satoshis per 1000 weight units
 	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/enum.ConfirmationTarget.html
-	 * @param high
-	 * @param normal
+	 * Re https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html#tymethod.get_est_sat_per_1000_weight
+	 * @param fees
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async updateFees(fees: TFeeUpdateReq): Promise<Result<string>> {
 		const { highPriority, normal, background } = fees;
 		try {
-			const res = await NativeLDK.updateFees(highPriority, normal, background);
+			const satsPerKw = 250;
+			const res = await NativeLDK.updateFees(
+				highPriority * satsPerKw,
+				normal * satsPerKw,
+				background * satsPerKw,
+			);
 			this.writeDebugToLog('updateFees', fees);
 			return ok(res);
 		} catch (e) {
