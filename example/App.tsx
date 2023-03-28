@@ -423,7 +423,7 @@ const App = (): ReactElement => {
 								}
 							};
 
-							const amountSats = 100;
+							const amountSats = 10000;
 							Alert.alert('Create invoice', 'Specify amount?', [
 								{
 									text: 'Cancel',
