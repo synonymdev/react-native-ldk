@@ -122,9 +122,9 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			getScriptPubKeyHistory,
 			getFees: () =>
 				Promise.resolve({
-					highPriority: 12500,
-					normal: 12500,
-					background: 12500,
+					highPriority: 10,
+					normal: 5,
+					background: 1,
 				}),
 			getTransactionData,
 			getTransactionPosition,
