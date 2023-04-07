@@ -21,7 +21,7 @@ RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
 RCT_EXTERN_METHOD(initUserConfig:(NSDictionary *)userConfig
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)genesisHash
+RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)network
                   rapidGossipSyncUrl:(NSString *)rapidGossipSyncUrl
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)

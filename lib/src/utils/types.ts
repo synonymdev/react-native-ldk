@@ -95,7 +95,6 @@ export type TChannelManagerPaymentPathFailed = {
 	payment_failed_permanently: boolean;
 	short_channel_id: string;
 	path: TPath[];
-	network_update: string;
 };
 
 export type TChannelManagerPaymentFailed = {
@@ -168,8 +167,6 @@ export type TNetworkGraphChannelInfo = {
 export type TNetworkGraphNodeInfo = {
 	id: string;
 	shortChannelIds: string[];
-	lowest_inbound_channel_fees_base_sat: number;
-	lowest_inbound_channel_fees_proportional_millionths: number;
 	announcement_info_last_update: number;
 };
 
@@ -294,7 +291,7 @@ export type TInitChannelManagerReq = {
 };
 
 export type TInitNetworkGraphReq = {
-	genesisHash: string;
+	network: ENetworks;
 	rapidGossipSyncUrl?: string;
 };
 

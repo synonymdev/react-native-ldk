@@ -140,12 +140,12 @@ class LDK {
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async initNetworkGraph({
-		genesisHash,
+		network,
 		rapidGossipSyncUrl,
 	}: TInitNetworkGraphReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initNetworkGraph(
-				genesisHash,
+				network,
 				rapidGossipSyncUrl ?? '',
 			);
 			this.writeDebugToLog(

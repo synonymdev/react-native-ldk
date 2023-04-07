@@ -21,7 +21,7 @@ class LdkFeeEstimator: FeeEstimator {
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Fee estimator updated")
     }
     
-    override func getEstSatPer_1000Weight(confirmationTarget: Bindings.ConfirmationTarget) -> UInt32 {
+    override func getEstSatPer1000Weight(confirmationTarget: Bindings.ConfirmationTarget) -> UInt32 {
         let target = confirmationTarget
         
         if case ConfirmationTarget.HighPriority = target {

@@ -233,7 +233,7 @@ class LightningManager {
 	 */
 	async start({
 		account,
-		genesisHash,
+		genesisHash, //TODO remove genesisHash from start method
 		getBestBlock,
 		getTransactionData,
 		getTransactionPosition,
@@ -393,7 +393,7 @@ class LightningManager {
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
 		const networkGraphRes = await ldk.initNetworkGraph({
-			genesisHash,
+			network,
 			rapidGossipSyncUrl,
 		});
 		if (networkGraphRes.isErr()) {
