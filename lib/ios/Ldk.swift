@@ -683,6 +683,10 @@ class Ldk: NSObject {
     
     @objc
     func pay(_ paymentRequest: NSString, amountSats: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
         guard let invoice = Invoice.fromStr(s: String(paymentRequest)).getValue() else {
             return handleReject(reject, .decode_invoice_fail)
         }
@@ -699,32 +703,31 @@ class Ldk: NSObject {
             return handleReject(reject, .invoice_payment_fail_must_not_specify_amount)
         }
         
-//        let res = isZeroValueInvoice ?
-//        invoicePayer.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000)) :
-//        invoicePayer.payInvoice(invoice: invoice)
-//        if res.isOk() {
-//            return resolve(Data(res.getValue() ?? []).hexEncodedString())
-//        }
-//
-//        guard let error = res.getError() else {
-//            return handleReject(reject, .invoice_payment_fail_unknown)
-//        }
-//
-//        switch error.getValueType() {
-//        case .Invoice:
-//            return handleReject(reject, .invoice_payment_fail_invoice, nil, error.getValueAsInvoice())
-//        case .Routing:
-//            return handleReject(reject, .invoice_payment_fail_routing, nil, error.getValueAsRouting()?.getErr())
-//        case .Sending:
-//            //Multiple sending errors
-//            guard let sendingError = error.getValueAsSending() else {
-//                return handleReject(reject, .invoice_payment_fail_sending)
-//            }
-//
-//            return handlePaymentSendFailure(reject, error: sendingError)
-//        default:
-//            return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
-//        }
+        let res = isZeroValueInvoice ?
+        Bindings.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000), retryStrategy: .initWithAttempts(a: 3), channelmanager: channelManager) :
+        Bindings.payInvoice(invoice: invoice, retryStrategy: .initWithTimeout(a: 3), channelmanager: channelManager)
+        
+        if res.isOk() {
+            return resolve(Data(res.getValue() ?? []).hexEncodedString())
+        }
+
+        guard let error = res.getError() else {
+            return handleReject(reject, .invoice_payment_fail_unknown)
+        }
+
+        switch error.getValueType() {
+        case .Invoice:
+            return handleReject(reject, .invoice_payment_fail_invoice, nil, error.getValueAsInvoice())
+        case .Sending:
+            //Multiple sending errors
+            guard let sendingError = error.getValueAsSending() else {
+                return handleReject(reject, .invoice_payment_fail_sending, "AsSending")
+            }
+
+            return handleReject(reject, .invoice_payment_fail_sending)
+        default:
+            return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
+        }
     }
     
     @objc
@@ -791,7 +794,7 @@ class Ldk: NSObject {
             paths.append(hop)
         }
         
-        let payee = PaymentParameters.initWithNodeId(payeePubkey: String(destinationNodeId).hexaBytes, finalCltvExpiryDelta: cltvExpiryDelta)
+        let payee = PaymentParameters.initWithNodeId(payeePubkey: String(destinationNodeId).hexaBytes, finalCltvExpiryDelta: UInt32(cltvExpiryDelta))
         
         let route = Route(pathsArg: [paths], paymentParamsArg: payee)
         
@@ -833,13 +836,13 @@ class Ldk: NSObject {
         
         let res = Bindings.createInvoiceFromChannelmanager(
             channelmanager: channelManager,
-            nodeSigner: keysManager.asNodeSigner()
+            nodeSigner: keysManager.asNodeSigner(),
             logger: logger,
             network: ldkCurrency,
             amtMsat: amountSats == 0 ? nil : UInt64(amountSats) * 1000,
             description: String(description),
-            invoiceExpiryDeltaSecs: UInt32(expiryDelta)
-//          TODO minFinalCltvExpiryDelta
+            invoiceExpiryDeltaSecs: UInt32(expiryDelta),
+            minFinalCltvExpiryDelta: nil //TOOD
         )
         
         if res.isOk() {
@@ -883,8 +886,8 @@ class Ldk: NSObject {
     @objc
     func version(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         let res: [String: String] = [
-            "c_bindings": Bindings.swiftLdkCBindingsGetCompiledVersion(),
-            "ldk": Bindings.swiftLdkGetCompiledVersion(),
+            "c_bindings": Bindings.ldkCBindingsGetCompiledVersion(),
+            "ldk": Bindings.ldkGetCompiledVersion(),
         ]
         
         return resolve(String(data: try! JSONEncoder().encode(res), encoding: .utf8)!)
@@ -905,7 +908,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_peer_manager)
         }
         
-        return resolve(peerManager.getPeerNodeIds().map { Data($0).hexEncodedString() })
+        return resolve(peerManager.getPeerNodeIds().map { Data($0.0).hexEncodedString() })
     }
     
     @objc
