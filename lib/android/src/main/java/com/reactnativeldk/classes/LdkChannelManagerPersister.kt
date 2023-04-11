@@ -75,7 +75,6 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             val path = Arguments.createArray()
             paymentPathFailed.path.iterator().forEach { path.pushMap(it.asJson) }
             body.putArray("path", path)
-            body.putString("network_update", paymentPathFailed.network_update.toString()) //TODO could be more detailed
 
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_path_failed, body)
         }

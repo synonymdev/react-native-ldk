@@ -49,7 +49,6 @@ enum LdkErrors: String {
     case invoice_payment_fail_must_specify_amount = "invoice_payment_fail_must_specify_amount"
     case invoice_payment_fail_must_not_specify_amount = "invoice_payment_fail_must_not_specify_amount"
     case invoice_payment_fail_invoice = "invoice_payment_fail_invoice"
-    case invoice_payment_fail_routing = "invoice_payment_fail_routing"
     case invoice_payment_fail_sending = "invoice_payment_fail_sending"
     case invoice_payment_fail_resend_safe = "invoice_payment_fail_resend_safe"
     case invoice_payment_fail_parameter_error = "invoice_payment_fail_parameter_error"

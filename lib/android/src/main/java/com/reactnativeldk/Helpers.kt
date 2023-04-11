@@ -1,5 +1,7 @@
 package com.reactnativeldk
 import com.facebook.react.bridge.*
+import org.ldk.enums.Currency
+import org.ldk.enums.Network
 import org.ldk.structs.*
 import java.io.File
 import java.io.FileOutputStream
@@ -34,30 +36,30 @@ fun String.hexa(): ByteArray {
         .toByteArray()
 }
 
-fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Logger): ProbabilisticScorer? {
-    val params = ProbabilisticScoringParameters.with_default()
-
-    val scorerFile = File(path + "/" + LdkFileNames.scorer.fileName)
-    if (scorerFile.exists()) {
-        val read = ProbabilisticScorer.read(scorerFile.readBytes(), params, networkGraph, logger)
-        if (read.is_ok) {
-            LdkEventEmitter.send(EventTypes.native_log, "Loaded scorer from disk")
-            return (read as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
-        } else {
-            LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached scorer")
-        }
-    }
-
-    val default_scorer = ProbabilisticScorer.of(params, networkGraph, logger)
-    val score_res = ProbabilisticScorer.read(
-        default_scorer.write(), params, networkGraph,
-        logger
-    )
-    if (!score_res.is_ok) {
-        return null
-    }
-    return (score_res as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
-}
+//fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Logger): ProbabilisticScorer? {
+//    val params = ProbabilisticScoringParameters.with_default()
+//
+//    val scorerFile = File(path + "/" + LdkFileNames.scorer.fileName)
+//    if (scorerFile.exists()) {
+//        val read = ProbabilisticScorer.read(scorerFile.readBytes(), params, networkGraph, logger)
+//        if (read.is_ok) {
+//            LdkEventEmitter.send(EventTypes.native_log, "Loaded scorer from disk")
+//            return (read as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
+//        } else {
+//            LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached scorer")
+//        }
+//    }
+//
+//    val default_scorer = ProbabilisticScorer.of(params, networkGraph, logger)
+//    val score_res = ProbabilisticScorer.read(
+//        default_scorer.write(), params, networkGraph,
+//        logger
+//    )
+//    if (!score_res.is_ok) {
+//        return null
+//    }
+//    return (score_res as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
+//}
 
 val Invoice.asJson: WritableMap
     get() {
@@ -71,7 +73,7 @@ val Invoice.asJson: WritableMap
         result.putBoolean("is_expired",  is_expired)
         result.putInt("duration_since_epoch",  duration_since_epoch().toInt())
         result.putInt("expiry_time",  expiry_time().toInt())
-        result.putInt("min_final_cltv_expiry",  min_final_cltv_expiry().toInt())
+        result.putInt("min_final_cltv_expiry",  min_final_cltv_expiry_delta().toInt())
         result.putHexString("payee_pub_key", rawInvoice.payee_pub_key()?._a)
         result.putHexString("recover_payee_pub_key", recover_payee_pub_key())
         result.putHexString("payment_hash", payment_hash())
@@ -169,8 +171,6 @@ val NodeInfo.asJson: WritableMap
         val shortChannelIds = Arguments.createArray()
         _channels.iterator().forEach { shortChannelIds.pushString(it.toString()) }
         result.putArray("shortChannelIds", shortChannelIds)
-        result.putInt("lowest_inbound_channel_fees_base_sat", (_lowest_inbound_channel_fees?._base_msat ?: 0) / 1000)
-        result.putInt("lowest_inbound_channel_fees_proportional_millionths", _lowest_inbound_channel_fees?._proportional_millionths ?: 0)
         result.putDouble("announcement_info_last_update", (_announcement_info?._last_update ?: 0).toDouble() * 1000)
         return result
     }
@@ -367,4 +367,14 @@ fun UserConfig.mergeWithMap(map: ReadableMap): UserConfig {
     } catch (_: Exception) {}
 
     return this
+}
+
+/// Helper for returning real network and currency as a tuple from a string
+fun getNetwork(chain: String): Pair<Network, Currency> {
+    return when (chain) {
+        "regtest" -> Pair(Network.LDKNetwork_Regtest, Currency.LDKCurrency_Regtest)
+        "testnet" -> Pair(Network.LDKNetwork_Testnet, Currency.LDKCurrency_BitcoinTestnet)
+        "mainnet" -> Pair(Network.LDKNetwork_Bitcoin, Currency.LDKCurrency_Bitcoin)
+        else -> Pair(Network.LDKNetwork_Bitcoin, Currency.LDKCurrency_Bitcoin)
+    }
 }
