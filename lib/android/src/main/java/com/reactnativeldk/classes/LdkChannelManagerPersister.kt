@@ -155,9 +155,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
     }
 
     override fun persist_scorer(p0: ByteArray?) {
-        if (p0 != null && LdkModule.accountStoragePath != "") {
-            File(LdkModule.accountStoragePath + "/" + LdkFileNames.scorer.fileName).writeBytes(p0)
-            LdkEventEmitter.send(EventTypes.native_log, "Persisted scorer to disk")
-        }
+//        if (p0 != null && LdkModule.accountStoragePath != "") {
+//            File(LdkModule.accountStoragePath + "/" + LdkFileNames.scorer.fileName).writeBytes(p0)
+//            LdkEventEmitter.send(EventTypes.native_log, "Persisted scorer to disk")
+//        }
     }
 }
