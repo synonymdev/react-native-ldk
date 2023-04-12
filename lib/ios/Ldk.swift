@@ -380,6 +380,10 @@ class Ldk: NSObject {
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Enabled P2P gossip: \(enableP2PGossip)")
         
+        print(Ldk.accountStoragePath)
+        
+        print("\(String(cString: strerror(22)))")
+        
         let params = ChannelManagerConstructionParameters(
                 config: userConfig,
                 entropySource: keysManager.asEntropySource(),
@@ -393,7 +397,6 @@ class Ldk: NSObject {
                 scorer: scorer
                 //TODO set payerRetries
             )
-        
         do {
             //Only restore a node if we have existing channel monitors to restore. Else we lose our UserConfig settings when restoring.
             //TOOD remove this check in 114 which should allow passing in userConfig

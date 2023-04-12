@@ -36,9 +36,10 @@ fun String.hexa(): ByteArray {
         .toByteArray()
 }
 
-//fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Logger): ProbabilisticScorer? {
-//    val params = ProbabilisticScoringParameters.with_default()
-//
+fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Logger): ProbabilisticScorer? {
+    val params = ProbabilisticScoringParameters.with_default()
+
+    //TODO loading cached scorer currently broken
 //    val scorerFile = File(path + "/" + LdkFileNames.scorer.fileName)
 //    if (scorerFile.exists()) {
 //        val read = ProbabilisticScorer.read(scorerFile.readBytes(), params, networkGraph, logger)
@@ -49,17 +50,17 @@ fun String.hexa(): ByteArray {
 //            LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached scorer")
 //        }
 //    }
-//
-//    val default_scorer = ProbabilisticScorer.of(params, networkGraph, logger)
-//    val score_res = ProbabilisticScorer.read(
-//        default_scorer.write(), params, networkGraph,
-//        logger
-//    )
-//    if (!score_res.is_ok) {
-//        return null
-//    }
-//    return (score_res as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
-//}
+
+    val default_scorer = ProbabilisticScorer.of(params, networkGraph, logger)
+    val score_res = ProbabilisticScorer.read(
+        default_scorer.write(), params, networkGraph,
+        logger
+    )
+    if (!score_res.is_ok) {
+        return null
+    }
+    return (score_res as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
+}
 
 val Invoice.asJson: WritableMap
     get() {

@@ -374,15 +374,14 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
            channelManagerSerialized = channelManagerFile.readBytes()
         }
 
-        //TODO scorer currently broken
         //Scorer setup
-//        val probabilisticScorer = getProbabilisticScorer(
-//            accountStoragePath,
-//            networkGraph!!,
-//            logger.logger
-//        ) ?: return handleReject(promise, LdkErrors.init_scorer_failed)
-//
-//        val scorer = MultiThreadedLockableScore.of(probabilisticScorer.as_Score())
+        val probabilisticScorer = getProbabilisticScorer(
+            accountStoragePath,
+            networkGraph!!,
+            logger.logger
+        ) ?: return handleReject(promise, LdkErrors.init_scorer_failed)
+
+        val scorer = MultiThreadedLockableScore.of(probabilisticScorer.as_Score())
 
         val scoringParams = ProbabilisticScoringParameters.with_default()
 
@@ -398,6 +397,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                         channelMonitors.add(it.toFile().readBytes())
                     }
 
+                println("***1***")
+
+                LdkEventEmitter.send(EventTypes.native_log, "Restoring node from disk2")
+
                 channelManagerConstructor = ChannelManagerConstructor(
                     channelManagerSerialized,
                     channelMonitors.toTypedArray(),
@@ -406,13 +409,15 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     feeEstimator.feeEstimator,
                     chainMonitor,
                     filter.filter,
-                    blockHash.hexa().reversedArray(),
+                    networkGraph!!.write(),
                     scoringParams,
-                    null,
+                    scorer.write(),
                     null,
                     broadcaster.broadcaster,
                     logger.logger
                 )
+
+                println("***2***")
             } else {
                 //New node
                 LdkEventEmitter.send(EventTypes.native_log, "Creating new channel manager")
@@ -687,7 +692,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             if (amountSats == 0.0) Option_u64Z.none() else Option_u64Z.some((amountSats * 1000).toLong()),
             description,
             expiryDelta.toInt(),
-            null
+            Option_u16Z.none()
         );
 
         if (res.is_ok) {

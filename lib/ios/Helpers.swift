@@ -53,20 +53,21 @@ func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLo
     let scoringParams = ProbabilisticScoringParameters.initWithDefault()
     
     var probabalisticScorer: ProbabilisticScorer?
-    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
-        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
-        
-        if scorerRead.isOk() {
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
-            probabalisticScorer = scorerRead.getValue()
-        } else {
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
-        }
-    }
+    //TODO loading cached scorer currently broken
+//    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
+//        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
+//
+//        if scorerRead.isOk() {
+//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
+//            probabalisticScorer = scorerRead.getValue()
+//        } else {
+//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
+//        }
+//    }
     
     //Doesn't exist or error reading it
     if probabalisticScorer == nil {
-        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting from scratch")
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting scorer from scratch")
         probabalisticScorer = ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
     }
     

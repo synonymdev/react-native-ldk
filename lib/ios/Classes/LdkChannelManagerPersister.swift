@@ -67,7 +67,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "payment_id": Data(paymentSent.getPaymentId()).hexEncodedString(),
                     "payment_preimage": Data(paymentSent.getPaymentPreimage()).hexEncodedString(),
                     "payment_hash": Data(paymentSent.getPaymentHash()).hexEncodedString(),
-                    "fee_paid_sat": paymentSent.getFeePaidMsat() ?? 0 / 1000,
+                    "fee_paid_sat": (paymentSent.getFeePaidMsat() ?? 0) / 1000,
                 ]
             )
             return
@@ -244,17 +244,18 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     }
     
     override func persistScorer(scorer: WriteableScore) -> Bindings.Result_NoneErrorZ {
-        guard let scorerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.scorer.rawValue) else {
-            return Result_NoneErrorZ.initWithErr(e: .Other)
-        }
-                
-        do {
-            try Data(scorer.write()).write(to: scorerStorage)
-        
-            return Result_NoneErrorZ.initWithOk()
-        } catch {
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist scorer to disk Error \(error.localizedDescription).")
-            return Result_NoneErrorZ.initWithErr(e: .Other)
-        }
+        return Result_NoneErrorZ.initWithOk()
+//        guard let scorerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.scorer.rawValue) else {
+//            return Result_NoneErrorZ.initWithErr(e: .Other)
+//        }
+//
+//        do {
+//            try Data(scorer.write()).write(to: scorerStorage)
+//
+//            return Result_NoneErrorZ.initWithOk()
+//        } catch {
+//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist scorer to disk Error \(error.localizedDescription).")
+//            return Result_NoneErrorZ.initWithErr(e: .Other)
+//        }
     }
 }
