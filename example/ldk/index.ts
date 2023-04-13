@@ -4,7 +4,6 @@ import { err, ok, Result } from '../utils/result';
 import Clipboard from '@react-native-clipboard/clipboard';
 import RNFS from 'react-native-fs';
 import {
-	getBlockHashFromHeight,
 	getBlockHeader,
 	getBlockHex,
 	getScriptPubKeyHistory,
@@ -91,21 +90,14 @@ export const syncLdk = async (): Promise<Result<string>> => {
 /**
  * Used to spin-up LDK services.
  * In order, this method:
- * 1. Fetches and sets the genesis hash.
- * 2. Retrieves and sets the seed from storage.
- * 3. Starts ldk with the necessary params.
- * 4. Adds/Connects saved peers from storage. (Note: Not needed as LDK handles this automatically once a peer has been added successfully. Only used to make example app easier to test.)
- * 5. Syncs LDK.
+ * 1. Retrieves and sets the seed from storage.
+ * 2. Starts ldk with the necessary params.
+ * 3. Adds/Connects saved peers from storage. (Note: Not needed as LDK handles this automatically once a peer has been added successfully. Only used to make example app easier to test.)
+ * 4. Syncs LDK.
  */
 export const setupLdk = async (): Promise<Result<string>> => {
 	try {
 		await ldk.reset();
-		const genesisHash = await getBlockHashFromHeight({
-			height: 0,
-		});
-		if (genesisHash.isErr()) {
-			return err(genesisHash.error.message);
-		}
 		const account = await getAccount();
 		const storageRes = await lm.setBaseStoragePath(
 			`${RNFS.DocumentDirectoryPath}/ldk/`,
@@ -116,7 +108,6 @@ export const setupLdk = async (): Promise<Result<string>> => {
 
 		const lmStart = await lm.start({
 			getBestBlock,
-			genesisHash: genesisHash.value,
 			account,
 			getAddress,
 			getScriptPubKeyHistory,

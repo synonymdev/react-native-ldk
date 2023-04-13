@@ -495,7 +495,6 @@ export type TAccount = {
 
 export type TLdkStart = {
 	account: TAccount;
-	genesisHash: string;
 	getBestBlock: TGetBestBlock;
 	getTransactionData: TGetTransactionData;
 	getTransactionPosition: TGetTransactionPosition;
