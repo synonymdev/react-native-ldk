@@ -39,7 +39,7 @@ fun String.hexa(): ByteArray {
 fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Logger): ProbabilisticScorer? {
     val params = ProbabilisticScoringParameters.with_default()
 
-    //TODO loading cached scorer currently broken
+     //TODO loading cached scorer currently broken
 //    val scorerFile = File(path + "/" + LdkFileNames.scorer.fileName)
 //    if (scorerFile.exists()) {
 //        val read = ProbabilisticScorer.read(scorerFile.readBytes(), params, networkGraph, logger)
