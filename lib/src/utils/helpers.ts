@@ -7,7 +7,6 @@ import { networks } from 'bitcoinjs-lib';
  * This method runs a check on each parameter passed to the start method
  * to ensure that they are providing the expected data.
  * @param {string} seed
- * @param {string} genesisHash
  * @param {TGetBestBlock} getBestBlock
  * @param {TGetTransactionData} getTransactionData
  * @param {TBroadcastTransaction} broadcastTransaction
@@ -18,7 +17,6 @@ import { networks } from 'bitcoinjs-lib';
  */
 export const startParamCheck = async ({
 	account,
-	genesisHash,
 	getBestBlock,
 	getTransactionData,
 	getTransactionPosition,
@@ -51,11 +49,6 @@ export const startParamCheck = async ({
 		}
 		if (!account?.name || !account?.seed) {
 			return err('account must contain both a name and seed.');
-		}
-
-		// Test genesisHash
-		if (typeof genesisHash !== 'string') {
-			return err('genesisHash must be a string.');
 		}
 
 		// Test getBestBlock

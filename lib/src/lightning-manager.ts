@@ -224,7 +224,6 @@ class LightningManager {
 	/**
 	 * Spins up and syncs all processes
 	 * @param {string} seed
-	 * @param {string} genesisHash
 	 * @param {TGetBestBlock} getBestBlock
 	 * @param {TGetTransactionData} getTransactionData
 	 * @param {TGetAddress} getAddress
@@ -233,7 +232,6 @@ class LightningManager {
 	 */
 	async start({
 		account,
-		genesisHash,
 		getBestBlock,
 		getTransactionData,
 		getTransactionPosition,
@@ -258,11 +256,6 @@ class LightningManager {
 		if (!getBestBlock) {
 			return err('getBestBlock method not specified in start method.');
 		}
-		if (!genesisHash) {
-			return err(
-				'No genesisHash provided. Please pass genesisHash to the start method and try again.',
-			);
-		}
 		if (!getTransactionData) {
 			return err('getTransactionData is not set in start method.');
 		}
@@ -273,7 +266,6 @@ class LightningManager {
 		// Ensure the start params function as expected.
 		const paramCheckResponse = await startParamCheck({
 			account,
-			genesisHash,
 			getBestBlock,
 			getTransactionData,
 			getTransactionPosition,
@@ -393,7 +385,7 @@ class LightningManager {
 
 		// Step 11: Optional: Initialize the NetGraphMsgHandler
 		const networkGraphRes = await ldk.initNetworkGraph({
-			genesisHash,
+			network,
 			rapidGossipSyncUrl,
 		});
 		if (networkGraphRes.isErr()) {

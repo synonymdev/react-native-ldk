@@ -49,7 +49,6 @@ enum LdkErrors: String {
     case invoice_payment_fail_must_specify_amount = "invoice_payment_fail_must_specify_amount"
     case invoice_payment_fail_must_not_specify_amount = "invoice_payment_fail_must_not_specify_amount"
     case invoice_payment_fail_invoice = "invoice_payment_fail_invoice"
-    case invoice_payment_fail_routing = "invoice_payment_fail_routing"
     case invoice_payment_fail_sending = "invoice_payment_fail_sending"
     case invoice_payment_fail_resend_safe = "invoice_payment_fail_resend_safe"
     case invoice_payment_fail_parameter_error = "invoice_payment_fail_parameter_error"
@@ -117,7 +116,6 @@ class Ldk: NSObject {
     var peerManager: PeerManager?
     var peerHandler: TCPPeerHandler?
     var channelManagerConstructor: ChannelManagerConstructor?
-    var invoicePayer: InvoicePayer?
     var ldkNetwork: Network?
     var ldkCurrency: Currency?
     
@@ -236,7 +234,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func initNetworkGraph(_ genesisHash: NSString, rapidGossipSyncUrl: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initNetworkGraph(_ network: NSString, rapidGossipSyncUrl: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard networkGraph == nil else {
             return handleReject(reject, .already_init)
         }
@@ -254,7 +252,11 @@ class Ldk: NSObject {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded network graph from file")
             }
         } catch {
-            networkGraph = NetworkGraph(genesisHash: String(genesisHash).hexaBytes.reversed(), logger: logger)
+            guard let ldkNetwork = getNetwork(String(network)) else {
+                return handleReject(reject, .invalid_network)
+            }
+            
+            networkGraph = NetworkGraph(network: ldkNetwork.0, logger: logger)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached network graph from disk. Will sync from scratch. \(error.localizedDescription)")
         }
         
@@ -272,7 +274,7 @@ class Ldk: NSObject {
                 try FileManager.default.createDirectory(atPath: rapidGossipSyncStoragePath.path, withIntermediateDirectories: true, attributes: nil)
             }
             
-            rapidGossipSync = RapidGossipSync(networkGraph: networkGraph!)
+            rapidGossipSync = RapidGossipSync(networkGraph: networkGraph!, logger: logger)
             
             //If it's been more than 24 hours then we need to update RGS
             let timestamp = networkGraph?.getLastRapidGossipSyncTimestamp() ?? 0
@@ -353,19 +355,12 @@ class Ldk: NSObject {
             return handleReject(reject, .init_storage_path)
         }
         
-        switch network {
-        case "regtest":
-            ldkNetwork = Network.Regtest
-            ldkCurrency = Currency.Regtest
-        case "testnet":
-            ldkNetwork = Network.Testnet
-            ldkCurrency = Currency.BitcoinTestnet
-        case "mainnet":
-            ldkNetwork = Network.Bitcoin
-            ldkCurrency = Currency.Bitcoin
-        default:
+        guard let networkDetails = getNetwork(String(network)) else {
             return handleReject(reject, .invalid_network)
         }
+        
+        ldkNetwork = networkDetails.0
+        ldkCurrency = networkDetails.1
         
         let enableP2PGossip = rapidGossipSync == nil
         
@@ -378,8 +373,30 @@ class Ldk: NSObject {
             channelMonitorsSerialized.append([UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)))
         }
         
+        //Scorer setup
+        let probabilisticScorer = getProbabilisticScorer(path: accountStoragePath, networkGraph: networkGraph, logger: logger)
+        let score = probabilisticScorer.asScore()
+        let scorer = MultiThreadedLockableScore(score: score)
+        
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Enabled P2P gossip: \(enableP2PGossip)")
         
+        print(Ldk.accountStoragePath)
+        
+        print("\(String(cString: strerror(22)))")
+        
+        let params = ChannelManagerConstructionParameters(
+                config: userConfig,
+                entropySource: keysManager.asEntropySource(),
+                nodeSigner: keysManager.asNodeSigner(),
+                signerProvider: keysManager.asSignerProvider(),
+                feeEstimator: feeEstimator,
+                chainMonitor: chainMonitor,
+                txBroadcaster: broadcaster,
+                logger: logger,
+                enableP2PGossip: enableP2PGossip,
+                scorer: scorer
+                //TODO set payerRetries
+            )
         do {
             //Only restore a node if we have existing channel monitors to restore. Else we lose our UserConfig settings when restoring.
             //TOOD remove this check in 114 which should allow passing in userConfig
@@ -390,31 +407,19 @@ class Ldk: NSObject {
                 channelManagerConstructor = try ChannelManagerConstructor(
                     channelManagerSerialized: [UInt8](channelManagerSerialized),
                     channelMonitorsSerialized: channelMonitorsSerialized,
-                    keysInterface: keysManager.asKeysInterface(),
-                    feeEstimator: feeEstimator,
-                    chainMonitor: chainMonitor,
-                    filter: filter,
                     netGraphSerialized: networkGraph.write(),
-                    txBroadcaster: broadcaster,
-                    logger: logger,
-                    enableP2PGossip: enableP2PGossip
+                    filter: filter,
+                    params: params
                 )
             } else {
                 //New node
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Creating new channel manager")
-                
                 channelManagerConstructor = ChannelManagerConstructor(
                     network: ldkNetwork!,
-                    config: userConfig,
                     currentBlockchainTipHash: String(blockHash).hexaBytes.reversed(),
                     currentBlockchainTipHeight: UInt32(blockHeight),
-                    keysInterface: keysManager.asKeysInterface(),
-                    feeEstimator: feeEstimator,
-                    chainMonitor: chainMonitor,
                     netGraph: networkGraph,
-                    txBroadcaster: broadcaster,
-                    logger: logger,
-                    enableP2PGossip: enableP2PGossip
+                    params: params
                 )
             }
         } catch {
@@ -423,16 +428,10 @@ class Ldk: NSObject {
         
         channelManager = channelManagerConstructor!.channelManager
         
-        //Scorer setup
-        let probabilisticScorer = getProbabilisticScorer(path: accountStoragePath, networkGraph: networkGraph, logger: logger)
-        let score = probabilisticScorer.asScore()
-        let scorer = MultiThreadedLockableScore(score: score)
-        
-        channelManagerConstructor!.chainSyncCompleted(persister: channelManagerPersister, scorer: scorer)
+        channelManagerConstructor!.chainSyncCompleted(persister: channelManagerPersister)
         peerManager = channelManagerConstructor!.peerManager
         
         peerHandler = channelManagerConstructor!.getTCPPeerHandler()
-        invoicePayer = channelManagerConstructor!.payer
         
         if enableP2PGossip {
             self.networkGraph = channelManagerConstructor!.netGraph
@@ -474,7 +473,6 @@ class Ldk: NSObject {
         channelManager = nil
         peerManager = nil
         peerHandler = nil
-        invoicePayer = nil
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting LDK background tasks again")
         initChannelManager(currentNetwork, blockHash: currentBlockchainTipHash, blockHeight: currentBlockchainHeight) { success in
@@ -498,7 +496,6 @@ class Ldk: NSObject {
         networkGraph = nil
         peerManager = nil
         peerHandler = nil
-        invoicePayer = nil
         ldkNetwork = nil
         ldkCurrency = nil
         Ldk.accountStoragePath = nil
@@ -664,7 +661,7 @@ class Ldk: NSObject {
             descriptors: ldkDescriptors,
             outputs: ldkOutputs,
             changeDestinationScript: String(changeDestinationScript).hexaBytes,
-            feerateSatPer_1000Weight: UInt32(feeRate)
+            feerateSatPer1000Weight: UInt32(feeRate)
         )
         
         guard res.isOk() else {
@@ -688,8 +685,8 @@ class Ldk: NSObject {
     
     @objc
     func pay(_ paymentRequest: NSString, amountSats: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let invoicePayer = invoicePayer else {
-            return handleReject(reject, .init_invoice_payer)
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
         }
         
         guard let invoice = Invoice.fromStr(s: String(paymentRequest)).getValue() else {
@@ -709,28 +706,27 @@ class Ldk: NSObject {
         }
         
         let res = isZeroValueInvoice ?
-        invoicePayer.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000)) :
-        invoicePayer.payInvoice(invoice: invoice)
+        Bindings.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000), retryStrategy: .initWithAttempts(a: 3), channelmanager: channelManager) :
+        Bindings.payInvoice(invoice: invoice, retryStrategy: .initWithTimeout(a: 3), channelmanager: channelManager)
+        
         if res.isOk() {
             return resolve(Data(res.getValue() ?? []).hexEncodedString())
         }
-        
+
         guard let error = res.getError() else {
             return handleReject(reject, .invoice_payment_fail_unknown)
         }
-        
+
         switch error.getValueType() {
         case .Invoice:
             return handleReject(reject, .invoice_payment_fail_invoice, nil, error.getValueAsInvoice())
-        case .Routing:
-            return handleReject(reject, .invoice_payment_fail_routing, nil, error.getValueAsRouting()?.getErr())
         case .Sending:
             //Multiple sending errors
             guard let sendingError = error.getValueAsSending() else {
-                return handleReject(reject, .invoice_payment_fail_sending)
+                return handleReject(reject, .invoice_payment_fail_sending, "AsSending")
             }
-            
-            return handlePaymentSendFailure(reject, error: sendingError)
+
+            return handleReject(reject, .invoice_payment_fail_sending)
         default:
             return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
         }
@@ -800,7 +796,7 @@ class Ldk: NSObject {
             paths.append(hop)
         }
         
-        let payee = PaymentParameters.initWithNodeId(payeePubkey: String(destinationNodeId).hexaBytes)
+        let payee = PaymentParameters.initWithNodeId(payeePubkey: String(destinationNodeId).hexaBytes, finalCltvExpiryDelta: UInt32(cltvExpiryDelta))
         
         let route = Route(pathsArg: [paths], paymentParamsArg: payee)
         
@@ -840,14 +836,15 @@ class Ldk: NSObject {
             return handleReject(reject, .init_ldk_currency)
         }
         
-        let res = Bindings.swiftCreateInvoiceFromChannelmanager(
+        let res = Bindings.createInvoiceFromChannelmanager(
             channelmanager: channelManager,
-            keysManager: keysManager.asKeysInterface(),
+            nodeSigner: keysManager.asNodeSigner(),
             logger: logger,
             network: ldkCurrency,
             amtMsat: amountSats == 0 ? nil : UInt64(amountSats) * 1000,
             description: String(description),
-            invoiceExpiryDeltaSecs: UInt32(expiryDelta)
+            invoiceExpiryDeltaSecs: UInt32(expiryDelta),
+            minFinalCltvExpiryDelta: nil //TOOD
         )
         
         if res.isOk() {
@@ -891,8 +888,8 @@ class Ldk: NSObject {
     @objc
     func version(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         let res: [String: String] = [
-            "c_bindings": Bindings.swiftLdkCBindingsGetCompiledVersion(),
-            "ldk": Bindings.swiftLdkGetCompiledVersion(),
+            "c_bindings": Bindings.ldkCBindingsGetCompiledVersion(),
+            "ldk": Bindings.ldkGetCompiledVersion(),
         ]
         
         return resolve(String(data: try! JSONEncoder().encode(res), encoding: .utf8)!)
@@ -913,7 +910,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_peer_manager)
         }
         
-        return resolve(peerManager.getPeerNodeIds().map { Data($0).hexEncodedString() })
+        return resolve(peerManager.getPeerNodeIds().map { Data($0.0).hexEncodedString() })
     }
     
     @objc

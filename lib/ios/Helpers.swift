@@ -53,6 +53,7 @@ func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLo
     let scoringParams = ProbabilisticScoringParameters.initWithDefault()
     
     var probabalisticScorer: ProbabilisticScorer?
+    //TODO loading cached scorer currently broken
 //    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
 //        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
 //
@@ -66,7 +67,7 @@ func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLo
     
     //Doesn't exist or error reading it
     if probabalisticScorer == nil {
-        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting from scratch")
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting scorer from scratch")
         probabalisticScorer = ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
     }
     
@@ -88,7 +89,7 @@ extension Invoice {
             "is_expired": isExpired(),
             "duration_since_epoch": durationSinceEpoch(),
             "expiry_time": expiryTime(),
-            "min_final_cltv_expiry": minFinalCltvExpiry(),
+            "min_final_cltv_expiry": minFinalCltvExpiryDelta(),
             "payee_pub_key": Data(payeePubKey() ?? []).hexEncodedString(),
             "recover_payee_pub_key": Data(recoverPayeePubKey()).hexEncodedString(),
             "payment_hash": Data(paymentHash() ?? []).hexEncodedString(),
@@ -168,11 +169,10 @@ extension ChannelInfo {
 
 //Nodes in our network graph
 extension NodeInfo {
+
     var asJson: [String: Any] {
         return [
             "shortChannelIds": getChannels().map({ String($0) }),
-            "lowest_inbound_channel_fees_base_sat": getLowestInboundChannelFees()?.getBaseMsat() ?? 0 / 1000,
-            "lowest_inbound_channel_fees_proportional_millionths": getLowestInboundChannelFees()?.getProportionalMillionths() ?? 0,
             "announcement_info_last_update": Int(getAnnouncementInfo()?.getLastUpdate() ?? 0) * 1000
         ]
     }
@@ -345,7 +345,7 @@ extension ChannelHandshakeLimits {
             maxChannelReserveSatoshisArg: obj["max_channel_reserve_satoshis"] as? UInt64 ?? defaults.getMaxChannelReserveSatoshis(),
             minMaxAcceptedHtlcsArg: obj["min_max_accepted_htlcs"] as? UInt16 ?? defaults.getMinMaxAcceptedHtlcs(),
             maxMinimumDepthArg: obj["max_minimum_depth"] as? UInt32 ?? defaults.getMaxMinimumDepth(),
-            trustOwnFunding_0confArg: obj["trust_own_funding_0conf"] as? Bool ?? defaults.getTrustOwnFunding_0conf(),
+            trustOwnFunding0confArg: obj["trust_own_funding_0conf"] as? Bool ?? defaults.getTrustOwnFunding0conf(),
             forceAnnouncedChannelPreferenceArg: obj["force_announced_channel_preference"] as? Bool ?? defaults.getForceAnnouncedChannelPreference(),
             theirToSelfDelayArg: obj["their_to_self_delay"] as? UInt16 ?? defaults.getTheirToSelfDelay()
         )
@@ -425,5 +425,21 @@ func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.P
         return handleReject(reject, .invoice_payment_fail_path_parameter_error, nil, error.getValueAsPartialFailure().debugDescription)
     default:
         return handleReject(reject, .invoice_payment_fail_sending)
+    }
+}
+
+/// Helper for returning real network and currency as a tuple from a string
+/// - Parameter network: network name from JS
+/// - Returns: network and currency tuple
+func getNetwork(_ network: String) -> (Network, Currency)? {
+    switch network {
+    case "regtest":
+        return (Network.Regtest, Currency.Regtest)
+    case "testnet":
+        return (Network.Testnet, Currency.BitcoinTestnet)
+    case "mainnet":
+        return (Network.Bitcoin, Currency.Bitcoin)
+    default:
+        return nil
     }
 }

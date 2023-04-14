@@ -67,7 +67,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "payment_id": Data(paymentSent.getPaymentId()).hexEncodedString(),
                     "payment_preimage": Data(paymentSent.getPaymentPreimage()).hexEncodedString(),
                     "payment_hash": Data(paymentSent.getPaymentHash()).hexEncodedString(),
-                    "fee_paid_sat": paymentSent.getFeePaidMsat() ?? 0 / 1000,
+                    "fee_paid_sat": (paymentSent.getFeePaidMsat() ?? 0) / 1000,
                 ]
             )
             return
@@ -113,8 +113,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "payment_hash": Data(paymentPathFailed.getPaymentHash()).hexEncodedString(),
                     "payment_failed_permanently": paymentPathFailed.getPaymentFailedPermanently(),
                     "short_channel_id": String(paymentPathFailed.getShortChannelId() ?? 0),
-                    "path": paymentPathFailed.getPath().map { $0.asJson },
-                    "network_update": paymentPathFailed.getNetworkUpdate().debugDescription //TODO could be more detailed
+                    "path": paymentPathFailed.getPath().map { $0.asJson }
                 ]
             )
             return

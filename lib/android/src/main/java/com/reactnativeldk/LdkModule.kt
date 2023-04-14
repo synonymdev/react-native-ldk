@@ -13,14 +13,11 @@ import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
 import org.ldk.structs.Result_InvoiceParseOrSemanticErrorZ.Result_InvoiceParseOrSemanticErrorZ_OK
 import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCreationErrorZ_OK
-import org.ldk.structs.Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK
 import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 
 
 //MARK: ************Replicate in typescript and swift************
@@ -70,7 +67,6 @@ enum class LdkErrors {
     invoice_payment_fail_must_specify_amount,
     invoice_payment_fail_must_not_specify_amount,
     invoice_payment_fail_invoice,
-    invoice_payment_fail_routing,
     invoice_payment_fail_sending,
     invoice_payment_fail_resend_safe,
     invoice_payment_fail_parameter_error,
@@ -143,7 +139,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private var peerManager: PeerManager? = null
     private var peerHandler: NioPeerHandler? = null
     private var channelManagerConstructor: ChannelManagerConstructor? = null
-    private var invoicePayer: InvoicePayer? = null
     private var ldkNetwork: Network? = null
     private var ldkCurrency: Currency? = null
 
@@ -257,7 +252,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initNetworkGraph(genesisHash: String, rapidGossipSyncUrl: String, promise: Promise) {
+    fun initNetworkGraph(network: String, rapidGossipSyncUrl: String, promise: Promise) {
         if (networkGraph !== null) {
             return handleReject(promise, LdkErrors.already_init)
         }
@@ -270,8 +265,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         if (networkGraph == null) {
+            var ldkNetwork = getNetwork(network);
+            networkGraph = NetworkGraph.of(ldkNetwork.first, logger.logger)
+
             LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached network graph from disk. Will sync from scratch.")
-            networkGraph = NetworkGraph.of(genesisHash.hexa().reversedArray(), logger.logger)
         }
 
         //Normal p2p gossip sync
@@ -288,7 +285,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.create_storage_dir_fail, Error(e))
         }
 
-        rapidGossipSync = RapidGossipSync.of(networkGraph)
+        rapidGossipSync = RapidGossipSync.of(networkGraph, logger.logger)
 
         //If it's been more than 24 hours then we need to update RGS
         var timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
@@ -368,58 +365,14 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 return handleReject(promise, LdkErrors.invalid_network)
             }
         }
+
+        val enableP2PGossip = rapidGossipSync == null
         
         var channelManagerSerialized: ByteArray? = null
         val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.channel_manager.fileName)
         if (channelManagerFile.exists()) {
            channelManagerSerialized = channelManagerFile.readBytes()
         }
-
-        try {
-            if (channelManagerSerialized != null) {
-                //Restoring node
-                LdkEventEmitter.send(EventTypes.native_log, "Restoring node from disk")
-                var channelMonitors: MutableList<ByteArray> = arrayListOf()
-                Files.walk(Paths.get(channelStoragePath))
-                    .filter { Files.isRegularFile(it) }
-                    .forEach {
-                        LdkEventEmitter.send(EventTypes.native_log, "Loading channel from file " + it.fileName)
-                        channelMonitors.add(it.toFile().readBytes())
-                    }
-
-                channelManagerConstructor = ChannelManagerConstructor(
-                    channelManagerSerialized,
-                    channelMonitors.toTypedArray(),
-                    userConfig,
-                    keysManager!!.as_KeysInterface(),
-                    feeEstimator.feeEstimator,
-                    chainMonitor,
-                    filter.filter,
-                    networkGraph!!.write(),
-                    broadcaster.broadcaster,
-                    logger.logger
-                )
-            } else {
-                //New node
-                LdkEventEmitter.send(EventTypes.native_log, "Creating new channel manager")
-                channelManagerConstructor = ChannelManagerConstructor(
-                    ldkNetwork,
-                    userConfig,
-                    blockHash.hexa().reversedArray(),
-                    blockHeight.toInt(),
-                    keysManager!!.as_KeysInterface(),
-                    feeEstimator.feeEstimator,
-                    chainMonitor,
-                    networkGraph!!,
-                    broadcaster.broadcaster,
-                    logger.logger,
-                )
-            }
-        } catch (e: Exception) {
-            return handleReject(promise, LdkErrors.unknown_error, Error(e))
-        }
-
-        channelManager = channelManagerConstructor!!.channel_manager
 
         //Scorer setup
         val probabilisticScorer = getProbabilisticScorer(
@@ -430,11 +383,69 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val scorer = MultiThreadedLockableScore.of(probabilisticScorer.as_Score())
 
-        channelManagerConstructor!!.chain_sync_completed(channelManagerPersister, scorer)
+        val scoringParams = ProbabilisticScoringParameters.with_default()
+
+        try {
+            if (channelManagerSerialized != null) {
+                //Restoring node
+                LdkEventEmitter.send(EventTypes.native_log, "Restoring node from disk")
+                val channelMonitors: MutableList<ByteArray> = arrayListOf()
+                Files.walk(Paths.get(channelStoragePath))
+                    .filter { Files.isRegularFile(it) }
+                    .forEach {
+                        LdkEventEmitter.send(EventTypes.native_log, "Loading channel from file " + it.fileName)
+                        channelMonitors.add(it.toFile().readBytes())
+                    }
+
+                println("***1***")
+
+                LdkEventEmitter.send(EventTypes.native_log, "Restoring node from disk2")
+
+                channelManagerConstructor = ChannelManagerConstructor(
+                    channelManagerSerialized,
+                    channelMonitors.toTypedArray(),
+                    userConfig,
+                    keysManager!!,
+                    feeEstimator.feeEstimator,
+                    chainMonitor,
+                    filter.filter,
+                    networkGraph!!.write(),
+                    scoringParams,
+                    scorer.write(),
+                    null,
+                    broadcaster.broadcaster,
+                    logger.logger
+                )
+
+                println("***2***")
+            } else {
+                //New node
+                LdkEventEmitter.send(EventTypes.native_log, "Creating new channel manager")
+                channelManagerConstructor = ChannelManagerConstructor(
+                    ldkNetwork,
+                    userConfig,
+                    blockHash.hexa().reversedArray(),
+                    blockHeight.toInt(),
+                    keysManager!!,
+                    feeEstimator.feeEstimator,
+                    chainMonitor,
+                    networkGraph!!,
+                    scoringParams,
+                    null,
+                    broadcaster.broadcaster,
+                    logger.logger,
+                )
+            }
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.unknown_error, Error(e))
+        }
+
+        channelManager = channelManagerConstructor!!.channel_manager
+
+        channelManagerConstructor!!.chain_sync_completed(channelManagerPersister, enableP2PGossip)
         peerManager = channelManagerConstructor!!.peer_manager
 
         peerHandler = channelManagerConstructor!!.nio_peer_handler
-        invoicePayer = channelManagerConstructor!!.payer
 
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
     }
@@ -598,7 +609,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun pay(paymentRequest: String, amountSats: Double, promise: Promise) {
-        invoicePayer ?: return handleReject(promise, LdkErrors.init_invoice_payer)
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
         val invoiceParse = Invoice.from_str(paymentRequest)
         if (!invoiceParse.is_ok) {
@@ -619,8 +630,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         val res = if (isZeroValueInvoice)
-                invoicePayer!!.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000) else
-                invoicePayer!!.pay_invoice(invoice)
+            UtilMethods.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000, Retry.attempts(3), channelManager) else
+            UtilMethods.pay_invoice(invoice, Retry.attempts(3), channelManager)
         if (res.is_ok) {
             return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
         }
@@ -630,11 +641,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val invoiceError = error?.err as? PaymentError.Invoice
         if (invoiceError != null) {
             return handleReject(promise, LdkErrors.invoice_payment_fail_invoice, Error(invoiceError.invoice))
-        }
-
-        val routingError = error?.err as? PaymentError.Routing
-        if (routingError != null) {
-            return handleReject(promise, LdkErrors.invoice_payment_fail_routing, Error(routingError.routing._err))
         }
 
         val sendingError = error?.err as? PaymentError.Sending
@@ -680,12 +686,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val res = UtilMethods.create_invoice_from_channelmanager(
             channelManager,
-            keysManager!!.as_KeysInterface(),
+            keysManager!!.as_NodeSigner(),
             logger.logger,
             ldkCurrency,
             if (amountSats == 0.0) Option_u64Z.none() else Option_u64Z.some((amountSats * 1000).toLong()),
             description,
-            expiryDelta.toInt()
+            expiryDelta.toInt(),
+            Option_u16Z.none()
         );
 
         if (res.is_ok) {
@@ -738,7 +745,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val res = Arguments.createArray()
         val list = peerManager!!._peer_node_ids
         list.iterator().forEach {
-            res.pushString(it.hexEncodedString())
+            res.pushString(it._a.hexEncodedString())
         }
 
         promise.resolve(res)
