@@ -1368,7 +1368,7 @@ class LightningManager {
 			descriptorsSerialized: res.outputsSerialized,
 			outputs: [], //Shouldn't need to specify this if we're sweeping all funds to dest script
 			change_destination_script,
-			feerate_sat_per_1000_weight: feeRate,
+			feerate_sat_per_1000_weight: feeRate * 250, //Multiply by 250 because https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html#tymethod.get_est_sat_per_1000_weight
 		});
 
 		if (spendRes.isErr()) {
