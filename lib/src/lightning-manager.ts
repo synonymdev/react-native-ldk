@@ -917,9 +917,9 @@ class LightningManager {
 		let paymentId = '';
 		const res: Result<TChannelManagerPaymentSent> = await promiseTimeout(
 			timeout,
-			this.subscribeAndPay({ paymentRequest, amountSats }).then((res) => {
-				if (res.isOk()) {
-					paymentId = res.value.payment_id;
+			this.subscribeAndPay({ paymentRequest, amountSats }).then((r) => {
+				if (r.isOk()) {
+					paymentId = r.value.payment_id;
 				}
 			}),
 		);
