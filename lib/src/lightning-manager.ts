@@ -912,24 +912,12 @@ class LightningManager {
 	payWithTimeout = async ({
 		paymentRequest,
 		amountSats,
-		timeout = 30000,
+		timeout = 20000,
 	}: TPaymentTimeoutReq): Promise<Result<TChannelManagerPaymentSent>> => {
-		let paymentId = '';
-		const res: Result<TChannelManagerPaymentSent> = await promiseTimeout(
+		return promiseTimeout(
 			timeout,
-			this.subscribeAndPay({ paymentRequest, amountSats }).then((r) => {
-				if (r.isOk()) {
-					paymentId = r.value.payment_id;
-				}
-			}),
+			this.subscribeAndPay({ paymentRequest, amountSats }),
 		);
-
-		// Abandon payment if it is still pending after timeout
-		if (paymentId) {
-			await ldk.abandonPayment(paymentId);
-		}
-
-		return res;
 	};
 
 	private subscribeAndPay = async ({
