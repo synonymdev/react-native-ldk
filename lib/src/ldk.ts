@@ -270,9 +270,9 @@ class LDK {
 		line: string,
 	): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.writeToLogFile(
-				`${type.toUpperCase()} (JS): ${line}`,
-			);
+			const writeLine = `${type.toUpperCase()} (JS): ${line}`;
+			console.log(writeLine);
+			const res = await NativeLDK.writeToLogFile(writeLine);
 			return ok(res);
 		} catch (e) {
 			return err(e);

@@ -397,6 +397,20 @@ const App = (): ReactElement => {
 					/>
 
 					<Button
+						title={'Recover all outputs attempt'}
+						onPress={async (): Promise<void> => {
+							setMessage('Attempting to respend all outputs...');
+							const res = await lm.recoverOutputs();
+							if (res.isErr()) {
+								setMessage(res.error.message);
+								return;
+							}
+
+							setMessage(res.value);
+						}}
+					/>
+
+					<Button
 						title={'Create invoice'}
 						onPress={async (): Promise<void> => {
 							const createInvoice = async (

@@ -50,6 +50,7 @@ import {
 	defaultUserConfig,
 	TGetFees,
 	TFeeUpdateReq,
+	TLdkSpendableOutputs,
 } from './utils/types';
 import {
 	appendPath,
@@ -891,6 +892,7 @@ class LightningManager {
 					confirmed_outputs: await this.getLdkConfirmedOutputs(),
 					broadcasted_transactions: await this.getLdkBroadcastedTxs(),
 					payment_ids: await this.getLdkPaymentIds(),
+					spendable_outputs: await this.getLdkSpendableOutputs(),
 					timestamp: Date.now(),
 				},
 				package_version: require('../package.json').version,
@@ -931,6 +933,11 @@ class LightningManager {
 				paymentRequest,
 				amountSats,
 			});
+
+			await ldk.writeToLogFile(
+				'debug',
+				payResponse.isOk() ? `ldk.pay() success ${payResponse.value}` : '',
+			);
 
 			//Quickly retry with default invoice payer method
 			// if (!payResponse.isOk()) {
@@ -1140,6 +1147,19 @@ class LightningManager {
 		return DefaultLdkDataShape.confirmed_outputs;
 	};
 
+	private getLdkSpendableOutputs = async (): Promise<TLdkSpendableOutputs> => {
+		const res = await ldk.readFromFile({
+			fileName: ELdkFiles.spendable_outputs,
+		});
+		if (res.isOk()) {
+			return parseData(
+				res.value.content,
+				DefaultLdkDataShape.spendable_outputs,
+			);
+		}
+		return DefaultLdkDataShape.spendable_outputs;
+	};
+
 	/**
 	 * Returns previously broadcasted transactions saved in storgare.
 	 * @returns {Promise<TLdkBroadcastedTransactions>}
@@ -1164,6 +1184,23 @@ class LightningManager {
 				return await this.broadcastTransaction(tx);
 			}),
 		);
+	}
+
+	/**
+	 * Attempts to recover outputs from stored spendable outputs.
+	 * Also attempts to recreate outputs that were not previously stored but failed to be spent.
+	 * @returns {Promise<string>}
+	 */
+	async recoverOutputs(): Promise<Result<string>> {
+		const outputs = await this.getLdkSpendableOutputs();
+
+		for (const output of outputs) {
+			await this.onChannelManagerSpendableOutputs({
+				outputsSerialized: [output],
+			});
+		}
+
+		return ok(`Attempting to spend ${outputs.length} outputs from cache.`);
 	}
 
 	/**
@@ -1282,8 +1319,15 @@ class LightningManager {
 		if (broadcastedTxs.includes(res.tx)) {
 			return;
 		}
-		console.log(`onBroadcastTransaction: ${res.tx}`);
-		this.broadcastTransaction(res.tx).then(console.log);
+		await ldk.writeToLogFile('info', `Broadcasting tx: ${res.tx}`);
+		this.broadcastTransaction(res.tx)
+			.then(() => {
+				ldk.writeToLogFile('info', `Broadcast tx successfully: ${res.tx}`);
+			})
+			.catch((e) => {
+				ldk.writeToLogFile('error', `Error broadcasting tx: ${e}`);
+			});
+
 		this.saveBroadcastedTxs(res.tx).then();
 	}
 
@@ -1349,10 +1393,29 @@ class LightningManager {
 	private async onChannelManagerSpendableOutputs(
 		res: TChannelManagerSpendableOutputs,
 	): Promise<void> {
+		const spendableOutputs = await this.getLdkSpendableOutputs();
+		res.outputsSerialized.forEach((o) => {
+			if (!spendableOutputs.includes(o)) {
+				spendableOutputs.push(o);
+			}
+		});
+		await ldk.writeToFile({
+			fileName: ELdkFiles.spendable_outputs,
+			content: JSON.stringify(spendableOutputs),
+		});
+
+		await ldk.writeToLogFile(
+			'info',
+			'Received spendable outputs. Saved to disk.',
+		);
+
 		const address = await this.getAddress();
 		const change_destination_script = this.getChangeDestinationScript(address);
 		if (!change_destination_script) {
-			console.log('Unable to retrieve change_destination_script.');
+			await ldk.writeToLogFile(
+				'error',
+				'Unable to retrieve change_destination_script.',
+			);
 			return;
 		}
 
@@ -1360,7 +1423,10 @@ class LightningManager {
 		try {
 			feeRate = (await this.getFees()).normal;
 		} catch (error) {
-			console.log('Unable to retrieve fee for spending output.');
+			await ldk.writeToLogFile(
+				'error',
+				'Unable to retrieve fee for spending output.',
+			);
 			return;
 		}
 
@@ -1373,13 +1439,21 @@ class LightningManager {
 
 		if (spendRes.isErr()) {
 			//TODO should we notify user?
-			console.error(spendRes.error);
+			await ldk.writeToLogFile(
+				'error',
+				`Spending outputs failed: ${spendRes.error.message}`,
+			);
 			return;
 		}
 
-		await this.onBroadcastTransaction({ tx: spendRes.value });
+		await ldk.writeToLogFile(
+			'info',
+			`Created tx spending outputs: ${spendRes.value}`,
+		);
 
-		console.log(`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`);
+		await this.onBroadcastTransaction({
+			tx: spendRes.value,
+		});
 	}
 
 	private onChannelManagerChannelClosed(
