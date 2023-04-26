@@ -458,6 +458,11 @@ class Ldk: NSObject {
     /// Restarts channel manager constructor to get a new TCP peer handler
     @objc
     func restartChannelManagerConstructor() {
+        guard channelManagerConstructor != nil else {
+            //Wasn't yet started
+            return
+        }
+        
         guard let currentNetwork = self.currentNetwork,
               let currentBlockchainTipHash = self.currentBlockchainTipHash,
               let currentBlockchainHeight = self.currentBlockchainHeight else {
@@ -486,6 +491,11 @@ class Ldk: NSObject {
     
     @objc
     func reset(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard channelManagerConstructor != nil else {
+            //Wasn't yet started
+            return handleResolve(resolve, .ldk_reset)
+        }
+        
         removeForegroundObserver() //LDK was intentionally stopped and we shouldn't attempt a restart
         channelManagerConstructor?.interrupt()
         channelManagerConstructor = nil
@@ -707,7 +717,7 @@ class Ldk: NSObject {
         
         let res = isZeroValueInvoice ?
         Bindings.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000), retryStrategy: .initWithAttempts(a: 3), channelmanager: channelManager) :
-        Bindings.payInvoice(invoice: invoice, retryStrategy: .initWithTimeout(a: 3), channelmanager: channelManager)
+        Bindings.payInvoice(invoice: invoice, retryStrategy: .initWithAttempts(a: 3), channelmanager: channelManager)
         
         if res.isOk() {
             return resolve(Data(res.getValue() ?? []).hexEncodedString())
