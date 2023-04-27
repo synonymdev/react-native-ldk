@@ -265,3 +265,38 @@ export const promiseTimeout = <T>(
 		return result;
 	});
 };
+
+type TFindOutputsFromRawTxsRes = {
+	outputScriptPubKey: string;
+	outputValue: number;
+	outpointTxId: string;
+	outpointIndex: number;
+};
+export const findOutputsFromRawTxs = (
+	rawTxs: string[],
+	txId: string,
+	index: number,
+): TFindOutputsFromRawTxsRes | undefined => {
+	let result: TFindOutputsFromRawTxsRes | undefined;
+	for (const hexTx of rawTxs) {
+		const tx = bitcoin.Transaction.fromHex(hexTx);
+		if (tx.getId() !== txId) {
+			continue;
+		}
+
+		if (tx.outs.length <= index) {
+			continue;
+		}
+
+		const output = tx.outs[index];
+
+		result = {
+			outputScriptPubKey: output.script.toString('hex'),
+			outputValue: output.value,
+			outpointTxId: txId,
+			outpointIndex: index,
+		};
+	}
+
+	return result;
+};

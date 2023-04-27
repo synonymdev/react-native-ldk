@@ -139,10 +139,6 @@ class Ldk: NSObject {
     
     @objc
     func setAccountStoragePath(_ storagePath: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard Ldk.accountStoragePath == nil else {
-            return handleReject(reject, .already_init)
-        }
-        
         let accountStoragePath = URL(fileURLWithPath: String(storagePath))
         let channelStoragePath = accountStoragePath.appendingPathComponent("channels")
         
@@ -491,13 +487,13 @@ class Ldk: NSObject {
     
     @objc
     func reset(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard channelManagerConstructor != nil else {
+        guard let cm = channelManagerConstructor else {
             //Wasn't yet started
             return handleResolve(resolve, .ldk_reset)
         }
         
         removeForegroundObserver() //LDK was intentionally stopped and we shouldn't attempt a restart
-        channelManagerConstructor?.interrupt()
+        cm.interrupt()
         channelManagerConstructor = nil
         chainMonitor = nil
         keysManager = nil
@@ -716,8 +712,8 @@ class Ldk: NSObject {
         }
         
         let res = isZeroValueInvoice ?
-        Bindings.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000), retryStrategy: .initWithAttempts(a: 3), channelmanager: channelManager) :
-        Bindings.payInvoice(invoice: invoice, retryStrategy: .initWithAttempts(a: 3), channelmanager: channelManager)
+        Bindings.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000), retryStrategy: .initWithTimeout(a: 60), channelmanager: channelManager) :
+        Bindings.payInvoice(invoice: invoice, retryStrategy: .initWithTimeout(a: 60), channelmanager: channelManager)
         
         if res.isOk() {
             return resolve(Data(res.getValue() ?? []).hexEncodedString())
@@ -1152,6 +1148,31 @@ class Ldk: NSObject {
         } catch {
             return handleReject(reject, .read_fail, error, "Failed to read \(format) content from file \(fileUrl.path)")
         }
+    }
+    
+    @objc
+    func reconstructAndSpendOutputs(_ outputScriptPubKey: NSString, outputValue: NSInteger, outpointTxId: NSString, outpointIndex: NSInteger, feeRate: NSInteger, changeDestinationScript: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        
+        let output = TxOut(scriptPubkey: String(outputScriptPubKey).hexaBytes, value: UInt64(outputValue))
+        let outpoint = OutPoint(txidArg: String(outpointTxId).hexaBytes.reversed(), indexArg: UInt16(outpointIndex))
+        let descriptor = SpendableOutputDescriptor.initWithStaticOutput(outpoint: outpoint, output: output)
+         
+        guard let keysManager = keysManager else {
+            return handleReject(reject, .init_keys_manager)
+        }
+        
+        let res = keysManager.spendSpendableOutputs(
+            descriptors: [descriptor],
+            outputs: [],
+            changeDestinationScript: String(changeDestinationScript).hexaBytes,
+            feerateSatPer1000Weight: UInt32(feeRate)
+        )
+        
+        guard res.isOk() else {
+            return handleReject(reject, .spend_outputs_fail)
+        }
+        
+        return resolve(Data(res.getValue()!).hexEncodedString())
     }
 }
 

@@ -526,3 +526,12 @@ export type TBroadcastTransaction = (rawTx: string) => Promise<any>;
 export type TGetFees = () => Promise<TFeeUpdateReq>;
 
 export type TVout = { hex: string; n: number; value: number };
+
+export type TReconstructAndSpendOutputsReq = {
+	outputScriptPubKey: string;
+	outputValue: number;
+	outpointTxId: string;
+	outpointIndex: number;
+	feeRate: number;
+	changeDestinationScript: string;
+};

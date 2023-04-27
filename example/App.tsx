@@ -525,16 +525,11 @@ const App = (): ReactElement => {
 							const nodes = await ldk.networkGraphNodes(nodesRes.value);
 							if (nodes.isOk()) {
 								nodes.value.forEach((node) => {
-									const {
-										id,
-										shortChannelIds,
-										lowest_inbound_channel_fees_base_sat,
-										announcement_info_last_update,
-									} = node;
+									const { id, shortChannelIds, announcement_info_last_update } =
+										node;
 									const time = new Date(announcement_info_last_update);
 
 									msg += `\n\n${id}\nChannels: ${shortChannelIds.length}\n`;
-									msg += `Lowest inbound fee: ${lowest_inbound_channel_fees_base_sat} sat\n`;
 									msg += `Last announcement: ${time}`;
 								});
 							}

@@ -630,8 +630,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         val res = if (isZeroValueInvoice)
-            UtilMethods.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000, Retry.attempts(3), channelManager) else
-            UtilMethods.pay_invoice(invoice, Retry.attempts(3), channelManager)
+            UtilMethods.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000, Retry.timout(60), channelManager) else
+            UtilMethods.pay_invoice(invoice, Retry.timout(60), channelManager)
         if (res.is_ok) {
             return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
         }

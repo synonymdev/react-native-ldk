@@ -31,6 +31,7 @@ import {
 	TPaymentRoute,
 	TPaymentHop,
 	TUserConfig,
+	TReconstructAndSpendOutputsReq,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -1142,6 +1143,46 @@ class LDK {
 			return ok({ ...res, timestamp: Math.round(res.timestamp) });
 		} catch (e) {
 			this.writeErrorToLog('readFromFile', e);
+			return err(e);
+		}
+	}
+
+	/**
+	 * Rebuilds a transaction when the spendable output was not previously saved.
+	 * Returns the raw transaction hex.
+	 * @param outputScriptPubKey
+	 * @param outputValue
+	 * @param outpointTxId
+	 * @param outpointIndex
+	 * @param feeRate
+	 * @param changeDestinationScript
+	 * @returns {Promise<Ok<string> | Err<unknown>>}
+	 */
+	async reconstructAndSpendOutputs({
+		outputScriptPubKey,
+		outputValue,
+		outpointTxId,
+		outpointIndex,
+		feeRate,
+		changeDestinationScript,
+	}: TReconstructAndSpendOutputsReq): Promise<Result<string>> {
+		if (Platform.OS !== 'ios') {
+			return err('Currently only working on iOS');
+		}
+
+		try {
+			const res = await NativeLDK.reconstructAndSpendOutputs(
+				outputScriptPubKey,
+				outputValue,
+				outpointTxId,
+				outpointIndex,
+				feeRate,
+				changeDestinationScript,
+			);
+			this.writeDebugToLog('reconstructAndSpendOutputs', res);
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('reconstructAndSpendOutputs', e);
 			return err(e);
 		}
 	}
