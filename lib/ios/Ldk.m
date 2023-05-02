@@ -145,6 +145,14 @@ RCT_EXTERN_METHOD(readFromFile:(NSString *)fileName
                   format:(NSString *)format
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(reconstructAndSpendOutputs:(NSString *)outputScriptPubKey
+                  outputValue:(NSInteger *)outputValue
+                  outpointTxId:(NSString *)outpointTxId
+                  outpointIndex:(NSInteger *)outpointIndex
+                  feeRate:(NSInteger *)feeRate
+                  changeDestinationScript:(NSString *)changeDestinationScript
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 @end
 
 //MARK: Events

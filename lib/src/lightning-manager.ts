@@ -50,9 +50,12 @@ import {
 	defaultUserConfig,
 	TGetFees,
 	TFeeUpdateReq,
+	TLdkSpendableOutputs,
+	TReconstructAndSpendOutputsReq,
 } from './utils/types';
 import {
 	appendPath,
+	findOutputsFromRawTxs,
 	parseData,
 	promiseTimeout,
 	startParamCheck,
@@ -117,9 +120,9 @@ class LightningManager {
 		TGetScriptPubKeyHistoryResponse[]
 	> => [];
 	getFees: TGetFees = async (): Promise<TFeeUpdateReq> => ({
-		highPriority: 12500,
-		normal: 12500,
-		background: 12500,
+		highPriority: 15,
+		normal: 10,
+		background: 5,
 	});
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
 	pathFailedSubscription: EmitterSubscription | undefined;
@@ -891,6 +894,7 @@ class LightningManager {
 					confirmed_outputs: await this.getLdkConfirmedOutputs(),
 					broadcasted_transactions: await this.getLdkBroadcastedTxs(),
 					payment_ids: await this.getLdkPaymentIds(),
+					spendable_outputs: await this.getLdkSpendableOutputs(),
 					timestamp: Date.now(),
 				},
 				package_version: require('../package.json').version,
@@ -931,6 +935,11 @@ class LightningManager {
 				paymentRequest,
 				amountSats,
 			});
+
+			await ldk.writeToLogFile(
+				'debug',
+				payResponse.isOk() ? `ldk.pay() success ${payResponse.value}` : '',
+			);
 
 			//Quickly retry with default invoice payer method
 			// if (!payResponse.isOk()) {
@@ -1140,6 +1149,19 @@ class LightningManager {
 		return DefaultLdkDataShape.confirmed_outputs;
 	};
 
+	private getLdkSpendableOutputs = async (): Promise<TLdkSpendableOutputs> => {
+		const res = await ldk.readFromFile({
+			fileName: ELdkFiles.spendable_outputs,
+		});
+		if (res.isOk()) {
+			return parseData(
+				res.value.content,
+				DefaultLdkDataShape.spendable_outputs,
+			);
+		}
+		return DefaultLdkDataShape.spendable_outputs;
+	};
+
 	/**
 	 * Returns previously broadcasted transactions saved in storgare.
 	 * @returns {Promise<TLdkBroadcastedTransactions>}
@@ -1164,6 +1186,106 @@ class LightningManager {
 				return await this.broadcastTransaction(tx);
 			}),
 		);
+	}
+
+	/**
+	 * Attempts to recover outputs from stored spendable outputs.
+	 * Also attempts to recreate outputs that were not previously stored but failed to be spent.
+	 * @returns {Promise<string>}
+	 */
+	async recoverOutputs(): Promise<Result<string>> {
+		//STEP 1: Try spend all cached outputs
+		const outputs = await this.getLdkSpendableOutputs();
+		for (const output of outputs) {
+			await this.onChannelManagerSpendableOutputs({
+				outputsSerialized: [output],
+			});
+		}
+
+		let message = `Attempting to spend ${outputs.length} outputs from cache. `;
+
+		//STEP 2: Reconstruct stuck output where we have a tx that failed to broadcast and no cached output due to prior bug.
+		const txs = await this.getLdkBroadcastedTxs();
+		if (!txs.length) {
+			return ok(
+				`${message}. No outputs to reconstruct as no cached transactions found.`,
+			);
+		}
+
+		let reconstructedTxs = 0;
+		let failedBroadcastTxs = 0;
+		for (const hexTx of txs) {
+			const tx = bitcoin.Transaction.fromHex(hexTx);
+			const txData = await this.getTransactionData(tx.getId());
+			//Not confirmed and not in mempool
+			if (txData.height === 0) {
+				const parsedTx = bitcoin.Transaction.fromHex(hexTx);
+				//Unconfirmed and only has one input and 1 output, so it's likely our stuck output.
+				const { ins, outs } = parsedTx;
+
+				if (ins.length !== 1 || outs.length !== 1) {
+					continue;
+				}
+
+				failedBroadcastTxs++;
+
+				await ldk.writeToLogFile('info', 'Reconstructing output from tx...');
+
+				const address = await this.getAddress();
+				const changeDestinationScript =
+					this.getChangeDestinationScript(address);
+				if (!changeDestinationScript) {
+					await ldk.writeToLogFile(
+						'error',
+						'Unable to retrieve change_destination_script.',
+					);
+					continue;
+				}
+
+				//The input from this 'failed' tx is the clue to finding the output, and it's location from a previous tx
+				const input = ins[0];
+				const prevHash = input.hash.reverse().toString('hex');
+
+				//Gets the output details from previous (closing tx)
+				const outputFromChannelCloseTx = findOutputsFromRawTxs(
+					txs,
+					prevHash,
+					input.index,
+				);
+				if (!outputFromChannelCloseTx) {
+					await ldk.writeToLogFile(
+						'error',
+						'Unable to find output from channel close tx.',
+					);
+					continue;
+				}
+
+				const req: TReconstructAndSpendOutputsReq = {
+					outputScriptPubKey: outputFromChannelCloseTx.outputScriptPubKey,
+					outputValue: outputFromChannelCloseTx.outputValue,
+					outpointTxId: outputFromChannelCloseTx.outpointTxId,
+					outpointIndex: outputFromChannelCloseTx.outpointIndex,
+					feeRate: await this.getNormalFeeRate(),
+					changeDestinationScript: changeDestinationScript,
+				};
+				const res = await ldk.reconstructAndSpendOutputs(req);
+
+				if (res.isOk()) {
+					reconstructedTxs++;
+					await ldk.writeToLogFile(
+						'info',
+						'Reconstructed tx for spendable output. ' + res.value,
+					);
+					await this.broadcastTransaction(res.value);
+				}
+			}
+		}
+
+		message += `Reconstructed outputs from ${reconstructedTxs} of ${failedBroadcastTxs} transactions not previously broadcast successfully.`;
+
+		ldk.writeToLogFile('info', message).catch(console.error);
+
+		return ok(message);
 	}
 
 	/**
@@ -1282,8 +1404,15 @@ class LightningManager {
 		if (broadcastedTxs.includes(res.tx)) {
 			return;
 		}
-		console.log(`onBroadcastTransaction: ${res.tx}`);
-		this.broadcastTransaction(res.tx).then(console.log);
+		await ldk.writeToLogFile('info', `Broadcasting tx: ${res.tx}`);
+		this.broadcastTransaction(res.tx)
+			.then(() => {
+				ldk.writeToLogFile('info', `Broadcast tx successfully: ${res.tx}`);
+			})
+			.catch((e) => {
+				ldk.writeToLogFile('error', `Error broadcasting tx: ${e}`);
+			});
+
 		this.saveBroadcastedTxs(res.tx).then();
 	}
 
@@ -1346,40 +1475,79 @@ class LightningManager {
 		ldk.processPendingHtlcForwards().catch(console.error);
 	}
 
+	/**
+	 * Returns a normal fee rate and will fall back to a rational default if unable to retrieve fee.
+	 * @returns {Promise<number>} Fee rate in sats per 1000 weight
+	 */
+	private async getNormalFeeRate(): Promise<number> {
+		try {
+			let satsPerKW = (await this.getFees()).normal;
+			// Multiply by 250 because https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html#tymethod.get_est_sat_per_1000_weight
+			return satsPerKW * 250;
+		} catch (error) {
+			let fallbackSatsPerByte = 10;
+			await ldk.writeToLogFile(
+				'error',
+				`Unable to retrieve fee for spending output. Falling back to ${fallbackSatsPerByte} sats per byte. Error: ${error}`,
+			);
+			return fallbackSatsPerByte * 250; //Reasonable 10 sat/vbyte fallback
+		}
+	}
+
 	private async onChannelManagerSpendableOutputs(
 		res: TChannelManagerSpendableOutputs,
 	): Promise<void> {
+		const spendableOutputs = await this.getLdkSpendableOutputs();
+		res.outputsSerialized.forEach((o) => {
+			if (!spendableOutputs.includes(o)) {
+				spendableOutputs.push(o);
+			}
+		});
+		await ldk.writeToFile({
+			fileName: ELdkFiles.spendable_outputs,
+			content: JSON.stringify(spendableOutputs),
+		});
+
+		await ldk.writeToLogFile(
+			'info',
+			'Received spendable outputs. Saved to disk.',
+		);
+
 		const address = await this.getAddress();
 		const change_destination_script = this.getChangeDestinationScript(address);
 		if (!change_destination_script) {
-			console.log('Unable to retrieve change_destination_script.');
+			await ldk.writeToLogFile(
+				'error',
+				'Unable to retrieve change_destination_script.',
+			);
 			return;
 		}
 
-		let feeRate = 0;
-		try {
-			feeRate = (await this.getFees()).normal;
-		} catch (error) {
-			console.log('Unable to retrieve fee for spending output.');
-			return;
-		}
-
+		let fee = await this.getNormalFeeRate();
 		const spendRes = await ldk.spendOutputs({
 			descriptorsSerialized: res.outputsSerialized,
 			outputs: [], //Shouldn't need to specify this if we're sweeping all funds to dest script
 			change_destination_script,
-			feerate_sat_per_1000_weight: feeRate * 250, //Multiply by 250 because https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html#tymethod.get_est_sat_per_1000_weight
+			feerate_sat_per_1000_weight: fee,
 		});
 
 		if (spendRes.isErr()) {
 			//TODO should we notify user?
-			console.error(spendRes.error);
+			await ldk.writeToLogFile(
+				'error',
+				`Spending outputs failed: ${spendRes.error.message}`,
+			);
 			return;
 		}
 
-		await this.onBroadcastTransaction({ tx: spendRes.value });
+		await ldk.writeToLogFile(
+			'info',
+			`Created tx spending outputs: ${spendRes.value}`,
+		);
 
-		console.log(`onChannelManagerSpendableOutputs: ${JSON.stringify(res)}`);
+		await this.onBroadcastTransaction({
+			tx: spendRes.value,
+		});
 	}
 
 	private onChannelManagerChannelClosed(

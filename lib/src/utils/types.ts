@@ -431,6 +431,7 @@ export enum ELdkFiles {
 	confirmed_outputs = 'confirmed_outputs.json',
 	broadcasted_transactions = 'broadcasted_transactions.json',
 	payment_ids = 'payment_ids.json',
+	spendable_outputs = 'spendable_outputs.json',
 }
 
 export enum ELdkData {
@@ -442,6 +443,7 @@ export enum ELdkData {
 	broadcasted_transactions = 'broadcasted_transactions',
 	payment_ids = 'payment_ids',
 	timestamp = 'timestamp',
+	spendable_outputs = 'spendable_outputs',
 }
 
 export type TLdkData = {
@@ -453,6 +455,7 @@ export type TLdkData = {
 	[ELdkData.broadcasted_transactions]: TLdkBroadcastedTransactions;
 	[ELdkData.payment_ids]: TLdkPaymentIds;
 	[ELdkData.timestamp]: number;
+	[ELdkData.spendable_outputs]: TLdkSpendableOutputs;
 };
 
 export type TAccountBackup = {
@@ -472,6 +475,8 @@ export type TLdkBroadcastedTransactions = string[];
 
 export type TLdkPaymentIds = string[];
 
+export type TLdkSpendableOutputs = string[];
+
 export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.channel_manager]: '',
 	[ELdkData.channel_monitors]: {},
@@ -481,6 +486,7 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.broadcasted_transactions]: [],
 	[ELdkData.payment_ids]: [],
 	[ELdkData.timestamp]: 0,
+	[ELdkData.spendable_outputs]: [],
 };
 
 export type TAvailableNetworks =
@@ -520,3 +526,12 @@ export type TBroadcastTransaction = (rawTx: string) => Promise<any>;
 export type TGetFees = () => Promise<TFeeUpdateReq>;
 
 export type TVout = { hex: string; n: number; value: number };
+
+export type TReconstructAndSpendOutputsReq = {
+	outputScriptPubKey: string;
+	outputValue: number;
+	outpointTxId: string;
+	outpointIndex: number;
+	feeRate: number;
+	changeDestinationScript: string;
+};
