@@ -1202,13 +1202,13 @@ class LightningManager {
 			});
 		}
 
-		let message = `Attempting to spend ${outputs.length} outputs from cache. `;
+		let message = `Attempting to spend ${outputs.length} outputs from cache.`;
 
 		//STEP 2: Reconstruct stuck output where we have a tx that failed to broadcast and no cached output due to prior bug.
 		const txs = await this.getLdkBroadcastedTxs();
 		if (!txs.length) {
 			return ok(
-				`${message}. No outputs to reconstruct as no cached transactions found.`,
+				`${message} No outputs to reconstruct as no cached transactions found.`,
 			);
 		}
 
@@ -1281,7 +1281,7 @@ class LightningManager {
 			}
 		}
 
-		message += `Reconstructed outputs from ${reconstructedTxs} of ${failedBroadcastTxs} transactions not previously broadcast successfully.`;
+		message += ` Reconstructed outputs from ${reconstructedTxs} of ${failedBroadcastTxs} transactions not previously broadcast successfully.`;
 
 		ldk.writeToLogFile('info', message).catch(console.error);
 
