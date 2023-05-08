@@ -1166,10 +1166,6 @@ class LDK {
 		feeRate,
 		changeDestinationScript,
 	}: TReconstructAndSpendOutputsReq): Promise<Result<string>> {
-		if (Platform.OS !== 'ios') {
-			return err('Currently only working on iOS');
-		}
-
 		try {
 			const res = await NativeLDK.reconstructAndSpendOutputs(
 				outputScriptPubKey,

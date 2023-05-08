@@ -1152,14 +1152,13 @@ class Ldk: NSObject {
     
     @objc
     func reconstructAndSpendOutputs(_ outputScriptPubKey: NSString, outputValue: NSInteger, outpointTxId: NSString, outpointIndex: NSInteger, feeRate: NSInteger, changeDestinationScript: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let keysManager = keysManager else {
+            return handleReject(reject, .init_keys_manager)
+        }
         
         let output = TxOut(scriptPubkey: String(outputScriptPubKey).hexaBytes, value: UInt64(outputValue))
         let outpoint = OutPoint(txidArg: String(outpointTxId).hexaBytes.reversed(), indexArg: UInt16(outpointIndex))
         let descriptor = SpendableOutputDescriptor.initWithStaticOutput(outpoint: outpoint, output: output)
-         
-        guard let keysManager = keysManager else {
-            return handleReject(reject, .init_keys_manager)
-        }
         
         let res = keysManager.spendSpendableOutputs(
             descriptors: [descriptor],
