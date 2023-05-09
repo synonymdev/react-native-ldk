@@ -630,8 +630,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         val res = if (isZeroValueInvoice)
-            UtilMethods.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000, Retry.timout(60), channelManager) else
-            UtilMethods.pay_invoice(invoice, Retry.timout(60), channelManager)
+            UtilMethods.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000, Retry.timeout(60), channelManager) else
+            UtilMethods.pay_invoice(invoice, Retry.timeout(60), channelManager)
         if (res.is_ok) {
             return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
         }
@@ -968,6 +968,31 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         } catch (e: Exception) {
             return handleReject(promise, LdkErrors.read_fail, Error(e))
         }
+    }
+
+    @ReactMethod
+    fun reconstructAndSpendOutputs(outputScriptPubKey: String, outputValue: Double, outpointTxId: String, outpointIndex: Double, feeRate: Double, changeDestinationScript: String, promise: Promise) {
+        keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
+
+        val output = TxOut(outputValue.toLong(), outputScriptPubKey.hexa())
+        val outpoint = OutPoint.of(outpointTxId.hexa(), outpointIndex.toInt().toShort())
+        val descriptor = SpendableOutputDescriptor.static_output(outpoint, output)
+
+        val ldkDescriptors: MutableList<SpendableOutputDescriptor> = arrayListOf()
+        ldkDescriptors.add(descriptor)
+
+        val res = keysManager!!.spend_spendable_outputs(
+            ldkDescriptors.toTypedArray(),
+            emptyArray(),
+            changeDestinationScript.hexa(),
+            feeRate.toInt()
+        )
+
+        if (!res.is_ok) {
+            return handleReject(promise, LdkErrors.spend_outputs_fail)
+        }
+
+        promise.resolve((res as Result_TransactionNoneZ.Result_TransactionNoneZ_OK).res.hexEncodedString())
     }
 }
 
