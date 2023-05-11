@@ -975,7 +975,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
 
         val output = TxOut(outputValue.toLong(), outputScriptPubKey.hexa())
-        val outpoint = OutPoint.of(outpointTxId.hexa(), outpointIndex.toInt().toShort())
+        val outpoint = OutPoint.of(outpointTxId.hexa().reversedArray(), outpointIndex.toInt().toShort())
         val descriptor = SpendableOutputDescriptor.static_output(outpoint, output)
 
         val ldkDescriptors: MutableList<SpendableOutputDescriptor> = arrayListOf()
