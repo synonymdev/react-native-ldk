@@ -1444,6 +1444,7 @@ class LightningManager {
 	private onChannelManagerOpenChannelRequest(
 		res: TChannelManagerOpenChannelRequest,
 	): void {
+		console.log('*********onChannelManagerOpenChannelRequest*********');
 		//Nothing to do here unless manuallyAcceptInboundChannels:true in initConfig() above
 		console.log(`onChannelManagerOpenChannelRequest: ${JSON.stringify(res)}`);
 	}

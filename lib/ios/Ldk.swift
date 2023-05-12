@@ -58,6 +58,7 @@ enum LdkErrors: String {
     case invoice_create_failed = "invoice_create_failed"
     case claim_funds_failed = "claim_funds_failed"
     case channel_close_fail = "channel_close_fail"
+    case channel_accept_fail = "channel_accept_fail"
     case spend_outputs_fail = "spend_outputs_fail"
     case write_fail = "write_fail"
     case read_fail = "read_fail"
@@ -85,6 +86,7 @@ enum LdkCallbackResponses: String {
     case process_pending_htlc_forwards_success = "process_pending_htlc_forwards_success"
     case claim_funds_success = "claim_funds_success"
     case ldk_reset = "ldk_reset"
+    case accept_channel_success = "accept_channel_success"
     case close_channel_success = "close_channel_success"
     case file_write_success = "file_write_success"
     case abandon_payment_success = "abandon_payment_success"
@@ -603,6 +605,44 @@ class Ldk: NSObject {
         chainMonitor.asConfirm().transactionUnconfirmed(txid: String(txId).hexaBytes)
         
         return handleResolve(resolve, .tx_set_unconfirmed)
+    }
+    
+    @objc
+    func acceptChannels(_ temporaryChannelId: NSString, counterPartyNodeId: NSString, userChannelId: NSString, trustedPeer0Conf: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        let temporaryChannelId = String(temporaryChannelId).hexaBytes
+        let counterpartyNodeId = String(counterPartyNodeId).hexaBytes
+        let userChannelId = String(userChannelId).hexaBytes
+        
+        let res = trustedPeer0Conf ?
+            channelManager.acceptInboundChannelFromTrustedPeer0conf(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: userChannelId) :
+            channelManager.acceptInboundChannel(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: userChannelId)
+        
+        guard res.isOk() else {
+            guard let error = res.getError() else {
+                return handleReject(reject, .channel_accept_fail)
+            }
+            
+            switch error.getValueType() {
+            case .APIMisuseError:
+                return handleReject(reject, .channel_accept_fail, nil, error.getValueAsApiMisuseError()?.getErr())
+            case .ChannelUnavailable:
+                return handleReject(reject, .channel_accept_fail, nil, "Channel unavailable for closing") //Crashes when returning error.getValueAsChannelUnavailable()?.getErr()
+            case .FeeRateTooHigh:
+                return handleReject(reject, .channel_accept_fail, nil, error.getValueAsFeeRateTooHigh()?.getErr())
+            case .IncompatibleShutdownScript:
+                return handleReject(reject, .channel_accept_fail, nil, Data(error.getValueAsIncompatibleShutdownScript()?.getScript().write() ?? []).hexEncodedString())
+            case .InvalidRoute:
+                return handleReject(reject, .channel_accept_fail, nil, error.getValueAsInvalidRoute()?.getErr())
+            default:
+                return handleReject(reject, .channel_accept_fail)
+            }            
+        }
+        
+        return handleResolve(resolve, .accept_channel_success)
     }
     
     @objc

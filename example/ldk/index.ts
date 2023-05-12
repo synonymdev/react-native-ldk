@@ -121,6 +121,9 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			getTransactionPosition,
 			broadcastTransaction,
 			network: ldkNetwork(selectedNetwork),
+			userConfig: {
+				manually_accept_inbound_channels: true,
+			},
 		});
 
 		if (lmStart.isErr()) {
