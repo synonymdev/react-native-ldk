@@ -405,7 +405,7 @@ func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.P
 
         switch parameterErrorType {
         case .APIMisuseError:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "parameterError.getValueType().debugDescription")
+            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueType().debugDescription)
         case .FeeRateTooHigh:
             return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsFeeRateTooHigh()?.getErr())
         case .InvalidRoute:
