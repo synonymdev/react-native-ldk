@@ -935,6 +935,10 @@ class LightningManager {
 				`ldk.pay() called with hard timeout of ${timeout}ms`,
 			);
 
+			if (timeout < 1000) {
+				return resolve(err('Timeout must be at least 1000ms.'));
+			}
+
 			this.subscribeToPaymentResponses(resolve);
 
 			let payResponse: Result<string> | undefined = await ldk.pay({
