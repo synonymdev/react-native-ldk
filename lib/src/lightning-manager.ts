@@ -1442,11 +1442,40 @@ class LightningManager {
 	}
 
 	private onChannelManagerOpenChannelRequest(
-		res: TChannelManagerOpenChannelRequest,
+		req: TChannelManagerOpenChannelRequest,
 	): void {
 		console.log('*********onChannelManagerOpenChannelRequest*********');
-		//Nothing to do here unless manuallyAcceptInboundChannels:true in initConfig() above
-		console.log(`onChannelManagerOpenChannelRequest: ${JSON.stringify(res)}`);
+
+		//TODO log
+
+		console.log(JSON.stringify(req, null, 2));
+
+		const {
+			temp_channel_id,
+			counterparty_node_id,
+			push_sat,
+			funding_satoshis,
+			supports_zero_conf,
+			requires_zero_conf,
+			requires_anchors_zero_fee_htlc_tx,
+		} = req;
+
+		let trustedPeer0Conf = true;
+		//TODO check if they're in our trusted peers list
+
+		ldk
+			.acceptChannel({
+				temporaryChannelId: temp_channel_id,
+				counterPartyNodeId: counterparty_node_id,
+				userChannelId: temp_channel_id, //TODO
+				trustedPeer0Conf,
+			})
+			.then(() => {
+				//TODO LOG AND NOTIFY USER
+			})
+			.catch((e) => {
+				//TODO LOG AND NOTIFY USER
+			});
 	}
 
 	private onChannelManagerPaymentPathSuccessful(

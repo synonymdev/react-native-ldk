@@ -608,7 +608,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func acceptChannels(_ temporaryChannelId: NSString, counterPartyNodeId: NSString, userChannelId: NSString, trustedPeer0Conf: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func acceptChannel(_ temporaryChannelId: NSString, counterPartyNodeId: NSString, userChannelId: NSString, trustedPeer0Conf: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
@@ -630,7 +630,7 @@ class Ldk: NSObject {
             case .APIMisuseError:
                 return handleReject(reject, .channel_accept_fail, nil, error.getValueAsApiMisuseError()?.getErr())
             case .ChannelUnavailable:
-                return handleReject(reject, .channel_accept_fail, nil, "Channel unavailable for closing") //Crashes when returning error.getValueAsChannelUnavailable()?.getErr()
+                return handleReject(reject, .channel_accept_fail, nil, "Channel unavailable for accepting")
             case .FeeRateTooHigh:
                 return handleReject(reject, .channel_accept_fail, nil, error.getValueAsFeeRateTooHigh()?.getErr())
             case .IncompatibleShutdownScript:
@@ -639,7 +639,7 @@ class Ldk: NSObject {
                 return handleReject(reject, .channel_accept_fail, nil, error.getValueAsInvalidRoute()?.getErr())
             default:
                 return handleReject(reject, .channel_accept_fail)
-            }            
+            }
         }
         
         return handleResolve(resolve, .accept_channel_success)

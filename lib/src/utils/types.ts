@@ -68,7 +68,9 @@ export type TChannelManagerOpenChannelRequest = {
 	counterparty_node_id: string;
 	push_sat: number;
 	funding_satoshis: number;
-	channel_type: string;
+	requires_zero_conf: boolean;
+	supports_zero_conf: boolean;
+	requires_anchors_zero_fee_htlc_tx: boolean;
 };
 
 export type TChannelUpdate = {
@@ -249,6 +251,13 @@ export type TSetTxConfirmedReq = {
 
 export type TSetTxUnconfirmedReq = {
 	txId: string;
+};
+
+export type TAcceptChannelReq = {
+	temporaryChannelId: string;
+	counterPartyNodeId: string;
+	userChannelId: string;
+	trustedPeer0Conf: boolean;
 };
 
 export type TCloseChannelReq = {

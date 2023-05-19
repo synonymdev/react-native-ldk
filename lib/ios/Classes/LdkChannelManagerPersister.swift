@@ -76,6 +76,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             guard let openChannelRequest = event.getValueAsOpenChannelRequest() else {
                 return handleEventError(event)
             }
+            
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_open_channel_request,
                 body: [
@@ -83,7 +84,9 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "counterparty_node_id": Data(openChannelRequest.getCounterpartyNodeId()).hexEncodedString(),
                     "push_sat": openChannelRequest.getPushMsat() / 1000,
                     "funding_satoshis": openChannelRequest.getFundingSatoshis(),
-                    "channel_type": Data(openChannelRequest.getChannelType().write()).hexEncodedString()
+                    "requires_zero_conf": openChannelRequest.getChannelType().requiresZeroConf(),
+                    "supports_zero_conf": openChannelRequest.getChannelType().supportsZeroConf(),
+                    "requires_anchors_zero_fee_htlc_tx": openChannelRequest.getChannelType().requiresAnchorsZeroFeeHtlcTx()
                 ]
             )
             return
