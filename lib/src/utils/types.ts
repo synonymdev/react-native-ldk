@@ -270,6 +270,7 @@ export type TSpendOutputsReq = {
 export type TPaymentReq = {
 	paymentRequest: string;
 	amountSats?: number;
+	timeout?: number; //ms
 };
 
 export type TPaymentTimeoutReq = TPaymentReq & {

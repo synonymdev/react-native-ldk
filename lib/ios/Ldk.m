@@ -106,6 +106,7 @@ RCT_EXTERN_METHOD(decode:(NSString *)paymentRequest
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(pay:(NSString *)paymentRequest
                   amountSats:(NSInteger *)amountSats
+                  timeoutSeconds:(NSInteger *)timeoutSeconds
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(payWithRoute:(NSArray *)route
