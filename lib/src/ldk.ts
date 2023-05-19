@@ -564,6 +564,7 @@ class LDK {
 	async pay({
 		paymentRequest: anyPaymentRequest,
 		amountSats,
+		timeout = 20000,
 	}: TPaymentReq): Promise<Result<string>> {
 		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
 
@@ -576,7 +577,12 @@ class LDK {
 		}
 
 		try {
-			const res = await NativeLDK.pay(paymentRequest, amountSats || 0);
+			const timeoutSeconds = timeout / 1000; //Rust demands seconds
+			const res = await NativeLDK.pay(
+				paymentRequest,
+				amountSats || 0,
+				timeoutSeconds,
+			);
 			this.writeDebugToLog('pay');
 			return ok(res);
 		} catch (e) {

@@ -920,43 +920,50 @@ class LightningManager {
 	}: TPaymentTimeoutReq): Promise<Result<TChannelManagerPaymentSent>> => {
 		return promiseTimeout(
 			timeout,
-			this.subscribeAndPay({ paymentRequest, amountSats }),
+			this.subscribeAndPay({ paymentRequest, amountSats, timeout }),
 		);
 	};
 
 	private subscribeAndPay = async ({
 		paymentRequest,
 		amountSats,
+		timeout = 20000,
 	}: TPaymentReq): Promise<Result<TChannelManagerPaymentSent>> => {
 		return new Promise(async (resolve) => {
-			this.subscribeToPaymentResponses(resolve).then();
+			await ldk.writeToLogFile(
+				'debug',
+				`ldk.pay() called with hard timeout of ${timeout}ms`,
+			);
+
+			if (timeout < 1000) {
+				return resolve(err('Timeout must be at least 1000ms.'));
+			}
+
+			this.subscribeToPaymentResponses(resolve);
 
 			let payResponse: Result<string> | undefined = await ldk.pay({
 				paymentRequest,
 				amountSats,
+				timeout,
 			});
 
 			await ldk.writeToLogFile(
 				'debug',
-				payResponse.isOk() ? `ldk.pay() success ${payResponse.value}` : '',
+				payResponse.isOk()
+					? `ldk.pay() success (pending callbacks) Payment ID: ${payResponse.value}`
+					: `ldk.pay() error ${payResponse.error.message}.`,
 			);
-
-			//Quickly retry with default invoice payer method
-			// if (!payResponse.isOk()) {
-			// 	payResponse = await ldk.pay({
-			// 		paymentRequest,
-			// 		amountSats,
-			// 	});
-			// }
 
 			if (!payResponse) {
 				this.unsubscribeFromPaymentSubscriptions();
 				return resolve(err('Unable to pay the provided lightning invoice.'));
 			}
+
 			if (payResponse.isErr()) {
 				this.unsubscribeFromPaymentSubscriptions();
 				return resolve(err(payResponse.error.message));
 			}
+
 			//Save payment ids to file on payResponse success.
 			await this.appendLdkPaymentId(payResponse.value);
 		});
@@ -964,29 +971,27 @@ class LightningManager {
 
 	/**
 	 * Subscribes to outgoing lightning payments.
-	 * @returns {Promise<Result<TChannelManagerPaymentSent>>}
+	 * @returns {void}
 	 */
-	private subscribeToPaymentResponses = async (resolve: any): Promise<void> => {
+	private subscribeToPaymentResponses = (resolve: any): void => {
 		this.pathFailedSubscription = ldk.onEvent(
 			EEventTypes.channel_manager_payment_path_failed,
 			async (res: TChannelManagerPaymentPathFailed) => {
-				this.unsubscribeFromPaymentSubscriptions();
-				const abandonPaymentRes = await ldk.abandonPayment(res.payment_id);
-				if (abandonPaymentRes.isOk()) {
+				if (res.payment_failed_permanently) {
+					//Only resolve on a permanent failure, bindings will keep retrying otherwise.
+					this.unsubscribeFromPaymentSubscriptions();
 					this.removeLdkPaymentId(res.payment_id).then();
+					//TODO return error message
+					return resolve(err('Payment path failed.'));
 				}
-				return resolve(err(res.payment_id));
 			},
 		);
 		this.paymentFailedSubscription = ldk.onEvent(
 			EEventTypes.channel_manager_payment_failed,
 			async (res: TChannelManagerPaymentFailed) => {
 				this.unsubscribeFromPaymentSubscriptions();
-				const abandonPaymentRes = await ldk.abandonPayment(res.payment_id);
-				if (abandonPaymentRes.isOk()) {
-					this.removeLdkPaymentId(res.payment_id).then();
-				}
-				return resolve(err(res.payment_id));
+				this.removeLdkPaymentId(res.payment_id).then();
+				return resolve(err('Payment failed'));
 			},
 		);
 		this.paymentSentSubscription = ldk.onEvent(

@@ -690,7 +690,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func pay(_ paymentRequest: NSString, amountSats: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func pay(_ paymentRequest: NSString, amountSats: NSInteger, timeoutSeconds: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
@@ -712,8 +712,8 @@ class Ldk: NSObject {
         }
         
         let res = isZeroValueInvoice ?
-        Bindings.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000), retryStrategy: .initWithTimeout(a: 60), channelmanager: channelManager) :
-        Bindings.payInvoice(invoice: invoice, retryStrategy: .initWithTimeout(a: 60), channelmanager: channelManager)
+        Bindings.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000), retryStrategy: .initWithTimeout(a: UInt64(timeoutSeconds)), channelmanager: channelManager) :
+        Bindings.payInvoice(invoice: invoice, retryStrategy: .initWithTimeout(a: UInt64(timeoutSeconds)), channelmanager: channelManager)
         
         if res.isOk() {
             return resolve(Data(res.getValue() ?? []).hexEncodedString())

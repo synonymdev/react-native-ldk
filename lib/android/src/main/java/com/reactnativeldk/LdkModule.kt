@@ -608,7 +608,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun pay(paymentRequest: String, amountSats: Double, promise: Promise) {
+    fun pay(paymentRequest: String, amountSats: Double, timeoutSeconds: Double, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
         val invoiceParse = Invoice.from_str(paymentRequest)
@@ -630,8 +630,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         val res = if (isZeroValueInvoice)
-            UtilMethods.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000, Retry.timeout(60), channelManager) else
-            UtilMethods.pay_invoice(invoice, Retry.timeout(60), channelManager)
+            UtilMethods.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000, Retry.timeout(timeoutSeconds.toLong()), channelManager) else
+            UtilMethods.pay_invoice(invoice, Retry.timeout(timeoutSeconds.toLong()), channelManager)
         if (res.is_ok) {
             return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
         }
