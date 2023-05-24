@@ -52,3 +52,15 @@ yarn android
 - Use latest LDKFramework.xcframework from [ldk-swift](https://github.com/lightningdevkit/ldk-swift/releases) and place in lib/ios.
   - To get `pod install` working you might have to open the `LDKFramework.xcframework` directory, delete non ios frameworks and remove all references to deleted frameworks inside `LDKFramework.xcframework/Info.plist`.
 - Update Swift and Kotlin code if there are any breaking changes.
+
+## How to test your code
+
+Because it's a native module, you need to mock this package.
+
+The package provides a default mock you may use in your \_\_mocks\_\_/@synonymdev/react-native-ldk.js or jest.setup.js.
+
+```ts
+import * as mockLDK from '@synonymdev/react-native-ldk/dist/mock';
+
+jest.mock('@synonymdev/react-native-ldk', () => mockLDK);
+```
