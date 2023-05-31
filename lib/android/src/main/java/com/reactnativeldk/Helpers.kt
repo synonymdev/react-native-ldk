@@ -219,7 +219,7 @@ fun RapidGossipSync.downloadAndUpdateGraph(downloadUrl: String, tempStoragePath:
             return@downloadFile completion(it)
         }
 
-        val res = update_network_graph(File(destinationFile).readBytes())
+        val res = update_network_graph_no_std(File(destinationFile).readBytes(), Option_u64Z.some((System.currentTimeMillis() / 1000)))
         if (!res.is_ok()) {
             val error = res as? Result_u32GraphSyncErrorZ.Result_u32GraphSyncErrorZ_Err
 
@@ -279,6 +279,10 @@ fun ChannelHandshakeConfig.mergeWithMap(map: ReadableMap?): ChannelHandshakeConf
     try {
         _their_channel_reserve_proportional_millionths = map.getInt("their_channel_reserve_proportional_millionths")
     } catch (_: Exception) {}
+    //TODO add _our_max_accepted_htlcs_arg when added to the bindings as it is in swift and JS
+//    try {
+//        _our_max_accepted_htlcs_arg = map.getInt("our_max_accepted_htlcs_arg")
+//    } catch (_: Exception) {}
 
     return this
 }
