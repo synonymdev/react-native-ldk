@@ -15,7 +15,6 @@ import {
 	TInitChannelManagerReq,
 	TLogListener,
 	TPaymentReq,
-	TSyncTipReq,
 	TCreatePaymentReq,
 	TSetTxConfirmedReq,
 	TSetTxUnconfirmedReq,
@@ -32,6 +31,7 @@ import {
 	TPaymentHop,
 	TUserConfig,
 	TReconstructAndSpendOutputsReq,
+	THeader,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -351,10 +351,10 @@ class LDK {
 	 * @param height
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async syncToTip(tip: TSyncTipReq): Promise<Result<string>> {
-		const { header, height } = tip;
+	async syncToTip(tip: THeader): Promise<Result<string>> {
+		const { hex, hash, height } = tip;
 		try {
-			const res = await NativeLDK.syncToTip(header, height);
+			const res = await NativeLDK.syncToTip(hex, hash, height);
 			this.writeDebugToLog('syncToTip', tip);
 			return ok(res);
 		} catch (e) {

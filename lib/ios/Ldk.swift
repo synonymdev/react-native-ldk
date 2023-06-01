@@ -533,7 +533,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func syncToTip(_ header: NSString, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func syncToTip(_ header: NSString, blockHash: NSString, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         //Sync ChannelMonitors and ChannelManager to chain tip
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
@@ -546,8 +546,7 @@ class Ldk: NSObject {
         channelManager.asConfirm().bestBlockUpdated(header: String(header).hexaBytes, height: UInt32(height))
         chainMonitor.asConfirm().bestBlockUpdated(header: String(header).hexaBytes, height: UInt32(height))
         
-        
-        //TODO pass throiugh tip hash
+        //Used for quick restarts
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = height
 

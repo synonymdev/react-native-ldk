@@ -46,6 +46,7 @@ RCT_EXTERN_METHOD(setLogLevel:(NSString *)level
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(syncToTip:(NSString *)header
+                  blockHash:(NSString *)blockHash
                   height:(NSInteger *)height
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)

@@ -107,7 +107,7 @@ export const subscribeToHeader = async ({
 		network: selectedNetwork,
 		onReceive: async (data) => {
 			const hex = data[0].hex;
-			const hash = getBlockHashFromHex({ blockHex: hex });
+			const hash = await getBlockHashFromHex({ blockHex: hex });
 			const header = { ...data[0], hash };
 			await updateHeader({
 				header,

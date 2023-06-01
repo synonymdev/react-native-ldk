@@ -220,11 +220,6 @@ export type TFeeUpdateReq = {
 	background: number;
 };
 
-export type TSyncTipReq = {
-	header: string;
-	height: number;
-};
-
 export type TPeer = {
 	address: string;
 	port: number;

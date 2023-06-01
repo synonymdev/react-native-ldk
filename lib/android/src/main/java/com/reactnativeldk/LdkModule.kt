@@ -531,7 +531,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun syncToTip(header: String, height: Double, promise: Promise) {
+    fun syncToTip(header: String, blockHash: String, height: Double, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
         chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
 
@@ -541,6 +541,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         } catch (e: Exception) {
             return handleReject(promise, LdkErrors.unknown_error, Error(e))
         }
+
+        //Used for quick restarts
+        currentBlockchainTipHash = blockHash
+        currentBlockchainHeight = height
 
         handleResolve(promise, LdkCallbackResponses.chain_sync_success)
     }
