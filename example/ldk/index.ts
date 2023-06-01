@@ -97,7 +97,7 @@ export const syncLdk = async (): Promise<Result<string>> => {
  */
 export const setupLdk = async (): Promise<Result<string>> => {
 	try {
-		await ldk.reset();
+		await ldk.stop();
 		const account = await getAccount();
 		const storageRes = await lm.setBaseStoragePath(
 			`${RNFS.DocumentDirectoryPath}/ldk/`,
