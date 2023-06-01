@@ -30,7 +30,9 @@ RCT_EXTERN_METHOD(initChannelManager:(NSString *)network
                   blockHeight:(NSInteger *)blockHeight
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(reset:(RCTPromiseResolveBlock)resolve
+RCT_EXTERN_METHOD(restart:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(stop:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
 //MARK: Update methods

@@ -611,6 +611,19 @@ const App = (): ReactElement => {
 							);
 						}}
 					/>
+
+					<Button
+						title={'Restart node'}
+						onPress={async (): Promise<void> => {
+							setMessage('Restarting...');
+							const res = await ldk.restart();
+							if (res.isErr()) {
+								setMessage(res.error.message);
+								return;
+							}
+							setMessage('Node Restarted');
+						}}
+					/>
 				</View>
 			</ScrollView>
 

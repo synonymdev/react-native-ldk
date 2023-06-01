@@ -1611,9 +1611,9 @@ class LightningManager {
 	 */
 	private async onChannelManagerRestarted(): Promise<void> {
 		// Re add cached peers
+		await this.setFees();
 		await this.addPeers();
 		await this.syncLdk();
-		await this.setFees();
 	}
 }
 
