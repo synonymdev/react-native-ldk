@@ -611,7 +611,6 @@ const App = (): ReactElement => {
 							);
 						}}
 					/>
-
 					<Button
 						title={'Restart node'}
 						onPress={async (): Promise<void> => {

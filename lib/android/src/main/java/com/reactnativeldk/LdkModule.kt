@@ -42,7 +42,8 @@ enum class EventTypes {
     channel_manager_payment_claimed,
     emergency_force_close_channel,
     new_channel,
-    network_graph_updated
+    network_graph_updated,
+    channel_manager_restarted
 }
 //*****************************************************************
 
@@ -101,7 +102,8 @@ enum class LdkCallbackResponses {
     tx_set_unconfirmed,
     process_pending_htlc_forwards_success,
     claim_funds_success,
-    ldk_reset,
+    ldk_stop,
+    ldk_restart,
     close_channel_success,
     file_write_success
 }
@@ -141,6 +143,11 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private var channelManagerConstructor: ChannelManagerConstructor? = null
     private var ldkNetwork: Network? = null
     private var ldkCurrency: Currency? = null
+
+    //Keep these in memory for restarting the channel manager constructor
+    private var currentNetwork: String? = null
+    private var currentBlockchainTipHash: String? = null
+    private var currentBlockchainHeight: Double? = null
 
     //Static to be accessed from other classes
     companion object {
@@ -397,8 +404,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                         channelMonitors.add(it.toFile().readBytes())
                     }
 
-                println("***1***")
-
                 LdkEventEmitter.send(EventTypes.native_log, "Restoring node from disk2")
 
                 channelManagerConstructor = ChannelManagerConstructor(
@@ -417,7 +422,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     logger.logger
                 )
 
-                println("***2***")
             } else {
                 //New node
                 LdkEventEmitter.send(EventTypes.native_log, "Creating new channel manager")
@@ -447,11 +451,56 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         peerHandler = channelManagerConstructor!!.nio_peer_handler
 
+        //Cached for restarts
+        currentNetwork = network
+        currentBlockchainTipHash = blockHash
+        currentBlockchainHeight = blockHeight
+
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
+    }
+    @ReactMethod
+    fun restart(promise: Promise) {
+        if (channelManagerConstructor == null) {
+            return handleReject(promise, LdkErrors.init_channel_manager)
+        }
+
+        //Node was never started
+        val currentNetwork = currentNetwork ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        val currentBlockchainTipHash = currentBlockchainTipHash ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        val currentBlockchainHeight = currentBlockchainHeight ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        LdkEventEmitter.send(EventTypes.native_log, "Stopping LDK background tasks")
+
+        //Reset only objects created by initChannelManager
+        channelManagerConstructor?.interrupt()
+        channelManagerConstructor = null
+        channelManager = null
+        peerManager = null
+        peerHandler = null
+
+        LdkEventEmitter.send(EventTypes.native_log, "Starting LDK background tasks again")
+
+        val initPromise = PromiseImpl(
+            { resolve ->
+                LdkEventEmitter.send(EventTypes.channel_manager_restarted, "")
+                LdkEventEmitter.send(EventTypes.native_log, "LDK restarted successfully")
+                handleResolve(promise, LdkCallbackResponses.ldk_restart)
+        },
+            { reject ->
+                LdkEventEmitter.send(EventTypes.native_log, "Error restarting LDK. Error: $reject")
+                handleReject(promise, LdkErrors.unknown_error)
+        })
+
+        initChannelManager(
+            currentNetwork,
+            currentBlockchainTipHash,
+            currentBlockchainHeight,
+            initPromise
+        )
     }
 
     @ReactMethod
-    fun reset(promise: Promise) {
+    fun stop(promise: Promise) {
         channelManagerConstructor?.interrupt()
         channelManagerConstructor = null
         chainMonitor = null
@@ -463,10 +512,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         peerHandler = null
         ldkNetwork = null
         ldkCurrency = null
-        accountStoragePath = ""
-        channelStoragePath = ""
 
-        handleResolve(promise, LdkCallbackResponses.ldk_reset)
+        handleResolve(promise, LdkCallbackResponses.ldk_stop)
     }
 
     //MARK: Update methods

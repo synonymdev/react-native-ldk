@@ -546,6 +546,11 @@ class Ldk: NSObject {
         channelManager.asConfirm().bestBlockUpdated(header: String(header).hexaBytes, height: UInt32(height))
         chainMonitor.asConfirm().bestBlockUpdated(header: String(header).hexaBytes, height: UInt32(height))
         
+        
+        //TODO pass throiugh tip hash
+        currentBlockchainTipHash = blockHash
+        currentBlockchainHeight = height
+
         return handleResolve(resolve, .chain_sync_success)
     }
     
