@@ -891,6 +891,7 @@ class LightningManager {
 					broadcasted_transactions: await this.getLdkBroadcastedTxs(),
 					payment_ids: await this.getLdkPaymentIds(),
 					spendable_outputs: await this.getLdkSpendableOutputs(),
+					payments_claimed: await this.getLdkPaymentsClaimed(),
 					timestamp: Date.now(),
 				},
 				package_version: require('../package.json').version,
@@ -1132,6 +1133,41 @@ class LightningManager {
 			content: JSON.stringify(paymentIds),
 		});
 	};
+
+	/**
+	 * Adds payment claimed to storage.
+	 * @param payment {@link TChannelManagerClaim}
+	 * @returns void
+	 */
+	private appendLdkPaymentsClaimed = async (payment: TChannelManagerClaim): Promise<void> => {
+		let paymentsClaimed = await this.getLdkPaymentsClaimed();
+		if (paymentsClaimed.includes(payment)) {
+			return;
+		}
+
+		paymentsClaimed.push(payment);
+		await ldk.writeToFile({
+			fileName: ELdkFiles.payments_claimed,
+			content: JSON.stringify(paymentsClaimed)
+		});
+	};
+
+	/**
+	 * Returns the payments claimed in storage.
+	 * @returns {@link TChannelManagerClaim[]}
+	 */
+	getLdkPaymentsClaimed = async (): Promise<TChannelManagerClaim[]> => {
+		const res = await ldk.readFromFile({
+			fileName: ELdkFiles.payments_claimed
+		})
+		if (res.isOk()) {
+			return parseData(
+				res.value.content,
+				DefaultLdkDataShape.payments_claimed
+			)
+		}
+		return DefaultLdkDataShape.payments_claimed
+	}
 
 	/**
 	 * Returns previously confirmed outputs from storage.
@@ -1564,8 +1600,9 @@ class LightningManager {
 		console.log(`onChannelManagerDiscardFunding: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerPaymentClaimed(res: TChannelManagerClaim): void {
+	private async onChannelManagerPaymentClaimed(res: TChannelManagerClaim): Promise<void> {
 		// Payment Received/Invoice Paid.
+		await this.appendLdkPaymentsClaimed(res)
 		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`);
 		this.syncLdk().then();
 	}
