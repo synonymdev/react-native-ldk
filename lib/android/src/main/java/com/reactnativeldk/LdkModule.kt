@@ -164,10 +164,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun setAccountStoragePath(storagePath: String, promise: Promise) {
-        if (accountStoragePath != "") {
-            return handleReject(promise, LdkErrors.already_init)
-        }
-
         val accountStoragePath = File(storagePath)
         val channelStoragePath = File("$storagePath/channels/")
 
