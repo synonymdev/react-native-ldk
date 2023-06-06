@@ -1139,7 +1139,9 @@ class LightningManager {
 	 * @param payment {@link TChannelManagerClaim}
 	 * @returns void
 	 */
-	private appendLdkPaymentsClaimed = async (payment: TChannelManagerClaim): Promise<void> => {
+	private appendLdkPaymentsClaimed = async (
+		payment: TChannelManagerClaim,
+	): Promise<void> => {
 		let paymentsClaimed = await this.getLdkPaymentsClaimed();
 		if (paymentsClaimed.includes(payment)) {
 			return;
@@ -1148,7 +1150,7 @@ class LightningManager {
 		paymentsClaimed.push(payment);
 		await ldk.writeToFile({
 			fileName: ELdkFiles.payments_claimed,
-			content: JSON.stringify(paymentsClaimed)
+			content: JSON.stringify(paymentsClaimed),
 		});
 	};
 
@@ -1158,16 +1160,13 @@ class LightningManager {
 	 */
 	getLdkPaymentsClaimed = async (): Promise<TChannelManagerClaim[]> => {
 		const res = await ldk.readFromFile({
-			fileName: ELdkFiles.payments_claimed
-		})
+			fileName: ELdkFiles.payments_claimed,
+		});
 		if (res.isOk()) {
-			return parseData(
-				res.value.content,
-				DefaultLdkDataShape.payments_claimed
-			)
+			return parseData(res.value.content, DefaultLdkDataShape.payments_claimed);
 		}
-		return DefaultLdkDataShape.payments_claimed
-	}
+		return DefaultLdkDataShape.payments_claimed;
+	};
 
 	/**
 	 * Returns previously confirmed outputs from storage.
@@ -1600,9 +1599,11 @@ class LightningManager {
 		console.log(`onChannelManagerDiscardFunding: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private async onChannelManagerPaymentClaimed(res: TChannelManagerClaim): Promise<void> {
+	private async onChannelManagerPaymentClaimed(
+		res: TChannelManagerClaim,
+	): Promise<void> {
 		// Payment Received/Invoice Paid.
-		await this.appendLdkPaymentsClaimed(res)
+		await this.appendLdkPaymentsClaimed(res);
 		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`);
 		this.syncLdk().then();
 	}

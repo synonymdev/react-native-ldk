@@ -414,7 +414,7 @@ const App = (): ReactElement => {
 						title={'Get claimed payments'}
 						onPress={async (): Promise<void> => {
 							setMessage('Getting all LDK payments...');
-							const res = await lm.getLdkPaymentsClaimed()
+							const res = await lm.getLdkPaymentsClaimed();
 							setMessage(JSON.stringify(res));
 						}}
 					/>
