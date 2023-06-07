@@ -15,7 +15,6 @@ import {
 	TInitChannelManagerReq,
 	TLogListener,
 	TPaymentReq,
-	TSyncTipReq,
 	TCreatePaymentReq,
 	TSetTxConfirmedReq,
 	TSetTxUnconfirmedReq,
@@ -32,6 +31,7 @@ import {
 	TPaymentHop,
 	TUserConfig,
 	TReconstructAndSpendOutputsReq,
+	THeader,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -191,16 +191,33 @@ class LDK {
 	}
 
 	/**
+	 * Safely shutdown node and start it up again with the exact same params as it was initially started with.
+	 * Useful for refreshing the TCP peer handler near instantly.
+	 * lightning-manager.ts will receive an event to confirm the restart and then re add peers and sync the node.
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async restart(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.restart();
+			this.writeDebugToLog('restart');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('restart', e);
+			return err(e);
+		}
+	}
+
+	/**
 	 * Unsets all LDK components. Can be used to safely shutdown node.
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async reset(): Promise<Result<string>> {
+	async stop(): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.reset();
-			this.writeDebugToLog('reset');
+			const res = await NativeLDK.stop();
+			this.writeDebugToLog('stop');
 			return ok(res);
 		} catch (e) {
-			this.writeErrorToLog('reset', e);
+			this.writeErrorToLog('stop', e);
 			return err(e);
 		}
 	}
@@ -312,10 +329,10 @@ class LDK {
 	 * @param height
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async syncToTip(tip: TSyncTipReq): Promise<Result<string>> {
-		const { header, height } = tip;
+	async syncToTip(tip: THeader): Promise<Result<string>> {
+		const { hex, hash, height } = tip;
 		try {
-			const res = await NativeLDK.syncToTip(header, height);
+			const res = await NativeLDK.syncToTip(hex, hash, height);
 			this.writeDebugToLog('syncToTip', tip);
 			return ok(res);
 		} catch (e) {

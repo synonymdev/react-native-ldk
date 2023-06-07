@@ -84,7 +84,8 @@ enum LdkCallbackResponses: String {
     case tx_set_unconfirmed = "tx_set_unconfirmed"
     case process_pending_htlc_forwards_success = "process_pending_htlc_forwards_success"
     case claim_funds_success = "claim_funds_success"
-    case ldk_reset = "ldk_reset"
+    case ldk_stop = "ldk_stop"
+    case ldk_restart = "ldk_restart"
     case close_channel_success = "close_channel_success"
     case file_write_success = "file_write_success"
     case abandon_payment_success = "abandon_payment_success"
@@ -444,26 +445,32 @@ class Ldk: NSObject {
     
     func addForegroundObserver() {
         removeForegroundObserver()
-        NotificationCenter.default.addObserver(self, selector: #selector(restartChannelManagerConstructor), name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(restartOnForeground), name: UIApplication.didBecomeActiveNotification, object: nil)
     }
     
     func removeForegroundObserver() {
         NotificationCenter.default.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
     }
     
+    /// Used by event listener so responses are not handled
+    @objc
+    func restartOnForeground() {
+        restart { res in } reject: { code, message, error in }
+    }
+    
     /// Restarts channel manager constructor to get a new TCP peer handler
     @objc
-    func restartChannelManagerConstructor() {
+    func restart(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard channelManagerConstructor != nil else {
             //Wasn't yet started
-            return
+            return handleReject(reject, .init_channel_manager)
         }
         
         guard let currentNetwork = self.currentNetwork,
               let currentBlockchainTipHash = self.currentBlockchainTipHash,
               let currentBlockchainHeight = self.currentBlockchainHeight else {
             //Node was never started
-            return
+            return handleReject(reject, .init_channel_manager)
         }
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Stopping LDK background tasks")
@@ -480,16 +487,19 @@ class Ldk: NSObject {
             //Notify JS that a sync is required
             LdkEventEmitter.shared.send(withEvent: .channel_manager_restarted, body: "")
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "LDK restarted successfully")
+            
+            return handleResolve(resolve, .ldk_restart)
         } reject: { errorCode, errorMessage, error in
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error restarting LDK. \(errorCode) \(errorMessage)")
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error restarting LDK. \(String(describing: errorCode)) \(String(describing: errorMessage))")
+            handleReject(reject, .unknown_error)
         }
     }
     
     @objc
-    func reset(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func stop(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let cm = channelManagerConstructor else {
             //Wasn't yet started
-            return handleResolve(resolve, .ldk_reset)
+            return handleResolve(resolve, .ldk_stop)
         }
         
         removeForegroundObserver() //LDK was intentionally stopped and we shouldn't attempt a restart
@@ -504,10 +514,8 @@ class Ldk: NSObject {
         peerHandler = nil
         ldkNetwork = nil
         ldkCurrency = nil
-        Ldk.accountStoragePath = nil
-        Ldk.channelStoragePath = nil
         
-        return handleResolve(resolve, .ldk_reset)
+        return handleResolve(resolve, .ldk_stop)
     }
     
     //MARK: Update methods
@@ -525,7 +533,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func syncToTip(_ header: NSString, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func syncToTip(_ header: NSString, blockHash: NSString, height: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         //Sync ChannelMonitors and ChannelManager to chain tip
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
@@ -538,6 +546,10 @@ class Ldk: NSObject {
         channelManager.asConfirm().bestBlockUpdated(header: String(header).hexaBytes, height: UInt32(height))
         chainMonitor.asConfirm().bestBlockUpdated(header: String(header).hexaBytes, height: UInt32(height))
         
+        //Used for quick restarts
+        currentBlockchainTipHash = blockHash
+        currentBlockchainHeight = height
+
         return handleResolve(resolve, .chain_sync_success)
     }
     

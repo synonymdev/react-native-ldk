@@ -464,15 +464,11 @@ class LightningManager {
 			return err('No getBestBlock method provided.');
 		}
 		const bestBlock = await this.getBestBlock();
-		const header = bestBlock?.hex;
 		const height = bestBlock?.height;
 
 		//Don't update unnecessarily
 		if (this.currentBlock.hash !== bestBlock?.hash) {
-			const syncToTip = await ldk.syncToTip({
-				header,
-				height,
-			});
+			const syncToTip = await ldk.syncToTip(bestBlock);
 			if (syncToTip.isErr()) {
 				return syncToTip;
 			}
@@ -1611,9 +1607,9 @@ class LightningManager {
 	 */
 	private async onChannelManagerRestarted(): Promise<void> {
 		// Re add cached peers
+		await this.setFees();
 		await this.addPeers();
 		await this.syncLdk();
-		await this.setFees();
 	}
 }
 
