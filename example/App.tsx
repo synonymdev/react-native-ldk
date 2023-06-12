@@ -411,6 +411,15 @@ const App = (): ReactElement => {
 					/>
 
 					<Button
+						title={'Get claimed payments'}
+						onPress={async (): Promise<void> => {
+							setMessage('Getting all LDK payments...');
+							const res = await lm.getLdkPaymentsClaimed();
+							setMessage(JSON.stringify(res));
+						}}
+					/>
+
+					<Button
 						title={'Create invoice'}
 						onPress={async (): Promise<void> => {
 							const createInvoice = async (

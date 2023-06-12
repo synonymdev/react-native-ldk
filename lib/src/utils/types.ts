@@ -424,6 +424,7 @@ export enum ELdkFiles {
 	broadcasted_transactions = 'broadcasted_transactions.json',
 	payment_ids = 'payment_ids.json',
 	spendable_outputs = 'spendable_outputs.json',
+	payments_claimed = 'payments_claimed.json', // JSON file saved from JS
 }
 
 export enum ELdkData {
@@ -435,6 +436,7 @@ export enum ELdkData {
 	payment_ids = 'payment_ids',
 	timestamp = 'timestamp',
 	spendable_outputs = 'spendable_outputs',
+	payments_claimed = 'payments_claimed',
 }
 
 export type TLdkData = {
@@ -446,6 +448,7 @@ export type TLdkData = {
 	[ELdkData.payment_ids]: TLdkPaymentIds;
 	[ELdkData.timestamp]: number;
 	[ELdkData.spendable_outputs]: TLdkSpendableOutputs;
+	[ELdkData.payments_claimed]: TChannelManagerClaim[];
 };
 
 export type TAccountBackup = {
@@ -479,6 +482,7 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.payment_ids]: [],
 	[ELdkData.timestamp]: 0,
 	[ELdkData.spendable_outputs]: [],
+	[ELdkData.payments_claimed]: [],
 };
 
 export type TAvailableNetworks =
