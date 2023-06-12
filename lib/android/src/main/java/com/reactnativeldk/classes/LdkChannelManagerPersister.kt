@@ -59,9 +59,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             body.putHexString("payment_id", paymentPathSuccessful.payment_id)
             body.putHexString("payment_hash", paymentPathSuccessful.payment_hash)
 
-            val path = Arguments.createArray()
-            paymentPathSuccessful.path.iterator().forEach { path.pushMap(it.asJson) }
-            body.putArray("path", path)
+            val pathHops = Arguments.createArray()
+            println(paymentPathSuccessful.path)
+            body.putArray("path_hops", pathHops)
 
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_path_successful, body)
         }
@@ -72,9 +72,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             body.putHexString("payment_hash", paymentPathFailed.payment_hash)
             body.putBoolean("payment_failed_permanently", paymentPathFailed.payment_failed_permanently)
             body.putInt("short_channel_id", (paymentPathFailed.short_channel_id as Option_u64Z.Some).some.toInt())
-            val path = Arguments.createArray()
-            paymentPathFailed.path.iterator().forEach { path.pushMap(it.asJson) }
-            body.putArray("path", path)
+//            val path = Arguments.createArray()
+//            paymentPathFailed.path.iterator().forEach { path.pushMap(it.asJson) }
+//            body.putArray("path_hops", path)
 
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_path_failed, body)
         }
@@ -154,9 +154,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
     }
 
     override fun persist_scorer(p0: ByteArray?) {
-//        if (p0 != null && LdkModule.accountStoragePath != "") {
-//            File(LdkModule.accountStoragePath + "/" + LdkFileNames.scorer.fileName).writeBytes(p0)
-//            LdkEventEmitter.send(EventTypes.native_log, "Persisted scorer to disk")
-//        }
+        if (p0 != null && LdkModule.accountStoragePath != "") {
+            File(LdkModule.accountStoragePath + "/" + LdkFileNames.scorer.fileName).writeBytes(p0)
+            LdkEventEmitter.send(EventTypes.native_log, "Persisted scorer to disk")
+        }
     }
 }

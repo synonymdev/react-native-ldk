@@ -39,17 +39,16 @@ fun String.hexa(): ByteArray {
 fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Logger): ProbabilisticScorer? {
     val params = ProbabilisticScoringParameters.with_default()
 
-     //TODO loading cached scorer currently broken
-//    val scorerFile = File(path + "/" + LdkFileNames.scorer.fileName)
-//    if (scorerFile.exists()) {
-//        val read = ProbabilisticScorer.read(scorerFile.readBytes(), params, networkGraph, logger)
-//        if (read.is_ok) {
-//            LdkEventEmitter.send(EventTypes.native_log, "Loaded scorer from disk")
-//            return (read as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
-//        } else {
-//            LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached scorer")
-//        }
-//    }
+    val scorerFile = File(path + "/" + LdkFileNames.scorer.fileName)
+    if (scorerFile.exists()) {
+        val read = ProbabilisticScorer.read(scorerFile.readBytes(), params, networkGraph, logger)
+        if (read.is_ok) {
+            LdkEventEmitter.send(EventTypes.native_log, "Loaded scorer from disk")
+            return (read as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
+        } else {
+            LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached scorer")
+        }
+    }
 
     val default_scorer = ProbabilisticScorer.of(params, networkGraph, logger)
     val score_res = ProbabilisticScorer.read(
@@ -219,7 +218,7 @@ fun RapidGossipSync.downloadAndUpdateGraph(downloadUrl: String, tempStoragePath:
             return@downloadFile completion(it)
         }
 
-        val res = update_network_graph(File(destinationFile).readBytes())
+        val res = update_network_graph_no_std(File(destinationFile).readBytes(), Option_u64Z.some((System.currentTimeMillis() / 1000)))
         if (!res.is_ok()) {
             val error = res as? Result_u32GraphSyncErrorZ.Result_u32GraphSyncErrorZ_Err
 
@@ -279,6 +278,10 @@ fun ChannelHandshakeConfig.mergeWithMap(map: ReadableMap?): ChannelHandshakeConf
     try {
         _their_channel_reserve_proportional_millionths = map.getInt("their_channel_reserve_proportional_millionths")
     } catch (_: Exception) {}
+    //TODO add _our_max_accepted_htlcs_arg when added to the bindings as it is in swift and JS
+//    try {
+//        _our_max_accepted_htlcs_arg = map.getInt("our_max_accepted_htlcs_arg")
+//    } catch (_: Exception) {}
 
     return this
 }

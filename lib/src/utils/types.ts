@@ -76,7 +76,7 @@ export type TChannelUpdate = {
 	counterparty_node_id: string;
 };
 
-type TPath = {
+type TPathHop = {
 	pubkey: string;
 	fee_sat: number;
 	short_channel_id: string;
@@ -86,7 +86,7 @@ type TPath = {
 export type TChannelManagerPaymentPathSuccessful = {
 	payment_id: string;
 	payment_hash: string;
-	path: TPath[];
+	path_hops: TPathHop[];
 };
 
 export type TChannelManagerPaymentPathFailed = {
@@ -94,7 +94,7 @@ export type TChannelManagerPaymentPathFailed = {
 	payment_hash: string;
 	payment_failed_permanently: boolean;
 	short_channel_id: string;
-	path: TPath[];
+	path_hops: TPathHop[];
 };
 
 export type TChannelManagerPaymentFailed = {
@@ -301,6 +301,7 @@ export type TChannelHandshakeConfig = {
 	announced_channel?: boolean;
 	commit_upfront_shutdown_pubkey?: boolean;
 	their_channel_reserve_proportional_millionths?: number; //UInt32
+	our_max_accepted_htlcs_arg?: number; //UInt16
 };
 
 export type TChannelHandshakeLimits = {

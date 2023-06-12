@@ -97,7 +97,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 body: [
                     "payment_id": Data(paymentPathSuccessful.getPaymentId()).hexEncodedString(),
                     "payment_hash": Data(paymentPathSuccessful.getPaymentHash()).hexEncodedString(),
-                    "path": paymentPathSuccessful.getPath().map { $0.asJson },
+                    "path_hops": paymentPathSuccessful.getPath().getHops().map { $0.asJson },
                 ]
             )
             return
@@ -113,7 +113,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "payment_hash": Data(paymentPathFailed.getPaymentHash()).hexEncodedString(),
                     "payment_failed_permanently": paymentPathFailed.getPaymentFailedPermanently(),
                     "short_channel_id": String(paymentPathFailed.getShortChannelId() ?? 0),
-                    "path": paymentPathFailed.getPath().map { $0.asJson }
+                    "path_hops": paymentPathFailed.getPath().getHops().map { $0.asJson }
                 ]
             )
             return
@@ -244,18 +244,17 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     }
     
     override func persistScorer(scorer: WriteableScore) -> Bindings.Result_NoneErrorZ {
-        return Result_NoneErrorZ.initWithOk()
-//        guard let scorerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.scorer.rawValue) else {
-//            return Result_NoneErrorZ.initWithErr(e: .Other)
-//        }
-//
-//        do {
-//            try Data(scorer.write()).write(to: scorerStorage)
-//
-//            return Result_NoneErrorZ.initWithOk()
-//        } catch {
-//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist scorer to disk Error \(error.localizedDescription).")
-//            return Result_NoneErrorZ.initWithErr(e: .Other)
-//        }
+        guard let scorerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.scorer.rawValue) else {
+            return Result_NoneErrorZ.initWithErr(e: .Other)
+        }
+
+        do {
+            try Data(scorer.write()).write(to: scorerStorage)
+
+            return Result_NoneErrorZ.initWithOk()
+        } catch {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist scorer to disk Error \(error.localizedDescription).")
+            return Result_NoneErrorZ.initWithErr(e: .Other)
+        }
     }
 }

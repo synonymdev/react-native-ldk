@@ -404,7 +404,7 @@ class Ldk: NSObject {
                 channelManagerConstructor = try ChannelManagerConstructor(
                     channelManagerSerialized: [UInt8](channelManagerSerialized),
                     channelMonitorsSerialized: channelMonitorsSerialized,
-                    netGraphSerialized: networkGraph.write(),
+                    networkGraph: NetworkGraphArgument.instance(networkGraph),
                     filter: filter,
                     params: params
                 )
@@ -748,86 +748,6 @@ class Ldk: NSObject {
         default:
             return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
         }
-    }
-    
-    @objc
-    func payWithRoute(_ route: NSArray, destinationNodeId: NSString, amountSats: NSInteger, cltvExpiryDelta: NSInteger, paymentHash: NSString, paymentSecret: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        let paymentId = String(paymentHash).hexaBytes //TODO allow passing this through from JS but should default to payment hash
-        
-        guard let channelManager = channelManager else {
-            return handleReject(reject, .init_channel_manager)
-        }
-        
-        guard let networkGraph = networkGraph?.readOnly() else {
-            return handleReject(reject, .init_network_graph)
-        }
-        
-        //TODO amountSats no longer required
-        let amountMSats = UInt64(amountSats) * 1000
-        var paths: [RouteHop] = []
-        
-        for hop in route {
-            print("HOP: ")
-            
-            let decodedHop = hop as! [String: Any]
-            
-            let pubKey = decodedHop["dest_node_id"]! as! String
-            let shortChannelId = UInt64(decodedHop["short_channel_id"]! as! String)!
-            let feeMsats = UInt64(exactly: decodedHop["fee_sats"]! as! Int)! * 1000
-            
-            var channelFeatures = ChannelFeatures.initWithEmpty()
-            var nodeFeatures = NodeFeatures.initWithEmpty()
-            
-            //If it's the last hop then it's the full amount
-            if pubKey == String(destinationNodeId) {
-                //Assume public node
-                let channel = networkGraph.channel(shortChannelId: shortChannelId)
-                
-                if let cFeatures = channel?.getFeatures() {
-                    channelFeatures = cFeatures
-                }
-                
-                if let nFeatures = networkGraph.node(nodeId: NodeId.initWithPubkey(pubkey: pubKey.hexaBytes))?.getAnnouncementInfo()?.getFeatures() {
-                    nodeFeatures = nFeatures
-                }
-            }
-            
-            channelManager.listChannels().forEach { channelDetails in
-                channelDetails.getConfig()?.getForwardingFeeBaseMsat()
-                if channelDetails.getShortChannelId() == shortChannelId {
-                    //                    nodeFeatures = = channelDetails.get_counterparty().get_features() //TODO convert this
-                    //TODO get channel features somehow?
-                }
-            }
-            
-            //TODO Check if channel is ours instead of querying graph
-            
-            let hop = RouteHop(
-                pubkeyArg: pubKey.hexaBytes,
-                nodeFeaturesArg: nodeFeatures,
-                shortChannelIdArg: shortChannelId,
-                channelFeaturesArg: channelFeatures,
-                feeMsatArg: feeMsats,
-                cltvExpiryDeltaArg: UInt32(cltvExpiryDelta)
-            )
-            
-            paths.append(hop)
-        }
-        
-        let payee = PaymentParameters.initWithNodeId(payeePubkey: String(destinationNodeId).hexaBytes, finalCltvExpiryDelta: UInt32(cltvExpiryDelta))
-        
-        let route = Route(pathsArg: [paths], paymentParamsArg: payee)
-        
-        let res = channelManager.sendPayment(route: route, paymentHash: String(paymentHash).hexaBytes, paymentSecret: String(paymentSecret).hexaBytes, paymentId: paymentId)
-        if res.isOk() {
-            return resolve(Data(paymentId).hexEncodedString())
-        }
-        
-        guard let error = res.getError() else {
-            return handleReject(reject, .invoice_payment_fail_unknown)
-        }
-        
-        return handlePaymentSendFailure(reject, error: error)
     }
     
     @objc

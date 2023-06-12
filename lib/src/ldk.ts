@@ -111,28 +111,6 @@ class LDK {
 	}
 
 	/**
-	 * Accepts array of hex encoded channel monitors from storage.
-	 * If blank array is set then initChannelManager will init new channelManager.
-	 * @param channelMonitors
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
-	 */
-	async loadChannelMonitors(
-		channelMonitors: string[],
-	): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.loadChannelMonitors(channelMonitors);
-			this.writeDebugToLog(
-				'loadChannelMonitors',
-				`Loaded ${channelMonitors.length} monitors`,
-			);
-			return ok(res);
-		} catch (e) {
-			this.writeErrorToLog('loadChannelMonitors', e);
-			return err(e);
-		}
-	}
-
-	/**
 	 * Inits the network graph from previous cache or syncs from scratch.
 	 * By passing in rapidGossipSyncUrl p2p gossip sync will be disabled in favor out rapid gossip sync.
 	 * For local regtest p2p works fine but for mainnet it is better to enable rapid gossip sync.
@@ -772,62 +750,6 @@ class LDK {
 		//TODO check channel capacities, assuming might work in the meantime
 
 		return ok(route);
-	}
-
-	/**
-	 * Builds a custom route to ensure a direct path if only 1 hop is required.
-	 * Experimental and shouldn't be required to use if LDK is routing correctly.
-	 * Only available on iOS for now.
-	 * @param paymentRequest
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
-	 */
-	async payWithRoute({
-		paymentRequest: anyPaymentRequest,
-		amountSats,
-	}: TPaymentReq): Promise<Result<string>> {
-		if (Platform.OS !== 'ios') {
-			return err('Currently only working on iOS');
-		}
-
-		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
-		const decodeRes = await this.decode({ paymentRequest });
-		if (decodeRes.isErr()) {
-			return err(decodeRes.error);
-		}
-
-		const routeRes = await this.buildPathToDestination({
-			paymentRequest,
-			amountSats,
-		});
-		if (routeRes.isErr()) {
-			return err(routeRes.error);
-		}
-
-		const {
-			recover_payee_pub_key,
-			payment_secret,
-			payment_hash,
-			amount_satoshis,
-			min_final_cltv_expiry,
-		} = decodeRes.value;
-
-		const sats = amount_satoshis || amountSats; //TODO validate
-
-		try {
-			const res = await NativeLDK.payWithRoute(
-				routeRes.value,
-				recover_payee_pub_key,
-				sats,
-				min_final_cltv_expiry,
-				payment_hash,
-				payment_secret,
-			);
-			this.writeDebugToLog('pay');
-			return ok(res);
-		} catch (e) {
-			this.writeErrorToLog('pay', e);
-			return err(e);
-		}
 	}
 
 	/**

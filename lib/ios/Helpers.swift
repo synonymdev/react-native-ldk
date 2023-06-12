@@ -53,17 +53,16 @@ func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLo
     let scoringParams = ProbabilisticScoringParameters.initWithDefault()
     
     var probabalisticScorer: ProbabilisticScorer?
-    //TODO loading cached scorer currently broken
-//    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
-//        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
-//
-//        if scorerRead.isOk() {
-//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
-//            probabalisticScorer = scorerRead.getValue()
-//        } else {
-//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
-//        }
-//    }
+    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
+        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
+
+        if scorerRead.isOk() {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
+            probabalisticScorer = scorerRead.getValue()
+        } else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
+        }
+    }
     
     //Doesn't exist or error reading it
     if probabalisticScorer == nil {
@@ -275,12 +274,14 @@ extension RapidGossipSync {
 
         let url = URL(string: "\(downloadUrl)\(timestamp)")!
 
-        let task = url.downloadTask(destination: destinationFile) { error in
+        let task = url.downloadTask(destination: destinationFile) { [weak self] error in
             if let error = error {
                 return completion(error)
             }
-                        
-            let res = self.updateNetworkGraph(updateData: [UInt8](try! Data(contentsOf: destinationFile)))
+            
+            guard let self = self else { return }
+            
+            let res = self.updateNetworkGraphNoStd(updateData: [UInt8](try! Data(contentsOf: destinationFile)), currentTimeUnix: UInt64(Date().timeIntervalSince1970 * 1000))
             guard res.isOk() else {
                 var errorMessage = "Failed to update network graph."
                 switch res.getError()?.getValueType() {
@@ -324,7 +325,8 @@ extension ChannelHandshakeConfig {
             negotiateScidPrivacyArg: obj["negotiate_scid_privacy"] as? Bool ?? defaults.getNegotiateScidPrivacy(),
             announcedChannelArg: obj["announced_channel"] as? Bool ?? defaults.getAnnouncedChannel(),
             commitUpfrontShutdownPubkeyArg: obj["commit_upfront_shutdown_pubkey"] as? Bool ?? defaults.getCommitUpfrontShutdownPubkey(),
-            theirChannelReserveProportionalMillionthsArg: obj["their_channel_reserve_proportional_millionths"] as? UInt32 ?? defaults.getTheirChannelReserveProportionalMillionths()
+            theirChannelReserveProportionalMillionthsArg: obj["their_channel_reserve_proportional_millionths"] as? UInt32 ?? defaults.getTheirChannelReserveProportionalMillionths(),
+            ourMaxAcceptedHtlcsArg: obj["our_max_accepted_htlcs_arg"] as? UInt16 ?? defaults.getOurMaxAcceptedHtlcs()
         )
     }
 }
