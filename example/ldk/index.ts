@@ -176,7 +176,7 @@ export const setupLdk = async (): Promise<Result<string>> => {
  */
 export const getTransactionData = async (
 	txId: string = '',
-): Promise<TTransactionData> => {
+): Promise<TTransactionData | undefined> => {
 	let transactionData = DefaultTransactionDataShape;
 	const data = {
 		key: 'tx_hash',
@@ -190,6 +190,22 @@ export const getTransactionData = async (
 		txHashes: data,
 		network: selectedNetwork,
 	});
+	if (
+		//TODO: Update types for electrum response.
+		// @ts-ignore
+		response?.error &&
+		//TODO: Update types for electrum response.
+		// @ts-ignore
+		response?.error?.message &&
+		/No such mempool or blockchain transaction|Invalid tx hash/.test(
+			//TODO: Update types for electrum response.
+			// @ts-ignore
+			response?.error?.message,
+		)
+	) {
+		//Transaction may have been removed/bumped from the mempool or potentially reorg'd out.
+		return undefined;
+	}
 
 	if (response.error || !response.data || response.data[0].error) {
 		return transactionData;
@@ -320,32 +336,4 @@ export const importAccount = async (
 	await setupLdk();
 	await syncLdk();
 	return ok(importResponse.value);
-};
-
-/**
- * Iterates over watch transactions for spends. Sets them as confirmed as needed.
- * @returns {Promise<boolean>}
- */
-export const checkWatchTxs = async (): Promise<boolean> => {
-	const checkedScriptPubKeys: string[] = [];
-	const watchTransactionIds = lm.watchTxs.map((tx) => tx.txid);
-	for (const watchTx of lm.watchTxs) {
-		if (!checkedScriptPubKeys.includes(watchTx.script_pubkey)) {
-			const scriptPubKeyHistory: { txid: string; height: number }[] =
-				await getScriptPubKeyHistory(watchTx.script_pubkey);
-			for (const data of scriptPubKeyHistory) {
-				if (!watchTransactionIds.includes(data?.txid)) {
-					const txData = await getTransactionData(data?.txid);
-					await ldk.setTxConfirmed({
-						header: txData.header,
-						height: txData.height,
-						txData: [{ transaction: txData.transaction, pos: 0 }],
-					});
-					return true;
-				}
-			}
-			checkedScriptPubKeys.push(watchTx.script_pubkey);
-		}
-	}
-	return false;
 };

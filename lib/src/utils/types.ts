@@ -242,10 +242,6 @@ export type TSetTxConfirmedReq = {
 	height: number;
 };
 
-export type TSetTxUnconfirmedReq = {
-	txId: string;
-};
-
 export type TCloseChannelReq = {
 	channelId: string;
 	counterPartyNodeId: string;
@@ -410,7 +406,9 @@ export const DefaultTransactionDataShape: TTransactionData = {
 	vout: [],
 };
 
-export type TGetTransactionData = (txid: string) => Promise<TTransactionData>;
+export type TGetTransactionData = (
+	txid: string,
+) => Promise<TTransactionData | undefined>;
 export type TGetTransactionPosition = (params: {
 	tx_hash: string;
 	height: number;
@@ -422,10 +420,7 @@ export enum ELdkFiles {
 	channel_manager = 'channel_manager.bin', //Serialised rust object
 	channels = 'channels', //Path containing multiple files of serialised channels
 	peers = 'peers.json', //JSON file saved from JS
-	watch_transactions = 'watch_transactions.json', //JSON file saved from JS
-	watch_outputs = 'watch_outputs.json', //JSON file saved from JS
-	confirmed_transactions = 'confirmed_transactions.json',
-	confirmed_outputs = 'confirmed_outputs.json',
+	unconfirmed_transactions = 'unconfirmed_transactions.json',
 	broadcasted_transactions = 'broadcasted_transactions.json',
 	payment_ids = 'payment_ids.json',
 	spendable_outputs = 'spendable_outputs.json',
@@ -435,8 +430,7 @@ export enum ELdkData {
 	channel_manager = 'channel_manager',
 	channel_monitors = 'channel_monitors',
 	peers = 'peers',
-	confirmed_transactions = 'confirmed_transactions',
-	confirmed_outputs = 'confirmed_outputs',
+	unconfirmed_transactions = 'unconfirmed_transactions',
 	broadcasted_transactions = 'broadcasted_transactions',
 	payment_ids = 'payment_ids',
 	timestamp = 'timestamp',
@@ -447,8 +441,7 @@ export type TLdkData = {
 	[ELdkData.channel_manager]: string;
 	[ELdkData.channel_monitors]: { [key: string]: string };
 	[ELdkData.peers]: TLdkPeers;
-	[ELdkData.confirmed_transactions]: TLdkConfirmedTransactions;
-	[ELdkData.confirmed_outputs]: TLdkConfirmedOutputs;
+	[ELdkData.unconfirmed_transactions]: TLdkUnconfirmedTransactions;
 	[ELdkData.broadcasted_transactions]: TLdkBroadcastedTransactions;
 	[ELdkData.payment_ids]: TLdkPaymentIds;
 	[ELdkData.timestamp]: number;
@@ -464,9 +457,12 @@ export type TAccountBackup = {
 
 export type TLdkPeers = TPeer[];
 
-export type TLdkConfirmedTransactions = string[];
+export type TLdkUnconfirmedTransaction = TTransactionData & {
+	txid: string;
+	script_pubkey: string;
+};
 
-export type TLdkConfirmedOutputs = string[];
+export type TLdkUnconfirmedTransactions = TLdkUnconfirmedTransaction[];
 
 export type TLdkBroadcastedTransactions = string[];
 
@@ -478,8 +474,7 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.channel_manager]: '',
 	[ELdkData.channel_monitors]: {},
 	[ELdkData.peers]: [],
-	[ELdkData.confirmed_transactions]: [],
-	[ELdkData.confirmed_outputs]: [],
+	[ELdkData.unconfirmed_transactions]: [],
 	[ELdkData.broadcasted_transactions]: [],
 	[ELdkData.payment_ids]: [],
 	[ELdkData.timestamp]: 0,

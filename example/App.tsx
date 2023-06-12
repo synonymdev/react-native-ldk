@@ -500,19 +500,6 @@ const App = (): ReactElement => {
 					/>
 
 					<Button
-						title={'Build route and pay'}
-						onPress={async (): Promise<void> => {
-							const paymentRequest = await Clipboard.getString();
-							const payRes = await ldk.payWithRoute({ paymentRequest });
-							if (payRes.isErr()) {
-								return setMessage(payRes.error.message);
-							}
-
-							setMessage(payRes.value);
-						}}
-					/>
-
-					<Button
 						title={'Get network graph nodes'}
 						onPress={async (): Promise<void> => {
 							const nodesRes = await ldk.networkGraphListNodeIds();

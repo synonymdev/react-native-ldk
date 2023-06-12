@@ -36,8 +36,8 @@ import {
 	TRegisterOutputEvent,
 	TRegisterTxEvent,
 	TTransactionData,
-	TLdkConfirmedOutputs,
-	TLdkConfirmedTransactions,
+	TLdkUnconfirmedTransactions,
+	TLdkUnconfirmedTransaction,
 	TLdkBroadcastedTransactions,
 	TChannelUpdate,
 	TPaymentReq,
@@ -92,6 +92,7 @@ class LightningManager {
 		hash: '',
 		height: 0,
 	};
+	unconfirmedTxs: TLdkUnconfirmedTransactions = [];
 	watchTxs: TRegisterTxEvent[] = [];
 	watchOutputs: TRegisterOutputEvent[] = [];
 	getBestBlock: TGetBestBlock = async (): Promise<THeader> => ({
@@ -292,6 +293,7 @@ class LightningManager {
 		this.getTransactionData = getTransactionData;
 		this.getTransactionPosition = getTransactionPosition;
 		const bestBlock = await this.getBestBlock();
+		this.unconfirmedTxs = await this.getLdkUnconfirmedTxs();
 		this.watchTxs = [];
 		this.watchOutputs = [];
 
@@ -476,8 +478,6 @@ class LightningManager {
 			this.currentBlock = bestBlock;
 		}
 
-		const confirmedTxs = await this.getLdkConfirmedTxs();
-
 		let channels: TChannel[] = [];
 		if (this.watchTxs.length > 0) {
 			// Get fresh array of channels.
@@ -487,22 +487,42 @@ class LightningManager {
 			}
 		}
 
-		// Iterate over watch transactions and set whether they are confirmed or unconfirmed.
+		// Iterate over watch transactions/outputs and set whether they are confirmed or unconfirmed.
+		await this.checkWatchTxs(this.watchTxs, channels, bestBlock);
+		await this.checkWatchOutputs(this.watchOutputs);
+		await this.checkUnconfirmedTransactions();
+
+		return ok(`Synced to block ${height}`);
+	}
+
+	checkWatchTxs = async (
+		watchTxs: TRegisterTxEvent[],
+		channels: TChannel[],
+		bestBlock: THeader,
+	): Promise<void> => {
+		const height = bestBlock?.height;
+		if (!height) {
+			console.log('No height provided');
+			return;
+		}
 		await Promise.all(
-			this.watchTxs.map(async ({ txid }) => {
-				if (confirmedTxs.includes(txid)) {
-					return;
-				}
-				let requiredConfirmations = 6;
+			watchTxs.map(async (watchTxData) => {
+				const { txid, script_pubkey } = watchTxData;
+				let requiredConfirmations = 1;
 				const channel = channels.find((c) => c.funding_txid === txid);
 				if (channel && channel?.confirmations_required !== undefined) {
 					requiredConfirmations = channel.confirmations_required;
 				}
 				const txData = await this.getTransactionData(txid);
-				if (!txData?.header || !txData.transaction) {
-					return err(
+				if (!txData) {
+					//Watch TX was never confirmed so there's no need to unconfirm it.
+					return;
+				}
+				if (!txData.transaction) {
+					console.log(
 						'Unable to retrieve transaction data from the getTransactionData method.',
 					);
+					return;
 				}
 				const txConfirmations =
 					txData.height === 0 ? 0 : height - txData.height + 1;
@@ -512,28 +532,38 @@ class LightningManager {
 						height: txData.height,
 					});
 					if (pos >= 0) {
-						await ldk.setTxConfirmed({
+						const setTxConfirmedRes = await ldk.setTxConfirmed({
 							header: txData.header,
 							height: txData.height,
 							txData: [{ transaction: txData.transaction, pos }],
 						});
-						await this.saveConfirmedTxs(txid);
-						this.watchTxs = this.watchTxs.filter((tx) => tx.txid !== txid);
+						if (setTxConfirmedRes.isOk()) {
+							await this.saveUnconfirmedTx({
+								...txData,
+								txid,
+								script_pubkey,
+							});
+							this.watchTxs = this.watchTxs.filter((tx) => tx.txid !== txid);
+						}
 					}
 				}
 			}),
 		);
+	};
 
-		const confirmedWatchOutputs = await this.getLdkConfirmedOutputs();
+	checkWatchOutputs = async (
+		watchOutputs: TRegisterOutputEvent[],
+	): Promise<void> => {
 		await Promise.all(
-			this.watchOutputs.map(async ({ index, script_pubkey }) => {
-				if (confirmedWatchOutputs.includes(script_pubkey)) {
-					return;
-				}
+			watchOutputs.map(async ({ index, script_pubkey }) => {
 				const transactions = await this.getScriptPubKeyHistory(script_pubkey);
 				await Promise.all(
 					transactions.map(async ({ txid }) => {
 						const transactionData = await this.getTransactionData(txid);
+						if (!transactionData) {
+							//Watch Output was never confirmed so there's no need to unconfirm it.
+							return;
+						}
 						if (
 							!transactionData?.height &&
 							transactionData?.vout?.length < index + 1
@@ -545,7 +575,7 @@ class LightningManager {
 							transactionData?.vout[index].hex,
 						);
 
-						// We're looking for the second transaction from this address.
+						// We're looking for more than two transactions from this address.
 						if (txs.length <= 1) {
 							return;
 						}
@@ -553,6 +583,10 @@ class LightningManager {
 						// We only need the second transaction.
 						const tx = txs[1];
 						const txData = await this.getTransactionData(tx.txid);
+						if (!txData) {
+							//Watch Output was never confirmed so there's no need to unconfirm it.
+							return;
+						}
 						if (!txData?.height) {
 							return;
 						}
@@ -561,23 +595,27 @@ class LightningManager {
 							height: txData.height,
 						});
 						if (pos >= 0) {
-							await ldk.setTxConfirmed({
+							const setTxConfirmedRes = await ldk.setTxConfirmed({
 								header: txData.header,
 								height: txData.height,
 								txData: [{ transaction: txData.transaction, pos }],
 							});
-							await this.saveConfirmedOutputs(script_pubkey);
-							this.watchOutputs = this.watchOutputs.filter(
-								(o) => o.script_pubkey !== script_pubkey,
-							);
+							if (setTxConfirmedRes.isOk()) {
+								await this.saveUnconfirmedTx({
+									...txData,
+									txid: tx.txid,
+									script_pubkey,
+								});
+								this.watchOutputs = this.watchOutputs.filter(
+									(o) => o.script_pubkey !== script_pubkey,
+								);
+							}
 						}
 					}),
 				);
 			}),
 		);
-
-		return ok(`Synced to block ${height}`);
-	}
+	};
 
 	/**
 	 * Passes a peer to LDK to add and saves it to storage if successful.
@@ -649,8 +687,7 @@ class LightningManager {
 
 	/**
 	 * This method is used to import backups provided by react-native-ldk's backupAccount method.
-	 * @param {TAccountBackup} accountData
-	 * @param {string} storagePath Default LDK storage path on disk
+	 * @param {string | TAccountBackup} backup
 	 * @param {boolean} [overwrite] Determines if this function should overwrite an existing account of the same name.
 	 * @returns {Promise<Result<TAccount>>} TAccount is used to start the node using the newly imported and saved data.
 	 */
@@ -698,14 +735,13 @@ class LightningManager {
 				!(ELdkData.channel_manager in accountBackup.data) ||
 				!(ELdkData.channel_monitors in accountBackup.data) ||
 				!(ELdkData.peers in accountBackup.data) ||
-				!(ELdkData.confirmed_outputs in accountBackup.data) ||
-				!(ELdkData.confirmed_transactions in accountBackup.data) ||
+				!(ELdkData.unconfirmed_transactions in accountBackup.data) ||
 				!(ELdkData.broadcasted_transactions in accountBackup.data) ||
 				!(ELdkData.payment_ids in accountBackup.data) ||
 				!(ELdkData.timestamp in accountBackup.data)
 			) {
 				return err(
-					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.channel_manager}, ${ELdkData.channel_monitors}, ${ELdkData.peers}, ${ELdkData.confirmed_transactions}, , ${ELdkData.confirmed_outputs}`,
+					`Invalid account backup data. Please ensure the following keys exist in the accountBackup object: ${ELdkData.channel_manager}, ${ELdkData.channel_monitors}, ${ELdkData.peers}, ${ELdkData.unconfirmed_transactions}`,
 				);
 			}
 
@@ -781,21 +817,12 @@ class LightningManager {
 			}
 
 			const confirmedTxRes = await ldk.writeToFile({
-				fileName: ELdkFiles.confirmed_transactions,
+				fileName: ELdkFiles.unconfirmed_transactions,
 				path: accountPath,
-				content: JSON.stringify(accountBackup.data.confirmed_transactions),
+				content: JSON.stringify(accountBackup.data.unconfirmed_transactions),
 			});
 			if (confirmedTxRes.isErr()) {
 				return err(confirmedTxRes.error);
-			}
-
-			const confirmedOutRes = await ldk.writeToFile({
-				fileName: ELdkFiles.confirmed_outputs,
-				path: accountPath,
-				content: JSON.stringify(accountBackup.data.confirmed_outputs),
-			});
-			if (confirmedOutRes.isErr()) {
-				return err(confirmedOutRes.error);
 			}
 
 			const broadcastedTxRes = await ldk.writeToFile({
@@ -886,8 +913,7 @@ class LightningManager {
 					channel_manager: channelManagerRes.value.content,
 					channel_monitors: channel_monitors,
 					peers: await this.getPeers(),
-					confirmed_transactions: await this.getLdkConfirmedTxs(),
-					confirmed_outputs: await this.getLdkConfirmedOutputs(),
+					unconfirmed_transactions: await this.getLdkUnconfirmedTxs(),
 					broadcasted_transactions: await this.getLdkBroadcastedTxs(),
 					payment_ids: await this.getLdkPaymentIds(),
 					spendable_outputs: await this.getLdkSpendableOutputs(),
@@ -1070,22 +1096,69 @@ class LightningManager {
 		}
 	};
 
-	/**
-	 * Returns previously confirmed transactions from storage.
-	 * @returns {Promise<TLdkConfirmedTransactions>}
-	 */
-	private getLdkConfirmedTxs = async (): Promise<TLdkConfirmedTransactions> => {
-		const res = await ldk.readFromFile({
-			fileName: ELdkFiles.confirmed_transactions,
-		});
-		if (res.isOk()) {
-			return parseData(
-				res.value.content,
-				DefaultLdkDataShape.confirmed_transactions,
-			);
+	checkUnconfirmedTransactions = async (): Promise<void> => {
+		let needsToSync = false;
+		let newUnconfirmedTxs: TLdkUnconfirmedTransactions = [];
+		await Promise.all(
+			this.unconfirmedTxs.map(async (unconfirmedTx) => {
+				const { txid, height } = unconfirmedTx;
+				const newTxData = await this.getTransactionData(txid);
+
+				//Tx was removed from mempool.
+				if (!newTxData) {
+					await ldk.setTxUnconfirmed(txid);
+					needsToSync = true;
+					return;
+				}
+
+				//Possible issue retrieving tx data from electrum. Keep current data. Try again later.
+				if (!newTxData?.header && newTxData?.height === 0) {
+					newUnconfirmedTxs.push(unconfirmedTx);
+					return;
+				}
+
+				//Transaction is fully confirmed. No need to add it back to the newUnconfirmedTxs array.
+				if (this.currentBlock.height - newTxData.height >= 6) {
+					return;
+				}
+
+				//If the tx is less than its previously known height or the height has fallen back to zero, run setTxUnconfirmed.
+				if (newTxData.height < height && newTxData.height === 0) {
+					await ldk.setTxUnconfirmed(txid);
+					needsToSync = true;
+					return;
+				}
+				newUnconfirmedTxs.push({
+					...newTxData,
+					txid,
+					script_pubkey: unconfirmedTx.script_pubkey,
+				});
+			}),
+		);
+
+		await this.updateUnconfirmedTxs(newUnconfirmedTxs);
+		if (needsToSync) {
+			await this.syncLdk();
 		}
-		return DefaultLdkDataShape.confirmed_transactions;
 	};
+
+	/**
+	 * Returns transactions with less than 6 confirmations from storage.
+	 * @returns {Promise<TLdkUnconfirmedTransactions[]>}
+	 */
+	private getLdkUnconfirmedTxs =
+		async (): Promise<TLdkUnconfirmedTransactions> => {
+			const res = await ldk.readFromFile({
+				fileName: ELdkFiles.unconfirmed_transactions,
+			});
+			if (res.isOk()) {
+				return parseData(
+					res.value.content,
+					DefaultLdkDataShape.unconfirmed_transactions,
+				);
+			}
+			return DefaultLdkDataShape.unconfirmed_transactions;
+		};
 
 	private getLdkPaymentIds = async (): Promise<TLdkPaymentIds> => {
 		const res = await ldk.readFromFile({
@@ -1131,23 +1204,6 @@ class LightningManager {
 			fileName: ELdkFiles.payment_ids,
 			content: JSON.stringify(paymentIds),
 		});
-	};
-
-	/**
-	 * Returns previously confirmed outputs from storage.
-	 * @returns {Promise<TLdkConfirmedOutputs>}
-	 */
-	private getLdkConfirmedOutputs = async (): Promise<TLdkConfirmedOutputs> => {
-		const res = await ldk.readFromFile({
-			fileName: ELdkFiles.confirmed_outputs,
-		});
-		if (res.isOk()) {
-			return parseData(
-				res.value.content,
-				DefaultLdkDataShape.confirmed_outputs,
-			);
-		}
-		return DefaultLdkDataShape.confirmed_outputs;
 	};
 
 	private getLdkSpendableOutputs = async (): Promise<TLdkSpendableOutputs> => {
@@ -1219,7 +1275,7 @@ class LightningManager {
 			const tx = bitcoin.Transaction.fromHex(hexTx);
 			const txData = await this.getTransactionData(tx.getId());
 			//Not confirmed and not in mempool
-			if (txData.height === 0) {
+			if (!txData || txData?.height === 0) {
 				const parsedTx = bitcoin.Transaction.fromHex(hexTx);
 				//Unconfirmed and only has one input and 1 output, so it's likely our stuck output.
 				const { ins, outs } = parsedTx;
@@ -1290,45 +1346,42 @@ class LightningManager {
 	}
 
 	/**
-	 * Saves confirmed transaction txids to storage.
-	 * @param {string} txid
-	 * @returns {Promise<void>}
+	 * Saves unconfiremd txs to storage.
+	 * @param {TTransactionData} data
+	 * @returns {Promise<Result<boolean>>}
 	 */
-	private saveConfirmedTxs = async (txid: string): Promise<Result<boolean>> => {
-		if (!txid) {
-			return ok(true);
+	private saveUnconfirmedTx = async (
+		data: TLdkUnconfirmedTransaction,
+	): Promise<Result<boolean>> => {
+		if (!data) {
+			return err('No data provided to saveUnconfirmedTx');
 		}
-		const confirmedTxs = await this.getLdkConfirmedTxs();
-		if (!confirmedTxs.includes(txid)) {
-			confirmedTxs.push(txid);
+		const alreadyExists = this.unconfirmedTxs.find(
+			(unconfirmedTx) => unconfirmedTx.txid === data.txid,
+		);
+		if (!alreadyExists) {
+			this.unconfirmedTxs.push(data);
 			return await ldk.writeToFile({
-				fileName: ELdkFiles.confirmed_transactions,
-				content: JSON.stringify(confirmedTxs),
+				fileName: ELdkFiles.unconfirmed_transactions,
+				content: JSON.stringify(this.unconfirmedTxs),
 			});
 		}
 		return ok(true);
 	};
 
 	/**
-	 * Saves confirmed output script_pubkeys to storage.
-	 * @param {string} script_pubkey
+	 * Updates unconfirmed txs in storage.
+	 * @param {TLdkUnconfirmedTransactions} unconfirmedTxs
 	 * @returns {Promise<Result<boolean>>}
 	 */
-	private saveConfirmedOutputs = async (
-		script_pubkey: string,
+	private updateUnconfirmedTxs = async (
+		unconfirmedTxs: TLdkUnconfirmedTransactions,
 	): Promise<Result<boolean>> => {
-		if (!script_pubkey) {
-			return ok(true);
-		}
-		const confirmedOutputs = await this.getLdkConfirmedOutputs();
-		if (!confirmedOutputs.includes(script_pubkey)) {
-			confirmedOutputs.push(script_pubkey);
-			return await ldk.writeToFile({
-				fileName: ELdkFiles.confirmed_outputs,
-				content: JSON.stringify(confirmedOutputs),
-			});
-		}
-		return ok(true);
+		this.unconfirmedTxs = unconfirmedTxs;
+		return await ldk.writeToFile({
+			fileName: ELdkFiles.unconfirmed_transactions,
+			content: JSON.stringify(this.unconfirmedTxs),
+		});
 	};
 
 	/**
@@ -1380,9 +1433,7 @@ class LightningManager {
 		const isDuplicate = this.watchTxs.some(
 			(tx) => tx.script_pubkey === res.script_pubkey && tx.txid === res.txid,
 		);
-		const confirmedTxs = await this.getLdkConfirmedTxs();
-		const isAlreadyConfirmed = confirmedTxs.includes(res.txid);
-		if (!isDuplicate && !isAlreadyConfirmed) {
+		if (!isDuplicate) {
 			this.watchTxs.push(res);
 		}
 	}
@@ -1391,9 +1442,7 @@ class LightningManager {
 		const isDuplicate = this.watchOutputs.some(
 			(o) => o.script_pubkey === res.script_pubkey && o.index === res.index,
 		);
-		const confirmedOutputs = await this.getLdkConfirmedOutputs();
-		const isAlreadyConfirmed = confirmedOutputs.includes(res.script_pubkey);
-		if (!isDuplicate && !isAlreadyConfirmed) {
+		if (!isDuplicate) {
 			this.watchOutputs.push(res);
 		}
 	}

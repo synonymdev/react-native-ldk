@@ -42,6 +42,7 @@ export default {
 		hex: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
 		hash: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
 	},
+	unconfirmedTxs: [],
 	watchTxs: [],
 	watchOutputs: [],
 	account: {
