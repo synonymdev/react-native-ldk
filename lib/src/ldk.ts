@@ -17,7 +17,6 @@ import {
 	TPaymentReq,
 	TCreatePaymentReq,
 	TSetTxConfirmedReq,
-	TSetTxUnconfirmedReq,
 	TInitNetworkGraphReq,
 	TCloseChannelReq,
 	TSpendOutputsReq,
@@ -166,11 +165,8 @@ class LDK {
 	 * Accepts array of hex encoded channel manager and channel monitors from storage.
 	 * NOTE: If empty channelManagerSerialized string then initChannelManager will create a new channel manager.
 	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/index.html
-	 * @param network
-	 * @param channelManagerSerialized
-	 * @param channelMonitorsSerialized
-	 * @param bestBlock
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {TInitChannelManagerReq} data
+	 * @returns {Promise<Result<string>>}
 	 */
 	async initChannelManager(
 		data: TInitChannelManagerReq,
@@ -243,9 +239,8 @@ class LDK {
 
 	/**
 	 * If set will write all LDK logging to file.
-	 * @param level
-	 * @param active
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {string} path
+	 * @returns {Promise<Result<string>>}
 	 */
 	async setLogFilePath(path: string): Promise<Result<string>> {
 		try {
@@ -258,8 +253,9 @@ class LDK {
 
 	/**
 	 * Write a line to current LDK log file
-	 * @param line
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {'error' | 'info' | 'debug'} type
+	 * @param {string} line
+	 * @returns {Promise<Result<string>>}
 	 */
 	async writeToLogFile(
 		type: 'error' | 'info' | 'debug',
@@ -325,9 +321,8 @@ class LDK {
 
 	/**
 	 * Sets current best block on channelManager and chainMonitor
-	 * @param header
-	 * @param height
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {THeader} tip
+	 * @returns {Promise<Result<string>>}
 	 */
 	async syncToTip(tip: THeader): Promise<Result<string>> {
 		const { hex, hash, height } = tip;
@@ -343,11 +338,8 @@ class LDK {
 
 	/**
 	 * Connect to remote peer
-	 * @param pubKey
-	 * @param address
-	 * @param port
-	 * @param timeout (Android only)
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {TAddPeerReq} peer
+	 * @returns {Promise<Result<string>>}
 	 */
 	async addPeer(peer: TAddPeerReq): Promise<Result<string>> {
 		const { pubKey, address, port, timeout } = peer;
@@ -363,10 +355,9 @@ class LDK {
 
 	/**
 	 * Updates a watched transaction as confirmed
-	 * @param txId
-	 * @param transaction
+	 * @param header
+	 * @param txData
 	 * @param height
-	 * @param pos
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async setTxConfirmed({
@@ -386,14 +377,12 @@ class LDK {
 
 	/**
 	 * Updates a watched transaction as unconfirmed in the event of a reorg
-	 * @param txId
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {string} txid
+	 * @returns {Promise<Result<string>>}
 	 */
-	async setTxUnconfirmed({
-		txId,
-	}: TSetTxUnconfirmedReq): Promise<Result<string>> {
+	async setTxUnconfirmed(txid: string): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.setTxUnconfirmed(txId);
+			const res = await NativeLDK.setTxUnconfirmed(txid);
 			this.writeDebugToLog('setTxUnconfirmed');
 			return ok(res);
 		} catch (e) {
@@ -480,7 +469,7 @@ class LDK {
 	/**
 	 * Decodes a bolt11 payment request
 	 * @param paymentRequest
-	 * @returns {Promise<Ok<any> | Err<unknown>>}
+	 * @returns {Promise<Result<TInvoice>>}
 	 */
 	async decode({ paymentRequest }: TPaymentReq): Promise<Result<TInvoice>> {
 		const cleanedPaymentRequest = extractPaymentRequest(paymentRequest);
@@ -496,8 +485,9 @@ class LDK {
 
 	/**
 	 * Creates bolt11 payment request
-	 * @param amountSats
-	 * @param description
+	 * @param {number | undefined} amountSats
+	 * @param {string} description
+	 * @param {number} expiryDeltaSeconds
 	 * @returns {Promise<Ok<Ok<TInvoice> | Err<TInvoice>> | Err<unknown>>}
 	 */
 	async createPaymentRequest({
@@ -915,8 +905,7 @@ class LDK {
 
 	/**
 	 * Fetches full list of nodes and their details
-	 * @param nodeId
-	 * @returns {Promise<Ok<Ok<TNetworkGraphChannelInfo> | Err<string>> | Err<unknown>>}
+	 * @returns {Promise<Result<TNetworkGraphNodeInfo[]>>}
 	 */
 	async completeGraphNodes(): Promise<Result<TNetworkGraphNodeInfo[]>> {
 		try {
@@ -982,8 +971,7 @@ class LDK {
 
 	/**
 	 * Fetches full list of channels and their details
-	 * @param shortChannelId
-	 * @returns {Promise<Ok<Ok<TNetworkGraphChannelInfo> | Err<string>> | Err<unknown>>}
+	 * @returns {Promise<Result<TNetworkGraphChannelInfo[]>>}
 	 */
 	async completeGraphChannels(): Promise<Result<TNetworkGraphChannelInfo[]>> {
 		try {
