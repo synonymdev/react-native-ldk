@@ -5,10 +5,7 @@ import { Block } from 'bitcoinjs-lib';
 import * as tls from './tls';
 import { customPeers, selectedNetwork } from '../utils/constants';
 import { THeader } from '@synonymdev/react-native-ldk';
-import {
-	IGetHeaderResponse,
-	ISubscribeToHeader,
-} from '../utils/types';
+import { IGetHeaderResponse, ISubscribeToHeader } from '../utils/types';
 /**
  * Returns the block hash given a block hex.
  * Leaving blockHex empty will return the last known block hash from storage.

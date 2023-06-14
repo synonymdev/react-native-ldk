@@ -1,9 +1,17 @@
 import * as electrum from 'rn-electrum-client/helpers';
-import { DefaultTransactionDataShape, TTransactionData, TTransactionPosition } from "@synonymdev/react-native-ldk";
+import {
+	DefaultTransactionDataShape,
+	TTransactionData,
+	TTransactionPosition,
+} from '@synonymdev/react-native-ldk';
 import { selectedNetwork } from '../utils/constants';
 import { getBlockHeader, getBlockHex } from '../electrum';
-import { getAddressFromScriptPubKey, getNetwork, getScriptHash } from '../utils/helpers';
-import * as bitcoin from "bitcoinjs-lib"
+import {
+	getAddressFromScriptPubKey,
+	getNetwork,
+	getScriptHash,
+} from '../utils/helpers';
+import * as bitcoin from 'bitcoinjs-lib';
 import { TGetAddressHistory } from '../utils/types';
 
 /**
@@ -164,5 +172,3 @@ export const getScriptPubKeyHistory = async (
 		return [];
 	}
 };
-
-

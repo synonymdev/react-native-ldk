@@ -9,7 +9,7 @@ export enum Backend {
 
 export const selectedBackend: Backend = Backend.mempool;
 
-export const mempoolHostname = "mempool.space" // mainnet
+export const mempoolHostname = 'mempool.space'; // mainnet
 
 //Lightning Peer Info
 export const peers = {

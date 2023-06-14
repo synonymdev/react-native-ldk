@@ -28,12 +28,17 @@ import lm, {
 	TChannelManagerPaymentPathSuccessful,
 	TChannelUpdate,
 } from '@synonymdev/react-native-ldk';
-import { Backend, mempoolHostname, peers, selectedBackend } from './utils/constants';
+import {
+	Backend,
+	mempoolHostname,
+	peers,
+	selectedBackend,
+} from './utils/constants';
 import { createNewAccount, getAddress } from './utils/helpers';
 import RNFS from 'react-native-fs';
-import mempoolJS from '@mempool/mempool.js'
-import * as electrum from "./ldk/electrum";
-import * as mempool from "./ldk/mempool";
+import mempoolJS from '@mempool/mempool.js';
+import * as electrum from './ldk/electrum';
+import * as mempool from './ldk/mempool';
 
 let logSubscription: EmitterSubscription | undefined;
 let paymentSubscription: EmitterSubscription | undefined;
@@ -57,7 +62,7 @@ const App = (): ReactElement => {
 		(async (): Promise<void> => {
 			if (selectedBackend === Backend.electrum) {
 				// Connect to Electrum Server
-				console.log("Using electrum...", selectedBackend)
+				console.log('Using electrum...', selectedBackend);
 				const electrumResponse = await connectToElectrum({});
 				if (electrumResponse.isErr()) {
 					setMessage(
@@ -81,8 +86,9 @@ const App = (): ReactElement => {
 					return;
 				}
 				await updateHeader({ header: headerInfo.value });
-			} else { // Backend.mempool
-				console.log("Using mempool...")
+			} else {
+				// Backend.mempool
+				console.log('Using mempool...');
 				const {
 					bitcoin: { websocket },
 				} = mempoolJS({
@@ -95,10 +101,14 @@ const App = (): ReactElement => {
 
 				ws.addEventListener('message', async function incoming({ data }) {
 					const res = JSON.parse(data);
-					const header = { hex: res.block.extras.header, hash: res.block.id, height: res.block.height }
+					const header = {
+						hex: res.block.extras.header,
+						hash: res.block.id,
+						height: res.block.height,
+					};
 					if (res.block) {
-						await updateHeader({ header: header })
-						lm.syncLdk()
+						await updateHeader({ header: header });
+						lm.syncLdk();
 					}
 				});
 			}
@@ -111,7 +121,7 @@ const App = (): ReactElement => {
 			}
 
 			setNodeStarted(true);
-			setMessage(setupResponse.value + " " + selectedBackend);
+			setMessage(setupResponse.value + ' ' + selectedBackend);
 		})();
 	}, [nodeStarted]);
 
@@ -137,7 +147,8 @@ const App = (): ReactElement => {
 				EEventTypes.channel_manager_payment_path_failed,
 				(res: TChannelManagerPaymentPathFailed) =>
 					setMessage(
-						`Payment path failed ${res.payment_failed_permanently ? 'permanently' : 'temporarily'
+						`Payment path failed ${
+							res.payment_failed_permanently ? 'permanently' : 'temporarily'
 						}`,
 					),
 			);
@@ -416,8 +427,8 @@ const App = (): ReactElement => {
 						onPress={async (): Promise<void> => {
 							setMessage('Getting Address Balance...');
 							const address = await getAddress();
-							let balance: number
-							if (selectedBackend === "electrum") {
+							let balance: number;
+							if (selectedBackend === 'electrum') {
 								balance = await electrum.getAddressBalance(address);
 							} else {
 								balance = await mempool.getAddressBalance(address);

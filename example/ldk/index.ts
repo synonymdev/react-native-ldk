@@ -5,10 +5,15 @@ import RNFS from 'react-native-fs';
 import lm, {
 	TAccount,
 	TAccountBackup,
-	THeader
+	THeader,
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
-import { Backend, peers, selectedBackend, selectedNetwork } from '../utils/constants';
+import {
+	Backend,
+	peers,
+	selectedBackend,
+	selectedNetwork,
+} from '../utils/constants';
 import {
 	getAccount,
 	getAddress,
@@ -98,10 +103,18 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			return err(storageRes.error);
 		}
 
-		const getTransactionData = electrum ? electrumBackend.getTransactionData : mempoolBackend.getTransactionData;
-		const getTransactionPosition = electrum ? electrumBackend.getTransactionPosition : mempoolBackend.getTransactionPosition
-		const broadcastTransaction = electrum ? electrumBackend.broadcastTransaction : mempoolBackend.broadcastTransaction;
-		const getScriptPubKeyHistory = electrum ? electrumBackend.getScriptPubKeyHistory : mempoolBackend.getScriptPubKeyHistory;
+		const getTransactionData = electrum
+			? electrumBackend.getTransactionData
+			: mempoolBackend.getTransactionData;
+		const getTransactionPosition = electrum
+			? electrumBackend.getTransactionPosition
+			: mempoolBackend.getTransactionPosition;
+		const broadcastTransaction = electrum
+			? electrumBackend.broadcastTransaction
+			: mempoolBackend.broadcastTransaction;
+		const getScriptPubKeyHistory = electrum
+			? electrumBackend.getScriptPubKeyHistory
+			: mempoolBackend.getScriptPubKeyHistory;
 
 		const lmStart = await lm.start({
 			getBestBlock,
@@ -166,7 +179,6 @@ export const setupLdk = async (): Promise<Result<string>> => {
 	}
 };
 
-
 /**
  * Used to backup a given account.
  * @param {TAccount} [account]
@@ -214,16 +226,20 @@ export const checkWatchTxs = async (): Promise<boolean> => {
 	const watchTransactionIds = lm.watchTxs.map((tx) => tx.txid);
 	for (const watchTx of lm.watchTxs) {
 		if (!checkedScriptPubKeys.includes(watchTx.script_pubkey)) {
-			let scriptPubKeyHistory: { txid: string; height: number }[]
-			if (selectedBackend === "electrum") {
-				scriptPubKeyHistory = await electrumBackend.getScriptPubKeyHistory(watchTx.script_pubkey);
-			}	else {
-				scriptPubKeyHistory = await mempoolBackend.getScriptPubKeyHistory(watchTx.script_pubkey);
+			let scriptPubKeyHistory: { txid: string; height: number }[];
+			if (selectedBackend === 'electrum') {
+				scriptPubKeyHistory = await electrumBackend.getScriptPubKeyHistory(
+					watchTx.script_pubkey,
+				);
+			} else {
+				scriptPubKeyHistory = await mempoolBackend.getScriptPubKeyHistory(
+					watchTx.script_pubkey,
+				);
 			}
 			for (const data of scriptPubKeyHistory) {
 				if (!watchTransactionIds.includes(data?.txid)) {
-					let txData
-					if (selectedBackend === Backend.electrum ) {
+					let txData;
+					if (selectedBackend === Backend.electrum) {
 						txData = await electrumBackend.getTransactionData(data?.txid);
 					} else {
 						txData = await mempoolBackend.getTransactionData(data?.txid);
