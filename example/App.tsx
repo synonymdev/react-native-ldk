@@ -147,8 +147,7 @@ const App = (): ReactElement => {
 				EEventTypes.channel_manager_payment_path_failed,
 				(res: TChannelManagerPaymentPathFailed) =>
 					setMessage(
-						`Payment path failed ${
-							res.payment_failed_permanently ? 'permanently' : 'temporarily'
+						`Payment path failed ${res.payment_failed_permanently ? 'permanently' : 'temporarily'
 						}`,
 					),
 			);
@@ -546,20 +545,6 @@ const App = (): ReactElement => {
 									},
 								],
 							);
-						}}
-					/>
-
-					<Button
-						title={'Build route and pay'}
-						onPress={async (): Promise<void> => {
-							const paymentRequest = await Clipboard.getString();
-							// @ts-ignore
-							const payRes = await ldk.payWithRoute({ paymentRequest });
-							if (payRes.isErr()) {
-								return setMessage(payRes.error.message);
-							}
-
-							setMessage(payRes.value);
 						}}
 					/>
 
