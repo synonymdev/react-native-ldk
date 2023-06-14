@@ -1208,26 +1208,6 @@ class LightningManager {
 	};
 
 	/**
-	 * Adds payment claimed to storage.
-	 * @param payment {@link TChannelManagerClaim}
-	 * @returns void
-	 */
-	private appendLdkPaymentsClaimed = async (
-		payment: TChannelManagerClaim,
-	): Promise<void> => {
-		let paymentsClaimed = await this.getLdkPaymentsClaimed();
-		if (paymentsClaimed.includes(payment)) {
-			return;
-		}
-
-		paymentsClaimed.push(payment);
-		await ldk.writeToFile({
-			fileName: ELdkFiles.payments_claimed,
-			content: JSON.stringify(paymentsClaimed),
-		});
-	};
-
-	/**
 	 * Returns the payments claimed in storage.
 	 * @returns {@link TChannelManagerClaim[]}
 	 */
@@ -1652,7 +1632,6 @@ class LightningManager {
 		res: TChannelManagerClaim,
 	): Promise<void> {
 		// Payment Received/Invoice Paid.
-		await this.appendLdkPaymentsClaimed(res);
 		console.log(`onChannelManagerPaymentClaimed: ${JSON.stringify(res)}`);
 		this.syncLdk().then();
 	}

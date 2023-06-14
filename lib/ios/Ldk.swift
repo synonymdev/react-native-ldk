@@ -95,6 +95,7 @@ enum LdkFileNames: String {
     case network_graph = "network_graph.bin"
     case channel_manager = "channel_manager.bin"
     case scorer = "scorer.bin"
+    case paymentsClaimed = "payments_claimed.json"
 }
 
 @objc(Ldk)
@@ -124,7 +125,6 @@ class Ldk: NSObject {
     var currentNetwork: NSString?
     var currentBlockchainTipHash: NSString?
     var currentBlockchainHeight: NSInteger?
-    
     
     //Static to be accessed from other classes
     static var accountStoragePath: URL?

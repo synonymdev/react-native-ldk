@@ -194,16 +194,22 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             let paymentSecret = paymentClaimed.getPurpose().getValueAsInvoicePayment()?.getPaymentSecret()
             let spontaneousPayment = paymentClaimed.getPurpose().getValueAsSpontaneousPayment()
             
+            let body: [String: Encodable] = [
+                "payment_hash": Data(paymentClaimed.getPaymentHash()).hexEncodedString(),
+                "amount_sat": paymentClaimed.getAmountMsat() / 1000,
+                "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
+                "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
+                "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
+                "unix_timestamp": Int(Date().timeIntervalSince1970)
+            ]
+            
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_payment_claimed,
-                body: [
-                    "payment_hash": Data(paymentClaimed.getPaymentHash()).hexEncodedString(),
-                    "amount_sat": paymentClaimed.getAmountMsat() / 1000,
-                    "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
-                    "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
-                    "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
-                ]
+                body: body
             )
+            
+            //Save to disk for TX history
+            persistPaymentClaimed(body)
         default:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "ERROR: unknown LdkChannelManagerPersister.handle_event type")
         }
@@ -217,7 +223,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         do {
             try Data(channelManager.write()).write(to: managerStorage)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")
-        
+            
             LdkEventEmitter.shared.send(withEvent: .backup, body: "")
             
             return Result_NoneErrorZ.initWithOk()
@@ -231,11 +237,11 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         guard let graphStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.network_graph.rawValue) else {
             return Result_NoneErrorZ.initWithErr(e: .Other)
         }
-                
+        
         do {
             try Data(networkGraph.write()).write(to: graphStorage)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted network graph to disk")
-        
+            
             return Result_NoneErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist network graph to disk Error \(error.localizedDescription).")
@@ -247,14 +253,49 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         guard let scorerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.scorer.rawValue) else {
             return Result_NoneErrorZ.initWithErr(e: .Other)
         }
-
+        
         do {
             try Data(scorer.write()).write(to: scorerStorage)
-
+            
             return Result_NoneErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist scorer to disk Error \(error.localizedDescription).")
             return Result_NoneErrorZ.initWithErr(e: .Other)
+        }
+    }
+    
+    private func persistPaymentClaimed(_ payment: [String: Any]) {
+        guard let claimedPaymentsStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.paymentsClaimed.rawValue) else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist claimed payment to disk (No set storage)")
+            return
+        }
+        
+        var newContent: [[String: Any]] = []
+        
+        do {
+            if FileManager.default.fileExists(atPath: claimedPaymentsStorage.path) {
+                let data = try Data(contentsOf: URL(fileURLWithPath: claimedPaymentsStorage.path), options: .mappedIfSafe)
+                
+                if let existingContent = try JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] {
+                    newContent = existingContent
+                } else {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not read existing claimed payments")
+                }
+            }
+                        
+            newContent.append(payment)
+            guard let jsonData = try? JSONSerialization.data(withJSONObject: newContent, options: []) else {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not serialize claimed payments")
+                return
+            }
+            
+            guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+                return
+            }
+            
+            try jsonString.write(to: claimedPaymentsStorage, atomically: true, encoding: .utf8)
+        } catch {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error writing payment claimed to file: \(error)")
         }
     }
 }

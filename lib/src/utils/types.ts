@@ -54,6 +54,7 @@ export type TChannelManagerClaim = {
 	payment_preimage: string;
 	payment_secret: string;
 	spontaneous_payment_preimage: string;
+	unix_timestamp: number;
 };
 
 export type TChannelManagerPaymentSent = {
@@ -419,12 +420,12 @@ export enum ELdkFiles {
 	seed = 'seed', //32 bytes of entropy saved natively
 	channel_manager = 'channel_manager.bin', //Serialised rust object
 	channels = 'channels', //Path containing multiple files of serialised channels
-	peers = 'peers.json', //JSON file saved from JS
+	peers = 'peers.json', //File saved from JS
 	unconfirmed_transactions = 'unconfirmed_transactions.json',
 	broadcasted_transactions = 'broadcasted_transactions.json',
 	payment_ids = 'payment_ids.json',
 	spendable_outputs = 'spendable_outputs.json',
-	payments_claimed = 'payments_claimed.json', // JSON file saved from JS
+	payments_claimed = 'payments_claimed.json', // Written in swift/kotlin and read from JS
 }
 
 export enum ELdkData {

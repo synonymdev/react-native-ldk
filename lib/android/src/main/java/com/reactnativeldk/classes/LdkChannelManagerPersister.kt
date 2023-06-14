@@ -1,7 +1,9 @@
 package com.reactnativeldk.classes
 
 import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.WritableMap
 import com.reactnativeldk.*
+import org.json.JSONArray
 import org.ldk.batteries.ChannelManagerConstructor
 import org.ldk.structs.Event
 import org.ldk.structs.Option_u64Z
@@ -132,6 +134,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             (paymentClaimed.purpose as? PaymentPurpose.SpontaneousPayment)?.let {
                 body.putHexString("spontaneous_payment_preimage", it.spontaneous_payment)
             }
+            body.putInt("unix_timestamp", (System.currentTimeMillis() / 1000).toInt())
+
+            persistPaymentClaimed(body)
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_claimed, body)
         }
     }
@@ -158,5 +163,39 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             File(LdkModule.accountStoragePath + "/" + LdkFileNames.scorer.fileName).writeBytes(p0)
             LdkEventEmitter.send(EventTypes.native_log, "Persisted scorer to disk")
         }
+    }
+
+    private fun persistPaymentClaimed(payment: WritableMap) {
+        if (LdkModule.accountStoragePath == "") {
+            LdkEventEmitter.send(EventTypes.native_log, "Error. Failed to persist claimed payment to disk (No set storage)")
+            return
+        }
+
+        var newContent: Array<HashMap<String, Any>> = arrayOf()
+
+        try {
+            if (File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).exists()) {
+                val data = File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).readBytes()
+                println(String(data))
+                val existingContent = JSONArray(String(data))
+                for (i in 0 until existingContent.length()) {
+                    val map = HashMap<String, Any>()
+                    for (key in existingContent.getJSONObject(i).keys()) {
+                        map[key] = existingContent.getJSONObject(i).get(key)
+                    }
+
+                    newContent = newContent.plus(map)
+                }
+            }
+        } catch (e: Exception) {
+            LdkEventEmitter.send(EventTypes.native_log, "Error could not read exisitng claimed payments")
+        }
+
+        newContent = newContent.plus(payment.toHashMap())
+
+        println("New content")
+        newContent.iterator().forEach { println(it) }
+
+        File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).writeText(JSONArray(newContent).toString())
     }
 }

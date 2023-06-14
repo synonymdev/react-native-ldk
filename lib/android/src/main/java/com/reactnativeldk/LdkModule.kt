@@ -111,7 +111,8 @@ enum class LdkCallbackResponses {
 enum class LdkFileNames(val fileName: String) {
     network_graph("network_graph.bin"),
     channel_manager("channel_manager.bin"),
-    scorer("scorer.bin")
+    scorer("scorer.bin"),
+    paymentsClaimed("payments_claimed.json"),
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
