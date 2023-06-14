@@ -2,6 +2,15 @@ import { TAvailableNetworks } from '@synonymdev/react-native-ldk';
 
 export const selectedNetwork: TAvailableNetworks = 'bitcoinRegtest';
 
+export enum Backend {
+	mempool = 'mempool',
+	electrum = 'electrum',
+}
+
+export const selectedBackend: Backend = Backend.mempool;
+
+export const mempoolHostname = "mempool.space" // mainnet
+
 //Lightning Peer Info
 export const peers = {
 	lnd: {
