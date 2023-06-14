@@ -1,32 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as electrum from 'rn-electrum-client/helpers';
 import { err, ok, Result } from '../utils/result';
 import Clipboard from '@react-native-clipboard/clipboard';
 import RNFS from 'react-native-fs';
-import {
-	getBlockHeader,
-	getBlockHex,
-	getScriptPubKeyHistory,
-} from '../electrum';
 import lm, {
-	DefaultTransactionDataShape,
 	TAccount,
 	TAccountBackup,
-	THeader,
-	TTransactionData,
-	TTransactionPosition,
+	THeader
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
-import { peers, selectedNetwork } from '../utils/constants';
+import { Backend, peers, selectedBackend, selectedNetwork } from '../utils/constants';
 import {
 	getAccount,
 	getAddress,
-	getNetwork,
 	ldkNetwork,
 	setAccount,
 } from '../utils/helpers';
 import { EAccount } from '../utils/types';
-import * as bitcoin from 'bitcoinjs-lib';
+import * as electrumBackend from './electrum';
+import * as mempoolBackend from './mempool';
 
 /**
  * Retrieves data from local storage.
@@ -96,6 +87,7 @@ export const syncLdk = async (): Promise<Result<string>> => {
  * 4. Syncs LDK.
  */
 export const setupLdk = async (): Promise<Result<string>> => {
+	const electrum = selectedBackend === Backend.electrum ? true : false;
 	try {
 		await ldk.stop();
 		const account = await getAccount();
@@ -105,6 +97,11 @@ export const setupLdk = async (): Promise<Result<string>> => {
 		if (storageRes.isErr()) {
 			return err(storageRes.error);
 		}
+
+		const getTransactionData = electrum ? electrumBackend.getTransactionData : mempoolBackend.getTransactionData;
+		const getTransactionPosition = electrum ? electrumBackend.getTransactionPosition : mempoolBackend.getTransactionPosition
+		const broadcastTransaction = electrum ? electrumBackend.broadcastTransaction : mempoolBackend.broadcastTransaction;
+		const getScriptPubKeyHistory = electrum ? electrumBackend.getScriptPubKeyHistory : mempoolBackend.getScriptPubKeyHistory;
 
 		const lmStart = await lm.start({
 			getBestBlock,
@@ -169,120 +166,6 @@ export const setupLdk = async (): Promise<Result<string>> => {
 	}
 };
 
-/**
- * Returns the transaction header, height and hex (transaction) for a given txid.
- * @param {string} txId
- * @returns {Promise<TTransactionData>}
- */
-export const getTransactionData = async (
-	txId: string = '',
-): Promise<TTransactionData> => {
-	let transactionData = DefaultTransactionDataShape;
-	const data = {
-		key: 'tx_hash',
-		data: [
-			{
-				tx_hash: txId,
-			},
-		],
-	};
-	const response = await electrum.getTransactions({
-		txHashes: data,
-		network: selectedNetwork,
-	});
-
-	if (response.error || !response.data || response.data[0].error) {
-		return transactionData;
-	}
-	const { confirmations, hex: hex_encoded_tx, vout } = response.data[0].result;
-	const header = await getBlockHeader();
-	const currentHeight = header.height;
-	let confirmedHeight = 0;
-	if (confirmations) {
-		confirmedHeight = currentHeight - confirmations + 1;
-	}
-	const hexEncodedHeader = await getBlockHex({
-		height: confirmedHeight,
-	});
-	if (hexEncodedHeader.isErr()) {
-		return transactionData;
-	}
-	const voutData = vout.map(({ n, value, scriptPubKey: { hex } }) => {
-		return { n, hex, value };
-	});
-	return {
-		header: hexEncodedHeader.value,
-		height: confirmedHeight,
-		transaction: hex_encoded_tx,
-		vout: voutData,
-	};
-};
-
-/**
- * Returns the position/index of the provided tx_hash within a block.
- * @param {string} tx_hash
- * @param {number} height
- * @returns {Promise<number>}
- */
-export const getTransactionPosition = async ({
-	tx_hash,
-	height,
-}): Promise<TTransactionPosition> => {
-	const response = await electrum.getTransactionMerkle({
-		tx_hash,
-		height,
-		network: selectedNetwork,
-	});
-	if (response.error || isNaN(response.data?.pos || response.data?.pos < 0)) {
-		return -1;
-	}
-	return response.data.pos;
-};
-
-/**
- * Returns the balance in sats of the provided Bitcoin address.
- * @param {string} [address]
- * @returns {Promise<number>}
- */
-export const getAddressBalance = async (address = ''): Promise<number> => {
-	try {
-		const network = getNetwork(selectedNetwork);
-		const script = bitcoin.address.toOutputScript(address, network);
-		let hash = bitcoin.crypto.sha256(script);
-		const reversedHash = new Buffer(hash.reverse());
-		const scriptHash = reversedHash.toString('hex');
-		const response = await electrum.getAddressScriptHashBalance({
-			scriptHash,
-			network: selectedNetwork,
-		});
-		if (response.error) {
-			return 0;
-		}
-		const { confirmed, unconfirmed } = response.data;
-		return confirmed + unconfirmed;
-	} catch {
-		return 0;
-	}
-};
-
-/**
- * Attempts to broadcast the provided rawTx.
- * @param {string} rawTx
- * @returns {Promise<string>}
- */
-export const broadcastTransaction = async (rawTx: string): Promise<string> => {
-	try {
-		const response = await electrum.broadcastTransaction({
-			rawTx,
-			network: selectedNetwork,
-		});
-		console.log('broadcastTransaction', response);
-		return response.data;
-	} catch (e) {
-		console.log(e);
-		return '';
-	}
-};
 
 /**
  * Used to backup a given account.
@@ -331,11 +214,20 @@ export const checkWatchTxs = async (): Promise<boolean> => {
 	const watchTransactionIds = lm.watchTxs.map((tx) => tx.txid);
 	for (const watchTx of lm.watchTxs) {
 		if (!checkedScriptPubKeys.includes(watchTx.script_pubkey)) {
-			const scriptPubKeyHistory: { txid: string; height: number }[] =
-				await getScriptPubKeyHistory(watchTx.script_pubkey);
+			let scriptPubKeyHistory: { txid: string; height: number }[]
+			if (selectedBackend === "electrum") {
+				scriptPubKeyHistory = await electrumBackend.getScriptPubKeyHistory(watchTx.script_pubkey);
+			}	else {
+				scriptPubKeyHistory = await mempoolBackend.getScriptPubKeyHistory(watchTx.script_pubkey);
+			}
 			for (const data of scriptPubKeyHistory) {
 				if (!watchTransactionIds.includes(data?.txid)) {
-					const txData = await getTransactionData(data?.txid);
+					let txData
+					if (selectedBackend === Backend.electrum ) {
+						txData = await electrumBackend.getTransactionData(data?.txid);
+					} else {
+						txData = await mempoolBackend.getTransactionData(data?.txid);
+					}
 					await ldk.setTxConfirmed({
 						header: txData.header,
 						height: txData.height,

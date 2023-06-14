@@ -17,7 +17,6 @@ import {
 	importAccount,
 	setupLdk,
 	syncLdk,
-	getAddressBalance,
 	updateHeader,
 } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
@@ -29,9 +28,12 @@ import lm, {
 	TChannelManagerPaymentPathSuccessful,
 	TChannelUpdate,
 } from '@synonymdev/react-native-ldk';
-import { peers } from './utils/constants';
+import { Backend, mempoolHostname, peers, selectedBackend } from './utils/constants';
 import { createNewAccount, getAddress } from './utils/helpers';
 import RNFS from 'react-native-fs';
+import mempoolJS from '@mempool/mempool.js'
+import * as electrum from "./ldk/electrum";
+import * as mempool from "./ldk/mempool";
 
 let logSubscription: EmitterSubscription | undefined;
 let paymentSubscription: EmitterSubscription | undefined;
@@ -53,30 +55,54 @@ const App = (): ReactElement => {
 		}
 
 		(async (): Promise<void> => {
-			// Connect to Electrum Server
-			const electrumResponse = await connectToElectrum({});
-			if (electrumResponse.isErr()) {
-				setMessage(
-					`Unable to connect to Electrum Server:\n ${electrumResponse.error.message}`,
-				);
-				return;
-			}
-			// Subscribe to new blocks and sync LDK accordingly.
-			const headerInfo = await subscribeToHeader({
-				onReceive: async (): Promise<void> => {
-					const syncRes = await syncLdk();
-					if (syncRes.isErr()) {
-						setMessage(syncRes.error.message);
-						return;
+			if (selectedBackend === Backend.electrum) {
+				// Connect to Electrum Server
+				console.log("Using electrum...", selectedBackend)
+				const electrumResponse = await connectToElectrum({});
+				if (electrumResponse.isErr()) {
+					setMessage(
+						`Unable to connect to Electrum Server:\n ${electrumResponse.error.message}`,
+					);
+					return;
+				}
+				// Subscribe to new blocks and sync LDK accordingly.
+				const headerInfo = await subscribeToHeader({
+					onReceive: async (): Promise<void> => {
+						const syncRes = await syncLdk();
+						if (syncRes.isErr()) {
+							setMessage(syncRes.error.message);
+							return;
+						}
+						setMessage(syncRes.value);
+					},
+				});
+				if (headerInfo.isErr()) {
+					setMessage(headerInfo.error.message);
+					return;
+				}
+				await updateHeader({ header: headerInfo.value });
+			} else { // Backend.mempool
+				console.log("Using mempool...")
+				const {
+					bitcoin: { websocket },
+				} = mempoolJS({
+					hostname: mempoolHostname,
+				});
+
+				const ws = websocket.initClient({
+					options: ['blocks'],
+				});
+
+				ws.addEventListener('message', async function incoming({ data }) {
+					const res = JSON.parse(data);
+					const header = { hex: res.block.extras.header, hash: res.block.id, height: res.block.height }
+					if (res.block) {
+						await updateHeader({ header: header })
+						lm.syncLdk()
 					}
-					setMessage(syncRes.value);
-				},
-			});
-			if (headerInfo.isErr()) {
-				setMessage(headerInfo.error.message);
-				return;
+				});
 			}
-			await updateHeader({ header: headerInfo.value });
+
 			// Setup LDK
 			const setupResponse = await setupLdk();
 			if (setupResponse.isErr()) {
@@ -85,7 +111,7 @@ const App = (): ReactElement => {
 			}
 
 			setNodeStarted(true);
-			setMessage(setupResponse.value);
+			setMessage(setupResponse.value + " " + selectedBackend);
 		})();
 	}, [nodeStarted]);
 
@@ -111,8 +137,7 @@ const App = (): ReactElement => {
 				EEventTypes.channel_manager_payment_path_failed,
 				(res: TChannelManagerPaymentPathFailed) =>
 					setMessage(
-						`Payment path failed ${
-							res.payment_failed_permanently ? 'permanently' : 'temporarily'
+						`Payment path failed ${res.payment_failed_permanently ? 'permanently' : 'temporarily'
 						}`,
 					),
 			);
@@ -391,7 +416,12 @@ const App = (): ReactElement => {
 						onPress={async (): Promise<void> => {
 							setMessage('Getting Address Balance...');
 							const address = await getAddress();
-							const balance = await getAddressBalance(address);
+							let balance: number
+							if (selectedBackend === "electrum") {
+								balance = await electrum.getAddressBalance(address);
+							} else {
+								balance = await mempool.getAddressBalance(address);
+							}
 							setMessage(`Balance: ${balance}`);
 						}}
 					/>
@@ -512,6 +542,7 @@ const App = (): ReactElement => {
 						title={'Build route and pay'}
 						onPress={async (): Promise<void> => {
 							const paymentRequest = await Clipboard.getString();
+							// @ts-ignore
 							const payRes = await ldk.payWithRoute({ paymentRequest });
 							if (payRes.isErr()) {
 								return setMessage(payRes.error.message);
