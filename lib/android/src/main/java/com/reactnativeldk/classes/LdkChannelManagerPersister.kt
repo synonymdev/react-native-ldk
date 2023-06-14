@@ -32,6 +32,10 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             (paymentClaimable.purpose as? PaymentPurpose.SpontaneousPayment)?.let {
                 body.putHexString("spontaneous_payment_preimage", it.spontaneous_payment)
             }
+            body.putInt("unix_timestamp", (System.currentTimeMillis() / 1000).toInt())
+            body.putBoolean("confirmed", false)
+
+            persistPaymentClaimed(body)
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_claimable, body)
         }
 
@@ -135,6 +139,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
                 body.putHexString("spontaneous_payment_preimage", it.spontaneous_payment)
             }
             body.putInt("unix_timestamp", (System.currentTimeMillis() / 1000).toInt())
+            body.putBoolean("confirmed", true)
 
             persistPaymentClaimed(body)
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_claimed, body)
@@ -171,31 +176,44 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             return
         }
 
-        var newContent: Array<HashMap<String, Any>> = arrayOf()
+        var payments: Array<HashMap<String, Any>> = arrayOf()
+        var paymentReplaced = false
 
         try {
             if (File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).exists()) {
                 val data = File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).readBytes()
                 println(String(data))
-                val existingContent = JSONArray(String(data))
-                for (i in 0 until existingContent.length()) {
-                    val map = HashMap<String, Any>()
-                    for (key in existingContent.getJSONObject(i).keys()) {
-                        map[key] = existingContent.getJSONObject(i).get(key)
+                val existingPayments = JSONArray(String(data))
+                for (i in 0 until existingPayments.length()) {
+                    val existingPayment = existingPayments.getJSONObject(i)
+
+                    //Replace entry if payment hash exists (Confirmed payment replacing pending)
+                    if (existingPayment.getString("payment_hash") == payment.getString("payment_hash")) {
+                        payments[i] = payment.toHashMap()
+                        paymentReplaced = true
+                        continue
                     }
 
-                    newContent = newContent.plus(map)
+                    val map = HashMap<String, Any>()
+                    for (key in existingPayment.keys()) {
+                        map[key] = existingPayments.getJSONObject(i).get(key)
+                    }
+
+                    payments = payments.plus(map)
                 }
             }
         } catch (e: Exception) {
             LdkEventEmitter.send(EventTypes.native_log, "Error could not read exisitng claimed payments")
         }
 
-        newContent = newContent.plus(payment.toHashMap())
+        //No existing payment found, append as new payment
+        if (!paymentReplaced) {
+            payments = payments.plus(payment.toHashMap())
+        }
 
         println("New content")
-        newContent.iterator().forEach { println(it) }
+        payments.iterator().forEach { println(it) }
 
-        File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).writeText(JSONArray(newContent).toString())
+        File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).writeText(JSONArray(payments).toString())
     }
 }

@@ -45,16 +45,23 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             let paymentSecret = paymentClaimable.getPurpose().getValueAsInvoicePayment()?.getPaymentSecret()
             let spontaneousPayment = paymentClaimable.getPurpose().getValueAsSpontaneousPayment()
             
+            let body: [String: Encodable] = [
+                "payment_hash": Data(paymentClaimable.getPaymentHash()).hexEncodedString(),
+                "amount_sat": paymentClaimable.getAmountMsat() / 1000,
+                "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
+                "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
+                "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
+                "unix_timestamp": Int(Date().timeIntervalSince1970),
+                "confirmed": false
+            ]
+            
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_payment_claimable,
-                body: [
-                    "payment_hash": Data(paymentClaimable.getPaymentHash()).hexEncodedString(),
-                    "amount_sat": paymentClaimable.getAmountMsat() / 1000,
-                    "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
-                    "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
-                    "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
-                ]
+                body: body
             )
+            
+            //Save to disk for TX history
+            persistPaymentClaimed(body)
             return
         case .PaymentSent:
             guard let paymentSent = event.getValueAsPaymentSent() else {
@@ -200,7 +207,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 "payment_preimage": Data(paymentPreimage ?? []).hexEncodedString(),
                 "payment_secret": Data(paymentSecret ?? []).hexEncodedString(),
                 "spontaneous_payment_preimage": Data(spontaneousPayment ?? []).hexEncodedString(),
-                "unix_timestamp": Int(Date().timeIntervalSince1970)
+                "unix_timestamp": Int(Date().timeIntervalSince1970),
+                "confirmed": true
             ]
             
             LdkEventEmitter.shared.send(
@@ -270,21 +278,36 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             return
         }
         
-        var newContent: [[String: Any]] = []
+        var payments: [[String: Any]] = []
         
         do {
             if FileManager.default.fileExists(atPath: claimedPaymentsStorage.path) {
                 let data = try Data(contentsOf: URL(fileURLWithPath: claimedPaymentsStorage.path), options: .mappedIfSafe)
                 
                 if let existingContent = try JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] {
-                    newContent = existingContent
+                    payments = existingContent
                 } else {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not read existing claimed payments")
                 }
             }
                         
-            newContent.append(payment)
-            guard let jsonData = try? JSONSerialization.data(withJSONObject: newContent, options: []) else {
+            //Replace entry if payment hash exists (Confirmed payment replacing pending)
+            var paymentReplaced = false
+            for (index, existingPayment) in payments.enumerated() {
+                if let existingPaymentHash = existingPayment["payment_hash"] as? String, let newPaymentHash = payment["payment_hash"] as? String {
+                    if existingPaymentHash == newPaymentHash {
+                        payments[index] = payment
+                        paymentReplaced = true
+                    }
+                }
+            }
+            
+            //No existing payment found, append as new payment
+            if !paymentReplaced {
+                payments.append(payment)
+            }
+            
+            guard let jsonData = try? JSONSerialization.data(withJSONObject: payments, options: []) else {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not serialize claimed payments")
                 return
             }

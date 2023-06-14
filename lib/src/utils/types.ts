@@ -55,6 +55,7 @@ export type TChannelManagerClaim = {
 	payment_secret: string;
 	spontaneous_payment_preimage: string;
 	unix_timestamp: number;
+	confirmed: boolean;
 };
 
 export type TChannelManagerPaymentSent = {
