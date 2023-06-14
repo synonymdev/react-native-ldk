@@ -147,7 +147,8 @@ const App = (): ReactElement => {
 				EEventTypes.channel_manager_payment_path_failed,
 				(res: TChannelManagerPaymentPathFailed) =>
 					setMessage(
-						`Payment path failed ${res.payment_failed_permanently ? 'permanently' : 'temporarily'
+						`Payment path failed ${
+							res.payment_failed_permanently ? 'permanently' : 'temporarily'
 						}`,
 					),
 			);
