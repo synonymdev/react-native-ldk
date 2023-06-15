@@ -445,3 +445,11 @@ func getNetwork(_ network: String) -> (Network, Currency)? {
         return nil
     }
 }
+
+func mergeObj(_ obj1: [String: Any], _ obj2: [String: Any]) -> [String: Any] {
+    var newObj = obj1
+    obj2.keys.forEach { key in
+        newObj[key] = obj2[key]
+    }
+    return newObj
+}

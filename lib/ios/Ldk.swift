@@ -96,6 +96,7 @@ enum LdkFileNames: String {
     case channel_manager = "channel_manager.bin"
     case scorer = "scorer.bin"
     case paymentsClaimed = "payments_claimed.json"
+    case paymentsSent = "payments_sent.json"
 }
 
 @objc(Ldk)
@@ -728,8 +729,17 @@ class Ldk: NSObject {
         Bindings.payInvoice(invoice: invoice, retryStrategy: .initWithTimeout(a: UInt64(timeoutSeconds)), channelmanager: channelManager)
         
         if res.isOk() {
+            channelManagerPersister.persistPaymentSent([
+                "payment_id": Data(res.getValue() ?? []).hexEncodedString(),
+                "payment_hash": Data(invoice.paymentHash() ?? []).hexEncodedString(),
+                "amount_sat": isZeroValueInvoice ? amountSats : (invoice.amountMilliSatoshis() ?? 0) / 1000,
+                "unix_timestamp": Int(Date().timeIntervalSince1970),
+                "state": "pending"
+            ])
             return resolve(Data(res.getValue() ?? []).hexEncodedString())
         }
+        
+        //MARK: add as failed payment
 
         guard let error = res.getError() else {
             return handleReject(reject, .invoice_payment_fail_unknown)

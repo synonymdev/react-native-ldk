@@ -918,6 +918,7 @@ class LightningManager {
 					payment_ids: await this.getLdkPaymentIds(),
 					spendable_outputs: await this.getLdkSpendableOutputs(),
 					payments_claimed: await this.getLdkPaymentsClaimed(),
+					payments_sent: await this.getLdkPaymentsSent(),
 					timestamp: Date.now(),
 				},
 				package_version: require('../package.json').version,
@@ -1220,6 +1221,22 @@ class LightningManager {
 		}
 		return DefaultLdkDataShape.payments_claimed;
 	};
+
+	/**
+	 * Returns the payments sent in storage.
+	 * @returns {@link TChannelManagerPaymentSent[]}
+	 */
+	getLdkPaymentsSent = async (): Promise<TChannelManagerPaymentSent[]> => {
+		const res = await ldk.readFromFile({
+			fileName: ELdkFiles.payments_sent,
+		});
+		if (res.isOk()) {
+			return parseData(res.value.content, DefaultLdkDataShape.payments_sent);
+		}
+		return DefaultLdkDataShape.payments_sent;
+	};
+
+	//TODO Remove any stale payments from storage if stuck for 60min. No payment claim should be stuck that long.
 
 	private getLdkSpendableOutputs = async (): Promise<TLdkSpendableOutputs> => {
 		const res = await ldk.readFromFile({
