@@ -26,23 +26,6 @@ func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ erro
     reject(ldkError.rawValue, message ?? ldkError.rawValue, NSError(domain: ldkError.rawValue, code: ldkError.hashValue))
 }
 
-func currencyString(_ currency: Currency) -> String {
-    switch currency {
-    case .Bitcoin:
-        return "Bitcoin"
-    case .BitcoinTestnet:
-        return "BitcoinTestnet"
-    case .Regtest:
-        return "Regtest"
-    case .Simnet:
-        return "Simnet"
-    case .Signet:
-        return "Signet"
-    @unknown default:
-        return "Unknown"
-    }
-}
-
 /// Loads the cached scorer from disk or creates a new one
 /// - Parameters:
 ///   - path
@@ -438,13 +421,32 @@ func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.P
 /// - Returns: network and currency tuple
 func getNetwork(_ network: String) -> (Network, Currency)? {
     switch network {
-    case "regtest":
-        return (Network.Regtest, Currency.Regtest)
-    case "testnet":
-        return (Network.Testnet, Currency.BitcoinTestnet)
     case "mainnet":
         return (Network.Bitcoin, Currency.Bitcoin)
+    case "testnet":
+        return (Network.Testnet, Currency.BitcoinTestnet)
+    case "regtest":
+        return (Network.Regtest, Currency.Regtest)
+    case "signet":
+        return (Network.Signet, Currency.Signet)
     default:
         return nil
+    }
+}
+
+func currencyString(_ currency: Currency) -> String {
+    switch currency {
+    case .Bitcoin:
+        return "Bitcoin"
+    case .BitcoinTestnet:
+        return "BitcoinTestnet"
+    case .Regtest:
+        return "Regtest"
+    case .Simnet:
+        return "Simnet"
+    case .Signet:
+        return "Signet"
+    @unknown default:
+        return "Unknown"
     }
 }
