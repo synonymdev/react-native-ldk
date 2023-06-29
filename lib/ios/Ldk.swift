@@ -654,6 +654,21 @@ class Ldk: NSObject {
     }
     
     @objc
+    func forceCloseAllChannels(_ broadcastLatestTx: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        if broadcastLatestTx {
+            channelManager.forceCloseAllChannelsBroadcastingLatestTxn()
+        } else {
+            channelManager.forceCloseAllChannelsWithoutBroadcastingTxn()
+        }
+        
+        return handleResolve(resolve, .close_channel_success)
+    }
+    
+    @objc
     func spendOutputs(_ descriptorsSerialized: NSArray, outputs: NSArray, changeDestinationScript: NSString, feeRate: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let keysManager = keysManager else {
             return handleReject(reject, .init_keys_manager)

@@ -30,7 +30,11 @@ import lm, {
 	TChannelUpdate,
 } from '@synonymdev/react-native-ldk';
 import { peers } from './utils/constants';
-import { createNewAccount, getAddress } from './utils/helpers';
+import {
+	createNewAccount,
+	getAddress,
+	simulateStaleRestore,
+} from './utils/helpers';
 import RNFS from 'react-native-fs';
 
 let logSubscription: EmitterSubscription | undefined;
@@ -605,6 +609,17 @@ const App = (): ReactElement => {
 							setMessage(
 								`Successfully imported the following account: ${accountData}`,
 							);
+						}}
+					/>
+					<Button
+						title={'Simulate stale backup restore'}
+						onPress={async (): Promise<void> => {
+							try {
+								await simulateStaleRestore((msg) => setMessage(msg));
+							} catch (e) {
+								setMessage(e.message);
+								return;
+							}
 						}}
 					/>
 					<Button
