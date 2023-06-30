@@ -1,5 +1,6 @@
 package com.reactnativeldk
 import com.facebook.react.bridge.*
+import org.json.JSONObject
 import org.ldk.enums.Currency
 import org.ldk.enums.Network
 import org.ldk.structs.*
@@ -393,4 +394,18 @@ fun currencyString(currency: Currency): String {
         Currency.LDKCurrency_Signet -> "Signet"
         else -> "Unknown"
     }
+}
+
+fun mergeObj(obj1: JSONObject, obj2: HashMap<String, Any>): HashMap<String, Any> {
+    val newObj = HashMap<String, Any>()
+
+    obj1.keys().forEach { key ->
+        newObj[key] = obj1[key]
+    }
+
+    obj2.keys.forEach { key ->
+        newObj[key] = obj2[key]!!
+    }
+
+    return newObj
 }

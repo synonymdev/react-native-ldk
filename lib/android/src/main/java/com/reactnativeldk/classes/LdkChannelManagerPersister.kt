@@ -1,7 +1,9 @@
 package com.reactnativeldk.classes
 
 import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.WritableMap
 import com.reactnativeldk.*
+import org.json.JSONArray
 import org.ldk.batteries.ChannelManagerConstructor
 import org.ldk.structs.Event
 import org.ldk.structs.Option_u64Z
@@ -30,6 +32,10 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             (paymentClaimable.purpose as? PaymentPurpose.SpontaneousPayment)?.let {
                 body.putHexString("spontaneous_payment_preimage", it.spontaneous_payment)
             }
+            body.putInt("unix_timestamp", (System.currentTimeMillis() / 1000).toInt())
+            body.putString("state", "pending")
+
+            persistPaymentClaimed(body)
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_claimable, body)
         }
 
@@ -39,6 +45,11 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             body.putHexString("payment_preimage", paymentSent.payment_preimage)
             body.putHexString("payment_hash", paymentSent.payment_hash)
             body.putInt("fee_paid_sat", (paymentSent.fee_paid_msat as Option_u64Z.Some).some.toInt() / 1000)
+            body.putInt("unix_timestamp", (System.currentTimeMillis() / 1000).toInt())
+            body.putString("state", "successful")
+
+            persistPaymentSent(body.toHashMap())
+
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_sent, body)
         }
 
@@ -76,6 +87,15 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
 //            paymentPathFailed.path.iterator().forEach { path.pushMap(it.asJson) }
 //            body.putArray("path_hops", path)
 
+            if (paymentPathFailed.payment_id != null) {
+                persistPaymentSent(hashMapOf(
+                    "payment_id" to paymentPathFailed.payment_id!!.hexEncodedString(),
+                    "payment_hash" to paymentPathFailed.payment_hash.hexEncodedString(),
+                    "unix_timestamp" to (System.currentTimeMillis() / 1000).toInt(),
+                    "state" to if (paymentPathFailed.payment_failed_permanently) "failed" else "pending"
+                ))
+            }
+
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_path_failed, body)
         }
 
@@ -83,6 +103,14 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             val body = Arguments.createMap()
             body.putHexString("payment_id", paymentFailed.payment_id)
             body.putHexString("payment_hash", paymentFailed.payment_hash)
+
+            persistPaymentSent(hashMapOf(
+                "payment_id" to paymentFailed.payment_id!!.hexEncodedString(),
+                "payment_hash" to paymentFailed.payment_hash.hexEncodedString(),
+                "unix_timestamp" to (System.currentTimeMillis() / 1000).toInt(),
+                "state" to "failed"
+            ))
+
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_failed, body)
         }
 
@@ -132,6 +160,10 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             (paymentClaimed.purpose as? PaymentPurpose.SpontaneousPayment)?.let {
                 body.putHexString("spontaneous_payment_preimage", it.spontaneous_payment)
             }
+            body.putInt("unix_timestamp", (System.currentTimeMillis() / 1000).toInt())
+            body.putString("state", "successful")
+
+            persistPaymentClaimed(body)
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_claimed, body)
         }
     }
@@ -158,5 +190,90 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             File(LdkModule.accountStoragePath + "/" + LdkFileNames.scorer.fileName).writeBytes(p0)
             LdkEventEmitter.send(EventTypes.native_log, "Persisted scorer to disk")
         }
+    }
+
+    private fun persistPaymentClaimed(payment: WritableMap) {
+        if (LdkModule.accountStoragePath == "") {
+            LdkEventEmitter.send(EventTypes.native_log, "Error. Failed to persist claimed payment to disk (No set storage)")
+            return
+        }
+
+        var payments: Array<HashMap<String, Any>> = arrayOf()
+        var paymentReplaced = false
+
+        try {
+            if (File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).exists()) {
+                val data = File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).readBytes()
+                val existingPayments = JSONArray(String(data))
+                for (i in 0 until existingPayments.length()) {
+                    val existingPayment = existingPayments.getJSONObject(i)
+                    //Replace entry if payment hash exists (Confirmed payment replacing pending)
+                    if (existingPayment.getString("payment_hash") == payment.getString("payment_hash")) {
+                        payments[i] = mergeObj(existingPayment, payment.toHashMap())
+                        paymentReplaced = true
+                        continue
+                    }
+
+                    val map = HashMap<String, Any>()
+                    for (key in existingPayment.keys()) {
+                        map[key] = existingPayments.getJSONObject(i).get(key)
+                    }
+
+                    payments = payments.plus(map)
+                }
+            }
+        } catch (e: Exception) {
+            LdkEventEmitter.send(EventTypes.native_log, "Error could not read existing claimed payments")
+        }
+
+        //No existing payment found, append as new payment
+        if (!paymentReplaced) {
+            payments = payments.plus(payment.toHashMap())
+        }
+
+        File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).writeText(JSONArray(payments).toString())
+    }
+
+    fun persistPaymentSent(payment: HashMap<String, Any>) {
+        if (LdkModule.accountStoragePath == "") {
+            LdkEventEmitter.send(EventTypes.native_log, "Error. Failed to persist sent payment to disk (No set storage)")
+            return
+        }
+
+        var payments: Array<HashMap<String, Any>> = arrayOf()
+        var paymentReplaced = false
+
+        try {
+            if (File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsSent.fileName).exists()) {
+                val data = File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsSent.fileName).readBytes()
+                val existingPayments = JSONArray(String(data))
+                for (i in 0 until existingPayments.length()) {
+                    val existingPayment = existingPayments.getJSONObject(i)
+                    //Replace entry if payment ID exists (Confirmed payment replacing pending)
+                    if (existingPayment.getString("payment_id") == payment["payment_id"]) {
+                        var merged = mergeObj(existingPayment, payment)
+                        payments = payments.plus(merged)
+                        paymentReplaced = true
+                        continue
+                    }
+
+                    val map = HashMap<String, Any>()
+                    for (key in existingPayment.keys()) {
+                        map[key] = existingPayment.get(key)
+                    }
+
+                    payments = payments.plus(map)
+                }
+            }
+        } catch (e: Exception) {
+            LdkEventEmitter.send(EventTypes.native_log, "Error could not read existing sent payments")
+        }
+
+        //No existing payment found, append as new payment
+        if (!paymentReplaced) {
+            payments = payments.plus(payment)
+        }
+
+        File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsSent.fileName).writeText(JSONArray(payments).toString())
     }
 }
