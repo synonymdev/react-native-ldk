@@ -31,15 +31,12 @@ export const startParamCheck = async ({
 		if (typeof network !== 'string') {
 			return err('network must be a string.');
 		}
-		if (
-			!(
-				network === ENetworks.mainnet ||
-				network === ENetworks.testnet ||
-				network === ENetworks.regtest
-			)
-		) {
+
+		if (!Object.values(ENetworks).includes(network)) {
 			return err(
-				`The provided network (${network}) is invalid. It must be either '${ENetworks.mainnet}', '${ENetworks.testnet}' or '${ENetworks.regtest}'.`,
+				`The provided network (${network}) is invalid. It must on of the following: '${Object.values(
+					ENetworks,
+				).join(', ')}'.`,
 			);
 		}
 
@@ -90,7 +87,7 @@ export const startParamCheck = async ({
 		}
 
 		// Test getTransactionData response if using mainnet or testnet.
-		if (network !== ENetworks.regtest) {
+		if (network === ENetworks.mainnet || network === ENetworks.testnet) {
 			const expectedData = {
 				[ENetworks.mainnet]: {
 					txid: '0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098',

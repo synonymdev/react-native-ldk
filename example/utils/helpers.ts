@@ -203,5 +203,7 @@ export const ldkNetwork = (network: TAvailableNetworks): ENetworks => {
 			return ENetworks.testnet;
 		case 'bitcoin':
 			return ENetworks.mainnet;
+		case 'bitcoinSignet':
+			return ENetworks.signet;
 	}
 };

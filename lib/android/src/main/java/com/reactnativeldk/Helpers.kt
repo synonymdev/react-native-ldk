@@ -389,7 +389,7 @@ fun currencyString(currency: Currency): String {
         Currency.LDKCurrency_Bitcoin -> "Bitcoin"
         Currency.LDKCurrency_BitcoinTestnet -> "BitcoinTestnet"
         Currency.LDKCurrency_Regtest -> "Regtest"
-        Currency.LDKCurrency_Signet -> "Simnet"
+        Currency.LDKCurrency_Simnet -> "Simnet"
         Currency.LDKCurrency_Signet -> "Signet"
         else -> "Unknown"
     }
