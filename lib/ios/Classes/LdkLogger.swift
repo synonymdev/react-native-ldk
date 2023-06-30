@@ -33,6 +33,7 @@ class LdkLogger: Logger {
     override func log(record: Record) {
         let level = levelString(record.getLevel())
         
+        
         //Only when the JS code has set the log level to active
         if activeLevels[level] == true {
             LdkEventEmitter.shared.send(withEvent: .ldk_log, body: record.getArgs())

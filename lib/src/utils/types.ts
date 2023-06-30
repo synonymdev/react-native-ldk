@@ -48,19 +48,26 @@ export type TChannelManagerFundingGenerationReady = {
 	value_satoshis: number;
 };
 
+type TPaymentState = 'pending' | 'failed' | 'successful';
+
 export type TChannelManagerClaim = {
 	payment_hash: string;
 	amount_sat: number;
 	payment_preimage: string;
 	payment_secret: string;
 	spontaneous_payment_preimage: string;
+	unix_timestamp: number;
+	state: TPaymentState;
 };
 
 export type TChannelManagerPaymentSent = {
 	payment_id: string;
-	payment_preimage: string;
+	payment_preimage?: string;
 	payment_hash: string;
-	fee_paid_sat: number;
+	fee_paid_sat?: number;
+	amount_sat?: number;
+	unix_timestamp: number;
+	state: TPaymentState;
 };
 
 export type TChannelManagerOpenChannelRequest = {
@@ -419,12 +426,13 @@ export enum ELdkFiles {
 	seed = 'seed', //32 bytes of entropy saved natively
 	channel_manager = 'channel_manager.bin', //Serialised rust object
 	channels = 'channels', //Path containing multiple files of serialised channels
-	peers = 'peers.json', //JSON file saved from JS
+	peers = 'peers.json', //File saved from JS
 	unconfirmed_transactions = 'unconfirmed_transactions.json',
 	broadcasted_transactions = 'broadcasted_transactions.json',
 	payment_ids = 'payment_ids.json',
 	spendable_outputs = 'spendable_outputs.json',
-	payments_claimed = 'payments_claimed.json', // JSON file saved from JS
+	payments_claimed = 'payments_claimed.json', // Written in swift/kotlin and read from JS
+	payments_sent = 'payments_sent.json', // Written in swift/kotlin and read from JS
 }
 
 export enum ELdkData {
@@ -437,6 +445,7 @@ export enum ELdkData {
 	timestamp = 'timestamp',
 	spendable_outputs = 'spendable_outputs',
 	payments_claimed = 'payments_claimed',
+	payments_sent = 'payments_sent',
 }
 
 export type TLdkData = {
@@ -449,6 +458,7 @@ export type TLdkData = {
 	[ELdkData.timestamp]: number;
 	[ELdkData.spendable_outputs]: TLdkSpendableOutputs;
 	[ELdkData.payments_claimed]: TChannelManagerClaim[];
+	[ELdkData.payments_sent]: TChannelManagerPaymentSent[];
 };
 
 export type TAccountBackup = {
@@ -483,6 +493,7 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.timestamp]: 0,
 	[ELdkData.spendable_outputs]: [],
 	[ELdkData.payments_claimed]: [],
+	[ELdkData.payments_sent]: [],
 };
 
 export type TAvailableNetworks =

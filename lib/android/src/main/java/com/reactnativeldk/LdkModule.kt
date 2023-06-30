@@ -13,6 +13,7 @@ import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
 import org.ldk.structs.Result_InvoiceParseOrSemanticErrorZ.Result_InvoiceParseOrSemanticErrorZ_OK
 import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCreationErrorZ_OK
+import org.ldk.structs.Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_OK
 import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Files
@@ -111,7 +112,9 @@ enum class LdkCallbackResponses {
 enum class LdkFileNames(val fileName: String) {
     network_graph("network_graph.bin"),
     channel_manager("channel_manager.bin"),
-    scorer("scorer.bin")
+    scorer("scorer.bin"),
+    paymentsClaimed("payments_claimed.json"),
+    paymentsSent("payments_sent.json"),
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -684,6 +687,14 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             UtilMethods.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000, Retry.timeout(timeoutSeconds.toLong()), channelManager) else
             UtilMethods.pay_invoice(invoice, Retry.timeout(timeoutSeconds.toLong()), channelManager)
         if (res.is_ok) {
+            channelManagerPersister.persistPaymentSent(hashMapOf(
+                "payment_id" to (res as Result_PaymentIdPaymentErrorZ_OK).res.hexEncodedString(),
+                "payment_hash" to invoice.payment_hash().hexEncodedString(),
+                "amount_sat" to if (isZeroValueInvoice) amountSats.toLong() else ((invoice.amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000),
+                "unix_timestamp" to (System.currentTimeMillis() / 1000).toInt(),
+                "state" to "pending"
+            ))
+
             return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
         }
 
