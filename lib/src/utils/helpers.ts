@@ -1,8 +1,7 @@
 import { ENetworks, TLdkStart } from './types';
 import { err, ok, Result } from './result';
 import * as bitcoin from 'bitcoinjs-lib';
-import { networks } from 'bitcoinjs-lib';
-
+import networks from './networks';
 /**
  * This method runs a check on each parameter passed to the start method
  * to ensure that they are providing the expected data.

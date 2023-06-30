@@ -2,7 +2,7 @@ export enum ENetworks {
 	signet = 'signet',
 	regtest = 'regtest',
 	testnet = 'testnet',
-	mainnet = 'mainnet',
+	mainnet = 'bitcoin',
 }
 
 export type TAvailableNetworks =

@@ -61,7 +61,7 @@ import {
 	startParamCheck,
 } from './utils/helpers';
 import * as bitcoin from 'bitcoinjs-lib';
-import { networks } from 'bitcoinjs-lib';
+import networks from './utils/networks';
 import { EmitterSubscription } from 'react-native';
 
 //TODO startup steps
@@ -383,7 +383,7 @@ class LightningManager {
 		// Step 7: Read ChannelMonitors state from disk
 		// Handled in initChannelManager below
 
-		if (network !== 'mainnet') {
+		if (network !== ENetworks.mainnet) {
 			//RGS only currently working for mainnet
 			rapidGossipSyncUrl = '';
 		}
