@@ -245,6 +245,7 @@ class LightningManager {
 		broadcastTransaction,
 		network,
 		rapidGossipSyncUrl = 'https://rapidsync.lightningdevkit.org/snapshot/',
+		forceCloseOnStartup,
 		userConfig = defaultUserConfig,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
@@ -425,6 +426,11 @@ class LightningManager {
 
 		// Set fee estimates
 		await this.setFees();
+
+		//Force close all channels on startup. Likely to recover funds after restoring from a stale backup.
+		if (forceCloseOnStartup && forceCloseOnStartup.forceClose) {
+			await ldk.forceCloseAllChannels(forceCloseOnStartup.broadcastLatestTx);
+		}
 
 		// Add cached peers
 		await this.addPeers();

@@ -613,6 +613,19 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
+    fun forceCloseAllChannels(broadcastLatestTx: Boolean, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        if (broadcastLatestTx) {
+            channelManager!!.force_close_all_channels_broadcasting_latest_txn()
+        } else {
+            channelManager!!.force_close_all_channels_without_broadcasting_txn()
+        }
+
+        handleResolve(promise, LdkCallbackResponses.close_channel_success)
+    }
+
+    @ReactMethod
     fun spendOutputs(descriptorsSerialized: ReadableArray, outputs: ReadableArray, changeDestinationScript: String, feeRate: Double, promise: Promise) {
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
 
