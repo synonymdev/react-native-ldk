@@ -508,6 +508,11 @@ export type TAccount = {
 	seed: string;
 };
 
+type TForceCloseOnStartup = {
+	forceClose: boolean;
+	broadcastLatestTx: boolean;
+};
+
 export type TLdkStart = {
 	account: TAccount;
 	getBestBlock: TGetBestBlock;
@@ -519,6 +524,7 @@ export type TLdkStart = {
 	broadcastTransaction: TBroadcastTransaction;
 	network: ENetworks;
 	rapidGossipSyncUrl?: string;
+	forceCloseOnStartup?: TForceCloseOnStartup;
 	userConfig?: TUserConfig;
 };
 

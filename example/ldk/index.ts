@@ -95,7 +95,9 @@ export const syncLdk = async (): Promise<Result<string>> => {
  * 3. Adds/Connects saved peers from storage. (Note: Not needed as LDK handles this automatically once a peer has been added successfully. Only used to make example app easier to test.)
  * 4. Syncs LDK.
  */
-export const setupLdk = async (): Promise<Result<string>> => {
+export const setupLdk = async (
+	forceCloseAllChannels = false,
+): Promise<Result<string>> => {
 	try {
 		await ldk.stop();
 		const account = await getAccount();
@@ -121,6 +123,9 @@ export const setupLdk = async (): Promise<Result<string>> => {
 			getTransactionPosition,
 			broadcastTransaction,
 			network: ldkNetwork(selectedNetwork),
+			forceCloseOnStartup: forceCloseAllChannels
+				? { forceClose: true, broadcastLatestTx: false }
+				: undefined,
 		});
 
 		if (lmStart.isErr()) {
@@ -323,6 +328,7 @@ export const backupAccount = async (
  */
 export const importAccount = async (
 	backup: string | TAccountBackup,
+	forceCloseAllChannels = false,
 ): Promise<Result<TAccount>> => {
 	const importResponse = await lm.importAccount({
 		backup,
@@ -333,7 +339,7 @@ export const importAccount = async (
 	}
 	await setAccount(importResponse.value);
 	await setItem(EAccount.currentAccountKey, importResponse.value.name);
-	await setupLdk();
+	await setupLdk(forceCloseAllChannels);
 	await syncLdk();
 	return ok(importResponse.value);
 };

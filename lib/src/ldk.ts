@@ -437,6 +437,24 @@ class LDK {
 	}
 
 	/**
+	 * Force close all channels
+	 * @param broadcastLatestTx
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async forceCloseAllChannels(
+		broadcastLatestTx: boolean,
+	): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.forceCloseAllChannels(broadcastLatestTx);
+			this.writeDebugToLog('forceCloseAllChannels');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('forceCloseAllChannels', e);
+			return err(e);
+		}
+	}
+
+	/**
 	 * Use LDK key manager to spend spendable outputs
 	 * https://docs.rs/lightning/latest/lightning/chain/keysinterface/struct.KeysManager.html#method.spend_spendable_outputs
 	 * @param descriptors
