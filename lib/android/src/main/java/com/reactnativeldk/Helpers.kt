@@ -81,7 +81,7 @@ val Invoice.asJson: WritableMap
         result.putHexString("payment_secret", payment_secret())
         result.putInt("timestamp", timestamp().toInt())
         result.putHexString("features", features()?.write())
-        result.putInt("currency", currency().ordinal)
+        result.putString("currency", currencyString(currency()))
         result.putString("to_str", signedInv.to_str())
 
         val hints = Arguments.createArray()
@@ -377,10 +377,22 @@ fun UserConfig.mergeWithMap(map: ReadableMap): UserConfig {
 /// Helper for returning real network and currency as a tuple from a string
 fun getNetwork(chain: String): Pair<Network, Currency> {
     return when (chain) {
-        "regtest" -> Pair(Network.LDKNetwork_Regtest, Currency.LDKCurrency_Regtest)
-        "testnet" -> Pair(Network.LDKNetwork_Testnet, Currency.LDKCurrency_BitcoinTestnet)
         "mainnet" -> Pair(Network.LDKNetwork_Bitcoin, Currency.LDKCurrency_Bitcoin)
+        "testnet" -> Pair(Network.LDKNetwork_Testnet, Currency.LDKCurrency_BitcoinTestnet)
+        "regtest" -> Pair(Network.LDKNetwork_Regtest, Currency.LDKCurrency_Regtest)
+        "signet" -> Pair(Network.LDKNetwork_Signet, Currency.LDKCurrency_Signet)
         else -> Pair(Network.LDKNetwork_Bitcoin, Currency.LDKCurrency_Bitcoin)
+    }
+}
+
+fun currencyString(currency: Currency): String {
+    return when (currency) {
+        Currency.LDKCurrency_Bitcoin -> "Bitcoin"
+        Currency.LDKCurrency_BitcoinTestnet -> "BitcoinTestnet"
+        Currency.LDKCurrency_Regtest -> "Regtest"
+        Currency.LDKCurrency_Simnet -> "Simnet"
+        Currency.LDKCurrency_Signet -> "Signet"
+        else -> "Unknown"
     }
 }
 

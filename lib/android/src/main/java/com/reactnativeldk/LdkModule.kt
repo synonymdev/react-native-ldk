@@ -271,7 +271,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         if (networkGraph == null) {
-            var ldkNetwork = getNetwork(network);
+            val ldkNetwork = getNetwork(network);
             networkGraph = NetworkGraph.of(ldkNetwork.first, logger.logger)
 
             LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached network graph from disk. Will sync from scratch.")
@@ -294,7 +294,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         rapidGossipSync = RapidGossipSync.of(networkGraph, logger.logger)
 
         //If it's been more than 24 hours then we need to update RGS
-        var timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
+        val timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
         val hoursDiffSinceLastRGS = (System.currentTimeMillis() / 1000 - timestamp) / 60 / 60
         if (hoursDiffSinceLastRGS < 24) {
             LdkEventEmitter.send(EventTypes.native_log, "Skipping rapid gossip sync. Last updated $hoursDiffSinceLastRGS hours ago.")
@@ -354,23 +354,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.init_storage_path)
         }
 
-        when (network) {
-            "regtest" -> {
-                ldkNetwork = Network.LDKNetwork_Regtest
-                ldkCurrency = Currency.LDKCurrency_Regtest
-            }
-            "testnet" -> {
-                ldkNetwork = Network.LDKNetwork_Testnet
-                ldkCurrency = Currency.LDKCurrency_BitcoinTestnet
-            }
-            "mainnet" -> {
-                ldkNetwork = Network.LDKNetwork_Bitcoin
-                ldkCurrency = Currency.LDKCurrency_Bitcoin
-            }
-            else -> {
-                return handleReject(promise, LdkErrors.invalid_network)
-            }
-        }
+        ldkNetwork = getNetwork(network).first
+        ldkCurrency = getNetwork(network).second
 
         val enableP2PGossip = rapidGossipSync == null
         

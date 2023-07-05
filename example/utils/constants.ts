@@ -36,4 +36,5 @@ export const customPeers = {
 			protocol: 'tcp',
 		},
 	],
+	bitcoinSignet: [],
 };

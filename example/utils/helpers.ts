@@ -14,6 +14,7 @@ import RNFS from 'react-native-fs';
 import * as bip32 from 'bip32';
 import * as bip39 from 'bip39';
 import { ENetworks } from '@synonymdev/react-native-ldk/dist/utils/types';
+import networks from '@synonymdev/react-native-ldk/dist/utils/networks';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import Clipboard from '@react-native-clipboard/clipboard';
 
@@ -125,13 +126,15 @@ export const getNetwork = (
 ): bitcoin.networks.Network => {
 	switch (network) {
 		case 'bitcoin':
-			return bitcoin.networks.bitcoin;
+			return networks.bitcoin;
 		case 'bitcoinTestnet':
-			return bitcoin.networks.testnet;
+			return networks.testnet;
 		case 'bitcoinRegtest':
-			return bitcoin.networks.regtest;
+			return networks.regtest;
+		case 'bitcoinSignet':
+			return networks.signet;
 		default:
-			return bitcoin.networks.regtest;
+			return networks.regtest;
 	}
 };
 
@@ -209,6 +212,8 @@ export const ldkNetwork = (network: TAvailableNetworks): ENetworks => {
 			return ENetworks.testnet;
 		case 'bitcoin':
 			return ENetworks.mainnet;
+		case 'bitcoinSignet':
+			return ENetworks.signet;
 	}
 };
 

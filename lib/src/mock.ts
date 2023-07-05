@@ -1,3 +1,5 @@
+import { ENetworks } from './utils/types';
+
 export * from './utils/types';
 
 const noop = (): void => {};
@@ -50,7 +52,7 @@ export default {
 	backupSubscriptions: {},
 	backupSubscriptionsId: 1,
 	backupSubscriptionsDebounceTimer: 1,
-	network: 'mainnet',
+	network: ENetworks.mainnet,
 	baseStoragePath: '/ldk/',
 	logFilePath: '/ldk/wallet0bitcoinldkaccount/logs/1.log',
 };

@@ -1,8 +1,15 @@
 export enum ENetworks {
+	signet = 'signet',
 	regtest = 'regtest',
 	testnet = 'testnet',
-	mainnet = 'mainnet',
+	mainnet = 'bitcoin',
 }
+
+export type TAvailableNetworks =
+	| 'bitcoin'
+	| 'bitcoinTestnet'
+	| 'bitcoinRegtest'
+	| 'bitcoinSignet';
 
 export enum EEventTypes {
 	ldk_log = 'ldk_log',
@@ -495,11 +502,6 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.payments_claimed]: [],
 	[ELdkData.payments_sent]: [],
 };
-
-export type TAvailableNetworks =
-	| 'bitcoin'
-	| 'bitcoinTestnet'
-	| 'bitcoinRegtest';
 
 export type TAccount = {
 	name: string;
