@@ -267,7 +267,7 @@ extension RapidGossipSync {
             
             guard let self = self else { return }
             
-            let res = self.updateNetworkGraphNoStd(updateData: [UInt8](try! Data(contentsOf: destinationFile)), currentTimeUnix: UInt64(Date().timeIntervalSince1970 * 1000))
+            let res = self.updateNetworkGraphNoStd(updateData: [UInt8](try! Data(contentsOf: destinationFile)), currentTimeUnix: UInt64(Date().timeIntervalSince1970))
             guard res.isOk() else {
                 var errorMessage = "Failed to update network graph."
                 switch res.getError()?.getValueType() {
