@@ -377,7 +377,7 @@ fun UserConfig.mergeWithMap(map: ReadableMap): UserConfig {
 /// Helper for returning real network and currency as a tuple from a string
 fun getNetwork(chain: String): Pair<Network, Currency> {
     return when (chain) {
-        "mainnet" -> Pair(Network.LDKNetwork_Bitcoin, Currency.LDKCurrency_Bitcoin)
+        "bitcoin" -> Pair(Network.LDKNetwork_Bitcoin, Currency.LDKCurrency_Bitcoin)
         "testnet" -> Pair(Network.LDKNetwork_Testnet, Currency.LDKCurrency_BitcoinTestnet)
         "regtest" -> Pair(Network.LDKNetwork_Regtest, Currency.LDKCurrency_Regtest)
         "signet" -> Pair(Network.LDKNetwork_Signet, Currency.LDKCurrency_Signet)
