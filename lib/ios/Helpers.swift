@@ -421,7 +421,7 @@ func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.P
 /// - Returns: network and currency tuple
 func getNetwork(_ network: String) -> (Network, Currency)? {
     switch network {
-    case "mainnet":
+    case "bitcoin":
         return (Network.Bitcoin, Currency.Bitcoin)
     case "testnet":
         return (Network.Testnet, Currency.BitcoinTestnet)
