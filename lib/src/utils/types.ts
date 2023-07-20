@@ -71,7 +71,7 @@ export type TChannelManagerPaymentSent = {
 	payment_id: string;
 	payment_preimage?: string;
 	payment_hash: string;
-	fee_paid_sat?: number;
+	fee_paid_sat: number;
 	amount_sat?: number;
 	unix_timestamp: number;
 	state: TPaymentState;
