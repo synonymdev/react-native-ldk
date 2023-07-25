@@ -52,6 +52,9 @@ import {
 	TFeeUpdateReq,
 	TLdkSpendableOutputs,
 	TReconstructAndSpendOutputsReq,
+	TBolt11Invoices,
+	TInvoice,
+	TCreatePaymentReq,
 } from './utils/types';
 import {
 	appendPath,
@@ -850,12 +853,15 @@ class LightningManager {
 	/**
 	 * Used to back up the data that corresponds with the provided account.
 	 * @param {TAccount} account
+	 * @param {boolean} includeTransactionHistory
 	 * @returns {TAccountBackup} This object can be stringified and used to import/restore this LDK account via importAccount.
 	 */
 	backupAccount = async ({
 		account,
+		includeTransactionHistory = false,
 	}: {
 		account: TAccount;
+		includeTransactionHistory?: boolean;
 	}): Promise<Result<TAccountBackup>> => {
 		if (!this.baseStoragePath) {
 			return err(
@@ -923,13 +929,24 @@ class LightningManager {
 					broadcasted_transactions: await this.getLdkBroadcastedTxs(),
 					payment_ids: await this.getLdkPaymentIds(),
 					spendable_outputs: await this.getLdkSpendableOutputs(),
-					payments_claimed: await this.getLdkPaymentsClaimed(),
-					payments_sent: await this.getLdkPaymentsSent(),
+					payments_claimed: [],
+					payments_sent: [],
+					bolt11_invoices: [],
 					timestamp: Date.now(),
 				},
 				package_version: require('../package.json').version,
 				network: this.network,
 			};
+
+			//Backups can become large, so we only include transaction history if requested.
+			if (includeTransactionHistory) {
+				accountBackup.data = {
+					...accountBackup.data,
+					payments_claimed: await this.getLdkPaymentsClaimed(),
+					payments_sent: await this.getLdkPaymentsSent(),
+					bolt11_invoices: await this.getBolt11Invoices(),
+				};
+			}
 			return ok(accountBackup);
 		} catch (e) {
 			return err(e);
@@ -1243,6 +1260,76 @@ class LightningManager {
 	};
 
 	//TODO Remove any stale payments from storage if stuck for 60min. No payment claim should be stuck that long.
+
+	/**
+	 * Returns the previously created bolt11 invoices.
+	 * @returns {@link TBolt11Invoices}
+	 */
+	getBolt11Invoices = async (): Promise<TBolt11Invoices> => {
+		const res = await ldk.readFromFile({
+			fileName: ELdkFiles.bolt11_invoices,
+		});
+		if (res.isOk()) {
+			let parsed = parseData(
+				res.value.content,
+				DefaultLdkDataShape.bolt11_invoices,
+			);
+
+			return parsed;
+		}
+		return DefaultLdkDataShape.bolt11_invoices;
+	};
+
+	appendBolt11Invoice = async (bolt11: string): Promise<void> => {
+		let invoices = await this.getBolt11Invoices();
+		if (invoices.includes(bolt11)) {
+			return;
+		}
+
+		invoices.push(bolt11);
+		await ldk.writeToFile({
+			fileName: ELdkFiles.bolt11_invoices,
+			content: JSON.stringify(invoices),
+		});
+	};
+
+	/**
+	 * Creates bolt11 payment request and stores it to disk
+	 * @returns {Promise<Ok<TInvoice> | Err<TInvoice>> | Err<unknown>}
+	 * @param req
+	 */
+	async createAndStorePaymentRequest(
+		req: TCreatePaymentReq,
+	): Promise<Result<TInvoice>> {
+		const res = await ldk.createPaymentRequest(req);
+		if (res.isOk()) {
+			await this.appendBolt11Invoice(res.value.to_str);
+		}
+
+		return res;
+	}
+
+	/**
+	 * Fetches a decoded invoice from the list of stored invoices if it exists.
+	 * @returns {@link TInvoice | undefined}
+	 */
+	getInvoiceFromPaymentHash = async (
+		paymentHash: string,
+	): Promise<TInvoice | undefined> => {
+		const invoices = await this.getBolt11Invoices();
+		let invoice: TInvoice | undefined;
+		for (let index = 0; index < invoices.length; index++) {
+			const paymentRequest = invoices[index];
+			const invoiceRes = await ldk.decode({ paymentRequest });
+			if (invoiceRes.isOk()) {
+				if (invoiceRes.value.payment_hash === paymentHash) {
+					invoice = invoiceRes.value;
+				}
+			}
+		}
+
+		return invoice;
+	};
 
 	private getLdkSpendableOutputs = async (): Promise<TLdkSpendableOutputs> => {
 		const res = await ldk.readFromFile({

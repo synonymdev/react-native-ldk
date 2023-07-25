@@ -440,6 +440,7 @@ export enum ELdkFiles {
 	spendable_outputs = 'spendable_outputs.json',
 	payments_claimed = 'payments_claimed.json', // Written in swift/kotlin and read from JS
 	payments_sent = 'payments_sent.json', // Written in swift/kotlin and read from JS
+	bolt11_invoices = 'bolt11_invoices.json', // Saved/read from JS
 }
 
 export enum ELdkData {
@@ -453,6 +454,7 @@ export enum ELdkData {
 	spendable_outputs = 'spendable_outputs',
 	payments_claimed = 'payments_claimed',
 	payments_sent = 'payments_sent',
+	bolt11_invoices = 'bolt11_invoices',
 }
 
 export type TLdkData = {
@@ -466,6 +468,7 @@ export type TLdkData = {
 	[ELdkData.spendable_outputs]: TLdkSpendableOutputs;
 	[ELdkData.payments_claimed]: TChannelManagerClaim[];
 	[ELdkData.payments_sent]: TChannelManagerPaymentSent[];
+	[ELdkData.bolt11_invoices]: TBolt11Invoices;
 };
 
 export type TAccountBackup = {
@@ -488,6 +491,8 @@ export type TLdkBroadcastedTransactions = string[];
 
 export type TLdkPaymentIds = string[];
 
+export type TBolt11Invoices = string[];
+
 export type TLdkSpendableOutputs = string[];
 
 export const DefaultLdkDataShape: TLdkData = {
@@ -501,6 +506,7 @@ export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.spendable_outputs]: [],
 	[ELdkData.payments_claimed]: [],
 	[ELdkData.payments_sent]: [],
+	[ELdkData.bolt11_invoices]: [],
 };
 
 export type TAccount = {

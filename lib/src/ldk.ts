@@ -521,6 +521,7 @@ class LDK {
 				expiryDeltaSeconds,
 			);
 			this.writeDebugToLog('createPaymentRequest');
+
 			return ok(res);
 		} catch (e) {
 			this.writeErrorToLog('createPaymentRequest', e);
