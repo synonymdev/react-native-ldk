@@ -33,7 +33,6 @@ import {
 	THeader,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
-import lm from './lightning-manager';
 
 const LINKING_ERROR =
 	"The package 'react-native-ldk' doesn't seem to be linked. Make sure: \n\n" +
@@ -516,18 +515,12 @@ class LDK {
 	}: TCreatePaymentReq): Promise<Result<TInvoice>> {
 		//TODO confirm we have enough incoming capacity
 		try {
-			const res: TInvoice = await NativeLDK.createPaymentRequest(
+			const res = await NativeLDK.createPaymentRequest(
 				amountSats || 0,
 				description,
 				expiryDeltaSeconds,
 			);
 			this.writeDebugToLog('createPaymentRequest');
-
-			lm.appendBolt11Invoice(res.to_str)
-				.then(() => {
-					this.writeDebugToLog('Saved bolt11 invoice to file');
-				})
-				.catch(console.error);
 
 			return ok(res);
 		} catch (e) {

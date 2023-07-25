@@ -438,11 +438,12 @@ const App = (): ReactElement => {
 								amountSats?: number,
 							): Promise<void> => {
 								try {
-									const createPaymentRequest = await ldk.createPaymentRequest({
-										amountSats,
-										description: 'paymeplz',
-										expiryDeltaSeconds: 999999,
-									});
+									const createPaymentRequest =
+										await lm.createAndStorePaymentRequest({
+											amountSats,
+											description: 'paymeplz',
+											expiryDeltaSeconds: 999999,
+										});
 
 									if (createPaymentRequest.isErr()) {
 										setMessage(createPaymentRequest.error.message);

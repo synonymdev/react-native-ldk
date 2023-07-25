@@ -54,6 +54,7 @@ import {
 	TReconstructAndSpendOutputsReq,
 	TBolt11Invoices,
 	TInvoice,
+	TCreatePaymentReq,
 } from './utils/types';
 import {
 	appendPath,
@@ -1291,6 +1292,22 @@ class LightningManager {
 			content: JSON.stringify(invoices),
 		});
 	};
+
+	/**
+	 * Creates bolt11 payment request and stores it to disk
+	 * @returns {Promise<Ok<TInvoice> | Err<TInvoice>> | Err<unknown>}
+	 * @param req
+	 */
+	async createAndStorePaymentRequest(
+		req: TCreatePaymentReq,
+	): Promise<Result<TInvoice>> {
+		const res = await ldk.createPaymentRequest(req);
+		if (res.isOk()) {
+			await this.appendBolt11Invoice(res.value.to_str);
+		}
+
+		return res;
+	}
 
 	/**
 	 * Fetches a decoded invoice from the list of stored invoices if it exists.
