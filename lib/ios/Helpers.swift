@@ -38,25 +38,25 @@ func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLo
     //TODO remove below line and uncomment below to enable reading cached scorer again
     return ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
     
-//    var probabalisticScorer: ProbabilisticScorer?
-//    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
-//        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
-//
-//        if scorerRead.isOk() {
-//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
-//            probabalisticScorer = scorerRead.getValue()
-//        } else {
-//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
-//        }
-//    }
-//
-//    //Doesn't exist or error reading it
-//    if probabalisticScorer == nil {
-//        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting scorer from scratch")
-//        probabalisticScorer = ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
-//    }
-//
-//    return probabalisticScorer!
+    //    var probabalisticScorer: ProbabilisticScorer?
+    //    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
+    //        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
+    //
+    //        if scorerRead.isOk() {
+    //            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
+    //            probabalisticScorer = scorerRead.getValue()
+    //        } else {
+    //            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
+    //        }
+    //    }
+    //
+    //    //Doesn't exist or error reading it
+    //    if probabalisticScorer == nil {
+    //        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting scorer from scratch")
+    //        probabalisticScorer = ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
+    //    }
+    //
+    //    return probabalisticScorer!
 }
 
 extension Invoice {
@@ -141,7 +141,7 @@ extension ChannelInfo {
             "one_to_two_last_update": getOneToTwo()?.getLastUpdate() ?? 0, //Number
             "one_to_two_htlc_maximum_sats": getOneToTwo()?.getHtlcMaximumMsat() ?? 0 / 1000, //Number
             "one_to_two_htlc_minimum_sats": getOneToTwo()?.getHtlcMinimumMsat() ?? 0 / 1000, //Number
-
+            
             "two_to_one_fees_base_sats": getTwoToOne()?.getFees().getBaseMsat() ?? 0 / 1000, //Number
             "two_to_one_fees_proportional_millionths": getTwoToOne()?.getFees().getProportionalMillionths() ?? 0, //Number
             "two_to_one_enabled": getTwoToOne()?.getEnabled() ?? false, //Bool
@@ -154,7 +154,7 @@ extension ChannelInfo {
 
 //Nodes in our network graph
 extension NodeInfo {
-
+    
     var asJson: [String: Any] {
         return [
             "shortChannelIds": getChannels().map({ String($0) }),
@@ -179,7 +179,7 @@ extension Data {
         let rawValue: Int
         static let upperCase = HexEncodingOptions(rawValue: 1 << 0)
     }
-
+    
     func hexEncodedString(options: HexEncodingOptions = []) -> String {
         let format = options.contains(.upperCase) ? "%02hhX" : "%02hhx"
         return map { String(format: format, $0) }.joined()
@@ -222,7 +222,7 @@ extension URL {
             completion(NSError(domain: "", code: 500, userInfo: [ NSLocalizedDescriptionKey: "File already exists"]))
             return nil
         }
-      
+        
         let session = URLSession(configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: nil)
         var request = URLRequest(url: self)
         request.httpMethod = "GET"
@@ -243,7 +243,7 @@ extension URL {
                 try data.write(to: destination, options: Data.WritingOptions.atomic)
                 return completion(nil)
             } catch {
-               return completion(error)
+                return completion(error)
             }
         })
     }
@@ -252,14 +252,14 @@ extension URL {
 extension RapidGossipSync {
     func downloadAndUpdateGraph(downloadUrl: String, tempStoragePath: URL, timestamp: UInt32, completion: @escaping (Error?) -> Void) {
         let destinationFile = tempStoragePath.appendingPathComponent("\(timestamp).bin")
-      
+        
         //Cleanup old one
         if FileManager().fileExists(atPath: destinationFile.path) {
             try? FileManager().removeItem(atPath: destinationFile.path)
         }
-
+        
         let url = URL(string: "\(downloadUrl)\(timestamp)")!
-
+        
         let task = url.downloadTask(destination: destinationFile) { [weak self] error in
             if let error = error {
                 return completion(error)
@@ -281,7 +281,7 @@ extension RapidGossipSync {
                     errorMessage = "Unknown rapid sync error."
                     break;
                 }
-
+                
                 completion(NSError(domain: "", code: 500, userInfo: [ NSLocalizedDescriptionKey: errorMessage]))
                 try? FileManager().removeItem(atPath: destinationFile.path)
                 return
@@ -370,7 +370,7 @@ extension UserConfig {
             acceptInboundChannelsArg: obj["accept_inbound_channels"] as? Bool ?? defaults.getAcceptInboundChannels(),
             manuallyAcceptInboundChannelsArg: obj["manually_accept_inbound_channels"] as? Bool ?? defaults.getAcceptInboundChannels(),
             acceptInterceptHtlcsArg: obj["accept_intercept_htlcs"] as? Bool ?? defaults.getAcceptInterceptHtlcs())
-
+        
         return userConfig
     }
 }
@@ -378,19 +378,19 @@ extension UserConfig {
 func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.PaymentSendFailure) {
     switch error.getValueType() {
     case .AllFailedResendSafe:
-//            let errorMessage = ""
-//            error.getValueAsAllFailedRetrySafe()?.forEach({ apiError in
-//                apiError.getValueType() //TODO iterate through all
-//            })
-
+        //            let errorMessage = ""
+        //            error.getValueAsAllFailedRetrySafe()?.forEach({ apiError in
+        //                apiError.getValueType() //TODO iterate through all
+        //            })
+        
         return handleReject(reject, .invoice_payment_fail_resend_safe, nil, error.getValueAsAllFailedResendSafe().map { $0.description } )
     case .ParameterError:
         guard let parameterError = error.getValueAsParameterError() else {
             return handleReject(reject, .invoice_payment_fail_parameter_error)
         }
-
+        
         let parameterErrorType = parameterError.getValueType()
-
+        
         switch parameterErrorType {
         case .APIMisuseError:
             return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "parameterError.getValueType().debugDescription")
@@ -457,4 +457,102 @@ func mergeObj(_ obj1: [String: Any], _ obj2: [String: Any]) -> [String: Any] {
         newObj[key] = obj2[key]
     }
     return newObj
+}
+
+enum BackupLabel: String {
+    case channelManager = "channel-manager"
+    case channelMonitor = "channel-monitor"
+}
+
+enum BackupMethod: String {
+    case persist = "persist"
+    case retrieve = "retrieve"
+}
+
+fileprivate func backupUrl(_ label: BackupLabel, _ method: BackupMethod) -> URL {
+    return URL(string: "http://192.168.0.100:3003/\(method.rawValue)?label=\(label.rawValue)")!
+}
+
+func remoteBackup(_ label: BackupLabel, _ bytes: [UInt8]) throws {
+    print("\n\n\n\n\n************************* BACKUP")
+    let backupData = Data(bytes)
+    print("Save bytes: ", backupData.count)
+    
+    
+    var request = URLRequest(url: backupUrl(label, .persist))
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = backupData
+    
+    let semaphore = DispatchSemaphore(value: 0)
+    
+    let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        defer {
+            semaphore.signal()
+        }
+        
+        if let error = error {
+            print("BACKUP ERROR: ", error.localizedDescription)
+            return
+        }
+        
+        if let data = data {
+            print(">>>>>>>>>><<<<<<<<<<<")
+
+            let response = String(data: data, encoding: .utf8) ?? ""
+            if response != "success" {
+                print("Remote persist success")
+                return;
+            }
+            
+            print("TODO HANDLE ERROR: \(response)")
+        }
+    }
+    
+    task.resume()
+    
+    semaphore.wait()
+    
+    print("**************************\n\n\n")
+}
+
+func restoreBackup(_ label: BackupLabel) throws -> Data {
+    print("\n\n\n\n\n************************* RESTORE")
+
+    var backup: Data?
+    var request = URLRequest(url: backupUrl(label, .retrieve))
+    request.httpMethod = "GET"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    
+    let semaphore = DispatchSemaphore(value: 0)
+    
+    let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        defer {
+            semaphore.signal()
+        }
+        
+        if let error = error {
+            print("RESTORE ERROR: ", error.localizedDescription)
+            return
+        }
+        
+        if let data = data {
+            print(">>>>>>>>>><<<<<<<<<<<")
+            print("TODO HANDLE RESPONSE")
+            print(data.hexEncodedString())
+            backup = data
+        }
+    }
+    
+    task.resume()
+    
+    semaphore.wait()
+    
+    guard let backup else {
+        //TODO make custom error to throw
+        return Data()
+    }
+    
+    print("**************************\n\n\n")
+    return backup
 }

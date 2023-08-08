@@ -27,6 +27,8 @@ class LdkPersister: Persist {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel (\(channelId)) to disk")
             LdkEventEmitter.shared.send(withEvent: .backup, body: "")
             
+            try remoteBackup(.channelMonitor, data.write())
+            
             if isNew {
                 LdkEventEmitter.shared.send(
                     withEvent: .new_channel,

@@ -325,6 +325,8 @@ class Ldk: NSObject {
     
     @objc
     func initChannelManager(_ network: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+//        try? remoteBackup([0,1,2,3])
+        
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
         }
@@ -362,7 +364,10 @@ class Ldk: NSObject {
         
         let enableP2PGossip = rapidGossipSync == nil
         
-        let storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
+//        let storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
+        
+        let storedChannelManager = try? restoreBackup(.channelManager)
+        //TODO we need to check for a 404 or something to know if the node is new
         
         var channelMonitorsSerialized: Array<[UInt8]> = []
         let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
@@ -401,6 +406,8 @@ class Ldk: NSObject {
             if let channelManagerSerialized = storedChannelManager, channelMonitorsSerialized.count > 0 {
                 //Restoring node
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring node from disk")
+                
+                print("RESTORING REMOTE CHANNEL MANAGER: \(storedChannelManager?.hexEncodedString())")
                 
                 channelManagerConstructor = try ChannelManagerConstructor(
                     channelManagerSerialized: [UInt8](channelManagerSerialized),
@@ -814,6 +821,8 @@ class Ldk: NSObject {
             guard let invoice = res.getValue() else {
                 return handleReject(reject, .invoice_create_failed)
             }
+            
+            invoice.features()?.setBasicMppRequired()
             
             return resolve(invoice.asJson) //Invoice class extended in Helpers file
         }
