@@ -33,7 +33,7 @@ import * as bitcoin from 'bitcoinjs-lib';
  * @param {string} key
  * @returns {Promise<string>}
  */
-export const getItem = async (key = ''): Promise<any> => {
+export const getItem = async (key: string = ''): Promise<any> => {
 	try {
 		return await AsyncStorage.getItem(key);
 	} catch (e) {
@@ -195,6 +195,7 @@ export const getTransactionData = async (
 		txHashes: data,
 		network: selectedNetwork,
 	});
+
 	if (
 		//TODO: Update types for electrum response.
 		// @ts-ignore
