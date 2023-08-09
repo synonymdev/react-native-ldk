@@ -69,7 +69,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             }
             
             let body: [String: Encodable] = [
-                "payment_id": Data(paymentSent.getPaymentId()).hexEncodedString(),
+                "payment_id": Data(paymentSent.getPaymentId() ?? []).hexEncodedString(),
                 "payment_preimage": Data(paymentSent.getPaymentPreimage()).hexEncodedString(),
                 "payment_hash": Data(paymentSent.getPaymentHash()).hexEncodedString(),
                 "fee_paid_sat": (paymentSent.getFeePaidMsat() ?? 0) / 1000,
@@ -98,7 +98,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "push_sat": openChannelRequest.getPushMsat() / 1000,
                     "funding_satoshis": openChannelRequest.getFundingSatoshis(),
                     "channel_type": Data(openChannelRequest.getChannelType().write()).hexEncodedString()
-                ]
+                ] as [String : Any]
             )
             return
         case .PaymentPathSuccessful:
@@ -107,7 +107,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             }
             
             let paymentId = Data(paymentPathSuccessful.getPaymentId()).hexEncodedString()
-            let paymentHash = Data(paymentPathSuccessful.getPaymentHash()).hexEncodedString()
+            let paymentHash = Data(paymentPathSuccessful.getPaymentHash() ?? []).hexEncodedString()
             
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_payment_path_successful,
@@ -115,7 +115,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "payment_id": paymentId,
                     "payment_hash": paymentHash,
                     "path_hops": paymentPathSuccessful.getPath().getHops().map { $0.asJson },
-                ]
+                ] as [String : Any]
             )
             return
         case .PaymentPathFailed:
@@ -123,7 +123,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 return handleEventError(event)
             }
             
-            let paymentId = Data(paymentPathFailed.getPaymentId()).hexEncodedString()
+            let paymentId = Data(paymentPathFailed.getPaymentId() ?? []).hexEncodedString()
             let paymentHash = Data(paymentPathFailed.getPaymentHash()).hexEncodedString()
              
             LdkEventEmitter.shared.send(
@@ -134,7 +134,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "payment_failed_permanently": paymentPathFailed.getPaymentFailedPermanently(),
                     "short_channel_id": String(paymentPathFailed.getShortChannelId() ?? 0),
                     "path_hops": paymentPathFailed.getPath().getHops().map { $0.asJson }
-                ]
+                ] as [String : Any]
             )
             
             persistPaymentSent(

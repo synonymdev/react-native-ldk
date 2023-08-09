@@ -695,7 +695,8 @@ class Ldk: NSObject {
             descriptors: ldkDescriptors,
             outputs: ldkOutputs,
             changeDestinationScript: String(changeDestinationScript).hexaBytes,
-            feerateSatPer1000Weight: UInt32(feeRate)
+            feerateSatPer1000Weight: UInt32(feeRate),
+            locktime: nil //TODO check nil is fine
         )
         
         guard res.isOk() else {
@@ -708,7 +709,7 @@ class Ldk: NSObject {
     //MARK: Payments
     @objc
     func decode(_ paymentRequest: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        let parsedInvoice = Invoice.fromStr(s: String(paymentRequest))
+        let parsedInvoice = Bolt11Invoice.fromStr(s: String(paymentRequest))
         guard parsedInvoice.isOk(), let invoice = parsedInvoice.getValue()  else {
             let error = parsedInvoice.getError()?.getValueAsParseError()
             return handleReject(reject, .decode_invoice_fail, nil, error?.toStr())
@@ -723,7 +724,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
         
-        guard let invoice = Invoice.fromStr(s: String(paymentRequest)).getValue() else {
+        guard let invoice = Bolt11Invoice.fromStr(s: String(paymentRequest)).getValue() else {
             return handleReject(reject, .decode_invoice_fail)
         }
         
@@ -984,52 +985,52 @@ class Ldk: NSObject {
             case .ClaimableAwaitingConfirmations:
                 let b = balance.getValueAsClaimableAwaitingConfirmations()!
                 result.append([
-                    "claimable_amount_satoshis": b.getClaimableAmountSatoshis(),
+                    "amount_satoshis": b.getAmountSatoshis(),
                     "confirmation_height": b.getConfirmationHeight(),
                     "type": "ClaimableAwaitingConfirmations"
-                ])
+                ] as [String : Any])
                 break
             case .ClaimableOnChannelClose:
                 let b = balance.getValueAsClaimableOnChannelClose()!
                 result.append([
-                    "claimable_amount_satoshis": b.getClaimableAmountSatoshis(),
+                    "amount_satoshis": b.getAmountSatoshis(),
                     "type": "ClaimableOnChannelClose",
-                ])
+                ] as [String : Any])
                 break
             case .ContentiousClaimable:
                 let b = balance.getValueAsContentiousClaimable()!
                 result.append([
-                    "claimable_amount_satoshis": b.getClaimableAmountSatoshis(),
+                    "amount_satoshis": b.getAmountSatoshis(),
                     "timeout_height": b.getTimeoutHeight(),
                     "type": "ContentiousClaimable"
-                ])
+                ] as [String : Any])
                 break
             case .CounterpartyRevokedOutputClaimable:
                 let b = balance.getValueAsCounterpartyRevokedOutputClaimable()!
                 result.append([
-                    "claimable_amount_satoshis": b.getClaimableAmountSatoshis(),
+                    "amount_satoshis": b.getAmountSatoshis(),
                     "type": "CounterpartyRevokedOutputClaimable"
-                ])
+                ] as [String : Any])
                 break
             case .MaybePreimageClaimableHTLC:
                 let b = balance.getValueAsMaybePreimageClaimableHtlc()!
                 result.append([
-                    "claimable_amount_satoshis": b.getClaimableAmountSatoshis(),
+                    "amount_satoshis": b.getAmountSatoshis(),
                     "expiry_height": b.getExpiryHeight(),
                     "type": "MaybePreimageClaimableHTLC"
-                ])
+                ] as [String : Any])
                 break
             case .MaybeTimeoutClaimableHTLC:
                 let b = balance.getValueAsMaybeTimeoutClaimableHtlc()!
                 result.append([
-                    "claimable_amount_satoshis": b.getClaimableAmountSatoshis(),
+                    "amount_satoshis": b.getAmountSatoshis(),
                     "claimable_height": b.getClaimableHeight(),
                     "type": "MaybeTimeoutClaimableHTLC"
-                ])
+                ] as [String : Any])
                 break
             default:
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances() \(balance.getValueType())")
-                result.append(["claimable_amount_satoshis": 0, "type": "Unknown"])
+                result.append(["amount_satoshis": 0, "type": "Unknown"] as [String : Any])
             }
         }
         
@@ -1098,9 +1099,9 @@ class Ldk: NSObject {
             let timestamp = ((attr[FileAttributeKey.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0).rounded()
             
             if format == "hex" {
-                resolve(["content": try Data(contentsOf: fileUrl).hexEncodedString(), "timestamp": timestamp])
+                resolve(["content": try Data(contentsOf: fileUrl).hexEncodedString(), "timestamp": timestamp] as [String : Any])
             } else {
-                resolve(["content": try String(contentsOf: fileUrl, encoding: .utf8), "timestamp": timestamp])
+                resolve(["content": try String(contentsOf: fileUrl, encoding: .utf8), "timestamp": timestamp] as [String : Any])
             }
         } catch {
             return handleReject(reject, .read_fail, error, "Failed to read \(format) content from file \(fileUrl.path)")
@@ -1121,7 +1122,8 @@ class Ldk: NSObject {
             descriptors: [descriptor],
             outputs: [],
             changeDestinationScript: String(changeDestinationScript).hexaBytes,
-            feerateSatPer1000Weight: UInt32(feeRate)
+            feerateSatPer1000Weight: UInt32(feeRate),
+            locktime: nil
         )
         
         guard res.isOk() else {

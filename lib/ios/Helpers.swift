@@ -33,33 +33,33 @@ func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ erro
 ///   - logger
 /// - Returns: ProbabilisticScorer
 func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLogger) -> ProbabilisticScorer {
-    let scoringParams = ProbabilisticScoringParameters.initWithDefault()
+    let scoringParams = ProbabilisticScoringDecayParameters.initWithDefault()
     
     //TODO remove below line and uncomment below to enable reading cached scorer again
-    return ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
+    return ProbabilisticScorer(decayParams: scoringParams, networkGraph: networkGraph, logger: logger)
     
-//    var probabalisticScorer: ProbabilisticScorer?
-//    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
-//        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
-//
-//        if scorerRead.isOk() {
-//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
-//            probabalisticScorer = scorerRead.getValue()
-//        } else {
-//            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
-//        }
-//    }
-//
-//    //Doesn't exist or error reading it
-//    if probabalisticScorer == nil {
-//        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting scorer from scratch")
-//        probabalisticScorer = ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
-//    }
-//
-//    return probabalisticScorer!
+    //    var probabalisticScorer: ProbabilisticScorer?
+    //    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
+    //        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
+    //
+    //        if scorerRead.isOk() {
+    //            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
+    //            probabalisticScorer = scorerRead.getValue()
+    //        } else {
+    //            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
+    //        }
+    //    }
+    //
+    //    //Doesn't exist or error reading it
+    //    if probabalisticScorer == nil {
+    //        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting scorer from scratch")
+    //        probabalisticScorer = ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
+    //    }
+    //
+    //    return probabalisticScorer!
 }
 
-extension Invoice {
+extension Bolt11Invoice {
     var asJson: [String: Any?] {
         //Break down to get the decription. Will crash if all on a single line.
         let signedRawInvoice = intoSignedRaw()
@@ -141,7 +141,7 @@ extension ChannelInfo {
             "one_to_two_last_update": getOneToTwo()?.getLastUpdate() ?? 0, //Number
             "one_to_two_htlc_maximum_sats": getOneToTwo()?.getHtlcMaximumMsat() ?? 0 / 1000, //Number
             "one_to_two_htlc_minimum_sats": getOneToTwo()?.getHtlcMinimumMsat() ?? 0 / 1000, //Number
-
+            
             "two_to_one_fees_base_sats": getTwoToOne()?.getFees().getBaseMsat() ?? 0 / 1000, //Number
             "two_to_one_fees_proportional_millionths": getTwoToOne()?.getFees().getProportionalMillionths() ?? 0, //Number
             "two_to_one_enabled": getTwoToOne()?.getEnabled() ?? false, //Bool
@@ -154,7 +154,7 @@ extension ChannelInfo {
 
 //Nodes in our network graph
 extension NodeInfo {
-
+    
     var asJson: [String: Any] {
         return [
             "shortChannelIds": getChannels().map({ String($0) }),
@@ -179,7 +179,7 @@ extension Data {
         let rawValue: Int
         static let upperCase = HexEncodingOptions(rawValue: 1 << 0)
     }
-
+    
     func hexEncodedString(options: HexEncodingOptions = []) -> String {
         let format = options.contains(.upperCase) ? "%02hhX" : "%02hhx"
         return map { String(format: format, $0) }.joined()
@@ -222,7 +222,7 @@ extension URL {
             completion(NSError(domain: "", code: 500, userInfo: [ NSLocalizedDescriptionKey: "File already exists"]))
             return nil
         }
-      
+        
         let session = URLSession(configuration: URLSessionConfiguration.default, delegate: nil, delegateQueue: nil)
         var request = URLRequest(url: self)
         request.httpMethod = "GET"
@@ -243,7 +243,7 @@ extension URL {
                 try data.write(to: destination, options: Data.WritingOptions.atomic)
                 return completion(nil)
             } catch {
-               return completion(error)
+                return completion(error)
             }
         })
     }
@@ -252,14 +252,14 @@ extension URL {
 extension RapidGossipSync {
     func downloadAndUpdateGraph(downloadUrl: String, tempStoragePath: URL, timestamp: UInt32, completion: @escaping (Error?) -> Void) {
         let destinationFile = tempStoragePath.appendingPathComponent("\(timestamp).bin")
-      
+        
         //Cleanup old one
         if FileManager().fileExists(atPath: destinationFile.path) {
             try? FileManager().removeItem(atPath: destinationFile.path)
         }
-
+        
         let url = URL(string: "\(downloadUrl)\(timestamp)")!
-
+        
         let task = url.downloadTask(destination: destinationFile) { [weak self] error in
             if let error = error {
                 return completion(error)
@@ -281,7 +281,7 @@ extension RapidGossipSync {
                     errorMessage = "Unknown rapid sync error."
                     break;
                 }
-
+                
                 completion(NSError(domain: "", code: 500, userInfo: [ NSLocalizedDescriptionKey: errorMessage]))
                 try? FileManager().removeItem(atPath: destinationFile.path)
                 return
@@ -312,6 +312,7 @@ extension ChannelHandshakeConfig {
             announcedChannelArg: obj["announced_channel"] as? Bool ?? defaults.getAnnouncedChannel(),
             commitUpfrontShutdownPubkeyArg: obj["commit_upfront_shutdown_pubkey"] as? Bool ?? defaults.getCommitUpfrontShutdownPubkey(),
             theirChannelReserveProportionalMillionthsArg: obj["their_channel_reserve_proportional_millionths"] as? UInt32 ?? defaults.getTheirChannelReserveProportionalMillionths(),
+            negotiateAnchorsZeroFeeHtlcTxArg: obj["negotiate_anchors_zero_fee_htlc_tx"] as? Bool ?? defaults.getNegotiateAnchorsZeroFeeHtlcTx(),
             ourMaxAcceptedHtlcsArg: obj["our_max_accepted_htlcs_arg"] as? UInt16 ?? defaults.getOurMaxAcceptedHtlcs()
         )
     }
@@ -348,12 +349,22 @@ extension ChannelConfig {
             return defaults
         }
         
+        var maxDustHtlcExposureArg = defaults.getMaxDustHtlcExposure()
+        if let dustLimitExposure = obj["max_dust_htlc_exposure"] as? UInt64 {
+            if obj["max_dust_htlc_exposure_type"] as? String == "fixed_limit" {
+                maxDustHtlcExposureArg = .initWithFixedLimitMsat(a: dustLimitExposure)
+            } else if obj["max_dust_htlc_exposure_type"] as? String == "fee_rate_multiplier" {
+                maxDustHtlcExposureArg = .initWithFeeRateMultiplier(a: dustLimitExposure)
+            }
+        }
+        
         return ChannelConfig(
             forwardingFeeProportionalMillionthsArg: obj["forwarding_fee_proportional_millionths"] as? UInt32 ?? defaults.getForwardingFeeProportionalMillionths(),
-            forwardingFeeBaseMsatArg: obj["forwarding_fee_base_msat"] as? UInt32 ?? defaults.getForwardingFeeBaseMsat(),
+            forwardingFeeBaseMsatArg: obj["forwarding_fee_proportional_millionths"] as? UInt32 ?? defaults.getForwardingFeeProportionalMillionths(),
             cltvExpiryDeltaArg: obj["cltv_expiry_delta"] as? UInt16 ?? defaults.getCltvExpiryDelta(),
-            maxDustHtlcExposureMsatArg: obj["max_dust_htlc_exposure_msat"] as? UInt64 ?? defaults.getMaxDustHtlcExposureMsat(),
-            forceCloseAvoidanceMaxFeeSatoshisArg: obj["force_close_avoidance_max_fee_satoshis"] as? UInt64 ?? defaults.getForceCloseAvoidanceMaxFeeSatoshis()
+            maxDustHtlcExposureArg: maxDustHtlcExposureArg,
+            forceCloseAvoidanceMaxFeeSatoshisArg: obj["force_close_avoidance_max_fee_satoshis"] as? UInt64 ?? defaults.getForceCloseAvoidanceMaxFeeSatoshis(),
+            acceptUnderpayingHtlcsArg: obj["accept_underpaying_htlcs"] as? Bool ?? defaults.getAcceptUnderpayingHtlcs()
         )
     }
 }
@@ -369,8 +380,10 @@ extension UserConfig {
             acceptForwardsToPrivChannelsArg: obj["accept_forwards_to_priv_channels"] as? Bool ?? defaults.getAcceptForwardsToPrivChannels(),
             acceptInboundChannelsArg: obj["accept_inbound_channels"] as? Bool ?? defaults.getAcceptInboundChannels(),
             manuallyAcceptInboundChannelsArg: obj["manually_accept_inbound_channels"] as? Bool ?? defaults.getAcceptInboundChannels(),
-            acceptInterceptHtlcsArg: obj["accept_intercept_htlcs"] as? Bool ?? defaults.getAcceptInterceptHtlcs())
-
+            acceptInterceptHtlcsArg: obj["accept_intercept_htlcs"] as? Bool ?? defaults.getAcceptInterceptHtlcs(),
+            acceptMppKeysendArg: obj["accept_mpp_keysend"] as? Bool ?? defaults.getAcceptMppKeysend()
+        )
+        
         return userConfig
     }
 }
@@ -378,19 +391,19 @@ extension UserConfig {
 func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.PaymentSendFailure) {
     switch error.getValueType() {
     case .AllFailedResendSafe:
-//            let errorMessage = ""
-//            error.getValueAsAllFailedRetrySafe()?.forEach({ apiError in
-//                apiError.getValueType() //TODO iterate through all
-//            })
-
+        //            let errorMessage = ""
+        //            error.getValueAsAllFailedRetrySafe()?.forEach({ apiError in
+        //                apiError.getValueType() //TODO iterate through all
+        //            })
+        
         return handleReject(reject, .invoice_payment_fail_resend_safe, nil, error.getValueAsAllFailedResendSafe().map { $0.description } )
     case .ParameterError:
         guard let parameterError = error.getValueAsParameterError() else {
             return handleReject(reject, .invoice_payment_fail_parameter_error)
         }
-
+        
         let parameterErrorType = parameterError.getValueType()
-
+        
         switch parameterErrorType {
         case .APIMisuseError:
             return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "parameterError.getValueType().debugDescription")
