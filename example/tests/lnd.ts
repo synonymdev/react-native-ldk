@@ -157,8 +157,8 @@ describe('LND', function () {
 		}
 
 		// wait for peer to be connected
+		let n = 0;
 		while (true) {
-			let n = 0;
 			const { peers } = await lnd.listPeers();
 			if (peers.some((p) => p.pub_key === nodeId.value)) {
 				break;
@@ -190,8 +190,8 @@ describe('LND', function () {
 		await sleep(1000);
 
 		// wait for channel to be active
+		n = 0;
 		while (true) {
-			let n = 0;
 			const listChannels = await ldk.listChannels();
 			if (listChannels.isErr()) {
 				throw listChannels.error;
@@ -326,8 +326,8 @@ describe('LND', function () {
 		}
 
 		// wait for channel to be active
+		n = 0;
 		while (true) {
-			let n = 0;
 			const listChannels = await ldk.listChannels();
 			if (listChannels.isErr()) {
 				throw listChannels.error;
@@ -391,8 +391,8 @@ describe('LND', function () {
 		}
 
 		// wait for peer to be connected
+		let n = 0;
 		while (true) {
-			let n = 0;
 			const { peers } = await lnd.listPeers();
 			if (peers.some((p) => p.pub_key === nodeId.value)) {
 				break;
@@ -424,8 +424,8 @@ describe('LND', function () {
 		await sleep(1000);
 
 		// wait for channel to be active
+		n = 0;
 		while (true) {
-			let n = 0;
 			const listChannels = await ldk.listChannels();
 			if (listChannels.isErr()) {
 				throw listChannels.error;
@@ -512,8 +512,8 @@ describe('LND', function () {
 		await rpc.generateToAddress(1, await rpc.getNewAddress());
 
 		// wait for channel to be not active
+		n = 0;
 		while (true) {
-			let n = 0;
 			const { channels } = await lnd.listChannels({
 				peer: b64url(nodeId.value),
 			});

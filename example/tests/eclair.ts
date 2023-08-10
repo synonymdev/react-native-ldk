@@ -155,8 +155,8 @@ describe('Eclair', function () {
 		}
 
 		// wait for peer to be connected
+		let n = 0;
 		while (true) {
-			let n = 0;
 			const peers = await ec.peers();
 			if (peers.some((p) => p.nodeId === nodeId.value)) {
 				break;
@@ -184,8 +184,8 @@ describe('Eclair', function () {
 		await sleep(1000);
 
 		// wait for channel to be active
+		n = 0;
 		while (true) {
-			let n = 0;
 			const listChannels = await ldk.listChannels();
 			if (listChannels.isErr()) {
 				throw listChannels.error;

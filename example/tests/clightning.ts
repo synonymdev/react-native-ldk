@@ -149,8 +149,8 @@ describe('Clightning', function () {
 		}
 
 		// wait for peer to be connected
+		let n = 0;
 		while (true) {
-			let n = 0;
 			const peers = await cl.listPeers();
 			if (peers.some((p) => p.id === nodeId.value)) {
 				break;
@@ -171,8 +171,8 @@ describe('Clightning', function () {
 		await waitForElectrum({ cl: true });
 
 		// wait for channel to be active
+		n = 0;
 		while (true) {
-			let n = 0;
 			const listChannels = await ldk.listChannels();
 			if (listChannels.isErr()) {
 				throw listChannels.error;
