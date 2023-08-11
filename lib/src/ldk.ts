@@ -31,6 +31,7 @@ import {
 	TUserConfig,
 	TReconstructAndSpendOutputsReq,
 	THeader,
+	TAcceptChannelReq,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -450,6 +451,35 @@ class LDK {
 			return ok(res);
 		} catch (e) {
 			this.writeErrorToLog('forceCloseAllChannels', e);
+			return err(e);
+		}
+	}
+
+	/**
+	 * Accepts an incoming channel open request.
+	 * Set trustedPeer0Conf to true ONLY if you trust the peer's zero conf channel.
+	 * @param temporaryChannelId
+	 * @param counterPartyNodeId
+	 * @param userChannelId
+	 * @param trustedPeer0Conf
+	 */
+	async acceptChannel({
+		temporaryChannelId,
+		counterPartyNodeId,
+		userChannelId,
+		trustedPeer0Conf,
+	}: TAcceptChannelReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.acceptChannel(
+				temporaryChannelId,
+				counterPartyNodeId,
+				userChannelId,
+				trustedPeer0Conf,
+			);
+			this.writeDebugToLog('closeChannel');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('closeChannel', e);
 			return err(e);
 		}
 	}

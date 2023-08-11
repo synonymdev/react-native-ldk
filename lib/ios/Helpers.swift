@@ -122,7 +122,8 @@ extension ChannelDetails {
             "force_close_spend_delay": getForceCloseSpendDelay() as Any, //Optional number
             "unspendable_punishment_reserve": getUnspendablePunishmentReserve() as Any, //Optional number
             "config_forwarding_fee_base_msat": getConfig()?.getForwardingFeeBaseMsat() ?? 0 / 1000, //Optional number
-            "config_forwarding_fee_proportional_millionths": getConfig()?.getForwardingFeeProportionalMillionths() ?? 0 / 1000 //Optional number
+            "config_forwarding_fee_proportional_millionths": getConfig()?.getForwardingFeeProportionalMillionths() ?? 0 / 1000, //Optional number
+            "confirmations": getConfirmations() ?? 0
         ]
     }
 }

@@ -97,7 +97,9 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "counterparty_node_id": Data(openChannelRequest.getCounterpartyNodeId()).hexEncodedString(),
                     "push_sat": openChannelRequest.getPushMsat() / 1000,
                     "funding_satoshis": openChannelRequest.getFundingSatoshis(),
-                    "channel_type": Data(openChannelRequest.getChannelType().write()).hexEncodedString()
+                    "requires_zero_conf": openChannelRequest.getChannelType().requiresZeroConf(),
+                    "supports_zero_conf": openChannelRequest.getChannelType().supportsZeroConf(),
+                    "requires_anchors_zero_fee_htlc_tx": openChannelRequest.getChannelType().requiresAnchorsZeroFeeHtlcTx()
                 ] as [String : Any]
             )
             return

@@ -58,6 +58,7 @@ enum LdkErrors: String {
     case invoice_create_failed = "invoice_create_failed"
     case claim_funds_failed = "claim_funds_failed"
     case channel_close_fail = "channel_close_fail"
+    case channel_accept_fail = "channel_accept_fail"
     case spend_outputs_fail = "spend_outputs_fail"
     case write_fail = "write_fail"
     case read_fail = "read_fail"
@@ -86,6 +87,7 @@ enum LdkCallbackResponses: String {
     case claim_funds_success = "claim_funds_success"
     case ldk_stop = "ldk_stop"
     case ldk_restart = "ldk_restart"
+    case accept_channel_success = "accept_channel_success"
     case close_channel_success = "close_channel_success"
     case file_write_success = "file_write_success"
     case abandon_payment_success = "abandon_payment_success"
@@ -383,18 +385,18 @@ class Ldk: NSObject {
         print("\(String(cString: strerror(22)))")
         
         let params = ChannelManagerConstructionParameters(
-                config: userConfig,
-                entropySource: keysManager.asEntropySource(),
-                nodeSigner: keysManager.asNodeSigner(),
-                signerProvider: keysManager.asSignerProvider(),
-                feeEstimator: feeEstimator,
-                chainMonitor: chainMonitor,
-                txBroadcaster: broadcaster,
-                logger: logger,
-                enableP2PGossip: enableP2PGossip,
-                scorer: scorer
-                //TODO set payerRetries
-            )
+            config: userConfig,
+            entropySource: keysManager.asEntropySource(),
+            nodeSigner: keysManager.asNodeSigner(),
+            signerProvider: keysManager.asSignerProvider(),
+            feeEstimator: feeEstimator,
+            chainMonitor: chainMonitor,
+            txBroadcaster: broadcaster,
+            logger: logger,
+            enableP2PGossip: enableP2PGossip,
+            scorer: scorer
+            //TODO set payerRetries
+        )
         do {
             //Only restore a node if we have existing channel monitors to restore. Else we lose our UserConfig settings when restoring.
             //TOOD remove this check in 114 which should allow passing in userConfig
@@ -550,7 +552,7 @@ class Ldk: NSObject {
         //Used for quick restarts
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = height
-
+        
         return handleResolve(resolve, .chain_sync_success)
     }
     
@@ -616,6 +618,44 @@ class Ldk: NSObject {
         chainMonitor.asConfirm().transactionUnconfirmed(txid: String(txId).hexaBytes)
         
         return handleResolve(resolve, .tx_set_unconfirmed)
+    }
+    
+    @objc
+    func acceptChannel(_ temporaryChannelId: NSString, counterPartyNodeId: NSString, userChannelId: NSString, trustedPeer0Conf: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        let temporaryChannelId = String(temporaryChannelId).hexaBytes
+        let counterpartyNodeId = String(counterPartyNodeId).hexaBytes
+        let userChannelId = String(userChannelId).hexaBytes
+        
+        let res = trustedPeer0Conf ?
+        channelManager.acceptInboundChannelFromTrustedPeer0conf(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: userChannelId) :
+        channelManager.acceptInboundChannel(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: userChannelId)
+                
+        guard res.isOk() else {
+            guard let error = res.getError() else {
+                return handleReject(reject, .channel_accept_fail)
+            }
+            
+            switch error.getValueType() {
+            case .APIMisuseError:
+                return handleReject(reject, .channel_accept_fail, nil, error.getValueAsApiMisuseError()?.getErr())
+            case .ChannelUnavailable:
+                return handleReject(reject, .channel_accept_fail, nil, "Channel unavailable for accepting") //Crashes when returning error.getValueAsChannelUnavailable()?.getErr()
+            case .FeeRateTooHigh:
+                return handleReject(reject, .channel_accept_fail, nil, error.getValueAsFeeRateTooHigh()?.getErr())
+            case .IncompatibleShutdownScript:
+                return handleReject(reject, .channel_accept_fail, nil, Data(error.getValueAsIncompatibleShutdownScript()?.getScript().write() ?? []).hexEncodedString())
+            case .InvalidRoute:
+                return handleReject(reject, .channel_accept_fail, nil, error.getValueAsInvalidRoute()?.getErr())
+            default:
+                return handleReject(reject, .channel_accept_fail)
+            }
+        }
+        
+        return handleResolve(resolve, .accept_channel_success)
     }
     
     @objc
@@ -756,11 +796,11 @@ class Ldk: NSObject {
         }
         
         //MARK: add as failed payment
-
+        
         guard let error = res.getError() else {
             return handleReject(reject, .invoice_payment_fail_unknown)
         }
-
+        
         switch error.getValueType() {
         case .Invoice:
             return handleReject(reject, .invoice_payment_fail_invoice, nil, error.getValueAsInvoice())
@@ -769,7 +809,7 @@ class Ldk: NSObject {
             guard let sendingError = error.getValueAsSending() else {
                 return handleReject(reject, .invoice_payment_fail_sending, "AsSending")
             }
-
+            
             return handleReject(reject, .invoice_payment_fail_sending)
         default:
             return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)

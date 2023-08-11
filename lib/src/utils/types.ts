@@ -82,7 +82,9 @@ export type TChannelManagerOpenChannelRequest = {
 	counterparty_node_id: string;
 	push_sat: number;
 	funding_satoshis: number;
-	channel_type: string;
+	requires_zero_conf: boolean;
+	supports_zero_conf: boolean;
+	requires_anchors_zero_fee_htlc_tx: boolean;
 };
 
 export type TChannelUpdate = {
@@ -157,6 +159,7 @@ export type TChannel = {
 	unspendable_punishment_reserve?: number;
 	config_forwarding_fee_base_msat: number;
 	config_forwarding_fee_proportional_millionths: number;
+	confirmations: number;
 };
 
 export type TNetworkGraphChannelInfo = {
@@ -262,6 +265,13 @@ export type TCloseChannelReq = {
 	force?: boolean;
 };
 
+export type TAcceptChannelReq = {
+	temporaryChannelId: string;
+	counterPartyNodeId: string;
+	userChannelId: string;
+	trustedPeer0Conf: boolean;
+};
+
 export type TSpendOutputsReq = {
 	descriptorsSerialized: string[];
 	outputs: {
@@ -355,8 +365,9 @@ export const defaultUserConfig: TUserConfig = {
 		announced_channel: false,
 		minimum_depth: 1,
 		max_htlc_value_in_flight_percent_of_channel: 100,
+		negotiate_anchors_zero_fee_htlc_tx: true,
 	},
-	manually_accept_inbound_channels: false,
+	manually_accept_inbound_channels: true,
 	accept_inbound_channels: true,
 };
 
@@ -536,6 +547,7 @@ export type TLdkStart = {
 	rapidGossipSyncUrl?: string;
 	forceCloseOnStartup?: TForceCloseOnStartup;
 	userConfig?: TUserConfig;
+	trustedZeroConfPeers?: string[];
 };
 
 export type TGetAddress = () => Promise<string>;

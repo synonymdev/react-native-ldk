@@ -10,6 +10,7 @@ import {
 } from '../electrum';
 import lm, {
 	DefaultTransactionDataShape,
+	defaultUserConfig,
 	TAccount,
 	TAccountBackup,
 	THeader,
@@ -126,6 +127,15 @@ export const setupLdk = async (
 			forceCloseOnStartup: forceCloseAllChannels
 				? { forceClose: true, broadcastLatestTx: false }
 				: undefined,
+			userConfig: {
+				...defaultUserConfig,
+				channel_handshake_config: {
+					...defaultUserConfig.channel_handshake_config,
+					negotiate_anchors_zero_fee_htlc_tx: true,
+				},
+				manually_accept_inbound_channels: true,
+			},
+			trustedZeroConfPeers: [peers.lnd.pubKey],
 		});
 
 		if (lmStart.isErr()) {
