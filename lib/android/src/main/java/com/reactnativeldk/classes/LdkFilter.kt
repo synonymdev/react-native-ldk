@@ -4,8 +4,10 @@ import com.facebook.react.bridge.Arguments
 import com.reactnativeldk.EventTypes
 import com.reactnativeldk.LdkEventEmitter
 import com.reactnativeldk.hexEncodedString
+import com.reactnativeldk.putHexString
 import org.ldk.structs.Filter
 import org.ldk.structs.Filter.FilterInterface
+import org.ldk.structs.Option_BlockHashZ
 import org.ldk.structs.WatchedOutput
 
 class LdkFilter {
@@ -19,8 +21,8 @@ class LdkFilter {
 
         override fun register_output(output: WatchedOutput) {
             val body = Arguments.createMap()
-            if (output._block_hash != null) {
-                body.putString("block_hash", output._block_hash!!.hexEncodedString())
+            if (output._block_hash is Option_BlockHashZ.Some) {
+                body.putHexString("block_hash", (output._block_hash as Option_BlockHashZ.Some).some)
             }
             body.putInt("index", output._outpoint._index.toInt())
             body.putString("script_pubkey", output._script_pubkey.hexEncodedString())

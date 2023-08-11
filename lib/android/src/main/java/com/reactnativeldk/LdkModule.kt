@@ -5,14 +5,15 @@ import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEm
 import com.reactnativeldk.classes.*
 import org.json.JSONObject
 import org.ldk.batteries.ChannelManagerConstructor
+import org.ldk.batteries.ChannelManagerConstructor.RouterWrapper
 import org.ldk.batteries.NioPeerHandler
 import org.ldk.enums.Currency
 import org.ldk.enums.Network
 import org.ldk.impl.bindings.get_ldk_c_bindings_version
 import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
-import org.ldk.structs.Result_InvoiceParseOrSemanticErrorZ.Result_InvoiceParseOrSemanticErrorZ_OK
-import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCreationErrorZ_OK
+import org.ldk.structs.Result_Bolt11InvoiceParseOrSemanticErrorZ.Result_Bolt11InvoiceParseOrSemanticErrorZ_OK
+import org.ldk.structs.Result_Bolt11InvoiceSignOrCreationErrorZ.Result_Bolt11InvoiceSignOrCreationErrorZ_OK
 import org.ldk.structs.Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_OK
 import java.io.File
 import java.net.InetSocketAddress
@@ -374,7 +375,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val scorer = MultiThreadedLockableScore.of(probabilisticScorer.as_Score())
 
-        val scoringParams = ProbabilisticScoringParameters.with_default()
+        val scoringParams = ProbabilisticScoringDecayParameters.with_default()
+        val scoringFeeParams = ProbabilisticScoringFeeParameters.with_default()
 
         try {
             if (channelManagerSerialized != null) {
@@ -389,7 +391,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     }
 
                 LdkEventEmitter.send(EventTypes.native_log, "Restoring node from disk2")
-
                 channelManagerConstructor = ChannelManagerConstructor(
                     channelManagerSerialized,
                     channelMonitors.toTypedArray(),
@@ -402,12 +403,12 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     filter.filter,
                     networkGraph!!.write(),
                     scoringParams,
+                    scoringFeeParams,
                     scorer.write(),
                     null,
                     broadcaster.broadcaster,
                     logger.logger
                 )
-
             } else {
                 //New node
                 LdkEventEmitter.send(EventTypes.native_log, "Creating new channel manager")
@@ -423,6 +424,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     chainMonitor,
                     networkGraph!!,
                     scoringParams,
+                    scoringFeeParams,
                     null,
                     broadcaster.broadcaster,
                     logger.logger,
@@ -636,7 +638,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             ldkDescriptors.toTypedArray(),
             ldkOutputs.toTypedArray(),
             changeDestinationScript.hexa(),
-            feeRate.toInt()
+            feeRate.toInt(),
+            Option_PackedLockTimeZ.none()
         )
 
         if (!res.is_ok) {
@@ -649,12 +652,12 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     //MARK: Payments
     @ReactMethod
     fun decode(paymentRequest: String, promise: Promise) {
-        val parsed = Invoice.from_str(paymentRequest)
+        val parsed = Bolt11Invoice.from_str(paymentRequest)
         if (!parsed.is_ok) {
             return handleReject(promise, LdkErrors.decode_invoice_fail)
         }
 
-        val parsedInvoice = parsed as Result_InvoiceParseOrSemanticErrorZ_OK
+        val parsedInvoice = parsed as Result_Bolt11InvoiceParseOrSemanticErrorZ_OK
 
         promise.resolve(parsedInvoice.res.asJson)
     }
@@ -663,11 +666,11 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun pay(paymentRequest: String, amountSats: Double, timeoutSeconds: Double, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
-        val invoiceParse = Invoice.from_str(paymentRequest)
+        val invoiceParse = Bolt11Invoice.from_str(paymentRequest)
         if (!invoiceParse.is_ok) {
             return handleReject(promise, LdkErrors.decode_invoice_fail)
         }
-        val invoice = (invoiceParse as Result_InvoiceParseOrSemanticErrorZ_OK).res
+        val invoice = (invoiceParse as Result_Bolt11InvoiceParseOrSemanticErrorZ_OK).res
 
         val isZeroValueInvoice = invoice.amount_milli_satoshis() is Option_u64Z.None
 
@@ -756,10 +759,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         );
 
         if (res.is_ok) {
-            return promise.resolve((res as Result_InvoiceSignOrCreationErrorZ_OK).res.asJson)
+            return promise.resolve((res as Result_Bolt11InvoiceSignOrCreationErrorZ_OK).res.asJson)
         }
 
-        val error = res as Result_InvoiceSignOrCreationErrorZ
+        val error = res as Result_Bolt11InvoiceSignOrCreationErrorZ
         return handleReject(promise, LdkErrors.invoice_create_failed, Error(error.toString()))
     }
 
@@ -919,39 +922,39 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         chainMonitor.get_claimable_balances(ignoredChannels).iterator().forEach { balance ->
             val map = Arguments.createMap()
             //Defaults if all castings for balance fail
-            map.putInt("claimable_amount_satoshis", 0)
+            map.putInt("amount_satoshis", 0)
             map.putString("type", "Unknown")
 
             (balance as? Balance.ClaimableAwaitingConfirmations)?.let { claimableAwaitingConfirmations ->
-                map.putInt("claimable_amount_satoshis", claimableAwaitingConfirmations.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", claimableAwaitingConfirmations.amount_satoshis.toInt())
                 map.putInt("confirmation_height", claimableAwaitingConfirmations.confirmation_height)
                 map.putString("type", "ClaimableAwaitingConfirmations")
             }
 
             (balance as? Balance.ClaimableOnChannelClose)?.let { claimableOnChannelClose ->
-                map.putInt("claimable_amount_satoshis", claimableOnChannelClose.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", claimableOnChannelClose.amount_satoshis.toInt())
                 map.putString("type", "ClaimableOnChannelClose")
             }
 
             (balance as? Balance.ContentiousClaimable)?.let { contentiousClaimable ->
-                map.putInt("claimable_amount_satoshis", contentiousClaimable.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", contentiousClaimable.amount_satoshis.toInt())
                 map.putInt("timeout_height", contentiousClaimable.timeout_height)
                 map.putString("type", "ContentiousClaimable")
             }
 
             (balance as? Balance.CounterpartyRevokedOutputClaimable)?.let { counterpartyRevokedOutputClaimable ->
-                map.putInt("claimable_amount_satoshis", counterpartyRevokedOutputClaimable.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", counterpartyRevokedOutputClaimable.amount_satoshis.toInt())
                 map.putString("type", "CounterpartyRevokedOutputClaimable")
             }
 
             (balance as? Balance.MaybePreimageClaimableHTLC)?.let { maybePreimageClaimableHTLC ->
-                map.putInt("claimable_amount_satoshis", maybePreimageClaimableHTLC.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", maybePreimageClaimableHTLC.amount_satoshis.toInt())
                 map.putInt("expiry_height", maybePreimageClaimableHTLC.expiry_height)
                 map.putString("type", "MaybePreimageClaimableHTLC")
             }
 
             (balance as? Balance.MaybeTimeoutClaimableHTLC)?.let { maybeTimeoutClaimableHTLC ->
-                map.putInt("claimable_amount_satoshis", maybeTimeoutClaimableHTLC.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", maybeTimeoutClaimableHTLC.amount_satoshis.toInt())
                 map.putInt("claimable_height", maybeTimeoutClaimableHTLC.claimable_height)
                 map.putString("type", "MaybeTimeoutClaimableHTLC")
             }
@@ -1045,7 +1048,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             ldkDescriptors.toTypedArray(),
             emptyArray(),
             changeDestinationScript.hexa(),
-            feeRate.toInt()
+            feeRate.toInt(),
+            Option_PackedLockTimeZ.none()
         )
 
         if (!res.is_ok) {

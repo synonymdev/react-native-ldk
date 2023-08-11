@@ -1040,7 +1040,6 @@ class Ldk: NSObject {
     //MARK: Misc functions
     @objc
     func writeToFile(_ fileName: NSString, path: NSString, content: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        
         let fileUrl: URL
         
         do {
