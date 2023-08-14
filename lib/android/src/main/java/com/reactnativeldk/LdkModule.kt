@@ -5,7 +5,6 @@ import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEm
 import com.reactnativeldk.classes.*
 import org.json.JSONObject
 import org.ldk.batteries.ChannelManagerConstructor
-import org.ldk.batteries.ChannelManagerConstructor.RouterWrapper
 import org.ldk.batteries.NioPeerHandler
 import org.ldk.enums.Currency
 import org.ldk.enums.Network
@@ -15,6 +14,7 @@ import org.ldk.structs.*
 import org.ldk.structs.Result_Bolt11InvoiceParseOrSemanticErrorZ.Result_Bolt11InvoiceParseOrSemanticErrorZ_OK
 import org.ldk.structs.Result_Bolt11InvoiceSignOrCreationErrorZ.Result_Bolt11InvoiceSignOrCreationErrorZ_OK
 import org.ldk.structs.Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_OK
+import org.ldk.util.UInt128
 import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Files
@@ -79,6 +79,7 @@ enum class LdkErrors {
     invoice_create_failed,
     init_scorer_failed,
     channel_close_fail,
+    channel_accept_fail,
     spend_outputs_fail,
     write_fail,
     read_fail,
@@ -106,6 +107,7 @@ enum class LdkCallbackResponses {
     claim_funds_success,
     ldk_stop,
     ldk_restart,
+    accept_channel_success,
     close_channel_success,
     file_write_success
 }
@@ -585,6 +587,33 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         chainMonitor!!.as_Confirm().transaction_unconfirmed(txId.hexa())
 
         handleResolve(promise, LdkCallbackResponses.tx_set_unconfirmed)
+    }
+
+    @ReactMethod
+    fun acceptChannel(temporaryChannelId: String, counterPartyNodeId: String, trustedPeer0Conf: Boolean, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        val temporaryChannelId = temporaryChannelId.hexa()
+        val counterPartyNodeId = counterPartyNodeId.hexa()
+        val userChannelIdBytes = ByteArray(16)
+        Random().nextBytes(userChannelIdBytes)
+        val userChannelId = UInt128(userChannelIdBytes)
+
+        val res = if (trustedPeer0Conf)
+            channelManager!!.accept_inbound_channel_from_trusted_peer_0conf(temporaryChannelId, counterPartyNodeId, userChannelId)
+        else channelManager!!.accept_inbound_channel(temporaryChannelId, counterPartyNodeId, userChannelId)
+
+        if (!res.is_ok) {
+            val error = res as Result_NoneAPIErrorZ.Result_NoneAPIErrorZ_Err
+
+            if (error.err is APIError.APIMisuseError) {
+                return handleReject(promise, LdkErrors.channel_accept_fail, Error((error.err as APIError.APIMisuseError).err))
+            }
+
+            return handleReject(promise, LdkErrors.channel_accept_fail, Error(error.err.toString()))
+        }
+
+        handleResolve(promise, LdkCallbackResponses.accept_channel_success)
     }
 
     @ReactMethod

@@ -466,14 +466,12 @@ class LDK {
 	async acceptChannel({
 		temporaryChannelId,
 		counterPartyNodeId,
-		userChannelId,
 		trustedPeer0Conf,
 	}: TAcceptChannelReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.acceptChannel(
 				temporaryChannelId,
 				counterPartyNodeId,
-				userChannelId,
 				trustedPeer0Conf,
 			);
 			this.writeDebugToLog('closeChannel');

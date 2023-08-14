@@ -1623,7 +1623,6 @@ class LightningManager {
 		req: TChannelManagerOpenChannelRequest,
 	): Promise<void> {
 		//Only triggered if manually_accept_inbound_channels is set in user config
-
 		await ldk.writeToLogFile(
 			'info',
 			`channel_manager_open_channel_request: ${JSON.stringify(req)}`,
@@ -1632,21 +1631,27 @@ class LightningManager {
 		const {
 			temp_channel_id,
 			counterparty_node_id,
-			push_sat,
-			funding_satoshis,
 			supports_zero_conf,
 			requires_zero_conf,
-			requires_anchors_zero_fee_htlc_tx,
 		} = req;
 
 		let trustedPeer0Conf = false;
-		if (requires_zero_conf) {
-			if (this.trustedZeroConfPeers.indexOf(counterparty_node_id) > -1) {
-				trustedPeer0Conf = true;
-			} else {
+		const isTrustedPeer =
+			this.trustedZeroConfPeers.indexOf(counterparty_node_id) > -1;
+		if (supports_zero_conf) {
+			if (isTrustedPeer) {
 				await ldk.writeToLogFile(
 					'error',
-					`Peer attempting to open zero conf channel but is not in trusted peers list (${counterparty_node_id})`,
+					`Accepting zero conf channel from peer ${counterparty_node_id}`,
+				);
+
+				trustedPeer0Conf = true;
+			}
+
+			if (!isTrustedPeer && requires_zero_conf) {
+				await ldk.writeToLogFile(
+					'error',
+					`Peer attempting to open zero conf required channel but is not in trusted peers list (${counterparty_node_id})`,
 				);
 			}
 		}
@@ -1654,7 +1659,6 @@ class LightningManager {
 		const res = await ldk.acceptChannel({
 			temporaryChannelId: temp_channel_id,
 			counterPartyNodeId: counterparty_node_id,
-			userChannelId: temp_channel_id,
 			trustedPeer0Conf,
 		});
 

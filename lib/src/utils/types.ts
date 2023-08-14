@@ -268,7 +268,6 @@ export type TCloseChannelReq = {
 export type TAcceptChannelReq = {
 	temporaryChannelId: string;
 	counterPartyNodeId: string;
-	userChannelId: string;
 	trustedPeer0Conf: boolean;
 };
 

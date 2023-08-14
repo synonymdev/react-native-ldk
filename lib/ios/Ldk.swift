@@ -621,18 +621,22 @@ class Ldk: NSObject {
     }
     
     @objc
-    func acceptChannel(_ temporaryChannelId: NSString, counterPartyNodeId: NSString, userChannelId: NSString, trustedPeer0Conf: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func acceptChannel(_ temporaryChannelId: NSString, counterPartyNodeId: NSString, trustedPeer0Conf: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let channelManager = channelManager else {
             return handleReject(reject, .init_channel_manager)
         }
         
         let temporaryChannelId = String(temporaryChannelId).hexaBytes
         let counterpartyNodeId = String(counterPartyNodeId).hexaBytes
-        let userChannelId = String(userChannelId).hexaBytes
         
+        var userChannelId = Data(count: 32)
+        userChannelId.withUnsafeMutableBytes { mutableBytes in
+            arc4random_buf(mutableBytes.baseAddress, 32)
+        }
+
         let res = trustedPeer0Conf ?
-        channelManager.acceptInboundChannelFromTrustedPeer0conf(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: userChannelId) :
-        channelManager.acceptInboundChannel(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: userChannelId)
+        channelManager.acceptInboundChannelFromTrustedPeer0conf(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: [UInt8](userChannelId)) :
+        channelManager.acceptInboundChannel(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: [UInt8](userChannelId))
                 
         guard res.isOk() else {
             guard let error = res.getError() else {

@@ -66,7 +66,6 @@ RCT_EXTERN_METHOD(setTxUnconfirmed:(NSString *)txId
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(acceptChannel:(NSString *)temporaryChannelId
                   counterPartyNodeId:(NSString *)counterPartyNodeId
-                  userChannelId:(NSString *)userChannelId
                   trustedPeer0Conf:(BOOL *)trustedPeer0Conf
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)

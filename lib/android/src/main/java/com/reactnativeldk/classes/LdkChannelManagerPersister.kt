@@ -63,7 +63,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             body.putHexString("counterparty_node_id", openChannelRequest.counterparty_node_id)
             body.putInt("push_sat", openChannelRequest.push_msat.toInt() / 1000)
             body.putInt("funding_satoshis", openChannelRequest.funding_satoshis.toInt())
-            body.putHexString("channel_type", openChannelRequest.channel_type.write())
+            body.putBoolean("requires_zero_conf", openChannelRequest.channel_type.requires_zero_conf())
+            body.putBoolean("supports_zero_conf", openChannelRequest.channel_type.supports_zero_conf())
+            body.putBoolean("requires_anchors_zero_fee_htlc_tx", openChannelRequest.channel_type.requires_anchors_zero_fee_htlc_tx())
             return LdkEventEmitter.send(EventTypes.channel_manager_open_channel_request, body)
         }
 
