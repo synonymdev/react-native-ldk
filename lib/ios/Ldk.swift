@@ -805,7 +805,7 @@ class Ldk: NSObject {
             logger: logger,
             network: ldkCurrency,
             amtMsat: amountSats == 0 ? nil : UInt64(amountSats) * 1000,
-            description: String(description),
+            description: String(description).withoutEmojis, //TODO remove to allow emojis when fixed in ldk
             invoiceExpiryDeltaSecs: UInt32(expiryDelta),
             minFinalCltvExpiryDelta: nil //TOOD
         )

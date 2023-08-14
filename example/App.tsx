@@ -441,7 +441,7 @@ const App = (): ReactElement => {
 									const createPaymentRequest =
 										await lm.createAndStorePaymentRequest({
 											amountSats,
-											description: 'paymeplz',
+											description: 'paymeplz 🤑',
 											expiryDeltaSeconds: 999999,
 										});
 
