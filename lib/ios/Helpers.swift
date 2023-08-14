@@ -458,3 +458,11 @@ func mergeObj(_ obj1: [String: Any], _ obj2: [String: Any]) -> [String: Any] {
     }
     return newObj
 }
+
+extension String {
+    var withoutEmojis: String {
+        unicodeScalars
+            .filter { !$0.properties.isEmojiPresentation }
+            .reduce("") { $0 + String($1) }
+    }
+}
