@@ -426,6 +426,8 @@ class Ldk: NSObject {
         
         channelManager = channelManagerConstructor!.channelManager
         
+        Logfile.log.write("Node ID: \(Data(channelManager!.getOurNodeId()).hexEncodedString())")
+        
         channelManagerConstructor!.chainSyncCompleted(persister: channelManagerPersister)
         peerManager = channelManagerConstructor!.peerManager
         
