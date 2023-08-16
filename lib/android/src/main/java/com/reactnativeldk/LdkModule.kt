@@ -392,7 +392,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                         channelMonitors.add(it.toFile().readBytes())
                     }
 
-                LdkEventEmitter.send(EventTypes.native_log, "Restoring node from disk2")
                 channelManagerConstructor = ChannelManagerConstructor(
                     channelManagerSerialized,
                     channelMonitors.toTypedArray(),
@@ -437,6 +436,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         channelManager = channelManagerConstructor!!.channel_manager
+
+        LogFile.write("Node ID: ${channelManager!!._our_node_id.hexEncodedString()}")
 
         channelManagerConstructor!!.chain_sync_completed(channelManagerPersister, enableP2PGossip)
         peerManager = channelManagerConstructor!!.peer_manager

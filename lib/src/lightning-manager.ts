@@ -438,8 +438,10 @@ class LightningManager {
 			await ldk.forceCloseAllChannels(forceCloseOnStartup.broadcastLatestTx);
 		}
 
-		// Add cached peers
-		await this.addPeers();
+		if (!forceCloseOnStartup || forceCloseOnStartup.broadcastLatestTx) {
+			// If we're force closing without broadcasting latest state don't add peers as we're likely doing this to recovery from a stale backup
+			await this.addPeers();
+		}
 
 		// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
 		await this.syncLdk();
