@@ -31,7 +31,7 @@ export default class TestProfile {
 	seed: string;
 	network: TAvailableNetworks;
 	tip: TElectrumHeader = { height: 0, hex: '' };
-	headerCallback?: (params: TElectrumHeader) => void;
+	public headerCallback?: (params: TElectrumHeader) => void;
 
 	constructor(opts: any = {}) {
 		this.name = opts?.name ?? 'Test' + Math.floor(Math.random() * 1000);
@@ -122,7 +122,6 @@ export default class TestProfile {
 	public getScriptPubKeyHistory = async (
 		scriptPubkey: string,
 	): Promise<TGetAddressHistory[]> => {
-		console.info('getScriptPubKeyHistory', scriptPubkey);
 		const address = getAddressFromScriptPubKey(scriptPubkey);
 		const network = getNetwork(this.network);
 		const script = bitcoin.address.toOutputScript(address, network);
@@ -134,7 +133,6 @@ export default class TestProfile {
 			scriptHash,
 		);
 
-		console.info('getScriptPubKeyHistory', history);
 		if (!history) {
 			return [];
 		}
@@ -166,8 +164,6 @@ export default class TestProfile {
 			vout,
 		};
 
-		console.info('getTransactionData', res);
-
 		return res;
 	};
 
@@ -183,18 +179,14 @@ export default class TestProfile {
 				tx_hash,
 				height,
 			);
-			// console.info('getTransactionPosition', res);
 			return res.pos;
 		} catch (err) {
-			// console.info('getTransactionPosition tx_hash', tx_hash);
-			// console.info('getTransactionPosition Error', err);
 			return -1;
 		}
 	};
 
 	public broadcastTransaction = async (tx: string): Promise<string> => {
 		const res = await this.electrum.blockchainTransaction_broadcast(tx);
-		// console.info('broadcastTransaction', tx, res);
 		return res;
 	};
 }

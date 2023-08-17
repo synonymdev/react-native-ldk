@@ -68,7 +68,6 @@ describe('Clightning', function () {
 	});
 
 	after(async () => {
-		await ldk.stop();
 		cl.destroy();
 		waitForElectrum?.close();
 	});
@@ -97,6 +96,9 @@ describe('Clightning', function () {
 	});
 
 	afterEach(async function () {
+		await sleep(100);
+		await ldk.stop();
+		await sleep(100);
 		await profile?.cleanup();
 		if (this.currentTest?.state === 'failed') {
 			return;

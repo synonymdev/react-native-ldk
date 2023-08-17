@@ -97,6 +97,9 @@ describe('Eclair', function () {
 	});
 
 	afterEach(async function () {
+		await sleep(100);
+		await ldk.stop();
+		await sleep(100);
 		await profile?.cleanup();
 		if (this.currentTest?.state === 'failed') {
 			return;
