@@ -53,6 +53,30 @@ yarn android
   - To get `pod install` working you might have to open the `LDKFramework.xcframework` directory, delete non ios frameworks and remove all references to deleted frameworks inside `LDKFramework.xcframework/Info.plist`.
 - Update Swift and Kotlin code if there are any breaking changes.
 
+## Testing
+
+Tests are implemented using [mocha-remote](https://github.com/kraenhansen/mocha-remote). To run tests at first you need to install docker and start tesing regtest enviroment using docker-compose:
+
+```bash
+cd example
+docker-compose up
+```
+
+Then to run tests open two terminals and execute the following commands:
+
+```bash
+# Terminal 1
+cd example
+npm run start
+```
+
+
+```bash
+# Terminal 2
+cd example
+npm run test:mocha
+```
+
 ## How to test your code
 
 Because it's a native module, you need to mock this package.
