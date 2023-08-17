@@ -151,6 +151,9 @@ export default class TestProfile {
 		const tx = await this.electrum.blockchainTransaction_get(txid, true);
 		const { height: currentHeight } = await this.getBestBlock();
 		const height = currentHeight - tx.confirmations + 1;
+		if (!this.electrum.blockchainBlock_header) {
+			throw new Error('this.electrum.blockchainBlock_header is undefined')
+		}
 		const header = await this.electrum.blockchainBlock_header(height);
 		const vout = tx.vout.map(({ n, value, scriptPubKey: { hex } }) => {
 			return { n, hex, value };

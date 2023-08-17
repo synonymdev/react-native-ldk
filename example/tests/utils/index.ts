@@ -179,6 +179,11 @@ export const wipeLdkStorage = async (): Promise<void> => {
 	};
 
 	// delete all files in the directory
-	// NOTE: this is a workaround for RNFS.unlink(folder) freezing the app
-	await deleteAllFiles(path);
+	if (Platform.OS === 'android') {
+		// NOTE: this is a workaround for RNFS.unlink(folder) freezing the app
+		await deleteAllFiles(path);
+		// await RNFS.unlink(path)
+	} else {
+		await RNFS.unlink(path);
+	}
 };
