@@ -1,3 +1,4 @@
+import './shim';
 import React, { ReactElement, useEffect, useState } from 'react';
 import {
 	Alert,
@@ -10,24 +11,7 @@ import {
 	Text,
 	View,
 } from 'react-native';
-import RNFS from 'react-native-fs';
 import Clipboard from '@react-native-clipboard/clipboard';
-import lm, {
-	ldk,
-	EEventTypes,
-	TChannelManagerClaim,
-	TChannelManagerPaymentPathFailed,
-	TChannelManagerPaymentPathSuccessful,
-	TChannelUpdate,
-} from '@synonymdev/react-native-ldk';
-
-import { peers } from './utils/constants';
-import {
-	createNewAccount,
-	getAddress,
-	simulateStaleRestore,
-} from './utils/helpers';
-
 import {
 	backupAccount,
 	importAccount,
@@ -37,6 +21,21 @@ import {
 	updateHeader,
 } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
+import ldk from '@synonymdev/react-native-ldk/dist/ldk';
+import lm, {
+	EEventTypes,
+	TChannelManagerClaim,
+	TChannelManagerPaymentPathFailed,
+	TChannelManagerPaymentPathSuccessful,
+	TChannelUpdate,
+} from '@synonymdev/react-native-ldk';
+import { peers } from './utils/constants';
+import {
+	createNewAccount,
+	getAddress,
+	simulateStaleRestore,
+} from './utils/helpers';
+import RNFS from 'react-native-fs';
 
 let logSubscription: EmitterSubscription | undefined;
 let paymentSubscription: EmitterSubscription | undefined;
@@ -176,7 +175,7 @@ const Dev = (): ReactElement => {
 				</View>
 				<View style={styles.container}>
 					<Button
-						title="E2E test"
+						title={'E2E test'}
 						testID="E2ETest"
 						onPress={async (): Promise<void> => {
 							//TODO add more functionality to test
@@ -195,7 +194,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Rebroadcast Known Transactions"
+						title={'Rebroadcast Known Transactions'}
 						onPress={async (): Promise<void> => {
 							try {
 								const res = await lm.rebroadcastAllKnownTransactions();
@@ -206,7 +205,7 @@ const Dev = (): ReactElement => {
 						}}
 					/>
 					<Button
-						title="Create New Account"
+						title={'Create New Account'}
 						onPress={async (): Promise<void> => {
 							const newAccount = await createNewAccount();
 							if (newAccount.isOk()) {
@@ -217,7 +216,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Get Node ID"
+						title={'Get Node ID'}
 						onPress={async (): Promise<void> => {
 							const nodeIdRes = await ldk.nodeId();
 							if (nodeIdRes.isErr()) {
@@ -232,7 +231,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Sync LDK"
+						title={'Sync LDK'}
 						onPress={async (): Promise<void> => {
 							const syncRes = await syncLdk();
 							if (syncRes.isErr()) {
@@ -244,7 +243,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Add Peers"
+						title={'Add Peers'}
 						onPress={async (): Promise<void> => {
 							try {
 								const peersRes = await Promise.all(
@@ -268,7 +267,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="List peers"
+						title={'List peers'}
 						onPress={async (): Promise<void> => {
 							try {
 								const listPeers = await ldk.listPeers();
@@ -284,7 +283,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="List channels"
+						title={'List channels'}
 						onPress={async (): Promise<void> => {
 							try {
 								const listChannels = await ldk.listChannels();
@@ -324,7 +323,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Close channel"
+						title={'Close channel'}
 						onPress={async (): Promise<void> => {
 							try {
 								const listChannels = await ldk.listChannels();
@@ -377,7 +376,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="List watch transactions"
+						title={'List watch transactions'}
 						onPress={async (): Promise<void> => {
 							console.log(lm.watchTxs);
 							setMessage(`Watch TXs: ${JSON.stringify(lm.watchTxs)}`);
@@ -385,14 +384,14 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="List watch outputs"
+						title={'List watch outputs'}
 						onPress={async (): Promise<void> => {
 							setMessage(`Watch Outputs: ${JSON.stringify(lm.watchOutputs)}`);
 						}}
 					/>
 
 					<Button
-						title="Get Address Balance"
+						title={'Get Address Balance'}
 						onPress={async (): Promise<void> => {
 							setMessage('Getting Address Balance...');
 							const address = await getAddress();
@@ -402,7 +401,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Recover all outputs attempt"
+						title={'Recover all outputs attempt'}
 						onPress={async (): Promise<void> => {
 							setMessage('Attempting to respend all outputs...');
 							const res = await lm.recoverOutputs();
@@ -416,7 +415,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Get claimed payments"
+						title={'Get claimed payments'}
 						onPress={async (): Promise<void> => {
 							setMessage('Getting all claimed payments...');
 							const res = await lm.getLdkPaymentsClaimed();
@@ -424,7 +423,7 @@ const Dev = (): ReactElement => {
 						}}
 					/>
 					<Button
-						title="Get sent payments"
+						title={'Get sent payments'}
 						onPress={async (): Promise<void> => {
 							setMessage('Getting all sent payments...');
 							const res = await lm.getLdkPaymentsSent();
@@ -433,7 +432,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Create invoice"
+						title={'Create invoice'}
 						onPress={async (): Promise<void> => {
 							const createInvoice = async (
 								amountSats?: number,
@@ -442,7 +441,7 @@ const Dev = (): ReactElement => {
 									const createPaymentRequest =
 										await lm.createAndStorePaymentRequest({
 											amountSats,
-											description: 'paymeplz',
+											description: 'paymeplz 🤑',
 											expiryDeltaSeconds: 999999,
 										});
 
@@ -480,7 +479,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Pay invoice"
+						title={'Pay invoice'}
 						onPress={async (): Promise<void> => {
 							const paymentRequest = await Clipboard.getString();
 							const decode = await ldk.decode({ paymentRequest });
@@ -523,7 +522,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Get network graph nodes"
+						title={'Get network graph nodes'}
 						onPress={async (): Promise<void> => {
 							const nodesRes = await ldk.networkGraphListNodeIds();
 							if (nodesRes.isErr()) {
@@ -549,7 +548,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Show claimable balances for closed/closing channels"
+						title={'Show claimable balances for closed/closing channels'}
 						onPress={async (): Promise<void> => {
 							const balances = await ldk.claimableBalances(true);
 							if (balances.isErr()) {
@@ -561,7 +560,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Show version"
+						title={'Show version'}
 						onPress={async (): Promise<void> => {
 							const ldkVersion = await ldk.version();
 							if (ldkVersion.isErr()) {
@@ -573,7 +572,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Show LDK logs"
+						title={'Show LDK logs'}
 						onPress={async (): Promise<void> => {
 							if (!lm.logFilePath) {
 								return;
@@ -589,7 +588,7 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title="Backup Current Account"
+						title={'Backup Current Account'}
 						onPress={async (): Promise<void> => {
 							const backupResponse = await backupAccount();
 							if (backupResponse.isErr()) {
@@ -606,7 +605,7 @@ const Dev = (): ReactElement => {
 						}}
 					/>
 					<Button
-						title="Import Account From Clipboard"
+						title={'Import Account From Clipboard'}
 						onPress={async (): Promise<void> => {
 							setMessage('Importing Account...');
 							const clipboardBackup = await Clipboard.getString();
@@ -622,7 +621,7 @@ const Dev = (): ReactElement => {
 						}}
 					/>
 					<Button
-						title="Simulate stale backup restore"
+						title={'Simulate stale backup restore'}
 						onPress={async (): Promise<void> => {
 							try {
 								await simulateStaleRestore((msg) => setMessage(msg));
@@ -633,7 +632,7 @@ const Dev = (): ReactElement => {
 						}}
 					/>
 					<Button
-						title="Restart node"
+						title={'Restart node'}
 						onPress={async (): Promise<void> => {
 							setMessage('Restarting...');
 							const res = await ldk.restart();
@@ -655,7 +654,7 @@ const Dev = (): ReactElement => {
 				}}>
 				<View style={styles.logModal}>
 					<ScrollView>
-						<Button title="Close" onPress={(): void => setShowLogs(false)} />
+						<Button title={'Close'} onPress={(): void => setShowLogs(false)} />
 						<Text style={styles.modalText}>{logContent}</Text>
 					</ScrollView>
 				</View>
