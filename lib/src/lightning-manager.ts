@@ -128,6 +128,7 @@ class LightningManager {
 		normal: 10,
 		background: 5,
 	});
+	trustedZeroConfPeers: string[] = [];
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
 	pathFailedSubscription: EmitterSubscription | undefined;
 	paymentFailedSubscription: EmitterSubscription | undefined;
@@ -250,6 +251,7 @@ class LightningManager {
 		rapidGossipSyncUrl = 'https://rapidsync.lightningdevkit.org/snapshot/',
 		forceCloseOnStartup,
 		userConfig = defaultUserConfig,
+		trustedZeroConfPeers = [],
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
 			return err(
@@ -300,6 +302,7 @@ class LightningManager {
 		this.unconfirmedTxs = await this.getLdkUnconfirmedTxs();
 		this.watchTxs = [];
 		this.watchOutputs = [];
+		this.trustedZeroConfPeers = trustedZeroConfPeers;
 
 		if (!this.baseStoragePath) {
 			return err(
@@ -1618,11 +1621,64 @@ class LightningManager {
 		console.log(`onChannelManagerPaymentSent: ${JSON.stringify(res)}`); //TODO
 	}
 
-	private onChannelManagerOpenChannelRequest(
-		res: TChannelManagerOpenChannelRequest,
-	): void {
-		//Nothing to do here unless manuallyAcceptInboundChannels:true in initConfig() above
-		console.log(`onChannelManagerOpenChannelRequest: ${JSON.stringify(res)}`);
+	private async onChannelManagerOpenChannelRequest(
+		req: TChannelManagerOpenChannelRequest,
+	): Promise<void> {
+		//Only triggered if manually_accept_inbound_channels is set in user config
+		await ldk.writeToLogFile(
+			'info',
+			`channel_manager_open_channel_request: ${JSON.stringify(req)}`,
+		);
+
+		const {
+			temp_channel_id,
+			counterparty_node_id,
+			supports_zero_conf,
+			requires_zero_conf,
+		} = req;
+
+		let trustedPeer0Conf = false;
+		const isTrustedPeer =
+			this.trustedZeroConfPeers.indexOf(counterparty_node_id) > -1;
+		if (supports_zero_conf) {
+			if (isTrustedPeer) {
+				await ldk.writeToLogFile(
+					'error',
+					`Accepting zero conf channel from peer ${counterparty_node_id}`,
+				);
+
+				trustedPeer0Conf = true;
+			}
+
+			if (!isTrustedPeer && requires_zero_conf) {
+				await ldk.writeToLogFile(
+					'error',
+					`Peer attempting to open zero conf required channel but is not in trusted peers list (${counterparty_node_id})`,
+				);
+			}
+		}
+
+		const res = await ldk.acceptChannel({
+			temporaryChannelId: temp_channel_id,
+			counterPartyNodeId: counterparty_node_id,
+			trustedPeer0Conf,
+		});
+
+		if (res.isOk()) {
+			await ldk.writeToLogFile(
+				'info',
+				`Accept channel success ${
+					trustedPeer0Conf ? 'with trusted peer zero conf' : ''
+				}`,
+			);
+		} else {
+			await ldk.writeToLogFile(
+				'error',
+				`Accept channel ${
+					trustedPeer0Conf ? '(trusted zero conf) ' : ''
+				}error: ${JSON.stringify(res.error.message)}`,
+			);
+		}
 	}
 
 	private onChannelManagerPaymentPathSuccessful(
