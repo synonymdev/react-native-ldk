@@ -33,12 +33,11 @@ class LdkLogger: Logger {
     override func log(record: Record) {
         let level = levelString(record.getLevel())
         
-        
         //Only when the JS code has set the log level to active
         if activeLevels[level] == true {
-            LdkEventEmitter.shared.send(withEvent: .ldk_log, body: record.getArgs())
-                                    
-            Logfile.log.write("\(level) (LDK): \(record.getArgs())")
+            let line = "\(level) (LDK): \(record.getArgs()) (\(record.getModulePath()) \(record.getLine()))"
+            LdkEventEmitter.shared.send(withEvent: .ldk_log, body: line)
+            Logfile.log.write(line)
         }
     }
     
@@ -60,7 +59,9 @@ class Logfile: TextOutputStream {
             return
         }
         
-        let line = "\(str)\n"
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let line = "\(dateFormatter.string(from: Date())) \(str)\n"
         
         if let handle = try? FileHandle(forWritingTo: logfile) {
             handle.seekToEndOfFile()

@@ -1,10 +1,13 @@
 package com.reactnativeldk.classes
 
+import android.annotation.SuppressLint
 import com.reactnativeldk.EventTypes
 import com.reactnativeldk.LdkEventEmitter
 import org.ldk.structs.Logger
 import org.ldk.structs.Record
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
 
 private fun levelString(level: Int): String {
     when (level) {
@@ -25,8 +28,9 @@ class LdkLogger {
         val level = levelString(record._level.ordinal)
 
         if (activeLevels[level] == true) {
-            LdkEventEmitter.send(EventTypes.ldk_log, record._args)
-            LogFile.write( "$level (LDK): ${record._args}")
+            val line = "$level (LDK): ${record._args} (${record._module_path} ${record._line})"
+            LdkEventEmitter.send(EventTypes.ldk_log, line)
+            LogFile.write(line)
         }
     }
 
@@ -47,11 +51,15 @@ object LogFile {
         this.logFile = logFile
     }
 
+    @SuppressLint("SimpleDateFormat")
     fun write(str: String) {
         if (logFile == null) {
             return
         }
 
-        logFile!!.appendText("${str}\n")
+        val dateFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+        val line = "${dateFormatter.format(Date())} $str\n"
+
+        logFile!!.appendText(line)
     }
 }

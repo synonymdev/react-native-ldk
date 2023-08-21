@@ -10,6 +10,7 @@ import {
 } from '../electrum';
 import lm, {
 	DefaultTransactionDataShape,
+	defaultUserConfig,
 	TAccount,
 	TAccountBackup,
 	THeader,
@@ -33,7 +34,7 @@ import * as bitcoin from 'bitcoinjs-lib';
  * @param {string} key
  * @returns {Promise<string>}
  */
-export const getItem = async (key = ''): Promise<any> => {
+export const getItem = async (key: string = ''): Promise<any> => {
 	try {
 		return await AsyncStorage.getItem(key);
 	} catch (e) {
@@ -126,6 +127,15 @@ export const setupLdk = async (
 			forceCloseOnStartup: forceCloseAllChannels
 				? { forceClose: true, broadcastLatestTx: false }
 				: undefined,
+			userConfig: {
+				...defaultUserConfig,
+				channel_handshake_config: {
+					...defaultUserConfig.channel_handshake_config,
+					negotiate_anchors_zero_fee_htlc_tx: true,
+				},
+				manually_accept_inbound_channels: true,
+			},
+			trustedZeroConfPeers: [peers.lnd.pubKey],
 		});
 
 		if (lmStart.isErr()) {
@@ -195,6 +205,7 @@ export const getTransactionData = async (
 		txHashes: data,
 		network: selectedNetwork,
 	});
+
 	if (
 		//TODO: Update types for electrum response.
 		// @ts-ignore

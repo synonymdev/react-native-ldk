@@ -126,5 +126,6 @@ dependencies {
   // noinspection GradleDynamicVersion
   api 'com.facebook.react:react-native:+'
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+  // implementation files('ldk-java-javadoc.jar') //Used to get code completion in Kotlin but won't compile with it
   compileOnly files('libs/LDK-release.aar')
 }

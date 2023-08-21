@@ -1,0 +1,197 @@
+version: '3'
+services:
+  bitcoind:
+    container_name: bitcoin
+    image: btcpayserver/bitcoin:25.0
+    restart: unless-stopped
+    expose:
+      - '18443'
+      - '39388'
+      - '28334'
+      - '28335'
+      - '28336'
+    ports:
+      - '18443:18443'
+      - '39388:39388'
+      - '28334:28334'
+      - '28335:28335'
+      - '28336:28336'
+    volumes:
+      - 'b_home:/home/bitcoin/.bitcoin'
+    environment:
+      BITCOIN_NETWORK: ${NBITCOIN_NETWORK:-regtest}
+      CREATE_WALLET: 'true'
+      BITCOIN_WALLETDIR: '/walletdata'
+      BITCOIN_EXTRA_ARGS: |
+        rpcport=18443
+        rpcbind=0.0.0.0:18443
+        rpcallowip=0.0.0.0/0
+        port=39388
+        whitelist=0.0.0.0/0
+        maxmempool=500
+        rpcauth=polaruser:5e5e98c21f5c814568f8b55d83b23c1c$$066b03f92df30b11de8e4b1b1cd5b1b4281aa25205bd57df9be82caf97a05526
+        txindex=1
+        fallbackfee=0.00001
+        zmqpubrawblock=tcp://0.0.0.0:28334
+        zmqpubrawtx=tcp://0.0.0.0:28335
+        zmqpubhashblock=tcp://0.0.0.0:28336
+
+  bitcoinsetup:
+    image: btcpayserver/bitcoin:25.0
+    depends_on:
+      - bitcoind
+    restart: 'no'
+    volumes:
+      - 'b_home:/home/bitcoin/.bitcoin'
+    user: bitcoin
+    # generate one block so electrs stop complaining
+    entrypoint:
+      [
+        'bash',
+        '-c',
+        'sleep 1; while ! bitcoin-cli -rpcconnect=bitcoind -generate 1; do sleep 1; done',
+      ]
+
+  electrs:
+    container_name: electrum
+    image: getumbrel/electrs:v0.9.10
+    restart: unless-stopped
+    depends_on:
+      - bitcoind
+    expose:
+      - '60001'
+    ports:
+      - '60001:60001'
+    volumes:
+      - './electrs.toml:/data/electrs.toml'
+    environment:
+      - ELECTRS_NETWORK=regtest
+      - ELECTRS_ELECTRUM_RPC_ADDR=electrs:60001
+      - ELECTRS_DAEMON_RPC_ADDR=bitcoind:18443
+      - ELECTRS_DAEMON_P2P_ADDR=bitcoind:39388
+      - ELECTRS_LOG_FILTERS=INFO
+
+  lnd:
+    container_name: lnd
+    image: polarlightning/lnd:0.16.4-beta
+    restart: unless-stopped
+    depends_on:
+      - bitcoind
+    expose:
+      - '8080' # REST
+      - '9735' # P2P
+      - '10009' # RPC
+    ports:
+      - '8080:8080'
+      - '9735:9735'
+      - '10009:10009'
+    volumes:
+      - './lnd:/home/lnd/.lnd/data/chain/bitcoin/regtest'
+    command:
+      - '--noseedbackup'
+      - '--alias=lnd'
+      - '--externalip=lnd'
+      - '--bitcoin.active'
+      - '--bitcoin.regtest'
+      - '--bitcoin.node=bitcoind'
+      - '--bitcoind.rpchost=bitcoind:18443'
+      - '--bitcoind.rpcuser=polaruser'
+      - '--bitcoind.rpcpass=polarpass'
+      - '--bitcoind.zmqpubrawblock=tcp://bitcoind:28334'
+      - '--bitcoind.zmqpubrawtx=tcp://bitcoind:28335'
+      - '--debuglevel=info'
+      - '--listen=0.0.0.0:9735'
+      - '--rpclisten=0.0.0.0:10009'
+      - '--restlisten=0.0.0.0:8080'
+      - '--feeurl=http://nginx:9090/btc-fee-estimates.json'
+
+  clightning:
+    container_name: clightning
+    image: polarlightning/clightning:23.05.2
+    restart: unless-stopped
+    depends_on:
+      - bitcoind
+    expose:
+      - '18080' # REST
+      - '18081' # DOCPORT
+      - '9736' # P2P
+      - '11001' # RPC
+    ports:
+      - '18080:18080'
+      - '18081:18081'
+      - '9736:9736'
+      - '11001:11001'
+    volumes:
+      - './clightning:/opt/c-lightning-rest/certs/'
+    command:
+      - '--alias=clightning'
+      - '--addr=0.0.0.0:9736'
+      - '--network=regtest'
+      - '--bitcoin-rpcuser=polaruser'
+      - '--bitcoin-rpcpassword=polarpass'
+      - '--bitcoin-rpcconnect=bitcoin'
+      - '--bitcoin-rpcport=18443'
+      - '--log-level=debug'
+      - '--dev-bitcoind-poll=2'
+      - '--dev-fast-gossip'
+      - '--grpc-port=11001'
+      - '--bitcoin-rpcport=18443'
+      - '--plugin=/opt/c-lightning-rest/plugin.js'
+      - '--rest-port=18080'
+      - '--rest-protocol=http'
+      - '--rest-docport=18081'
+
+  eclair:
+    container_name: eclair
+    image: polarlightning/eclair:0.9.0
+    restart: unless-stopped
+    depends_on:
+      - bitcoind
+    expose:
+      - '28081' # REST
+      - '9737' # P2P
+    ports:
+      - '28081:28081'
+      - '9737:9737'
+    command:
+      - 'polar-eclair'
+      - '--server.public-ips.0=eclair'
+      - '--server.port=9737'
+      - '--api.enabled=true'
+      - '--api.binding-ip=0.0.0.0'
+      - '--api.port=28081'
+      - '--api.password=eclairpw'
+      - '--chain=regtest'
+      - '--bitcoind.host=bitcoin'
+      - '--bitcoind.rpcport=18443'
+      - '--bitcoind.rpcuser=polaruser'
+      - '--bitcoind.rpcpassword=polarpass'
+      - '--bitcoind.zmqblock=tcp://bitcoin:28336'
+      - '--bitcoind.zmqtx=tcp://bitcoin:28335'
+      - '--datadir=/home/eclair/.eclair'
+      - '--printToConsole=true'
+      - '--on-chain-fees.feerate-tolerance.ratio-low=0.00001'
+      - '--on-chain-fees.feerate-tolerance.ratio-high=10000.0'
+
+  nginx:
+    container_name: nginx
+    image: nginx:1.25.1
+    restart: unless-stopped
+    depends_on:
+      - bitcoinsetup
+    volumes:
+      - './nginx.conf:/etc/nginx/conf.d/default.conf'
+      - './btc-fee-estimates.json:/www/btc-fee-estimates.json'
+    expose:
+      - '9090'
+      - '9091'
+      - '9092'
+    ports:
+      - '9090:9090'
+      - '9091:9091'
+      - '9092:9092'
+
+volumes:
+  b_home:
+
+networks: {}
