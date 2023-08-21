@@ -43,11 +43,10 @@ func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLo
     do {
         let fileAttributes = try FileManager.default.attributesOfItem(atPath: file.path)
         if let modificationDate = fileAttributes[.modificationDate] as? Date {
-            let currentDate = Date()
-            let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: currentDate)!
+            let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date())!
             if modificationDate < oneMonthAgo {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Cached scorer older than 1 month. Returning fresh scorer.")
-                return ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
+                return ProbabilisticScorer(decayParams: scoringParams, networkGraph: networkGraph, logger: logger)
             }
         }
     } catch {}
@@ -66,7 +65,7 @@ func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLo
     //Doesn't exist or error reading it
     if probabalisticScorer == nil {
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting scorer from scratch")
-        probabalisticScorer = ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
+        probabalisticScorer = ProbabilisticScorer(decayParams: scoringParams, networkGraph: networkGraph, logger: logger)
     }
         
     return probabalisticScorer!
