@@ -35,28 +35,40 @@ func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ erro
 func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLogger) -> ProbabilisticScorer {
     let scoringParams = ProbabilisticScoringDecayParameters.initWithDefault()
     
-    //TODO remove below line and uncomment below to enable reading cached scorer again
-    return ProbabilisticScorer(decayParams: scoringParams, networkGraph: networkGraph, logger: logger)
+    var probabalisticScorer: ProbabilisticScorer?
     
-    //    var probabalisticScorer: ProbabilisticScorer?
-    //    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
-    //        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
-    //
-    //        if scorerRead.isOk() {
-    //            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
-    //            probabalisticScorer = scorerRead.getValue()
-    //        } else {
-    //            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
-    //        }
-    //    }
-    //
-    //    //Doesn't exist or error reading it
-    //    if probabalisticScorer == nil {
-    //        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting scorer from scratch")
-    //        probabalisticScorer = ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
-    //    }
-    //
-    //    return probabalisticScorer!
+    let file = path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL
+
+    //File might be stale and might be part of a previous bug causing it to be corrupted. If older than 1 month just discard it and retrun fresh instance.
+    do {
+        let fileAttributes = try FileManager.default.attributesOfItem(atPath: file.path)
+        if let modificationDate = fileAttributes[.modificationDate] as? Date {
+            let oneMonthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date())!
+            if modificationDate < oneMonthAgo {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Cached scorer older than 1 month. Returning fresh scorer.")
+                return ProbabilisticScorer(decayParams: scoringParams, networkGraph: networkGraph, logger: logger)
+            }
+        }
+    } catch {}
+    
+    if let storedScorer = try? Data(contentsOf: file) {
+        let scorerRead = ProbabilisticScorer.read(ser: [UInt8](storedScorer), argA: scoringParams, argB: networkGraph, argC: logger)
+        
+        if scorerRead.isOk() {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loaded scorer from disk")
+            probabalisticScorer = scorerRead.getValue()
+        } else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to load cached scorer")
+        }
+    }
+    
+    //Doesn't exist or error reading it
+    if probabalisticScorer == nil {
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting scorer from scratch")
+        probabalisticScorer = ProbabilisticScorer(decayParams: scoringParams, networkGraph: networkGraph, logger: logger)
+    }
+        
+    return probabalisticScorer!
 }
 
 extension Bolt11Invoice {
