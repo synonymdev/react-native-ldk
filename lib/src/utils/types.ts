@@ -82,7 +82,9 @@ export type TChannelManagerOpenChannelRequest = {
 	counterparty_node_id: string;
 	push_sat: number;
 	funding_satoshis: number;
-	channel_type: string;
+	requires_zero_conf: boolean;
+	supports_zero_conf: boolean;
+	requires_anchors_zero_fee_htlc_tx: boolean;
 };
 
 export type TChannelUpdate = {
@@ -157,6 +159,7 @@ export type TChannel = {
 	unspendable_punishment_reserve?: number;
 	config_forwarding_fee_base_msat: number;
 	config_forwarding_fee_proportional_millionths: number;
+	confirmations: number;
 };
 
 export type TNetworkGraphChannelInfo = {
@@ -262,6 +265,12 @@ export type TCloseChannelReq = {
 	force?: boolean;
 };
 
+export type TAcceptChannelReq = {
+	temporaryChannelId: string;
+	counterPartyNodeId: string;
+	trustedPeer0Conf: boolean;
+};
+
 export type TSpendOutputsReq = {
 	descriptorsSerialized: string[];
 	outputs: {
@@ -311,6 +320,7 @@ export type TChannelHandshakeConfig = {
 	announced_channel?: boolean;
 	commit_upfront_shutdown_pubkey?: boolean;
 	their_channel_reserve_proportional_millionths?: number; //UInt32
+	negotiate_anchors_zero_fee_htlc_tx?: boolean;
 	our_max_accepted_htlcs_arg?: number; //UInt16
 };
 
@@ -331,8 +341,10 @@ export type TChannelConfig = {
 	forwarding_fee_proportional_millionths?: number; //UInt32
 	forwarding_fee_base_msat?: number; //UInt32
 	cltv_expiry_delta?: number; //UInt16
-	max_dust_htlc_exposure_msat?: number; //UInt64
+	max_dust_htlc_exposure_type?: 'fixed_limit' | 'fee_rate_multiplier';
+	max_dust_htlc_exposure?: number; //UInt64
 	force_close_avoidance_max_fee_satoshis?: number; //UInt64
+	accept_underpaying_htlcs?: boolean;
 };
 
 //Mirrors the rust struct
@@ -344,6 +356,7 @@ export type TUserConfig = {
 	accept_inbound_channels?: boolean;
 	manually_accept_inbound_channels?: boolean;
 	accept_intercept_htlcs?: boolean;
+	accept_mpp_keysend?: boolean;
 };
 
 export const defaultUserConfig: TUserConfig = {
@@ -351,8 +364,9 @@ export const defaultUserConfig: TUserConfig = {
 		announced_channel: false,
 		minimum_depth: 1,
 		max_htlc_value_in_flight_percent_of_channel: 100,
+		negotiate_anchors_zero_fee_htlc_tx: true,
 	},
-	manually_accept_inbound_channels: false,
+	manually_accept_inbound_channels: true,
 	accept_inbound_channels: true,
 };
 
@@ -381,7 +395,7 @@ export type TTransactionData = {
 export type TTransactionPosition = number;
 
 export type TClaimableBalance = {
-	claimable_amount_satoshis: number;
+	amount_satoshis: number;
 	type:
 		| 'ClaimableAwaitingConfirmations'
 		| 'ClaimableOnChannelClose'
@@ -532,6 +546,7 @@ export type TLdkStart = {
 	rapidGossipSyncUrl?: string;
 	forceCloseOnStartup?: TForceCloseOnStartup;
 	userConfig?: TUserConfig;
+	trustedZeroConfPeers?: string[];
 };
 
 export type TGetAddress = () => Promise<string>;

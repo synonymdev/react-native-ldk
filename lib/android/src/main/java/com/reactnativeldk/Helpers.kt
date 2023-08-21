@@ -38,7 +38,7 @@ fun String.hexa(): ByteArray {
 }
 
 fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Logger): ProbabilisticScorer? {
-    val params = ProbabilisticScoringParameters.with_default()
+    val params = ProbabilisticScoringDecayParameters.with_default()
 
     val scorerFile = File(path + "/" + LdkFileNames.scorer.fileName)
     if (scorerFile.exists()) {
@@ -62,7 +62,7 @@ fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Log
     return (score_res as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
 }
 
-val Invoice.asJson: WritableMap
+val Bolt11Invoice.asJson: WritableMap
     get() {
         val result = Arguments.createMap()
         val signedInv = into_signed_raw()
@@ -135,6 +135,9 @@ val ChannelDetails.asJson: WritableMap
         (_force_close_spend_delay as? Option_u16Z.Some)?.some?.toInt()
             ?.let { result.putInt("force_close_spend_delay", it) }
         result.putInt("unspendable_punishment_reserve", (_unspendable_punishment_reserve as Option_u64Z.Some).some.toInt())
+        result.putInt("config_forwarding_fee_base_msat", (_config?._forwarding_fee_base_msat ?: 0))
+        result.putInt("config_forwarding_fee_proportional_millionths", (_config?._forwarding_fee_proportional_millionths ?: 0))
+        result.putInt("confirmations", (_confirmations_required as Option_u32Z.Some).some)
 
         return result
     }
@@ -279,10 +282,12 @@ fun ChannelHandshakeConfig.mergeWithMap(map: ReadableMap?): ChannelHandshakeConf
     try {
         _their_channel_reserve_proportional_millionths = map.getInt("their_channel_reserve_proportional_millionths")
     } catch (_: Exception) {}
-    //TODO add _our_max_accepted_htlcs_arg when added to the bindings as it is in swift and JS
-//    try {
-//        _our_max_accepted_htlcs_arg = map.getInt("our_max_accepted_htlcs_arg")
-//    } catch (_: Exception) {}
+    try {
+        _negotiate_anchors_zero_fee_htlc_tx = map.getBoolean("negotiate_anchors_zero_fee_htlc_tx")
+    } catch (_: Exception) {}
+    try {
+        _our_max_accepted_htlcs = map.getInt("our_max_accepted_htlcs_arg").toShort()
+    } catch (_: Exception) {}
 
     return this
 }
@@ -341,10 +346,17 @@ fun ChannelConfig.mergeWithMap(map: ReadableMap?): ChannelConfig {
         _cltv_expiry_delta = map.getInt("cltv_expiry_delta").toShort()
     } catch (_: Exception) {}
     try {
-        _max_dust_htlc_exposure_msat = map.getInt("max_dust_htlc_exposure_msat").toLong()
+        if (map.getString("max_dust_htlc_exposure_type") == "fixed_limit") {
+            _max_dust_htlc_exposure = MaxDustHTLCExposure.fixed_limit_msat(map.getInt("max_dust_htlc_exposure").toLong())
+        } else if (map.getString("max_dust_htlc_exposure_type") == "fee_rate_multiplier") {
+            _max_dust_htlc_exposure = MaxDustHTLCExposure.fee_rate_multiplier(map.getInt("max_dust_htlc_exposure").toLong())
+        }
     } catch (_: Exception) {}
     try {
         _force_close_avoidance_max_fee_satoshis = map.getInt("force_close_avoidance_max_fee_satoshis").toLong()
+    } catch (_: Exception) {}
+    try {
+        _accept_underpaying_htlcs = map.getBoolean("_accept_underpaying_htlcs")
     } catch (_: Exception) {}
 
     return this
@@ -369,6 +381,10 @@ fun UserConfig.mergeWithMap(map: ReadableMap): UserConfig {
 
     try {
         _accept_intercept_htlcs = map.getBoolean("accept_intercept_htlcs")
+    } catch (_: Exception) {}
+
+    try {
+        _accept_mpp_keysend = map.getBoolean("accept_mpp_keysend")
     } catch (_: Exception) {}
 
     return this

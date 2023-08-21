@@ -33,10 +33,10 @@ func handleReject(_ reject: RCTPromiseRejectBlock, _ ldkError: LdkErrors, _ erro
 ///   - logger
 /// - Returns: ProbabilisticScorer
 func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLogger) -> ProbabilisticScorer {
-    let scoringParams = ProbabilisticScoringParameters.initWithDefault()
+    let scoringParams = ProbabilisticScoringDecayParameters.initWithDefault()
     
     //TODO remove below line and uncomment below to enable reading cached scorer again
-    return ProbabilisticScorer(params: scoringParams, networkGraph: networkGraph, logger: logger)
+    return ProbabilisticScorer(decayParams: scoringParams, networkGraph: networkGraph, logger: logger)
     
     //    var probabalisticScorer: ProbabilisticScorer?
     //    if let storedScorer = try? Data(contentsOf: path.appendingPathComponent(LdkFileNames.scorer.rawValue).standardizedFileURL) {
@@ -59,7 +59,7 @@ func getProbabilisticScorer(path: URL, networkGraph: NetworkGraph, logger: LdkLo
     //    return probabalisticScorer!
 }
 
-extension Invoice {
+extension Bolt11Invoice {
     var asJson: [String: Any?] {
         //Break down to get the decription. Will crash if all on a single line.
         let signedRawInvoice = intoSignedRaw()
@@ -121,8 +121,9 @@ extension ChannelDetails {
             "channel_value_satoshis": getChannelValueSatoshis(),
             "force_close_spend_delay": getForceCloseSpendDelay() as Any, //Optional number
             "unspendable_punishment_reserve": getUnspendablePunishmentReserve() as Any, //Optional number
-            "config_forwarding_fee_base_msat": getConfig()?.getForwardingFeeBaseMsat() ?? 0 / 1000, //Optional number
-            "config_forwarding_fee_proportional_millionths": getConfig()?.getForwardingFeeProportionalMillionths() ?? 0 / 1000 //Optional number
+            "config_forwarding_fee_base_msat": getConfig()?.getForwardingFeeBaseMsat() ?? 0, //Optional number
+            "config_forwarding_fee_proportional_millionths": getConfig()?.getForwardingFeeProportionalMillionths() ?? 0 / 1000, //Optional number
+            "confirmations": getConfirmations() ?? 0
         ]
     }
 }
@@ -312,6 +313,7 @@ extension ChannelHandshakeConfig {
             announcedChannelArg: obj["announced_channel"] as? Bool ?? defaults.getAnnouncedChannel(),
             commitUpfrontShutdownPubkeyArg: obj["commit_upfront_shutdown_pubkey"] as? Bool ?? defaults.getCommitUpfrontShutdownPubkey(),
             theirChannelReserveProportionalMillionthsArg: obj["their_channel_reserve_proportional_millionths"] as? UInt32 ?? defaults.getTheirChannelReserveProportionalMillionths(),
+            negotiateAnchorsZeroFeeHtlcTxArg: obj["negotiate_anchors_zero_fee_htlc_tx"] as? Bool ?? defaults.getNegotiateAnchorsZeroFeeHtlcTx(),
             ourMaxAcceptedHtlcsArg: obj["our_max_accepted_htlcs_arg"] as? UInt16 ?? defaults.getOurMaxAcceptedHtlcs()
         )
     }
@@ -348,12 +350,22 @@ extension ChannelConfig {
             return defaults
         }
         
+        var maxDustHtlcExposureArg = defaults.getMaxDustHtlcExposure()
+        if let dustLimitExposure = obj["max_dust_htlc_exposure"] as? UInt64 {
+            if obj["max_dust_htlc_exposure_type"] as? String == "fixed_limit" {
+                maxDustHtlcExposureArg = .initWithFixedLimitMsat(a: dustLimitExposure)
+            } else if obj["max_dust_htlc_exposure_type"] as? String == "fee_rate_multiplier" {
+                maxDustHtlcExposureArg = .initWithFeeRateMultiplier(a: dustLimitExposure)
+            }
+        }
+        
         return ChannelConfig(
             forwardingFeeProportionalMillionthsArg: obj["forwarding_fee_proportional_millionths"] as? UInt32 ?? defaults.getForwardingFeeProportionalMillionths(),
-            forwardingFeeBaseMsatArg: obj["forwarding_fee_base_msat"] as? UInt32 ?? defaults.getForwardingFeeBaseMsat(),
+            forwardingFeeBaseMsatArg: obj["forwarding_fee_proportional_millionths"] as? UInt32 ?? defaults.getForwardingFeeProportionalMillionths(),
             cltvExpiryDeltaArg: obj["cltv_expiry_delta"] as? UInt16 ?? defaults.getCltvExpiryDelta(),
-            maxDustHtlcExposureMsatArg: obj["max_dust_htlc_exposure_msat"] as? UInt64 ?? defaults.getMaxDustHtlcExposureMsat(),
-            forceCloseAvoidanceMaxFeeSatoshisArg: obj["force_close_avoidance_max_fee_satoshis"] as? UInt64 ?? defaults.getForceCloseAvoidanceMaxFeeSatoshis()
+            maxDustHtlcExposureArg: maxDustHtlcExposureArg,
+            forceCloseAvoidanceMaxFeeSatoshisArg: obj["force_close_avoidance_max_fee_satoshis"] as? UInt64 ?? defaults.getForceCloseAvoidanceMaxFeeSatoshis(),
+            acceptUnderpayingHtlcsArg: obj["accept_underpaying_htlcs"] as? Bool ?? defaults.getAcceptUnderpayingHtlcs()
         )
     }
 }
@@ -369,7 +381,9 @@ extension UserConfig {
             acceptForwardsToPrivChannelsArg: obj["accept_forwards_to_priv_channels"] as? Bool ?? defaults.getAcceptForwardsToPrivChannels(),
             acceptInboundChannelsArg: obj["accept_inbound_channels"] as? Bool ?? defaults.getAcceptInboundChannels(),
             manuallyAcceptInboundChannelsArg: obj["manually_accept_inbound_channels"] as? Bool ?? defaults.getAcceptInboundChannels(),
-            acceptInterceptHtlcsArg: obj["accept_intercept_htlcs"] as? Bool ?? defaults.getAcceptInterceptHtlcs())
+            acceptInterceptHtlcsArg: obj["accept_intercept_htlcs"] as? Bool ?? defaults.getAcceptInterceptHtlcs(),
+            acceptMppKeysendArg: obj["accept_mpp_keysend"] as? Bool ?? defaults.getAcceptMppKeysend()
+        )
         
         return userConfig
     }
@@ -555,4 +569,11 @@ func restoreBackup(_ label: BackupLabel) throws -> Data {
     
     print("**************************\n\n\n")
     return backup
+
+extension String {
+    var withoutEmojis: String {
+        unicodeScalars
+            .filter { !$0.properties.isEmojiPresentation }
+            .reduce("") { $0 + String($1) }
+    }
 }
