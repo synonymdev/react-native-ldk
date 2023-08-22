@@ -10,8 +10,9 @@ class FancyStorage {
         }
     }
 
-    userFilePath(userId, network, subdir) {
+    userFilePath(userId, network, subdir = "") {
         const directoryPath = path.join(this.storageDirectory + "/" + userId + "/" + network + "/" + subdir);
+        console.log(directoryPath);
         if (!fs.existsSync(directoryPath)) {
             fs.mkdirSync(directoryPath, { recursive: true });
         }
@@ -28,8 +29,7 @@ class FancyStorage {
         const filePath = path.join(this.userFilePath(userId, network, subdir), `${key}.bin`);
 
         if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, 'utf-8');
-            return JSON.parse(data);
+            return fs.readFileSync(filePath, 'binary');
         } else {
             return null;
         }

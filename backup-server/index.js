@@ -7,10 +7,18 @@ let storage = new FancyStorage(); //TODO actually make fancy
 let lables = ['channel-manager', 'channel-monitor'];
 let networks = ['bitcoin', 'testnet', 'regtest', 'signet'];
 
-let userId = 'user1'; //TODO add to auth link
+let userDB = {
+    'token1': 'user1',
+};
+
+//TODO auth
+//TODO rate limiting
+//TODO file size limit
+//TODO file count limit
+//TODO logging
 
 const server = http.createServer((req, res) => {
-    //TODO auth request
+    //TODO auth endpoint to get user access token
 
     if (req.method === 'POST' && req.url.startsWith('/persist')) {
         const urlParams = url.parse(req.url, true).query;
@@ -27,6 +35,8 @@ const server = http.createServer((req, res) => {
         const network = urlParams.network;
         const label = urlParams.label;
         const channelId = urlParams.id;
+        const token = 'token1'; //urlParams.token;//TODO
+        const userId = userDB[token];
 
         let body = Buffer.from([]);
    
@@ -43,6 +53,9 @@ const server = http.createServer((req, res) => {
                 key = channelId;
                 subdir = 'channel-monitors';
             }
+
+            console.log("Saved");
+            console.log(body.length);
 
             storage.set({userId, network, subdir, key, value: body});
 
@@ -68,6 +81,8 @@ const server = http.createServer((req, res) => {
         const network = urlParams.network;
         const label = urlParams.label;
         const channelId = urlParams.id;
+        const token = 'token1'; //urlParams.token;//TODO
+        const userId = userDB[token];
 
         let key = label;
         let subdir = '';
@@ -76,15 +91,18 @@ const server = http.createServer((req, res) => {
             subdir = 'channel-monitors';
         }
 
-        const backup = storage.get({userId, network, key});
+        const backup = storage.get({userId, network, subdir, key});
         if (!backup) {
             res.writeHead(404, { 'Content-Type': 'text/plain' });
             res.end('Backup not found');
             return;
         }
 
+        console.log("Fetched");
+        console.log(backup.length);
+
         res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
-        res.end(backup);
+        res.end(backup, 'binary');
         return;
     }
 

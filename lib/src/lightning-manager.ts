@@ -350,6 +350,16 @@ class LightningManager {
 			}
 		}
 
+		//Setup remote backup server
+		const backupSetupRes = await ldk.backupSetup({
+			seed: account.seed,
+			network: this.network,
+			server: 'http://192.168.0.102:3003', //TODO accept this as a param
+		});
+		if (backupSetupRes.isErr()) {
+			return err(backupSetupRes.error);
+		}
+
 		// Step 1: Initialize the FeeEstimator
 		// Lazy loaded in native code
 		// https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html

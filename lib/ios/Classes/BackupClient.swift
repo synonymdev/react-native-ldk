@@ -58,7 +58,7 @@ class BackupClient {
         Self.encryptionKey = SymmetricKey(data: seed)
     }
     
-    static fileprivate func backupUrl(_ label: Label, _ method: Method) throws -> URL {
+    static private func backupUrl(_ label: Label, _ method: Method) throws -> URL {
         guard let network = Self.network, let server = Self.server else {
             throw BackupError.requiresSetup
         }
@@ -72,17 +72,27 @@ class BackupClient {
         return URL(string: urlString)!
     }
 
-    fileprivate func encrypt(blob: Data) throws {
+    private static func encrypt(_ blob: Data) throws -> Data {
         guard let key = Self.encryptionKey else {
             throw BackupError.requiresSetup
         }
-        
-        let signature = HMAC<SHA256>.authenticationCode(for: blob, using: key)
+
+        let sealedBox = try AES.GCM.seal(blob, using: key)
+        return sealedBox.combined!
+    }
+    
+    private static func decrypt(_ blob: Data) throws -> Data {
+        guard let key = Self.encryptionKey else {
+            throw BackupError.requiresSetup
+        }
+
+        let sealedBox = try AES.GCM.SealedBox(combined: blob)
+        let decryptedData = try AES.GCM.open(sealedBox, using: key)
+        return decryptedData
     }
     
     //TODO multiple monitors
     //TODO authentication
-    //TODO encryption with seed
     //TODO restore
     //TODO write to log file
     
@@ -92,15 +102,14 @@ class BackupClient {
             return
         }
         
-        print("\n\n\n\n\n************************* BACKUP")
-        let backupData = Data(bytes)
-        print("Save bytes: ", backupData.count)
+        let encryptedBackup = try encrypt(Data(bytes))
         
         var request = URLRequest(url: try backupUrl(label, .persist))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = backupData
+        request.httpBody = encryptedBackup
         
+        var requestError: Error?
         //Thread blocking, backups must be synchronous
         let semaphore = DispatchSemaphore(value: 0)
         let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
@@ -108,70 +117,58 @@ class BackupClient {
                 semaphore.signal()
             }
             
-            if let error = error {
-                //TODO throw error
-                print("BACKUP ERROR: ", error.localizedDescription)
-                return
-            }
+            requestError = error
             
             if let data = data {
-                print(">>>>>>>>>><<<<<<<<<<<")
-
                 let response = String(data: data, encoding: .utf8) ?? ""
-                if response != "success" {
+                if response == "success" {
                     print("Remote persist success")
                     return;
                 }
-                
-                print("TODO HANDLE ERROR: \(response)")
             }
         }
         
         task.resume()
-        
         semaphore.wait()
         
-        print("**************************\n\n\n")
+        if let error = requestError {
+            throw error
+        }
     }
 
     static func retrieve(_ label: Label) throws -> Data {
-        print("\n\n\n\n\n************************* RESTORE")
-        
-        var backup: Data?
+        var encryptedBackup: Data?
         var request = URLRequest(url: try backupUrl(label, .retrieve))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var requestError: Error?
         
         let semaphore = DispatchSemaphore(value: 0)
-        
         let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
             defer {
                 semaphore.signal()
             }
             
-            if let error = error {
-                print("RESTORE ERROR: ", error.localizedDescription)
-                return
-            }
-            
-            if let data = data {
-                print(">>>>>>>>>><<<<<<<<<<<")
-                print("TODO HANDLE RESPONSE")
-                print(data.hexEncodedString())
-                backup = data
-            }
+            requestError = error
+            encryptedBackup = data
         }
         
         task.resume()
         
         semaphore.wait()
         
-        guard let backup else {
+        if let error = requestError {
+            throw error
+        }
+        
+        guard let encryptedBackup else {
             //TODO make custom error to throw
             return Data()
         }
+                
+        let backup = try decrypt(encryptedBackup)
         
-        print("**************************\n\n\n")
         return backup
     }
 }

@@ -73,6 +73,7 @@ enum LdkCallbackResponses: String {
     case log_level_updated = "log_level_updated"
     case log_path_updated = "log_path_updated"
     case log_write_success = "log_write_success"
+    case backup_client_setup_success = "backup_client_setup_success"
     case chain_monitor_init_success = "chain_monitor_init_success"
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
@@ -190,6 +191,21 @@ class Ldk: NSObject {
     func backupSetup(_ seed: NSString, network: NSString, server: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         do {
             try BackupClient.setup(seed: String(seed).hexaBytes, network: String(network), server: String(server))
+            
+            let testString = "hello world"
+            let test = Data(testString.utf8)
+            try! BackupClient.persist(.channelManager, [UInt8](test))
+            
+            let result = try! BackupClient.retrieve(.channelManager)
+            
+            if let testRes = String(data: result, encoding: .utf8) {
+                print("FETCHED SUCCESS:  \(testRes == testString)")
+            } else {
+                fatalError("No fetch result")
+            }
+            
+            handleResolve(resolve, .backup_client_setup_success)
+            return
         } catch {
             reject("backup setup failed", error.localizedDescription, error)
             return
@@ -425,9 +441,7 @@ class Ldk: NSObject {
             if let channelManagerSerialized = storedChannelManager, channelMonitorsSerialized.count > 0 {
                 //Restoring node
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring node from disk")
-                
-                print("RESTORING REMOTE CHANNEL MANAGER: \(storedChannelManager?.hexEncodedString())")
-                
+                                
                 channelManagerConstructor = try ChannelManagerConstructor(
                     channelManagerSerialized: [UInt8](channelManagerSerialized),
                     channelMonitorsSerialized: channelMonitorsSerialized,
