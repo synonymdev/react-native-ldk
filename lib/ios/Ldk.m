@@ -13,6 +13,11 @@ RCT_EXTERN_METHOD(setLogFilePath:(NSString *)path
 RCT_EXTERN_METHOD(writeToLogFile:(NSString *)line
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(backupSetup:(NSString *)seed
+                  network(NSString *)network
+                  server(NSString *)server
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed

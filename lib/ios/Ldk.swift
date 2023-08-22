@@ -187,6 +187,23 @@ class Ldk: NSObject {
     }
     
     @objc
+    func backupSetup(_ seed: NSString, network: NSString, server: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        do {
+            try BackupClient.setup(seed: String(seed).hexaBytes, network: String(network), server: String(server))
+        } catch {
+            reject("backup setup failed", error.localizedDescription, error)
+            return
+        }
+    }
+    
+    @objc
+    func restoreFromRemoteBackup(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        //TODO return how many channel files were restored
+        
+        //TODO check backup setup
+    }
+    
+    @objc
     func initChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard chainMonitor == nil else {
             return handleReject(reject, .already_init)
@@ -218,7 +235,7 @@ class Ldk: NSObject {
         }
         
         keysManager = KeysManager(seed: String(seed).hexaBytes, startingTimeSecs: seconds, startingTimeNanos: nanoSeconds)
-        
+                
         return handleResolve(resolve, .keys_manager_init_success)
     }
     
@@ -327,8 +344,6 @@ class Ldk: NSObject {
     
     @objc
     func initChannelManager(_ network: NSString, blockHash: NSString, blockHeight: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-//        try? remoteBackup([0,1,2,3])
-        
         guard channelManager == nil else {
             return handleReject(reject, .already_init)
         }
@@ -366,11 +381,13 @@ class Ldk: NSObject {
         
         let enableP2PGossip = rapidGossipSync == nil
         
-//        let storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
+        var storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
         
-        let storedChannelManager = try? restoreBackup(.channelManager)
-        //TODO we need to check for a 404 or something to know if the node is new
-        
+        //TODO move to separate restore function
+//        if true {
+//            storedChannelManager = try? BackupClient.retrieve(.channelManager)
+//        }
+                
         var channelMonitorsSerialized: Array<[UInt8]> = []
         let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
         for channelFile in channelFiles {

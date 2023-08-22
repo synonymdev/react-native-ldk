@@ -272,6 +272,23 @@ class LDK {
 		}
 	}
 
+	async backupSetup({
+		seed,
+		network,
+		server,
+	}: {
+		seed: string;
+		network: string;
+		server: string;
+	}): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.backupSetup(seed, network, server);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
 	/**
 	 * Writes a JS error to log file
 	 * @param funcName
