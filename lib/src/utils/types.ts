@@ -34,6 +34,7 @@ export enum EEventTypes {
 	new_channel = 'new_channel',
 	network_graph_updated = 'network_graph_updated',
 	channel_manager_restarted = 'channel_manager_restarted',
+	backup_failed = 'backup_failed',
 }
 
 //LDK event responses

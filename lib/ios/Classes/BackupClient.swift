@@ -9,21 +9,32 @@ import Foundation
 import LightningDevKit
 import CryptoKit
 
-class BackupClient {
-    enum BackupError: Error {
-        case invalidNetwork
-        case requiresSetup
+enum BackupError: Error {
+    case invalidNetwork
+    case requiresSetup
+    case missingBackup
+    case invalidServerResponse(Int)
+    case decryptFailed(String)
+}
 
-        var localizedDescription: String {
-            switch self {
-                case .invalidNetwork:
-                    return NSLocalizedString("Invalid network passed to BackupClient setup", comment: "")
-                case .requiresSetup:
-                    return NSLocalizedString("BackupClient requires setup", comment: "")
-            }
+extension BackupError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .invalidNetwork:
+            return NSLocalizedString("Invalid network passed to BackupClient setup", comment: "")
+        case .requiresSetup:
+            return NSLocalizedString("BackupClient requires setup", comment: "")
+        case .missingBackup:
+            return NSLocalizedString("Retrieve failed. Missing backup.", comment: "")
+        case .invalidServerResponse(let code):
+            return NSLocalizedString("Invalid backup server response (\(code))", comment: "")
+        case .decryptFailed(let msg):
+            return NSLocalizedString("Failed to decrypt backup payload. \(msg)", comment: "")
         }
     }
-    
+}
+
+class BackupClient {
     enum Label {
         case channelManager
         case channelMonitor(id: String)
@@ -37,25 +48,34 @@ class BackupClient {
             }
         }
     }
-
+    
     enum Method: String {
         case persist = "persist"
         case retrieve = "retrieve"
     }
     
     static var skipRemoteBackup = false //Allow dev to opt out (for development), will not throw error when attempting to persist
-    static var server: String?
+    
     static var network: String?
+    static var server: String?
+    static var token: String?
     static var encryptionKey: SymmetricKey?
-
-    static func setup(seed: [UInt8], network: String, server: String) throws {
+    
+    static var requiresSetup: Bool {
+        return server == nil
+    }
+    
+    static func setup(seed: [UInt8], network: String, server: String, token: String) throws {
         guard getNetwork(network) != nil else {
             throw BackupError.invalidNetwork
         }
-
+        
         Self.network = network
         Self.server = server
         Self.encryptionKey = SymmetricKey(data: seed)
+        Self.token = token
+        
+        Logfile.log.swiftLog("BackupClient setup for synchronous remote persistence. Server: \(server)")
     }
     
     static private func backupUrl(_ label: Label, _ method: Method) throws -> URL {
@@ -66,17 +86,17 @@ class BackupClient {
         var urlString = "\(server)/\(method.rawValue)?label=\(label.string)&network=\(network)"
         
         if case let .channelMonitor(id) = label {
-            urlString = "\(urlString)&id=\(id)"
+            urlString = "\(urlString)&channelId=\(id)"
         }
         
         return URL(string: urlString)!
     }
-
+    
     private static func encrypt(_ blob: Data) throws -> Data {
         guard let key = Self.encryptionKey else {
             throw BackupError.requiresSetup
         }
-
+        
         let sealedBox = try AES.GCM.seal(blob, using: key)
         return sealedBox.combined!
     }
@@ -85,10 +105,18 @@ class BackupClient {
         guard let key = Self.encryptionKey else {
             throw BackupError.requiresSetup
         }
-
-        let sealedBox = try AES.GCM.SealedBox(combined: blob)
-        let decryptedData = try AES.GCM.open(sealedBox, using: key)
-        return decryptedData
+        
+        do {
+            let sealedBox = try AES.GCM.SealedBox(combined: blob)
+            let decryptedData = try AES.GCM.open(sealedBox, using: key)
+            return decryptedData
+        } catch {
+            if let ce = error as? CryptoKitError {
+                throw BackupError.decryptFailed(ce.localizedDescription)
+            } else {
+                throw error
+            }
+        }
     }
     
     //TODO multiple monitors
@@ -98,7 +126,7 @@ class BackupClient {
     
     static func persist(_ label: Label, _ bytes: [UInt8]) throws {
         guard !skipRemoteBackup else {
-            print("Skipping remote backup for \(label.string)")
+            Logfile.log.swiftLog("Skipping remote backup for \(label.string)")
             return
         }
         
@@ -106,7 +134,8 @@ class BackupClient {
         
         var request = URLRequest(url: try backupUrl(label, .persist))
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        request.setValue(token, forHTTPHeaderField: "Authorization")
         request.httpBody = encryptedBackup
         
         var requestError: Error?
@@ -117,58 +146,74 @@ class BackupClient {
                 semaphore.signal()
             }
             
-            requestError = error
-            
-            if let data = data {
-                let response = String(data: data, encoding: .utf8) ?? ""
-                if response == "success" {
-                    print("Remote persist success")
+            if let httpURLResponse = response as? HTTPURLResponse {
+                let statusCode = httpURLResponse.statusCode
+                if statusCode == 200 {
                     return;
+                } else {
+                    requestError = BackupError.invalidServerResponse(httpURLResponse.statusCode)
+                    return
                 }
+            } else {
+                requestError = BackupError.invalidServerResponse(0)
             }
+            
+            requestError = error
         }
         
         task.resume()
         semaphore.wait()
         
         if let error = requestError {
+            Logfile.log.swiftLog("Remote persist failed for \(label.string). \(error.localizedDescription)")
+            LdkEventEmitter.shared.send(withEvent: .backup_sync_persist_error, body: error.localizedDescription)
             throw error
         }
+        
+        Logfile.log.swiftLog("Remote persist success for \(label.string)")
     }
-
+    
     static func retrieve(_ label: Label) throws -> Data {
         var encryptedBackup: Data?
         var request = URLRequest(url: try backupUrl(label, .retrieve))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        var requestError: Error?
+        request.setValue(token, forHTTPHeaderField: "Authorization")
         
+        var requestError: Error?
         let semaphore = DispatchSemaphore(value: 0)
         let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
             defer {
                 semaphore.signal()
             }
             
-            requestError = error
-            encryptedBackup = data
+            if let httpURLResponse = response as? HTTPURLResponse {
+                let statusCode = httpURLResponse.statusCode
+                if statusCode == 200 {
+                    encryptedBackup = data
+                    return
+                } else {
+                    requestError = BackupError.invalidServerResponse(httpURLResponse.statusCode)
+                    return
+                }
+            } else {
+                requestError = BackupError.invalidServerResponse(0)
+            }
         }
         
         task.resume()
-        
         semaphore.wait()
         
         if let error = requestError {
+            Logfile.log.swiftLog("Remote retrieve failed for \(label.string). \(error.localizedDescription)")
             throw error
         }
         
         guard let encryptedBackup else {
-            //TODO make custom error to throw
-            return Data()
+            throw BackupError.missingBackup
         }
-                
-        let backup = try decrypt(encryptedBackup)
         
-        return backup
+        Logfile.log.swiftLog("Remote retrieve success for \(label.string).")
+        return try decrypt(encryptedBackup)
     }
 }

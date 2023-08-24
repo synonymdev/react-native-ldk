@@ -16,6 +16,7 @@ RCT_EXTERN_METHOD(writeToLogFile:(NSString *)line
 RCT_EXTERN_METHOD(backupSetup:(NSString *)seed
                   network:(NSString *)network
                   server:(NSString *)server
+                  token:(NSString *)token
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve

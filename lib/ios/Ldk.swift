@@ -25,6 +25,7 @@ enum EventTypes: String, CaseIterable {
     case new_channel = "new_channel"
     case network_graph_updated = "network_graph_updated"
     case channel_manager_restarted = "channel_manager_restarted"
+    case backup_sync_persist_error = "backup_failed"
 }
 //*****************************************************************
 
@@ -65,6 +66,7 @@ enum LdkErrors: String {
     case file_does_not_exist = "file_does_not_exist"
     case init_network_graph_fail = "init_network_graph_fail"
     case data_too_large_for_rn = "data_too_large_for_rn"
+    case backup_setup_required = "backup_setup_required"
 }
 
 enum LdkCallbackResponses: String {
@@ -188,26 +190,31 @@ class Ldk: NSObject {
     }
     
     @objc
-    func backupSetup(_ seed: NSString, network: NSString, server: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func backupSetup(_ seed: NSString, network: NSString, server: NSString, token: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         do {
-            try BackupClient.setup(seed: String(seed).hexaBytes, network: String(network), server: String(server))
+            try BackupClient.setup(seed: String(seed).hexaBytes, network: String(network), server: String(server), token: String(token))
             
             let testString = "hello world"
             let test = Data(testString.utf8)
-            try! BackupClient.persist(.channelManager, [UInt8](test))
+            try BackupClient.persist(.channelManager, [UInt8](test))
             
-            let result = try! BackupClient.retrieve(.channelManager)
-            
+            let result = try BackupClient.retrieve(.channelManager)
+
             if let testRes = String(data: result, encoding: .utf8) {
-                print("FETCHED SUCCESS:  \(testRes == testString)")
-            } else {
-                fatalError("No fetch result")
+                if testRes == testString {
+                    handleResolve(resolve, .backup_client_setup_success)
+                    return
+                }
             }
             
-            handleResolve(resolve, .backup_client_setup_success)
+            reject("Backup setup failed", "Check failed", "Check failed")                        
             return
         } catch {
-            reject("backup setup failed", error.localizedDescription, error)
+            print("\n\n\n\n***")
+            print(error)
+            print(error.localizedDescription)
+            print("***\n\n\n")
+            reject("Backup setup failed", error.localizedDescription, error.localizedDescription)
             return
         }
     }
@@ -217,6 +224,12 @@ class Ldk: NSObject {
         //TODO return how many channel files were restored
         
         //TODO check backup setup
+        
+        guard !BackupClient.requiresSetup else {
+            return handleReject(reject, .backup_setup_required)
+        }
+        
+        resolve("TODO show channels")
     }
     
     @objc
@@ -397,12 +410,7 @@ class Ldk: NSObject {
         
         let enableP2PGossip = rapidGossipSync == nil
         
-        var storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
-        
-        //TODO move to separate restore function
-//        if true {
-//            storedChannelManager = try? BackupClient.retrieve(.channelManager)
-//        }
+        let storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
                 
         var channelMonitorsSerialized: Array<[UInt8]> = []
         let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)

@@ -3,7 +3,7 @@ const path = require('path');
 
 class FancyStorage {
     constructor() {
-        this.storageDirectory = path.join(__dirname, 'local-storage');
+        this.storageDirectory = path.join(__dirname, '../local-storage');
 
         if (!fs.existsSync(this.storageDirectory)) {
             fs.mkdirSync(this.storageDirectory);

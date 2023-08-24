@@ -355,9 +355,14 @@ class LightningManager {
 			seed: account.seed,
 			network: this.network,
 			server: 'http://192.168.0.102:3003', //TODO accept this as a param
+			token: 'token123', //TODO auth in JS
 		});
 		if (backupSetupRes.isErr()) {
 			return err(backupSetupRes.error);
+		}
+
+		if (backupSetupRes.isOk()) {
+			return err('Backup server setup complete');
 		}
 
 		// Step 1: Initialize the FeeEstimator

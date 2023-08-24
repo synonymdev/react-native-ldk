@@ -276,13 +276,20 @@ class LDK {
 		seed,
 		network,
 		server,
+		token,
 	}: {
 		seed: string;
 		network: string;
 		server: string;
+		token: string;
 	}): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.backupSetup(seed, network, server);
+			const res = await NativeLDK.backupSetup(
+				seed,
+				network,
+				server,
+				token,
+			);
 			return ok(res);
 		} catch (e) {
 			return err(e);

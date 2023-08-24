@@ -54,6 +54,10 @@ class Logfile: TextOutputStream {
         logfile = file
     }
     
+    func swiftLog(_ str: String) {
+        write("SWIFT: \(str)")
+    }
+    
     func write(_ str: String) {
         guard let logfile = logfile else {
             return
