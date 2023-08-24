@@ -40,7 +40,16 @@ const querystring = {
     required: ['network', 'label'],
 };
 
-const authHandler = async (request, reply) => {
+fastify.route({
+    method: 'POST',
+    url: '/auth',
+    handler: async (request, reply) => {
+        // reply.send({signThis: "HEY"});
+        return {signThis: "HEY"};
+    }
+});
+
+const authCheckHandler = async (request, reply) => {
     const token = request.headers.authorization;
 
     if (!token || !userDB[token]) {
@@ -60,7 +69,7 @@ fastify.route({
             }
         }
     },
-    preHandler: authHandler,
+    preHandler: authCheckHandler,
     handler: async (request, reply) => {
         console.log("\n\n****persist handler*****\n\n");
         const {body, query, headers} = request;
@@ -80,7 +89,7 @@ fastify.route({
 
         fastify.log.info(`Saved ${formatFileSize(body.length)} for ${label}`);
 
-        return "success";
+        return {success: true};
     }
 });
 
@@ -93,7 +102,7 @@ fastify.route({
             200: {}
         }
     },
-    preHandler: authHandler,
+    preHandler: authCheckHandler,
     handler: async (request, reply) => {
         console.log("\n\n****retrieve handler*****\n\n");
 
