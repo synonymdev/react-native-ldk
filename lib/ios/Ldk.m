@@ -19,6 +19,9 @@ RCT_EXTERN_METHOD(backupSetup:(NSString *)seed
                   token:(NSString *)token
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(restoreFromRemoteBackup:(BOOL *)overwrite
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
@@ -145,6 +148,7 @@ RCT_EXTERN_METHOD(writeToFile:(NSString *)fileName
                   path:(NSString *)path
                   content:(NSString *)content
                   format:(NSString *)format
+                  remotePersist:(BOOL *)remotePersist
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(readFromFile:(NSString *)fileName

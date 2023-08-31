@@ -415,6 +415,7 @@ export type TFileWriteReq = {
 	path?: string;
 	content: string;
 	format?: 'hex' | 'string';
+	remotePersist: boolean;
 };
 
 export type TFileReadReq = {
@@ -444,6 +445,7 @@ export type TGetTransactionPosition = (params: {
 }) => Promise<TTransactionPosition>;
 export type TGetBestBlock = () => Promise<THeader>;
 
+//LDK file names should match labels on backup server
 export enum ELdkFiles {
 	seed = 'seed', //32 bytes of entropy saved natively
 	channel_manager = 'channel_manager.bin', //Serialised rust object
@@ -548,6 +550,7 @@ export type TLdkStart = {
 	forceCloseOnStartup?: TForceCloseOnStartup;
 	userConfig?: TUserConfig;
 	trustedZeroConfPeers?: string[];
+	backupServerDetails?: TBackupServerDetails;
 };
 
 export type TGetAddress = () => Promise<string>;
@@ -571,4 +574,9 @@ export type TReconstructAndSpendOutputsReq = {
 	outpointIndex: number;
 	feeRate: number;
 	changeDestinationScript: string;
+};
+
+export type TBackupServerDetails = {
+	url: string;
+	token: string;
 };

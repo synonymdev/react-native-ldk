@@ -34,17 +34,32 @@ extension BackupError: LocalizedError {
     }
 }
 
+struct CompleteBackup {
+    let files: [String: Data]
+    let channelFiles: [String: Data]
+}
+
 class BackupClient {
+    private static let version = "v1"
+    
     enum Label {
+        case ping
         case channelManager
         case channelMonitor(id: String)
+        case misc(fileName: String)
         
         var string: String {
             switch self {
+            case .ping:
+                return "ping"
             case .channelManager:
-                return "channel-manager"
+                return "channel_manager"
             case .channelMonitor:
-                return "channel-monitor"
+                return "channel_monitor"
+            case .misc(let fileName): //Tx history, watch txs, etc
+                return fileName
+                    .replacingOccurrences(of: ".json", with: "")
+                    .replacingOccurrences(of: ".bin", with: "")
             }
         }
     }
@@ -52,9 +67,10 @@ class BackupClient {
     enum Method: String {
         case persist = "persist"
         case retrieve = "retrieve"
+        case list = "list"
     }
     
-    static var skipRemoteBackup = false //Allow dev to opt out (for development), will not throw error when attempting to persist
+    static var skipRemoteBackup = true //Allow dev to opt out (for development), will not throw error when attempting to persist
     
     static var network: String?
     static var server: String?
@@ -75,15 +91,19 @@ class BackupClient {
         Self.encryptionKey = SymmetricKey(data: seed)
         Self.token = token
         
-        Logfile.log.swiftLog("BackupClient setup for synchronous remote persistence. Server: \(server)")
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "BackupClient setup for synchronous remote persistence. Server: \(server)")
     }
     
-    static private func backupUrl(_ label: Label, _ method: Method) throws -> URL {
+    static private func backupUrl(_ method: Method, _ label: Label? = nil) throws -> URL {
         guard let network = Self.network, let server = Self.server else {
             throw BackupError.requiresSetup
         }
         
-        var urlString = "\(server)/\(method.rawValue)?label=\(label.string)&network=\(network)"
+        var urlString = "\(server)/\(version)/\(method.rawValue)?network=\(network)"
+        
+        if let label {
+            urlString = "\(urlString)&label=\(label.string)"
+        }
         
         if case let .channelMonitor(id) = label {
             urlString = "\(urlString)&channelId=\(id)"
@@ -119,20 +139,18 @@ class BackupClient {
         }
     }
     
-    //TODO multiple monitors
     //TODO authentication
     //TODO restore
-    //TODO write to log file
     
     static func persist(_ label: Label, _ bytes: [UInt8]) throws {
         guard !skipRemoteBackup else {
-            Logfile.log.swiftLog("Skipping remote backup for \(label.string)")
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping remote backup for \(label.string)")
             return
         }
         
         let encryptedBackup = try encrypt(Data(bytes))
         
-        var request = URLRequest(url: try backupUrl(label, .persist))
+        var request = URLRequest(url: try backupUrl(.persist, label))
         request.httpMethod = "POST"
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         request.setValue(token, forHTTPHeaderField: "Authorization")
@@ -165,17 +183,17 @@ class BackupClient {
         semaphore.wait()
         
         if let error = requestError {
-            Logfile.log.swiftLog("Remote persist failed for \(label.string). \(error.localizedDescription)")
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persist failed for \(label.string). \(error.localizedDescription)")
             LdkEventEmitter.shared.send(withEvent: .backup_sync_persist_error, body: error.localizedDescription)
             throw error
         }
         
-        Logfile.log.swiftLog("Remote persist success for \(label.string)")
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persist success for \(label.string)")
     }
     
     static func retrieve(_ label: Label) throws -> Data {
         var encryptedBackup: Data?
-        var request = URLRequest(url: try backupUrl(label, .retrieve))
+        var request = URLRequest(url: try backupUrl(.retrieve, label))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(token, forHTTPHeaderField: "Authorization")
@@ -205,7 +223,7 @@ class BackupClient {
         semaphore.wait()
         
         if let error = requestError {
-            Logfile.log.swiftLog("Remote retrieve failed for \(label.string). \(error.localizedDescription)")
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote retrieve failed for \(label.string). \(error.localizedDescription)")
             throw error
         }
         
@@ -213,7 +231,82 @@ class BackupClient {
             throw BackupError.missingBackup
         }
         
-        Logfile.log.swiftLog("Remote retrieve success for \(label.string).")
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote retrieve success for \(label.string).")
         return try decrypt(encryptedBackup)
+    }
+    
+    static func retrieveCompleteBackup() throws -> CompleteBackup {
+        struct ListFilesResponse: Codable {
+            let list: [String]
+            let channel_monitors: [String]
+        }
+        
+        var backedUpFilenames: ListFilesResponse?
+        
+        var request = URLRequest(url: try backupUrl(.list))
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(token, forHTTPHeaderField: "Authorization")
+        
+        var requestError: Error?
+        let semaphore = DispatchSemaphore(value: 0)
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            defer {
+                semaphore.signal()
+            }
+            
+            if let httpURLResponse = response as? HTTPURLResponse {
+                let statusCode = httpURLResponse.statusCode
+                if statusCode == 200, let data {
+                    do {
+                        backedUpFilenames = try JSONDecoder().decode(ListFilesResponse.self, from: data)
+                        return
+                    } catch {
+                        requestError = BackupError.invalidServerResponse(0)
+                        return
+                    }
+                } else {
+                    requestError = BackupError.invalidServerResponse(httpURLResponse.statusCode)
+                    return
+                }
+            } else {
+                requestError = BackupError.invalidServerResponse(0)
+            }
+        }
+        
+        task.resume()
+        semaphore.wait()
+        
+        if let error = requestError {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote list files failed. \(error.localizedDescription)")
+            throw error
+        }
+        
+        guard let backedUpFilenames else {
+            throw BackupError.missingBackup
+        }
+        
+        
+        var allFiles: [String: Data] = [:]
+        var channelFiles: [String: Data] = [:]
+
+        //Fetch each file's data
+        for fileName in backedUpFilenames.list {
+            guard fileName != "\(Label.ping.string).bin" else {
+                continue
+            }
+            
+            allFiles[fileName] = try retrieve(.misc(fileName: fileName))
+        }
+        
+        for channelFileName in backedUpFilenames.channel_monitors {
+            let id = channelFileName.replacingOccurrences(of: ".bin", with: "")
+            channelFiles[channelFileName] = try retrieve(.channelMonitor(id: id))
+        }
+        
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote list files success.")
+        
+        return CompleteBackup(files: allFiles, channelFiles: channelFiles)
+        
     }
 }

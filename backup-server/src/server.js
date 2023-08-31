@@ -5,21 +5,33 @@ const { formatFileSize } = require('./helpers.js');
 
 let storage = new FancyStorage(); //TODO actually make fancy
 
-let labels = ['channel-manager', 'channel-monitor'];
+let labels = [
+    'ping',
+    'channel_manager',
+    'channel_monitor',
+    'peers',
+    'unconfirmed_transactions',
+    'broadcasted_transactions',
+    'payment_ids',
+    'spendable_outputs',
+    'payments_claimed',
+    'payments_sent',
+    'bolt11_invoices',
+];
 let networks = ['bitcoin', 'testnet', 'regtest', 'signet'];
 
 let userDB = {
     'token123': 'user1',
 };
 
-const version = 'v1'; //TODO
+const version = 'v1';
 
 const fastify = Fastify({
     logger: true
 })
 
 // Declare a route
-fastify.get('/status', async function handler (request, reply) {
+fastify.get(`/${version}/status`, async function handler (request, reply) {
     return { hello: 'world' };
 });
 
@@ -60,7 +72,7 @@ const authCheckHandler = async (request, reply) => {
 
 fastify.route({
     method: 'POST',
-    url: '/persist',
+    url: `/${version}/persist`,
     schema: {
         querystring,
         response: {
@@ -71,7 +83,6 @@ fastify.route({
     },
     preHandler: authCheckHandler,
     handler: async (request, reply) => {
-        console.log("\n\n****persist handler*****\n\n");
         const {body, query, headers} = request;
 
         const {label, channelId, network} = query;
@@ -80,9 +91,9 @@ fastify.route({
 
         let key = label;
         let subdir = '';
-        if (label === 'channel-monitor') {
+        if (label === 'channel_monitor') {
             key = channelId;
-            subdir = 'channel-monitors';
+            subdir = 'channel_monitors';
         }
 
         storage.set({userId, network, subdir, key, value: body});
@@ -95,7 +106,7 @@ fastify.route({
 
 fastify.route({
     method: 'GET',
-    url: '/retrieve',
+    url: `/${version}/retrieve`,
     schema: {
         querystring,
         response: {
@@ -104,8 +115,6 @@ fastify.route({
     },
     preHandler: authCheckHandler,
     handler: async (request, reply) => {
-        console.log("\n\n****retrieve handler*****\n\n");
-
         const {body, query, headers} = request;
 
         const {label, channelId, network} = query;
@@ -114,9 +123,9 @@ fastify.route({
 
         let key = label;
         let subdir = '';
-        if (label === 'channel-monitor') {
+        if (label === 'channel_monitor') {
             key = channelId;
-            subdir = 'channel-monitors';
+            subdir = 'channel_monitors';
         }
 
         const backup = storage.get({userId, network, subdir, key});
@@ -131,6 +140,38 @@ fastify.route({
         reply.raw.setHeader('Content-Length', backup.length);
         reply.raw.writeHead(200, { 'Content-Type': 'application/octet-stream' });
         reply.raw.end(backup, 'binary');
+    }
+});
+
+fastify.route({
+    method: 'GET',
+    url: `/${version}/list`,
+    schema: {
+        querystring: {
+            type: 'object',
+            properties: {
+                network: { type: 'string', enum: networks },
+            },
+            required: ['network'],
+        },
+    },
+    preHandler: authCheckHandler,
+    handler: async (request, reply) => {
+        const {query, headers} = request;
+
+        const {network} = query;
+        const token = headers.authorization;
+        const userId = userDB[token];
+
+        const list = storage.list({userId, network});
+        const channelMonitorList = storage.list({userId, network, subdir: 'channel_monitors'});
+
+        const allFiles = {
+            list,
+            channel_monitors: channelMonitorList
+        }
+
+        return allFiles;
     }
 });
 

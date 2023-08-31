@@ -55,6 +55,7 @@ import {
 	TBolt11Invoices,
 	TInvoice,
 	TCreatePaymentReq,
+	TBackupServerDetails,
 } from './utils/types';
 import {
 	appendPath,
@@ -252,6 +253,7 @@ class LightningManager {
 		forceCloseOnStartup,
 		userConfig = defaultUserConfig,
 		trustedZeroConfPeers = [],
+		backupServerDetails,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
 			return err(
@@ -310,18 +312,9 @@ class LightningManager {
 			);
 		}
 
-		let accountStoragePath = appendPath(this.baseStoragePath, account.name);
-
-		this.logFilePath = `${accountStoragePath}/logs/${Date.now()}.log`;
-		const logFilePathRes = await ldk.setLogFilePath(this.logFilePath);
-		if (logFilePathRes.isErr()) {
-			return logFilePathRes;
-		}
-
-		//The path all wallet and network graph persistence will be saved to
-		const storagePathRes = await ldk.setAccountStoragePath(accountStoragePath);
-		if (storagePathRes.isErr()) {
-			return storagePathRes;
+		const storageSetRes = await this.setStorage(account);
+		if (storageSetRes.isErr()) {
+			return err(storageSetRes.error);
 		}
 
 		//Validate we didn't change the seed for this account if one exists
@@ -336,6 +329,7 @@ class LightningManager {
 					fileName: ELdkFiles.seed,
 					content: account.seed,
 					format: 'hex',
+					remotePersist: false,
 				});
 				if (writeRes.isErr()) {
 					return err(writeRes.error);
@@ -351,18 +345,15 @@ class LightningManager {
 		}
 
 		//Setup remote backup server
-		const backupSetupRes = await ldk.backupSetup({
-			seed: account.seed,
-			network: this.network,
-			server: 'http://192.168.0.102:3003', //TODO accept this as a param
-			token: 'token123', //TODO auth in JS
-		});
-		if (backupSetupRes.isErr()) {
-			return err(backupSetupRes.error);
-		}
-
-		if (backupSetupRes.isOk()) {
-			return err('Backup server setup complete');
+		if (backupServerDetails) {
+			const backupSetupRes = await ldk.backupSetup({
+				seed: account.seed,
+				network: this.network,
+				details: backupServerDetails,
+			});
+			if (backupSetupRes.isErr()) {
+				return err(backupSetupRes.error);
+			}
 		}
 
 		// Step 1: Initialize the FeeEstimator
@@ -469,6 +460,24 @@ class LightningManager {
 		// Done with initChannelManager
 
 		return ok('Node running');
+	}
+
+	async setStorage(account: TAccount): Promise<Result<string>> {
+		let accountStoragePath = appendPath(this.baseStoragePath, account.name);
+
+		this.logFilePath = `${accountStoragePath}/logs/${Date.now()}.log`;
+		const logFilePathRes = await ldk.setLogFilePath(this.logFilePath);
+		if (logFilePathRes.isErr()) {
+			return logFilePathRes;
+		}
+
+		//The path all wallet and network graph persistence will be saved to
+		const storagePathRes = await ldk.setAccountStoragePath(accountStoragePath);
+		if (storagePathRes.isErr()) {
+			return storagePathRes;
+		}
+
+		return ok('Storage set');
 	}
 
 	async addPeers(): Promise<void> {
@@ -692,6 +701,7 @@ class LightningManager {
 		const writeRes = await ldk.writeToFile({
 			fileName: ELdkFiles.peers,
 			content: JSON.stringify(newPeers),
+			remotePersist: true,
 		});
 
 		if (writeRes.isErr()) {
@@ -715,6 +725,51 @@ class LightningManager {
 	};
 
 	/**
+	 * Restores the LDK wallet from a remote server if a backup exists.
+	 * @param account
+	 * @param serverDetails
+	 * @param overwrite
+	 */
+	restoreFromRemoteServer = async ({
+		account,
+		serverDetails,
+		overwrite = false,
+	}: {
+		account: TAccount;
+		serverDetails: TBackupServerDetails;
+		overwrite?: boolean;
+	}): Promise<Result<string>> => {
+		//Make sure LDK is not running.
+		const nodeIdRes = await ldk.nodeId();
+		if (nodeIdRes.isOk()) {
+			return err('Cannot restore while LDK is running.');
+		}
+
+		const storageSetRes = await this.setStorage(account);
+		if (storageSetRes.isErr()) {
+			return err(storageSetRes.error);
+		}
+
+		const { seed } = account;
+
+		const backupSetupRes = await ldk.backupSetup({
+			seed: account.seed,
+			network: this.network,
+			details: serverDetails,
+		});
+		if (backupSetupRes.isErr()) {
+			return err(backupSetupRes.error);
+		}
+
+		const restoreRes = await ldk.restoreFromRemoteBackup({ overwrite: true });
+		if (restoreRes.isErr()) {
+			return err(restoreRes.error);
+		}
+
+		return ok('Restored from remote server.');
+	};
+
+	/**
 	 * This method is used to import backups provided by react-native-ldk's backupAccount method.
 	 * @param {string | TAccountBackup} backup
 	 * @param {boolean} [overwrite] Determines if this function should overwrite an existing account of the same name.
@@ -727,6 +782,9 @@ class LightningManager {
 		backup: string | TAccountBackup;
 		overwrite?: boolean;
 	}): Promise<Result<TAccount>> => {
+		console.warn(
+			'This method is deprecated and should only be used to import accounts that were backed up with a previous async method.',
+		);
 		if (!this.baseStoragePath) {
 			return err(
 				'baseStoragePath required for wallet persistence. Call setBaseStoragePath(path) first.',
@@ -807,6 +865,7 @@ class LightningManager {
 				path: accountPath,
 				content: accountBackup.data.channel_manager,
 				format: 'hex',
+				remotePersist: false,
 			});
 			if (saveChannelManagerRes.isErr()) {
 				return err(saveChannelManagerRes.error);
@@ -821,6 +880,7 @@ class LightningManager {
 					path: appendPath(accountPath, ELdkFiles.channels),
 					content: accountBackup.data.channel_monitors[channelId],
 					format: 'hex',
+					remotePersist: false,
 				});
 				if (saveChannelRes.isErr()) {
 					return err(saveChannelRes.error);
@@ -831,6 +891,7 @@ class LightningManager {
 				fileName: ELdkFiles.peers,
 				path: accountPath,
 				content: JSON.stringify(accountBackup.data.peers),
+				remotePersist: false,
 			});
 			if (savePeersRes.isErr()) {
 				return err(savePeersRes.error);
@@ -840,6 +901,7 @@ class LightningManager {
 				fileName: ELdkFiles.payment_ids,
 				path: accountPath,
 				content: JSON.stringify(accountBackup.data.payment_ids),
+				remotePersist: false,
 			});
 			if (savePaymentIdsRes.isErr()) {
 				return err(savePaymentIdsRes.error);
@@ -849,6 +911,7 @@ class LightningManager {
 				fileName: ELdkFiles.unconfirmed_transactions,
 				path: accountPath,
 				content: JSON.stringify(accountBackup.data.unconfirmed_transactions),
+				remotePersist: false,
 			});
 			if (confirmedTxRes.isErr()) {
 				return err(confirmedTxRes.error);
@@ -858,6 +921,7 @@ class LightningManager {
 				fileName: ELdkFiles.broadcasted_transactions,
 				path: accountPath,
 				content: JSON.stringify(accountBackup.data.broadcasted_transactions),
+				remotePersist: false,
 			});
 			if (broadcastedTxRes.isErr()) {
 				return err(broadcastedTxRes.error);
@@ -1235,6 +1299,7 @@ class LightningManager {
 		await ldk.writeToFile({
 			fileName: ELdkFiles.payment_ids,
 			content: JSON.stringify(newPaymentIds),
+			remotePersist: false,
 		});
 	};
 
@@ -1248,6 +1313,7 @@ class LightningManager {
 		await ldk.writeToFile({
 			fileName: ELdkFiles.payment_ids,
 			content: JSON.stringify(paymentIds),
+			remotePersist: false,
 		});
 	};
 
@@ -1310,6 +1376,7 @@ class LightningManager {
 		await ldk.writeToFile({
 			fileName: ELdkFiles.bolt11_invoices,
 			content: JSON.stringify(invoices),
+			remotePersist: false,
 		});
 	};
 
@@ -1509,6 +1576,7 @@ class LightningManager {
 			return await ldk.writeToFile({
 				fileName: ELdkFiles.unconfirmed_transactions,
 				content: JSON.stringify(this.unconfirmedTxs),
+				remotePersist: true,
 			});
 		}
 		return ok(true);
@@ -1526,6 +1594,7 @@ class LightningManager {
 		return await ldk.writeToFile({
 			fileName: ELdkFiles.unconfirmed_transactions,
 			content: JSON.stringify(this.unconfirmedTxs),
+			remotePersist: true,
 		});
 	};
 
@@ -1546,6 +1615,7 @@ class LightningManager {
 			return await ldk.writeToFile({
 				fileName: ELdkFiles.broadcasted_transactions,
 				content: JSON.stringify(broadcastedTransactions),
+				remotePersist: true,
 			});
 		}
 		return ok(true);
@@ -1569,6 +1639,7 @@ class LightningManager {
 		return await ldk.writeToFile({
 			fileName: ELdkFiles.peers,
 			content: JSON.stringify(peers),
+			remotePersist: false,
 		});
 	};
 
@@ -1754,6 +1825,7 @@ class LightningManager {
 		await ldk.writeToFile({
 			fileName: ELdkFiles.spendable_outputs,
 			content: JSON.stringify(spendableOutputs),
+			remotePersist: true,
 		});
 
 		await ldk.writeToLogFile(

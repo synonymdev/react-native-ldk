@@ -13,12 +13,13 @@ import lm, {
 	defaultUserConfig,
 	TAccount,
 	TAccountBackup,
+	TBackupServerDetails,
 	THeader,
 	TTransactionData,
 	TTransactionPosition,
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
-import { peers, selectedNetwork } from '../utils/constants';
+import { backupServer, peers, selectedNetwork } from '../utils/constants';
 import {
 	getAccount,
 	getAddress,
@@ -88,6 +89,16 @@ export const syncLdk = async (): Promise<Result<string>> => {
 	return syncResponse;
 };
 
+export const getBackupServerDetails =
+	async (): Promise<TBackupServerDetails> => {
+		const backupServerDetails: TBackupServerDetails = {
+			url: backupServer,
+			token: 'token123', //TODO actually do auth
+		};
+
+		return backupServerDetails;
+	};
+
 /**
  * Used to spin-up LDK services.
  * In order, this method:
@@ -136,6 +147,7 @@ export const setupLdk = async (
 				manually_accept_inbound_channels: true,
 			},
 			trustedZeroConfPeers: [peers.lnd.pubKey],
+			backupServerDetails: await getBackupServerDetails(),
 		});
 
 		if (lmStart.isErr()) {

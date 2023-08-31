@@ -32,6 +32,7 @@ import {
 	TReconstructAndSpendOutputsReq,
 	THeader,
 	TAcceptChannelReq,
+	TBackupServerDetails,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -272,19 +273,48 @@ class LDK {
 		}
 	}
 
+	/**
+	 * Setup remote backup server
+	 * @param seed
+	 * @param network
+	 * @param details
+	 */
 	async backupSetup({
 		seed,
 		network,
-		server,
-		token,
+		details,
 	}: {
 		seed: string;
 		network: string;
-		server: string;
-		token: string;
+		details: TBackupServerDetails;
 	}): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.backupSetup(seed, network, server, token);
+			const res = await NativeLDK.backupSetup(
+				seed,
+				network,
+				details.url,
+				details.token,
+			);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Restore from remote backup server if one exists
+	 * @param overwrite
+	 * @returns {Promise<Result<boolean>>} true if backup exists and was restored
+	 */
+	async restoreFromRemoteBackup(
+		{
+			overwrite,
+		}: {
+			overwrite: boolean;
+		} = { overwrite: false },
+	): Promise<Result<boolean>> {
+		try {
+			const res = await NativeLDK.restoreFromRemoteBackup(overwrite);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -1094,6 +1124,7 @@ class LDK {
 	 * @param path (optional) will use current account path as default if not provided
 	 * @param content
 	 * @param format
+	 * @param remotePersist
 	 * @returns {Promise<Ok<boolean> | Err<unknown>>}
 	 */
 	async writeToFile({
@@ -1101,6 +1132,7 @@ class LDK {
 		path,
 		content,
 		format,
+		remotePersist,
 	}: TFileWriteReq): Promise<Result<boolean>> {
 		try {
 			await NativeLDK.writeToFile(
@@ -1108,6 +1140,7 @@ class LDK {
 				path || '',
 				content,
 				format || 'string',
+				!!remotePersist,
 			);
 			this.writeDebugToLog('writeToFile', fileName);
 			return ok(true);

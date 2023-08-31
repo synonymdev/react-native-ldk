@@ -35,10 +35,10 @@ class FancyStorage {
         }
     }
 
-    list({userId, network}) {
+    list({userId, network, subdir}) {
         const directoryPath = path.join(this.userFilePath(userId, network, subdir));
 
-        return fs.readdirSync(directoryPath);
+        return fs.readdirSync(directoryPath).filter(file => file.endsWith('.bin'));
     }
 }
 

@@ -67,6 +67,10 @@ enum LdkErrors: String {
     case init_network_graph_fail = "init_network_graph_fail"
     case data_too_large_for_rn = "data_too_large_for_rn"
     case backup_setup_required = "backup_setup_required"
+    case backup_setup_check_failed = "backup_setup_check_failed"
+    case backup_setup_failed = "backup_setup_failed"
+    case backup_restore_failed = "backup_restore_failed"
+    case backup_restore_failed_existing_files = "backup_restore_failed_existing_files"
 }
 
 enum LdkCallbackResponses: String {
@@ -75,7 +79,6 @@ enum LdkCallbackResponses: String {
     case log_level_updated = "log_level_updated"
     case log_path_updated = "log_path_updated"
     case log_write_success = "log_write_success"
-    case backup_client_setup_success = "backup_client_setup_success"
     case chain_monitor_init_success = "chain_monitor_init_success"
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
@@ -94,6 +97,8 @@ enum LdkCallbackResponses: String {
     case close_channel_success = "close_channel_success"
     case file_write_success = "file_write_success"
     case abandon_payment_success = "abandon_payment_success"
+    case backup_client_setup_success = "backup_client_setup_success"
+    case backup_restore_success = "backup_restore_success"
 }
 
 enum LdkFileNames: String {
@@ -192,44 +197,74 @@ class Ldk: NSObject {
     @objc
     func backupSetup(_ seed: NSString, network: NSString, server: NSString, token: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         do {
+            BackupClient.skipRemoteBackup = false
             try BackupClient.setup(seed: String(seed).hexaBytes, network: String(network), server: String(server), token: String(token))
             
-            let testString = "hello world"
-            let test = Data(testString.utf8)
-            try BackupClient.persist(.channelManager, [UInt8](test))
-            
-            let result = try BackupClient.retrieve(.channelManager)
-
-            if let testRes = String(data: result, encoding: .utf8) {
-                if testRes == testString {
+            //Store a random encrypted string and retrieve it again to confirm the server is working
+            let ping = "ping\(arc4random_uniform(999))"
+            try BackupClient.persist(.ping, [UInt8](Data(ping.utf8)))
+            let checkPing = try BackupClient.retrieve(.ping)
+            if let checkRes = String(data: checkPing, encoding: .utf8) {
+                if checkRes == ping {
                     handleResolve(resolve, .backup_client_setup_success)
                     return
                 }
             }
             
-            reject("Backup setup failed", "Check failed", "Check failed")                        
+            handleReject(reject, .backup_setup_check_failed)
             return
         } catch {
-            print("\n\n\n\n***")
-            print(error)
-            print(error.localizedDescription)
-            print("***\n\n\n")
-            reject("Backup setup failed", error.localizedDescription, error.localizedDescription)
+            handleReject(reject, .backup_setup_failed, error, error.localizedDescription)
             return
         }
     }
     
     @objc
-    func restoreFromRemoteBackup(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        //TODO return how many channel files were restored
-        
-        //TODO check backup setup
-        
+    func restoreFromRemoteBackup(_ overwrite: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard !BackupClient.requiresSetup else {
             return handleReject(reject, .backup_setup_required)
         }
         
-        resolve("TODO show channels")
+        guard let accountStoragePath = Ldk.accountStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        guard let channelStoragePath = Ldk.channelStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        do {
+            if !overwrite {
+                let fileManager = FileManager.default
+                
+                //Make sure channel manager and channel monitors don't exist
+                if fileManager.fileExists(atPath: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).path) {
+                    handleReject(reject, .backup_restore_failed_existing_files)
+                    return
+                }
+                
+                if !(try fileManager.contentsOfDirectory(atPath: channelStoragePath.path).isEmpty) {
+                    handleReject(reject, .backup_restore_failed_existing_files)
+                    return
+                }
+            }
+            
+            let completeBackup = try BackupClient.retrieveCompleteBackup()
+            print("***")
+            print(completeBackup)
+        
+            for file in completeBackup.files {
+                try file.value.write(to: accountStoragePath.appendingPathComponent(file.key))
+            }
+            
+            for channel in completeBackup.channelFiles {
+                try channel.value.write(to: channelStoragePath.appendingPathComponent(channel.key))
+            }
+                        
+            handleResolve(resolve, .backup_restore_success)
+        } catch {
+            handleReject(reject, .backup_restore_failed, error, error.localizedDescription)
+        }
     }
     
     @objc
@@ -264,7 +299,7 @@ class Ldk: NSObject {
         }
         
         keysManager = KeysManager(seed: String(seed).hexaBytes, startingTimeSecs: seconds, startingTimeNanos: nanoSeconds)
-                
+        
         return handleResolve(resolve, .keys_manager_init_success)
     }
     
@@ -411,7 +446,7 @@ class Ldk: NSObject {
         let enableP2PGossip = rapidGossipSync == nil
         
         let storedChannelManager = try? Data(contentsOf: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).standardizedFileURL)
-                
+        
         var channelMonitorsSerialized: Array<[UInt8]> = []
         let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
         for channelFile in channelFiles {
@@ -449,7 +484,7 @@ class Ldk: NSObject {
             if let channelManagerSerialized = storedChannelManager, channelMonitorsSerialized.count > 0 {
                 //Restoring node
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring node from disk")
-                                
+                
                 channelManagerConstructor = try ChannelManagerConstructor(
                     channelManagerSerialized: [UInt8](channelManagerSerialized),
                     channelMonitorsSerialized: channelMonitorsSerialized,
@@ -681,11 +716,11 @@ class Ldk: NSObject {
         userChannelId.withUnsafeMutableBytes { mutableBytes in
             arc4random_buf(mutableBytes.baseAddress, 32)
         }
-
+        
         let res = trustedPeer0Conf ?
         channelManager.acceptInboundChannelFromTrustedPeer0conf(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: [UInt8](userChannelId)) :
         channelManager.acceptInboundChannel(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: [UInt8](userChannelId))
-                
+        
         guard res.isOk() else {
             guard let error = res.getError() else {
                 return handleReject(reject, .channel_accept_fail)
@@ -1133,7 +1168,7 @@ class Ldk: NSObject {
     
     //MARK: Misc functions
     @objc
-    func writeToFile(_ fileName: NSString, path: NSString, content: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func writeToFile(_ fileName: NSString, path: NSString, content: NSString, format: NSString, remotePersist: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         let fileUrl: URL
         
         do {
@@ -1156,10 +1191,24 @@ class Ldk: NSObject {
             }
             
             let fileContent = String(content)
+            var fileData: Data?
             if format == "hex" {
+                fileData = Data(fileContent.hexaBytes)
                 try Data(fileContent.hexaBytes).write(to: fileUrl)
             } else {
+                fileData = fileContent.data(using: .utf8)
                 try fileContent.data(using: .utf8)?.write(to: fileUrl)
+            }
+            
+            guard let fileData else {
+                return handleReject(reject, .write_fail, "Failed to parse contents of file to write to \(fileName)")
+            }
+            
+            try fileData.write(to: fileUrl)
+            
+            //Save to remote server if required
+            if remotePersist && !BackupClient.skipRemoteBackup {
+                try  BackupClient.persist(.misc(fileName: String(fileName)), [UInt8](fileData))
             }
             
             return handleResolve(resolve, .file_write_success)
