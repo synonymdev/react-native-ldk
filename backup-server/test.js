@@ -1,46 +1,97 @@
-const { SlashAuthClient, crypto } = require('@slashtags/slashauth')
+const { SlashAuthClient } = require('@slashtags/slashauth-client')
+const b4a = require('b4a')
+const sodium = require('sodium-universal')
 
-const serverPubKey = '3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29';
+function createKeyPair (seed) {
+    const publicKey = b4a.allocUnsafe(sodium.crypto_sign_PUBLICKEYBYTES)
+    const secretKey = b4a.allocUnsafe(sodium.crypto_sign_SECRETKEYBYTES)
 
-const getAuthToken = async (request, reply) => {
-    // const res = await fetch('http://192.168.0.102:8000/auth', {
-    //     method: 'POST',
-    //     headers: {
-    //         Accept: 'application/json',
-    //         'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({}),
-    // });
-    //
-    // //Read response as json
-    // const json = await res.json();
-    //
-    // console.log(json);
+    if (seed) sodium.crypto_sign_seed_keypair(publicKey, secretKey, seed)
+    else sodium.crypto_sign_keypair(publicKey, secretKey)
 
-
-    // create keyPair
-    const keypair = crypto.createKeyPair()
-    // console.log(keyPair.publicKey);
-    // // use authServer's publicKey for pinning
-    // const client = new SlashAuthClient({ keyPair, remotePublicKey: Buffer.from(serverPubKey, 'hex') })
-
-    // const response = await client.authz(slashauthURL)
-    // // { status: 'ok', token: 'Bearer 123' }
-    //
-    // const link = await client.magiclik(slashauthURL)
-    // { status: 'ok', ml: 'https://www.example.com?q=foobar' }
-
-    const client = new SlashAuthClient({
-        keypair,
-        serverPublicKey: Buffer.from(serverPubKey, 'hex')
-    });
-
-    const magicLinkUrl = "http://0.0.0.0:8000/v0.1/auth?token=Bearer%20123";
-    const authzRes = await client.authz(magicLinkUrl)
-
-    const magicLinkRes = await client.magiclink(magicLinkUrl)
+    return {
+        publicKey,
+        secretKey
+    }
 }
 
-getAuthToken().catch((error) => {
-    console.log(error);
-});
+const getBearerAuthToken = async ({backupServer, seed}) => {
+    const res = await fetch(`${backupServer}/auth`)
+    const body = await res.json()
+    if (!body.slashauth) {
+        console.log(body);
+        throw new Error('No slashauth found in response')
+    }
+
+    const slashauthURL = body.slashauth;
+
+    console.log(slashauthURL);
+
+    const seedBuffer = Buffer.from(seed, 'hex')
+    const keypair = createKeyPair(seedBuffer)
+
+    // use authServer's publicKey for pinning
+    const client = new SlashAuthClient({ keypair })
+
+    const {status, token} = await client.authz(slashauthURL)
+
+    if (status !== 'ok') {
+        throw new Error('Authz failed')
+    }
+
+    console.log(`token: ${token}`);
+
+    return token;
+}
+
+const testBackup = async (bearerToken) => {
+    //Post bytes to server
+    const testContent = 'test random content' + Math.random().toString(36).substring(7);
+
+    const backupRes = await fetch(`${backupServer}/persist?network=regtest&label=ping`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/octet-stream',
+            'Authorization': bearerToken
+        },
+        body: Buffer.from(testContent, 'utf8')
+    });
+
+    if (backupRes.status !== 200) {
+        throw new Error(`Backup failed: ${backupRes.status}`);
+    }
+
+    //Fetch bytes from backup server and check them
+    const backupFetchRes = await fetch(`${backupServer}/retrieve?network=regtest&label=ping`, {
+        method: 'GET',
+        headers: {
+            'Authorization': bearerToken
+        }
+    });
+
+    if (backupFetchRes.status !== 200) {
+        throw new Error(`Backup fetch failed: ${backupFetchRes.status}`);
+    }
+
+    const backupFetchBody = await backupFetchRes.arrayBuffer();
+    const content = Buffer.from(backupFetchBody).toString('utf8');
+    if (content !== testContent) {
+        throw new Error(`Backup fetch content invalid: ${backupFetchBody}`);
+    }
+
+    console.log("Backup persisted and fetched successfully ✅");
+}
+
+const clientSeed = '5a9b34dc1975419e85b9b3924e31485f1ba1095be7fc596dedee8a6ee5748dec';
+const backupServer = 'http://0.0.0.0:3003/v1';
+
+getBearerAuthToken({backupServer, seed: clientSeed})
+    .then((bearerToken) => {
+        testBackup(bearerToken)
+            .catch((error) => {
+                console.log(error);
+            });
+    })
+        .catch((error) => {
+        console.log(error);
+    });

@@ -19,6 +19,7 @@ import {
 	syncLdk,
 	getAddressBalance,
 	updateHeader,
+	getBackupServerDetails,
 } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
@@ -32,10 +33,12 @@ import lm, {
 import { peers } from './utils/constants';
 import {
 	createNewAccount,
+	getAccount,
 	getAddress,
 	simulateStaleRestore,
 } from './utils/helpers';
 import RNFS from 'react-native-fs';
+const { SlashAuthClient, crypto } = require('@slashtags/slashauth-client');
 
 let logSubscription: EmitterSubscription | undefined;
 let paymentSubscription: EmitterSubscription | undefined;
@@ -174,6 +177,58 @@ const Dev = (): ReactElement => {
 					<Text style={styles.text}>{message}</Text>
 				</View>
 				<View style={styles.container}>
+
+					{/*<Button*/}
+					{/*	title={'Auth test'}*/}
+					{/*	onPress={async (): Promise<void> => {*/}
+					{/*		try {*/}
+					{/*			const serverPubKey =*/}
+					{/*				'3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29';*/}
+
+					{/*			console.log('Start');*/}
+					{/*			const keypair = crypto.createKeyPair();*/}
+
+					{/*			console.log(keypair);*/}
+
+					{/*			const client = new SlashAuthClient({*/}
+					{/*				keypair,*/}
+					{/*				serverPublicKey: Buffer.from(serverPubKey, 'hex'),*/}
+					{/*			});*/}
+
+					{/*			const magicLinkUrl =*/}
+					{/*				'http://0.0.0.0:8000/v0.1/auth?token=Bearer%20123';*/}
+					{/*			const authzRes = await client.authz(magicLinkUrl);*/}
+
+					{/*			setMessage(JSON.stringify(authzRes));*/}
+
+					{/*			const magicLinkRes = await client.magiclink(magicLinkUrl);*/}
+
+					{/*			setMessage(JSON.stringify(magicLinkRes));*/}
+
+					{/*			// const res = await fetch('http://192.168.0.102:3003/auth', {*/}
+					{/*			// 	method: 'POST',*/}
+					{/*			// 	headers: {*/}
+					{/*			// 		Accept: 'application/json',*/}
+					{/*			// 		'Content-Type': 'application/json',*/}
+					{/*			// 	},*/}
+					{/*			// 	body: JSON.stringify({*/}
+					{/*			// 		username: 'test',*/}
+					{/*			// 		password: 'test',*/}
+					{/*			// 	}),*/}
+					{/*			// });*/}
+
+					{/*			//Read response as json*/}
+					{/*			// const json = await res.json();*/}
+					{/*			//*/}
+					{/*			// console.error(json);*/}
+					{/*			//*/}
+					{/*			// return setMessage(JSON.stringify(json));*/}
+					{/*		} catch (e) {*/}
+					{/*			return setMessage(e.message);*/}
+					{/*		}*/}
+					{/*	}}*/}
+					{/*/>*/}
+
 					<Button
 						title={'E2E test'}
 						testID="E2ETest"
@@ -629,6 +684,28 @@ const Dev = (): ReactElement => {
 								setMessage(e.message);
 								return;
 							}
+						}}
+					/>
+					<Button
+						title={'Restore backup from server'}
+						onPress={async (): Promise<void> => {
+							setMessage('Stopping LDK...');
+							await ldk.stop();
+
+							const account = await getAccount();
+							const serverDetails = await getBackupServerDetails();
+							const restoreRes = await lm.restoreFromRemoteServer({
+								account,
+								serverDetails,
+								overwrite: true,
+							});
+
+							if (restoreRes.isErr()) {
+								setMessage(restoreRes.error.message);
+								return;
+							}
+
+							setMessage('Successfully restored wallet');
 						}}
 					/>
 					<Button

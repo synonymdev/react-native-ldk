@@ -1,7 +1,8 @@
 const Fastify = require('fastify')
 
-const FancyStorage = require('./fancyStorage.js');
-const { formatFileSize } = require('./helpers.js');
+const FancyStorage = require('./fancyStorage');
+const { formatFileSize } = require('./helpers');
+const { createAuthServer, createSessionToken, fancyUserDB } = require('./authServer');
 
 let storage = new FancyStorage(); //TODO actually make fancy
 
@@ -20,15 +21,12 @@ let labels = [
 ];
 let networks = ['bitcoin', 'testnet', 'regtest', 'signet'];
 
-let userDB = {
-    'token123': 'user1',
-};
-
 const version = 'v1';
 
+let authServer;
 const fastify = Fastify({
     logger: true
-})
+});
 
 // Declare a route
 fastify.get(`/${version}/status`, async function handler (request, reply) {
@@ -53,18 +51,19 @@ const querystring = {
 };
 
 fastify.route({
-    method: 'POST',
-    url: '/auth',
+    method: 'GET',
+    url: `/${version}/auth`,
     handler: async (request, reply) => {
-        // reply.send({signThis: "HEY"});
-        return {signThis: "HEY"};
+        const sessionToken = createSessionToken();
+        const slashauthURL = authServer.formatUrl(sessionToken)
+        return {slashauth: slashauthURL};
     }
 });
 
 const authCheckHandler = async (request, reply) => {
-    const token = request.headers.authorization;
+    const bearerToken = request.headers.authorization;
 
-    if (!token || !userDB[token]) {
+    if (!bearerToken || !fancyUserDB.get(bearerToken)) {
         reply.code(401).send("Unauthorized");
         fastify.log.error("Unauthorized or missing token");
     }
@@ -86,8 +85,8 @@ fastify.route({
         const {body, query, headers} = request;
 
         const {label, channelId, network} = query;
-        const token = headers.authorization;
-        const userId = userDB[token];
+        const bearerToken = headers.authorization;
+        const pubkey = fancyUserDB.get(bearerToken);
 
         let key = label;
         let subdir = '';
@@ -96,7 +95,7 @@ fastify.route({
             subdir = 'channel_monitors';
         }
 
-        storage.set({userId, network, subdir, key, value: body});
+        storage.set({pubkey, network, subdir, key, value: body});
 
         fastify.log.info(`Saved ${formatFileSize(body.length)} for ${label}`);
 
@@ -118,8 +117,8 @@ fastify.route({
         const {body, query, headers} = request;
 
         const {label, channelId, network} = query;
-        const token = headers.authorization;
-        const userId = userDB[token];
+        const bearerToken = headers.authorization;
+        const pubkey = fancyUserDB.get(bearerToken);
 
         let key = label;
         let subdir = '';
@@ -128,7 +127,7 @@ fastify.route({
             subdir = 'channel_monitors';
         }
 
-        const backup = storage.get({userId, network, subdir, key});
+        const backup = storage.get({pubkey, network, subdir, key});
         if (!backup) {
             reply.code(404).send("Backup not found");
             return;
@@ -160,11 +159,11 @@ fastify.route({
         const {query, headers} = request;
 
         const {network} = query;
-        const token = headers.authorization;
-        const userId = userDB[token];
+        const bearerToken = headers.authorization;
+        const pubkey = fancyUserDB.get(bearerToken);
 
-        const list = storage.list({userId, network});
-        const channelMonitorList = storage.list({userId, network, subdir: 'channel_monitors'});
+        const list = storage.list({pubkey, network});
+        const channelMonitorList = storage.list({pubkey, network, subdir: 'channel_monitors'});
 
         const allFiles = {
             list,
@@ -175,8 +174,9 @@ fastify.route({
     }
 });
 
-module.exports = async (host, port) => {
+module.exports = async ({host, port, authPort, seed}) => {
     try {
+        authServer = await createAuthServer({host, port: authPort, seed});
         await fastify.listen({ port, host });
     } catch (err) {
         fastify.log.error(err);

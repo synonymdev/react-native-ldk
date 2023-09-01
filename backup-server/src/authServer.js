@@ -1,28 +1,58 @@
-const { crypto, SlashAuthServer} = require('@slashtags/slashauth')
+const { SlashAuthServer} = require('@slashtags/slashauth')
+const b4a = require('b4a')
+const sodium = require('sodium-universal')
 
-const testToken = 'Bearer 123';
+const fancyUserDB = new Map(); //TODO actually make fancy
 
-const testAuthServer = async () => {
-    const staticTestSeed = Buffer.alloc(32);
-    const keypair = crypto.createKeyPair(staticTestSeed)
+function createKeyPair (seed) {
+    const publicKey = b4a.allocUnsafe(sodium.crypto_sign_PUBLICKEYBYTES)
+    const secretKey = b4a.allocUnsafe(sodium.crypto_sign_SECRETKEYBYTES)
 
-    const hexPubKey = keypair.publicKey.toString('hex');
+    if (seed) sodium.crypto_sign_seed_keypair(publicKey, secretKey, seed)
+    else sodium.crypto_sign_keypair(publicKey, secretKey)
 
-    console.log(hexPubKey);
+    return {
+        publicKey,
+        secretKey
+    }
+}
 
-    const authz = ({ publicKey, token, signature }) => {
-        // NOTE: by the moment this method will be called signature will alreayd be verified
+function createToken () {
+    const token = b4a.allocUnsafe(sodium.crypto_sign_BYTES)
+    sodium.randombytes_buf(token)
+
+    return token.toString('hex')
+}
+
+const createAuthServer = async ({port, host, seed}) => {
+    console.log(fancyUserDB);
+
+    const keypair = createKeyPair(Buffer.from(seed, 'hex'));
+
+    console.log(`Auth server pub key: ${keypair.publicKey.toString('hex')}`);
+
+    const authz = ({ publicKey, token: sessionToken }) => {
+        console.log('\n**authz**')
+        console.log(publicKey)
+        console.log(sessionToken) //TODO do I need this?
+        console.log('****\n')
+
+        const bearerToken = createToken();
+
+        // fancyUserDB.set(sessionToken, publicKey); //User has new session
+        // fancySessionsDB.set(bearerToken, sessionToken); //Bearer token lookup for auth validation
+
+        fancyUserDB.set(bearerToken, publicKey); //User has new session
         return {
             status: 'ok',
-            token: testToken
+            token: bearerToken
         }
     }
 
-    const magiclink = (publicKey) => {
-        // NOTE: by the moment this method will be called signature will already be verified
+    const magiclink = ({ publicKey }) => {
         return {
             status: 'ok',
-            ml: 'http://localhost:8000/v0.1/users/123'
+            ml: 'http://localhost:8000/v0.1/users/123' //Unused for now
         }
     }
 
@@ -30,24 +60,17 @@ const testAuthServer = async () => {
         authz,
         magiclink,
         keypair,
-        port: 8000,
-        host: '0.0.0.0'
-        // sv - object with sign(data, secretKey) and verify(signature, data, publicKey) methods
-        // storage - storage for <pK>: <nonce> pairs with methods (default Map)
-        //    - async set(publicKey, token)
-        //    - async get(publicKey)
-        //    - async delete(publicKey)
-        // port - to run server on (default 8000)
-        // host - to run server on (default localhost)
-        // route - route for auth (default auth)
-        // version - version of auth (default v0.1)
+        port,
+        host
     });
 
     await server.start();
 
-    const slashauthURL = server.formatUrl(testToken)
+    console.log(`Auth server started listening on ${host}:${port}`);
 
-    console.log(slashauthURL);
+    return server;
 }
 
-testAuthServer();
+exports.createAuthServer = createAuthServer;
+exports.createSessionToken = createToken;
+exports.fancyUserDB = fancyUserDB;

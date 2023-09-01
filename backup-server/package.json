@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "fastify": "^4.21.0",
-    "http": "^0.0.1-security"
+    "@slashtags/slashauth": "git@github.com:slashtags/slashauth.git#noise",
+    "@slashtags/slashauth-client": "git@github.com:slashtags/slashauth-client.git"
   }
 }

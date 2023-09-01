@@ -10,8 +10,8 @@ class FancyStorage {
         }
     }
 
-    userFilePath(userId, network, subdir = "") {
-        const directoryPath = path.join(this.storageDirectory + "/" + userId + "/" + network + "/" + subdir);
+    userFilePath(pubkey, network, subdir = "") {
+        const directoryPath = path.join(this.storageDirectory + "/" + pubkey + "/" + network + "/" + subdir);
         console.log(directoryPath);
         if (!fs.existsSync(directoryPath)) {
             fs.mkdirSync(directoryPath, { recursive: true });
@@ -19,14 +19,14 @@ class FancyStorage {
         return directoryPath;
     }
 
-    set({userId, network, subdir, key, value}) {
-        const filePath = path.join(this.userFilePath(userId, network, subdir), `${key}.bin`);
+    set({pubkey, network, subdir, key, value}) {
+        const filePath = path.join(this.userFilePath(pubkey, network, subdir), `${key}.bin`);
 
         fs.writeFileSync(filePath, value);
     }
 
-    get({userId, network, subdir, key}) {
-        const filePath = path.join(this.userFilePath(userId, network, subdir), `${key}.bin`);
+    get({pubkey, network, subdir, key}) {
+        const filePath = path.join(this.userFilePath(pubkey, network, subdir), `${key}.bin`);
 
         if (fs.existsSync(filePath)) {
             return fs.readFileSync(filePath, 'binary');
@@ -35,8 +35,8 @@ class FancyStorage {
         }
     }
 
-    list({userId, network, subdir}) {
-        const directoryPath = path.join(this.userFilePath(userId, network, subdir));
+    list({pubkey, network, subdir}) {
+        const directoryPath = path.join(this.userFilePath(pubkey, network, subdir));
 
         return fs.readdirSync(directoryPath).filter(file => file.endsWith('.bin'));
     }
