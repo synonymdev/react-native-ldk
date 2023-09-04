@@ -33,15 +33,16 @@ const getBearerAuthToken = async ({backupServer, seed}) => {
     // use authServer's publicKey for pinning
     const client = new SlashAuthClient({ keypair })
 
-    const {status, token} = await client.authz(slashauthURL)
+    // const {status, token} = await client.authz(slashauthURL)
+    const { status, bearer } = await client.magiclink(slashauthURL);
 
     if (status !== 'ok') {
         throw new Error('Authz failed')
     }
 
-    console.log(`token: ${token}`);
+   console.log("Using bearer token: " + bearer);
 
-    return token;
+   return bearer;
 }
 
 const testBackup = async (bearerToken) => {

@@ -2,9 +2,10 @@ const Fastify = require('fastify')
 
 const FancyStorage = require('./fancyStorage');
 const { formatFileSize } = require('./helpers');
-const { createAuthServer, createSessionToken, fancyUserDB } = require('./authServer');
+const { createAuthServer, createToken } = require('./authServer');
 
-let storage = new FancyStorage(); //TODO actually make fancy
+const storage = new FancyStorage(); //TODO actually make fancy
+const users = new Map(); // bearer -> pubkey
 
 let labels = [
     'ping',
@@ -54,7 +55,7 @@ fastify.route({
     method: 'GET',
     url: `/${version}/auth`,
     handler: async (request, reply) => {
-        const sessionToken = createSessionToken();
+        const sessionToken = createToken();
         const slashauthURL = authServer.formatUrl(sessionToken)
         return {slashauth: slashauthURL};
     }
@@ -63,9 +64,10 @@ fastify.route({
 const authCheckHandler = async (request, reply) => {
     const bearerToken = request.headers.authorization;
 
-    if (!bearerToken || !fancyUserDB.get(bearerToken)) {
-        reply.code(401).send("Unauthorized");
+    if (!bearerToken || !users.has(bearerToken)) {
         fastify.log.error("Unauthorized or missing token");
+        reply.code(401);
+        return {error: "Unauthorized"};
     }
 }
 
@@ -86,7 +88,7 @@ fastify.route({
 
         const {label, channelId, network} = query;
         const bearerToken = headers.authorization;
-        const pubkey = fancyUserDB.get(bearerToken);
+        const pubkey = users.get(bearerToken);
 
         let key = label;
         let subdir = '';
@@ -118,7 +120,7 @@ fastify.route({
 
         const {label, channelId, network} = query;
         const bearerToken = headers.authorization;
-        const pubkey = fancyUserDB.get(bearerToken);
+        const pubkey = users.get(bearerToken);
 
         let key = label;
         let subdir = '';
@@ -175,8 +177,18 @@ fastify.route({
 });
 
 module.exports = async ({host, port, authPort, seed}) => {
+    const magiclink = (publicKey) => {
+        const bearer = createToken();
+        users.set(bearer, publicKey);
+
+        return {
+            status: 'ok',
+            bearer,
+        }
+    }
+
     try {
-        authServer = await createAuthServer({host, port: authPort, seed});
+        authServer = await createAuthServer({host, port: authPort, seed, magiclink});
         await fastify.listen({ port, host });
     } catch (err) {
         fastify.log.error(err);

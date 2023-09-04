@@ -1428,7 +1428,7 @@
     "@sinonjs/commons" "^1.7.0"
 
 "@synonymdev/react-native-ldk@../lib":
-  version "0.0.103"
+  version "0.0.104"
   dependencies:
     bitcoinjs-lib "^6.0.2"
 
