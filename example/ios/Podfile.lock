@@ -304,6 +304,8 @@ PODS:
     - glog
   - react-native-ldk (0.0.104):
     - React
+  - react-native-libsodium (0.0.1):
+    - React-Core
   - react-native-randombytes (3.6.1):
     - React-Core
   - react-native-tcp-socket (5.6.2):
@@ -436,6 +438,7 @@ DEPENDENCIES:
   - React-jsinspector (from `../node_modules/react-native/ReactCommon/jsinspector`)
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - "react-native-ldk (from `../node_modules/@synonymdev/react-native-ldk`)"
+  - react-native-libsodium (from `../node_modules/react-native-libsodium`)
   - react-native-randombytes (from `../node_modules/react-native-randombytes`)
   - react-native-tcp-socket (from `../node_modules/react-native-tcp-socket`)
   - React-perflogger (from `../node_modules/react-native/ReactCommon/reactperflogger`)
@@ -519,6 +522,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/logger"
   react-native-ldk:
     :path: "../node_modules/@synonymdev/react-native-ldk"
+  react-native-libsodium:
+    :path: "../node_modules/react-native-libsodium"
   react-native-randombytes:
     :path: "../node_modules/react-native-randombytes"
   react-native-tcp-socket:
@@ -594,6 +599,7 @@ SPEC CHECKSUMS:
   React-jsinspector: 60769e5a0a6d4b32294a2456077f59d0266f9a8b
   React-logger: 1623c216abaa88974afce404dc8f479406bbc3a0
   react-native-ldk: ec203b12e45aeb89352b3293ad187af41766f042
+  react-native-libsodium: f4eba037c4ddf73f86b08075452cacb957256147
   react-native-randombytes: 421f1c7d48c0af8dbcd471b0324393ebf8fe7846
   react-native-tcp-socket: c1b7297619616b4c9caae6889bcb0aba78086989
   React-perflogger: 8c79399b0500a30ee8152d0f9f11beae7fc36595

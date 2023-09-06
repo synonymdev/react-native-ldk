@@ -30,7 +30,9 @@ const getBearerAuthToken = async ({backupServer, seed}) => {
     const seedBuffer = Buffer.from(seed, 'hex')
     const keypair = createKeyPair(seedBuffer)
 
-    // use authServer's publicKey for pinning
+    console.log(`pubkey: ${keypair.publicKey.length}`);
+    console.log(`secretKey: ${keypair.secretKey.length}`);
+
     const client = new SlashAuthClient({ keypair })
 
     // const {status, token} = await client.authz(slashauthURL)

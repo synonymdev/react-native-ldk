@@ -30,8 +30,10 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.17.10",
     "@react-native-clipboard/clipboard": "1.11.1",
+    "@slashtags/slashauth-client": "github:slashtags/slashauth-client",
     "@synonymdev/react-native-ldk": "../lib",
     "assert": "1.5.0",
+    "b4a": "^1.6.4",
     "bip32": "2.0.6",
     "bip39": "3.0.4",
     "bitcoinjs-lib": "6.0.2",
@@ -46,6 +48,7 @@
     "react-native-crypto": "2.2.0",
     "react-native-fs": "2.20.0",
     "react-native-keychain": "8.1.1",
+    "react-native-libsodium": "github:sodium-friends/react-native-libsodium",
     "react-native-randombytes": "3.6.1",
     "react-native-tcp-socket": "5.6.2",
     "readable-stream": "1.0.33",
@@ -94,7 +97,8 @@
     "_stream_duplex": "readable-stream/duplex",
     "_stream_passthrough": "readable-stream/passthrough",
     "stream": "stream-browserify",
-    "vm": "vm-browserify"
+    "vm": "vm-browserify",
+    "sodium-native": "react-native-libsodium"
   },
   "browser": {
     "crypto": "react-native-crypto",

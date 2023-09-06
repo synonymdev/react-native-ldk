@@ -750,8 +750,6 @@ class LightningManager {
 			return err(storageSetRes.error);
 		}
 
-		const { seed } = account;
-
 		const backupSetupRes = await ldk.backupSetup({
 			seed: account.seed,
 			network: this.network,
