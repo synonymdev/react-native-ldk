@@ -93,7 +93,8 @@ export const getBackupServerDetails =
 	async (): Promise<TBackupServerDetails> => {
 		const backupServerDetails: TBackupServerDetails = {
 			url: backupServer,
-			token: 'token123', //TODO actually do auth
+			token:
+				'de2699b89e6c3c93ac9402aea4f886da478f8c5fd017d326bee1188aaf6b236cc85ee92c0138490b1b2cb434b04a116de12e2965dc9dc212a4c1949550a5a9f3',
 		};
 
 		return backupServerDetails;

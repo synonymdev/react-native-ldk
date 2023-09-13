@@ -45,7 +45,8 @@ enum class EventTypes {
     emergency_force_close_channel,
     new_channel,
     network_graph_updated,
-    channel_manager_restarted
+    channel_manager_restarted,
+    backup_failed
 }
 //*****************************************************************
 
@@ -84,7 +85,12 @@ enum class LdkErrors {
     write_fail,
     read_fail,
     file_does_not_exist,
-    data_too_large_for_rn
+    data_too_large_for_rn,
+    backup_setup_required,
+    backup_setup_check_failed,
+    backup_setup_failed,
+    backup_restore_failed,
+    backup_restore_failed_existing_files
 }
 
 enum class LdkCallbackResponses {
@@ -109,7 +115,9 @@ enum class LdkCallbackResponses {
     ldk_restart,
     accept_channel_success,
     close_channel_success,
-    file_write_success
+    file_write_success,
+    backup_client_setup_success,
+    backup_restore_success
 }
 
 enum class LdkFileNames(val fileName: String) {
@@ -211,6 +219,25 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         LogFile.write(line)
 
         handleResolve(promise, LdkCallbackResponses.log_write_success)
+    }
+
+    @ReactMethod
+    fun backupSetup(seed: String, network: String, server: String, token: String, promise: Promise) {
+        try {
+            BackupClient.skipRemoteBackup = false
+            BackupClient.setup(seed.hexa(), network, server, token)
+
+            val ping = "ping ${Random().nextInt(1000)}"
+            BackupClient.persist(BackupClient.Label.PING(), ping.toByteArray())
+            val pingRetrieved = BackupClient.retrieve(BackupClient.Label.PING())
+            if (pingRetrieved.toString(Charsets.UTF_8) != ping) {
+                return handleReject(promise, LdkErrors.backup_setup_check_failed)
+            }
+
+            handleResolve(promise, LdkCallbackResponses.backup_client_setup_success)
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.backup_setup_failed, Error(e))
+        }
     }
 
     @ReactMethod
@@ -997,8 +1024,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     //MARK: Misc methods
     @ReactMethod
-    fun writeToFile(fileName: String, path: String, content: String, format: String, promise: Promise) {
+    fun writeToFile(fileName: String, path: String, content: String, format: String, remotePersist: Boolean, promise: Promise) {
         val file: File
+
+        //TODO HANDLE REMOTE PERSIST
 
         try {
             if (path != "") {

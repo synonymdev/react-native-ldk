@@ -80,7 +80,7 @@ class BackupClient {
     static var requiresSetup: Bool {
         return server == nil
     }
-    
+        
     static func setup(seed: [UInt8], network: String, server: String, token: String) throws {
         guard getNetwork(network) != nil else {
             throw BackupError.invalidNetwork
@@ -89,6 +89,9 @@ class BackupClient {
         Self.network = network
         Self.server = server
         Self.encryptionKey = SymmetricKey(data: seed)
+        
+        print("ENCRYPTION KEY \(Data(seed).hexEncodedString())")
+        
         Self.token = token
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "BackupClient setup for synchronous remote persistence. Server: \(server)")
@@ -116,8 +119,13 @@ class BackupClient {
         guard let key = Self.encryptionKey else {
             throw BackupError.requiresSetup
         }
-        
+                
         let sealedBox = try AES.GCM.seal(blob, using: key)
+
+//        let sealedBox = try AES.GCM.seal(blob, using: key, nonce: try! AES.GCM.Nonce(data: nonce))
+        print("NONC E BYTES: \(Data(sealedBox.nonce).count)")
+//        let payload = Data(sealedBox.nonce) + sealedBox.combined!
+//        sealedBox.
         return sealedBox.combined!
     }
     
@@ -126,9 +134,35 @@ class BackupClient {
             throw BackupError.requiresSetup
         }
         
+//        let extractedNonce = try! AES.GCM.Nonce(data: nonce)
+        
+        //Remove appended 12 bytes nonce and 16 byte trailing tag
+        let encryptedData: Data = {
+            var bytes = blob.subdata(in: 12..<blob.count)
+            let removalRange = bytes.count - 16 ..< bytes.count
+            bytes.removeSubrange(removalRange)
+            return bytes
+        }()
+        let nonce = blob.prefix(12)
+        let tag = blob.suffix(16)
+        
+        print("ENCRYPTED: \(encryptedData.hexEncodedString())")
+        print("NONCE: \(nonce.hexEncodedString())")
+        
+     //KOTL
+//        BEFORE ENCRYPTED: 70696e672d66726f6d2d696f73
+//         LOG  react-native-ldk: Received encrypted backup: 131348c0987c7eece60fc0bc5c34e4a777541996c36dee95cd34e07349ea8de2
+//        LOG  react-native-ldk: FETCHED ENCRYPTED: 131348c0987c7eece60fc0bc5c34e4a777541996c36dee95cd34e07349ea8de2
+//        LOG  react-native-ldk: NONCE: 131348c0987c7eece60fc0bc
+
+
         do {
-            let sealedBox = try AES.GCM.SealedBox(combined: blob)
+//            let sealedBox = try AES.GCM.SealedBox(combined: blob)
+            let sealedBox = try AES.GCM.SealedBox(nonce: .init(data: nonce), ciphertext: encryptedData, tag: tag)
             let decryptedData = try AES.GCM.open(sealedBox, using: key)
+            
+            print("DECRYPTPED NONCE: \(Data(sealedBox.nonce).hexEncodedString())")
+            
             return decryptedData
         } catch {
             if let ce = error as? CryptoKitError {
