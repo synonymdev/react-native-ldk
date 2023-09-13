@@ -302,7 +302,7 @@ PODS:
   - React-jsinspector (0.70.6)
   - React-logger (0.70.6):
     - glog
-  - react-native-ldk (0.0.104):
+  - react-native-ldk (0.0.106):
     - React
   - react-native-randombytes (3.6.1):
     - React-Core
