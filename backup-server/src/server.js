@@ -162,7 +162,7 @@ fastify.route({
 
         const {network} = query;
         const bearerToken = headers.authorization;
-        const pubkey = fancyUserDB.get(bearerToken);
+        const pubkey = users.get(bearerToken);
 
         const list = storage.list({pubkey, network});
         const channelMonitorList = storage.list({pubkey, network, subdir: 'channel_monitors'});

@@ -3,6 +3,7 @@ import com.reactnativeldk.EventTypes
 import com.reactnativeldk.LdkEventEmitter
 import com.reactnativeldk.hexEncodedString
 import com.reactnativeldk.hexa
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.SecureRandom
@@ -25,6 +26,11 @@ class RequiresSetup() : Exception("BackupClient requires setup")
 class MissingBackup() : Exception("Retrieve failed. Missing backup.")
 class InvalidServerResponse(code: Int) : Exception("Invalid backup server response ($code)")
 class DecryptFailed(msg: String) : Exception("Failed to decrypt backup payload. $msg")
+
+class CompleteBackup(
+    val files: Map<String, ByteArray>,
+    val channelFiles: Map<String, ByteArray>
+)
 
 class BackupClient {
     sealed class Label(val string: String, channelId: String = "") {
@@ -51,6 +57,10 @@ class BackupClient {
         var server: String? = null
         var encryptionKey: SecretKeySpec? = null
         var token: String? = null
+
+        var requiresSetup = {
+            server == null
+        }
 
         fun setup(seed: ByteArray, network: String, server: String, token: String) {
             this.network = network
@@ -104,48 +114,6 @@ class BackupClient {
             return iv + cipherText
         }
 
-        @Throws(BackupError::class)
-        private fun encrypt_old(blob: ByteArray): ByteArray {
-            if (encryptionKey == null) {
-                throw BackupError.requiresSetup
-            }
-
-            synchronized(Cipher::class.java) {
-                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-
-                //TODO generate 12 bytes nonce randomly
-                val nonce = "131348c0987c7eece60fc0bc".hexa()
-
-                cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, IvParameterSpec(nonce))
-
-                val cipherText = ByteArray(cipher.getOutputSize(blob.size))
-                var ctLength = cipher.update(blob, 0, blob.size, cipherText, 0)
-                ctLength += cipher.doFinal(cipherText, ctLength)
-
-                LdkEventEmitter.send(
-                    EventTypes.native_log,
-                    "BEFORE ENCRYPTED: ${blob.hexEncodedString()}"
-                )
-                LdkEventEmitter.send(
-                    EventTypes.native_log,
-                    "SAVED ENCRYPTED: ${cipherText.hexEncodedString()}"
-                )
-                LdkEventEmitter.send(
-                    EventTypes.native_log,
-                    "NONCE: ${nonce.hexEncodedString()}"
-                )
-
-                val combined = nonce.plus(cipherText)
-
-                LdkEventEmitter.send(
-                    EventTypes.native_log,
-                    "COMBINED: ${combined.hexEncodedString()}"
-                )
-
-                return combined
-            }
-        }
-
         private fun decrypt(blob: ByteArray): ByteArray {
             if (encryptionKey == null) {
                 throw BackupError.requiresSetup
@@ -189,12 +157,8 @@ class BackupClient {
             val responseCode = urlConnection.responseCode
             LdkEventEmitter.send(
                 EventTypes.native_log,
-                "Sent 'POST' request to URL: $url; Response Code: $responseCode"
+                "Remote persist success for ${label.string}"
             )
-
-            //TODO for retrieve
-            val inputStream = urlConnection.inputStream
-            inputStream.close()
         }
 
         @Throws(BackupError::class)
@@ -218,6 +182,11 @@ class BackupClient {
             }
 
             if (responseCode != 200) {
+                LdkEventEmitter.send(
+                    EventTypes.native_log,
+                    "Remote retrieve failed for ${label.string} with response code $responseCode"
+                )
+
                 throw InvalidServerResponse(responseCode)
             }
 
@@ -227,7 +196,7 @@ class BackupClient {
 
             LdkEventEmitter.send(
                 EventTypes.native_log,
-                "Received encrypted backup: ${encryptedBackup.hexEncodedString()}"
+                "Remote retrieve success for ${label.string}"
             )
 
             val decryptedBackup = decrypt(encryptedBackup)
@@ -235,29 +204,52 @@ class BackupClient {
             return decryptedBackup
         }
 
-        fun testUrls() {
-            LdkEventEmitter.send(EventTypes.native_log, "Hello from BackupClient")
+        @Throws(BackupError::class)
+        fun retrieveCompleteBackup(): CompleteBackup {
+            val url = backupUrl(Method.LIST)
 
             LdkEventEmitter.send(
                 EventTypes.native_log,
-                "backupUrl: ${backupUrl(Method.PERSIST, Label.PING())}"
-            )
-            LdkEventEmitter.send(
-                EventTypes.native_log,
-                "backupUrl: ${backupUrl(Method.PERSIST, Label.CHANNEL_MANAGER())}"
+                "Retrieving backup from $url"
             )
 
-            val channelMonitorLabel = Label.CHANNEL_MONITOR("", "abcd1234")
-            LdkEventEmitter.send(
-                EventTypes.native_log,
-                "backupUrl: ${backupUrl(Method.PERSIST, channelMonitorLabel, "1234")}"
-            )
+            val urlConnection = url.openConnection() as HttpURLConnection
+            urlConnection.requestMethod = "GET"
+            urlConnection.setRequestProperty("Content-Type", "application/json")
+            urlConnection.setRequestProperty("Authorization", token)
 
-            val misc = Label.MISC("random.bin")
-            LdkEventEmitter.send(
-                EventTypes.native_log,
-                "backupUrl: ${backupUrl(Method.RETRIEVE, misc)}"
-            )
+            val responseCode = urlConnection.responseCode
+
+            if (responseCode == 404) {
+                throw BackupError.missingBackup
+            }
+
+            if (responseCode != 200) {
+                throw InvalidServerResponse(responseCode)
+            }
+
+            val inputStream = urlConnection.inputStream
+            val jsonString = inputStream.bufferedReader().use { it.readText() }
+            inputStream.close()
+
+            val jsonObject = JSONObject(jsonString)
+
+            val files = mutableMapOf<String, ByteArray>()
+            val fileNames = jsonObject.getJSONArray("list")
+            for (i in 0 until fileNames.length()) {
+                val filename = fileNames.getString(i)
+                files[filename] = retrieve(Label.MISC(filename))
+            }
+
+            val channelFiles = mutableMapOf<String, ByteArray>()
+            val channelFileNames = jsonObject.getJSONArray("channel_monitors")
+            for (i in 0 until channelFileNames.length()) {
+                val filename = channelFileNames.getString(i)
+
+                channelFiles[filename] = retrieve(Label.CHANNEL_MONITOR(channelId=filename.replace(".bin", "")))
+            }
+
+            return CompleteBackup(files = files, channelFiles = channelFiles)
         }
     }
 }

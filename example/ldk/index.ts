@@ -94,7 +94,7 @@ export const getBackupServerDetails =
 		const backupServerDetails: TBackupServerDetails = {
 			url: backupServer,
 			token:
-				'de2699b89e6c3c93ac9402aea4f886da478f8c5fd017d326bee1188aaf6b236cc85ee92c0138490b1b2cb434b04a116de12e2965dc9dc212a4c1949550a5a9f3',
+				'c14813666b79958e2ba830172bf3f4bca78c4782e5c8d3933237728cec2df8643fe0f6d540e6e92030148dcda578e70f8e93338f1f004ac38ea2b673d7f4224c',
 		};
 
 		return backupServerDetails;

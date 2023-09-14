@@ -227,16 +227,58 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             BackupClient.skipRemoteBackup = false
             BackupClient.setup(seed.hexa(), network, server, token)
 
-            val ping = "ping ${Random().nextInt(1000)}"
+            val ping = "ping${Random().nextInt(1000)}"
             BackupClient.persist(BackupClient.Label.PING(), ping.toByteArray())
             val pingRetrieved = BackupClient.retrieve(BackupClient.Label.PING())
             if (pingRetrieved.toString(Charsets.UTF_8) != ping) {
                 return handleReject(promise, LdkErrors.backup_setup_check_failed)
             }
 
+            BackupClient.retrieveCompleteBackup()
+
             handleResolve(promise, LdkCallbackResponses.backup_client_setup_success)
         } catch (e: Exception) {
             return handleReject(promise, LdkErrors.backup_setup_failed, Error(e))
+        }
+    }
+
+    @ReactMethod
+    fun restoreFromRemoteBackup(overwrite: Boolean, promise: Promise) {
+        if (BackupClient.requiresSetup()) {
+            return handleReject(promise, LdkErrors.backup_setup_required)
+        }
+
+        if (accountStoragePath == "") {
+            return handleReject(promise, LdkErrors.init_storage_path)
+        }
+        if (channelStoragePath == "") {
+            return handleReject(promise, LdkErrors.init_storage_path)
+        }
+
+        try {
+            if (!overwrite) {
+                val accountStoragePath = File(accountStoragePath)
+                val channelStoragePath = File(channelStoragePath)
+
+                if (accountStoragePath.exists() || channelStoragePath.exists()) {
+                    return handleReject(promise, LdkErrors.backup_restore_failed_existing_files)
+                }
+            }
+
+            val completeBackup = BackupClient.retrieveCompleteBackup()
+            for (file in completeBackup.files) {
+                val newFile = File(accountStoragePath + "/" + file.key)
+                newFile.writeBytes(file.value)
+            }
+
+            for (channelFile in completeBackup.channelFiles) {
+                val newFile = File(channelStoragePath + "/" + channelFile.key)
+                newFile.writeBytes(channelFile.value)
+            }
+
+            handleResolve(promise, LdkCallbackResponses.backup_restore_success)
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.backup_restore_failed, Error(e))
         }
     }
 
@@ -1027,8 +1069,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun writeToFile(fileName: String, path: String, content: String, format: String, remotePersist: Boolean, promise: Promise) {
         val file: File
 
-        //TODO HANDLE REMOTE PERSIST
-
         try {
             if (path != "") {
                 //Make sure custom path exists by creating if missing
@@ -1051,6 +1091,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 file.writeBytes(content.hexa())
             } else {
                 file.writeText(content)
+            }
+
+            if (remotePersist) {
+                BackupClient.persist(BackupClient.Label.MISC(fileName), file.readBytes())
             }
 
             handleResolve(promise, LdkCallbackResponses.file_write_success)

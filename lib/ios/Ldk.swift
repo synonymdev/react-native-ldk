@@ -250,8 +250,6 @@ class Ldk: NSObject {
             }
             
             let completeBackup = try BackupClient.retrieveCompleteBackup()
-            print("***")
-            print(completeBackup)
         
             for file in completeBackup.files {
                 try file.value.write(to: accountStoragePath.appendingPathComponent(file.key))
@@ -478,6 +476,7 @@ class Ldk: NSObject {
             scorer: scorer
             //TODO set payerRetries
         )
+        
         do {
             //Only restore a node if we have existing channel monitors to restore. Else we lose our UserConfig settings when restoring.
             //TOOD remove this check in 114 which should allow passing in userConfig
@@ -525,6 +524,16 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
+        
+//        print("\n\n\n\n******SIGN**************")
+//        let sk = keysManager.getNodeSecretKey()
+//        let message = "Lightning Signed Message:look_at_me_im_a_node"
+//        let signed = Bindings.swiftSign(msg: Array(message.utf8), sk: sk)
+//        if let error = signed.getError() {
+//            print("SIGN ERROR")
+//        }
+//        print("Signing node: \(Data(channelManager!.getOurNodeId()).hexEncodedString())")
+//        print(signed.getValue()!)
         
         return handleResolve(resolve, .channel_manager_init_success)
     }
@@ -1207,7 +1216,7 @@ class Ldk: NSObject {
             try fileData.write(to: fileUrl)
             
             //Save to remote server if required
-            if remotePersist && !BackupClient.skipRemoteBackup {
+            if remotePersist {
                 try  BackupClient.persist(.misc(fileName: String(fileName)), [UInt8](fileData))
             }
             
