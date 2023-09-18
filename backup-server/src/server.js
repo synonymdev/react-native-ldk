@@ -1,8 +1,9 @@
 const Fastify = require('fastify')
+const { deriveNodeId } = require("ln-verifymessagejs");
+const crypto = require('crypto');
 
 const FancyStorage = require('./fancyStorage');
 const { formatFileSize } = require('./helpers');
-const { createAuthServer, createToken } = require('./authServer');
 
 const storage = new FancyStorage(); //TODO actually make fancy
 const users = new Map(); // bearer -> pubkey
@@ -61,11 +62,32 @@ fastify.route({
     }
 });
 
-const authCheckHandler = async (request, reply) => {
+const authRetrieveCheckHandler = async (request, reply) => {
     const bearerToken = request.headers.authorization;
 
     if (!bearerToken || !users.has(bearerToken)) {
         fastify.log.error("Unauthorized or missing token");
+        reply.code(401);
+        return {error: "Unauthorized"};
+    }
+}
+
+const signedPersistCheckHandler = async (request, reply) => {
+    const {body, headers} = request;
+
+    const signedHash = headers['signed-hash'];
+    const pubkey = headers['public-key'];
+
+    //hash encrypted payload
+    const hash = crypto.createHash('sha256').update(body).digest('hex');
+
+    //verify signature was signed by provided pubkey
+    const messageThatHasBeenSigned = `Lightning Signed Message:${hash}`;
+    const derivedNodeId = deriveNodeId(signedHash, messageThatHasBeenSigned);
+
+    if (!signedHash || !pubkey || derivedNodeId !== pubkey) {
+        fastify.log.error(`Expected ${pubkey} but got ${derivedNodeId}`);
+        fastify.log.error("Unauthorized or invalid signature");
         reply.code(401);
         return {error: "Unauthorized"};
     }
@@ -82,13 +104,12 @@ fastify.route({
             }
         }
     },
-    preHandler: authCheckHandler,
+    preHandler: signedPersistCheckHandler,
     handler: async (request, reply) => {
         const {body, query, headers} = request;
 
         const {label, channelId, network} = query;
-        const bearerToken = headers.authorization;
-        const pubkey = users.get(bearerToken);
+        const pubkey = request.headers['public-key'];
 
         let key = label;
         let subdir = '';
@@ -114,7 +135,7 @@ fastify.route({
             200: {}
         }
     },
-    preHandler: authCheckHandler,
+    preHandler: authRetrieveCheckHandler,
     handler: async (request, reply) => {
         const {body, query, headers} = request;
 
@@ -156,7 +177,7 @@ fastify.route({
             required: ['network'],
         },
     },
-    preHandler: authCheckHandler,
+    preHandler: authRetrieveCheckHandler,
     handler: async (request, reply) => {
         const {query, headers} = request;
 
@@ -176,7 +197,7 @@ fastify.route({
     }
 });
 
-module.exports = async ({host, port, authPort, seed}) => {
+module.exports = async ({host, port}) => {
     const magiclink = (publicKey) => {
         const bearer = createToken();
         users.set(bearer, publicKey);
@@ -188,7 +209,6 @@ module.exports = async ({host, port, authPort, seed}) => {
     }
 
     try {
-        authServer = await createAuthServer({host, port: authPort, seed, magiclink});
         await fastify.listen({ port, host });
     } catch (err) {
         fastify.log.error(err);

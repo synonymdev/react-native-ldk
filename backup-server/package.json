@@ -11,7 +11,6 @@
   "license": "ISC",
   "dependencies": {
     "fastify": "^4.21.0",
-    "@slashtags/slashauth": "git@github.com:slashtags/slashauth.git#noise",
-    "@slashtags/slashauth-client": "git@github.com:slashtags/slashauth-client.git"
+    "ln-verifymessagejs": "^0.0.4"
   }
 }

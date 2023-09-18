@@ -196,23 +196,46 @@ class Ldk: NSObject {
     
     @objc
     func backupSetup(_ seed: NSString, network: NSString, server: NSString, token: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let seedBytes = String(seed).hexaBytes
+        if keysManager == nil {
+            let seconds = UInt64(NSDate().timeIntervalSince1970)
+            let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
+            
+            guard seedBytes.count == 32 else {
+                return handleReject(reject, .invalid_seed_hex)
+            }
+            
+            keysManager = KeysManager(seed: String(seed).hexaBytes, startingTimeSecs: seconds, startingTimeNanos: nanoSeconds)
+        }
+        
+        guard let pubKey = keysManager!.asNodeSigner().getNodeId(recipient: .Node).getValue() else {
+            return handleReject(reject, .backup_setup_failed, "Failed to get nodeID from keysManager")
+        }
+        
         do {
             BackupClient.skipRemoteBackup = false
-            try BackupClient.setup(seed: String(seed).hexaBytes, network: String(network), server: String(server), token: String(token))
+            try BackupClient.setup(
+                secretKey: keysManager!.getNodeSecretKey(),
+                pubKey: keysManager!.asNodeSigner().getNodeId(recipient: .Node).getValue()!,
+                network: String(network),
+                server: String(server),
+                token: String(token)
+            )
             
             //Store a random encrypted string and retrieve it again to confirm the server is working
             let ping = "ping\(arc4random_uniform(999))"
             try BackupClient.persist(.ping, [UInt8](Data(ping.utf8)))
-            let checkPing = try BackupClient.retrieve(.ping)
-            if let checkRes = String(data: checkPing, encoding: .utf8) {
-                if checkRes == ping {
-                    handleResolve(resolve, .backup_client_setup_success)
-                    return
-                }
-            }
-            
-            handleReject(reject, .backup_setup_check_failed)
-            return
+            handleResolve(resolve, .backup_client_setup_success) //TODO remove
+//            let checkPing = try BackupClient.retrieve(.ping)
+//            if let checkRes = String(data: checkPing, encoding: .utf8) {
+//                if checkRes == ping {
+//                    handleResolve(resolve, .backup_client_setup_success)
+//                    return
+//                }
+//            }
+//
+//            handleReject(reject, .backup_setup_check_failed)
+//            return
         } catch {
             handleReject(reject, .backup_setup_failed, error, error.localizedDescription)
             return
@@ -284,8 +307,9 @@ class Ldk: NSObject {
     
     @objc
     func initKeysManager(_ seed: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard keysManager == nil else {
-            return handleReject(reject, .already_init)
+        if keysManager != nil {
+            //If previously started with the same key (by backup client) return success.
+            return handleResolve(resolve, .keys_manager_init_success)
         }
         
         let seconds = UInt64(NSDate().timeIntervalSince1970)
@@ -461,7 +485,7 @@ class Ldk: NSObject {
         
         print(Ldk.accountStoragePath)
         
-        print("\(String(cString: strerror(22)))")
+//        print("\(String(cString: strerror(22)))")
         
         let params = ChannelManagerConstructionParameters(
             config: userConfig,

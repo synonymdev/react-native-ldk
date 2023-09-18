@@ -15,6 +15,7 @@ enum BackupError: Error {
     case missingBackup
     case invalidServerResponse(Int)
     case decryptFailed(String)
+    case signingError
 }
 
 extension BackupError: LocalizedError {
@@ -30,6 +31,8 @@ extension BackupError: LocalizedError {
             return NSLocalizedString("Invalid backup server response (\(code))", comment: "")
         case .decryptFailed(let msg):
             return NSLocalizedString("Failed to decrypt backup payload. \(msg)", comment: "")
+        case .signingError:
+            return NSLocalizedString("Signing backup error", comment: "")
         }
     }
 }
@@ -75,24 +78,29 @@ class BackupClient {
     static var network: String?
     static var server: String?
     static var token: String?
-    static var encryptionKey: SymmetricKey?
+    static var secretKey: [UInt8]?
+    static var encryptionKey: SymmetricKey? {
+        if let secretKey {
+            return SymmetricKey(data: secretKey)
+        } else {
+            return nil
+        }
+    }
+    static var pubKey: [UInt8]?
     
     static var requiresSetup: Bool {
         return server == nil
     }
-        
-    static func setup(seed: [UInt8], network: String, server: String, token: String) throws {
+         
+    static func setup(secretKey: [UInt8], pubKey: [UInt8], network: String, server: String, token: String) throws {
         guard getNetwork(network) != nil else {
             throw BackupError.invalidNetwork
         }
-        
+        Self.secretKey = secretKey
+        Self.pubKey = pubKey
         Self.network = network
         Self.server = server
-        Self.encryptionKey = SymmetricKey(data: seed)
-        
-        print("ENCRYPTION KEY \(Data(seed).hexEncodedString())")
-        
-        Self.token = token
+        Self.token = token //TODO only required when retrieving
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "BackupClient setup for synchronous remote persistence. Server: \(server)")
     }
@@ -125,6 +133,10 @@ class BackupClient {
         return sealedBox.combined!
     }
     
+    private static func hash(_ blob: Data) -> String {
+        return SHA256.hash(data: blob).compactMap { String(format: "%02x", $0) }.joined()
+    }
+    
     private static func decrypt(_ blob: Data) throws -> Data {
         guard let key = Self.encryptionKey else {
             throw BackupError.requiresSetup
@@ -153,21 +165,34 @@ class BackupClient {
             }
         }
     }
-    
-    //TODO authentication
-    
+        
     static func persist(_ label: Label, _ bytes: [UInt8]) throws {
         guard !skipRemoteBackup else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping remote backup for \(label.string)")
             return
         }
-        
+
+        guard let pubKey, let secretKey else {
+            throw BackupError.requiresSetup
+        }
+
         let encryptedBackup = try encrypt(Data(bytes))
+        let hash = hash(encryptedBackup)
         
+        let message = "Lightning Signed Message:\(hash)"
+        let signed = Bindings.swiftSign(msg: Array(message.utf8), sk: secretKey)
+        if let _ = signed.getError() {
+            throw BackupError.signingError
+        }
+        
+        let signedHash = signed.getValue()!
+                
         var request = URLRequest(url: try backupUrl(.persist, label))
         request.httpMethod = "POST"
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-        request.setValue(token, forHTTPHeaderField: "Authorization")
+        request.setValue(signedHash, forHTTPHeaderField: "Signed-Hash")
+        request.setValue(Data(pubKey).hexEncodedString(), forHTTPHeaderField: "Public-Key")
+                
         request.httpBody = encryptedBackup
         
         var requestError: Error?
