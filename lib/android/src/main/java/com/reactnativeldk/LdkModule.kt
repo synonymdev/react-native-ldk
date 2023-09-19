@@ -14,6 +14,7 @@ import org.ldk.structs.*
 import org.ldk.structs.Result_Bolt11InvoiceParseOrSemanticErrorZ.Result_Bolt11InvoiceParseOrSemanticErrorZ_OK
 import org.ldk.structs.Result_Bolt11InvoiceSignOrCreationErrorZ.Result_Bolt11InvoiceSignOrCreationErrorZ_OK
 import org.ldk.structs.Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_OK
+import org.ldk.structs.Result_StringErrorZ.Result_StringErrorZ_OK
 import org.ldk.util.UInt128
 import java.io.File
 import java.net.InetSocketAddress
@@ -81,6 +82,7 @@ enum class LdkErrors {
     channel_close_fail,
     channel_accept_fail,
     spend_outputs_fail,
+    failed_signing_request,
     write_fail,
     read_fail,
     file_does_not_exist,
@@ -1087,6 +1089,20 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         promise.resolve((res as Result_TransactionNoneZ.Result_TransactionNoneZ_OK).res.hexEncodedString())
+    }
+
+
+    @ReactMethod
+    fun nodeSign(message: String, promise: Promise) {
+        keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
+
+        val res = UtilMethods.sign(message.toByteArray(Charsets.UTF_8), keysManager!!._node_secret_key)
+
+        if (!res.is_ok) {
+            return handleReject(promise, LdkErrors.failed_signing_request)
+        }
+
+        promise.resolve((res as Result_StringErrorZ_OK).res)
     }
 }
 

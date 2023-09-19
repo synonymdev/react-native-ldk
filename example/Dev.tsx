@@ -643,6 +643,21 @@ const Dev = (): ReactElement => {
 							setMessage('Node Restarted');
 						}}
 					/>
+					<Button
+						title={'Sign message'}
+						onPress={async (): Promise<void> => {
+							setMessage('Signing...');
+							const res = await ldk.nodeSign({
+								message: 'Hello Bitcoin',
+							});
+							if (res.isErr()) {
+								setMessage(res.error.message);
+								return;
+							}
+
+							setMessage(res.value);
+						}}
+					/>
 				</View>
 			</ScrollView>
 
