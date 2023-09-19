@@ -526,8 +526,8 @@ class Ldk: NSObject {
     //MARK: Update methods
     
     @objc
-    func updateFees(_ high: NSInteger, normal: NSInteger, low: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        feeEstimator.update(high: UInt32(high), normal: UInt32(normal), low: UInt32(low))
+    func updateFees(_ high: NSInteger, normal: NSInteger, low: NSInteger, mempoolMinimum: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        feeEstimator.update(high: UInt32(high), normal: UInt32(normal), low: UInt32(low), mempoolMinimum: UInt32(mempoolMinimum))
         return handleResolve(resolve, .fees_updated)
     }
     

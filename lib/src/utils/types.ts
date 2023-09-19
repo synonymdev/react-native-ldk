@@ -235,6 +235,7 @@ export type TFeeUpdateReq = {
 	highPriority: number;
 	normal: number;
 	background: number;
+	mempoolMinimum: number;
 };
 
 export type TPeer = {

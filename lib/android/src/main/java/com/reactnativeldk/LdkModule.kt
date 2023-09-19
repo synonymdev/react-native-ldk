@@ -512,8 +512,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     //MARK: Update methods
 
     @ReactMethod
-    fun updateFees(high: Double, normal: Double, low: Double, promise: Promise) {
-        feeEstimator.update(high.toInt(), normal.toInt(), low.toInt())
+    fun updateFees(high: Double, normal: Double, low: Double, mempoolMinimum: Double, promise: Promise) {
+        feeEstimator.update(high.toInt(), normal.toInt(), low.toInt(), mempoolMinimum.toInt())
         handleResolve(promise, LdkCallbackResponses.fees_updated)
     }
 

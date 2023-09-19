@@ -304,13 +304,14 @@ class LDK {
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async updateFees(fees: TFeeUpdateReq): Promise<Result<string>> {
-		const { highPriority, normal, background } = fees;
+		const { highPriority, normal, background, mempoolMinimum } = fees;
 		try {
 			const satsPerKw = 250;
 			const res = await NativeLDK.updateFees(
 				highPriority * satsPerKw,
 				normal * satsPerKw,
 				background * satsPerKw,
+				mempoolMinimum * satsPerKw,
 			);
 			this.writeDebugToLog('updateFees', fees);
 			return ok(res);

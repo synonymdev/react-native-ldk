@@ -127,6 +127,7 @@ class LightningManager {
 		highPriority: 15,
 		normal: 10,
 		background: 5,
+		mempoolMinimum: 1,
 	});
 	trustedZeroConfPeers: string[] = [];
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
