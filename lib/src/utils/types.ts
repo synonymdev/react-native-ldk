@@ -574,3 +574,8 @@ export type TReconstructAndSpendOutputsReq = {
 	feeRate: number;
 	changeDestinationScript: string;
 };
+
+export type TNodeSignReq = {
+	message: string;
+	messagePrefix?: string;
+};

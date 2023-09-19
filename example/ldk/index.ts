@@ -119,6 +119,7 @@ export const setupLdk = async (
 					highPriority: 10,
 					normal: 5,
 					background: 1,
+					mempoolMinimum: 1,
 				}),
 			getTransactionData,
 			getTransactionPosition,
