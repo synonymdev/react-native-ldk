@@ -2,7 +2,7 @@ import BitcoinJsonRpc from 'bitcoin-json-rpc';
 import ElectrumClient from 'electrum-client';
 import { Platform } from 'react-native';
 import RNFS from 'react-native-fs';
-import lm, { ldk } from '@synonymdev/react-native-ldk';
+import lm, { EEventTypes, ldk } from '@synonymdev/react-native-ldk';
 
 import LND from './lnd-rpc';
 import CL from './clightning-rpc';
@@ -29,6 +29,7 @@ type TInitOpts = {
 
 type TWaitOpts = {
 	timeout?: number;
+	checkInterval?: number;
 	lnd?: boolean;
 	cl?: boolean;
 	ec?: boolean;
@@ -70,6 +71,7 @@ export const initWaitForElectrumToSync = async (
 		opts: TWaitOpts | undefined,
 	): Promise<void> {
 		const timeout = opts?.timeout ?? 30000;
+		const checkInterval = opts?.checkInterval ?? 200;
 		const waitLnd = opts?.lnd ?? false;
 		const waitCl = opts?.cl ?? false;
 		const waitEc = opts?.ec ?? false;
@@ -117,7 +119,7 @@ export const initWaitForElectrumToSync = async (
 			}, timeout);
 
 			while (running) {
-				await sleep(100);
+				await sleep(checkInterval);
 				let sync = true;
 				const b = await bitcoin.getBlockCount();
 				sync = sync && b === electrumHeight;
@@ -186,4 +188,58 @@ export const wipeLdkStorage = async (): Promise<void> => {
 	} else {
 		await RNFS.unlink(path);
 	}
+};
+
+export const getTxFeeRate = async (txid): Promise<number> => {
+	const electrum = new ElectrumClient(
+		global.net,
+		global.tls,
+		60001,
+		'localhost',
+		'tcp',
+	);
+	await electrum.initElectrum({ client: 'get-fee-rate', version: '1.4' });
+	const tx = await electrum.blockchainTransaction_get(txid, true);
+
+	let wentIn = 0;
+	for (const input of tx.vin) {
+		const prevtx = await electrum.blockchainTransaction_get(input.txid, true);
+		wentIn += prevtx.vout[input.vout].value;
+	}
+
+	let wasSpent = 0;
+	for (const outp of tx.vout) {
+		wasSpent += outp.value;
+	}
+
+	let feeRate = +((wentIn * 10e7 - wasSpent * 10e7) / tx.vsize).toFixed(2);
+
+	return feeRate;
+};
+
+export const waitForLDKEvent = (
+	event: EEventTypes,
+	timeout: number = 60000,
+): Promise<any> => {
+	return new Promise((resolve, reject) => {
+		let waiting = true;
+		const t = setTimeout(() => {
+			if (!waiting) {
+				return;
+			}
+			waiting = false;
+			subs.remove();
+			reject(`WaitForLDKEvent ${event} timed out`);
+		}, timeout);
+
+		const subs = ldk.onEvent(event, (data) => {
+			if (!waiting) {
+				return;
+			}
+			waiting = false;
+			clearTimeout(t);
+			subs.remove();
+			resolve(data);
+		});
+	});
 };

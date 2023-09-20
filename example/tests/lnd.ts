@@ -2,15 +2,22 @@ import { expect } from 'chai';
 import { describe, it } from 'mocha';
 import BitcoinJsonRpc from 'bitcoin-json-rpc';
 import RNFS from 'react-native-fs';
-import lm, { ldk } from '@synonymdev/react-native-ldk';
+import lm, { EEventTypes, TChannel, ldk } from '@synonymdev/react-native-ldk';
+import * as bitcoin from 'bitcoinjs-lib';
+import ElectrumClient from 'electrum-client';
+import { Platform } from 'react-native';
 
 import {
 	LND,
 	TestProfile,
+	getTxFeeRate,
 	initWaitForElectrumToSync,
 	sleep,
+	waitForLDKEvent,
 	wipeLdkStorage,
 } from './utils';
+import { Result } from '../utils/result';
+import { getScriptHash } from '../utils/helpers';
 
 // import {
 // 	broadcastTransaction,
@@ -91,18 +98,14 @@ describe('LND', function () {
 		profile = new TestProfile({
 			// name: account.name,
 			// seed: account.seed,
-			headerCallback: async (): Promise<void> => {
-				const syncRes = await lm.syncLdk();
-				if (syncRes.isErr()) {
-					console.info('SYNC ERROR', syncRes.error);
-					throw syncRes.error;
-				}
-			},
 		});
 		await profile.init();
 	});
 
 	afterEach(async function () {
+		await sleep(100);
+		await ldk.stop();
+		await sleep(100);
 		await profile?.cleanup();
 		if (this.currentTest?.state === 'failed') {
 			return;
@@ -110,7 +113,7 @@ describe('LND', function () {
 		await wipeLdkStorage();
 	});
 
-	it('can exchange payments', async function () {
+	it('can exchange payments, backup and restore', async function () {
 		// Test plan:
 		// - start LDK
 		// - add LND peer
@@ -177,7 +180,7 @@ describe('LND', function () {
 		// open a channel
 		await lnd.openChannelSync({
 			node_pubkey_string: nodeId.value,
-			local_funding_amount: '100000',
+			local_funding_amount: '200002',
 			private: true,
 		});
 		await rpc.generateToAddress(10, await rpc.getNewAddress());
@@ -214,10 +217,12 @@ describe('LND', function () {
 		if (inv1.isErr()) {
 			throw inv1.error;
 		}
-		await lnd.sendPaymentSync({
+		await sleep(1000); // FIXME, without it LND can't pay LDK. Looks like channel is not ready yet
+		const lndPay1 = await lnd.sendPaymentSync({
 			payment_request: inv1.value.to_str,
 			amt: 10000,
 		});
+		expect(lndPay1.payment_error).to.be.empty;
 
 		// LND -> LDK, 1000 sats
 		const inv2 = await lm.createAndStorePaymentRequest({
@@ -225,10 +230,14 @@ describe('LND', function () {
 			description: 'ololo',
 			expiryDeltaSeconds: 60,
 		});
+		await sleep(1000); // FIXME, without it LND can't pay LDK. Looks like channel is not ready yet
 		if (inv2.isErr()) {
 			throw inv2.error;
 		}
-		await lnd.sendPaymentSync({ payment_request: inv2.value.to_str });
+		const lndPay2 = await lnd.sendPaymentSync({
+			payment_request: inv2.value.to_str,
+		});
+		expect(lndPay2.payment_error).to.be.empty;
 
 		// LDK -> LND, 0 sats
 		const { payment_request: invoice3 } = await lnd.addInvoice({
@@ -365,6 +374,14 @@ describe('LND', function () {
 		// - make more payments
 		// - try to restore stale backup
 
+		profile.headerCallback = async (): Promise<void> => {
+			const syncRes = await lm.syncLdk();
+			if (syncRes.isErr()) {
+				console.info('SYNC ERROR', syncRes.error);
+				throw syncRes.error;
+			}
+		};
+
 		await ldk.stop();
 		const lmStart = await lm.start({
 			...profile.getStartParams(),
@@ -448,9 +465,11 @@ describe('LND', function () {
 		if (inv1.isErr()) {
 			throw inv1.error;
 		}
-		await lnd.sendPaymentSync({
+		await sleep(1000); // FIXME, without it LND can't pay LDK. Looks like channel is not ready yet
+		const lndPay1 = await lnd.sendPaymentSync({
 			payment_request: inv1.value.to_str,
 		});
+		expect(lndPay1.payment_error).to.be.empty;
 
 		// LDK -> LND, 444 sats
 		const { payment_request: inv2 } = await lnd.addInvoice({
@@ -486,9 +505,11 @@ describe('LND', function () {
 			if (inv.isErr()) {
 				throw inv.error;
 			}
-			await lnd.sendPaymentSync({
+			await sleep(1000); // FIXME, without it LND can't pay LDK. Looks like channel is not ready yet
+			const lndPay = await lnd.sendPaymentSync({
 				payment_request: inv.value.to_str,
 			});
+			expect(lndPay.payment_error).to.be.empty;
 		}
 
 		await wipeLdkStorage();
@@ -527,5 +548,211 @@ describe('LND', function () {
 		}
 
 		// TODO: search for refunding transaction
+	});
+
+	it.skip('can force close channel', async function () {
+		// Test plan:
+		// - start LDK
+		// - add LND peer
+		// - open LND -> LDK channel
+		// - move some funds to LDK
+		// - force close channel from LDK
+		// - check everything is ok
+
+		let fees = { highPriority: 3, normal: 2, background: 1 };
+
+		const lmStart = await lm.start({
+			...profile.getStartParams(),
+			getFees: async () => {
+				return fees;
+			},
+		});
+		if (lmStart.isErr()) {
+			throw lmStart.error;
+		}
+
+		const nodeId = await ldk.nodeId();
+		if (nodeId.isErr()) {
+			throw nodeId.error;
+		}
+
+		const { identity_pubkey: lndPubKey } = await lnd.getInfo();
+
+		const addPeer = await lm.addPeer({
+			pubKey: lndPubKey,
+			address: '127.0.0.1',
+			port: 9735,
+			timeout: 5000,
+		});
+		if (addPeer.isErr()) {
+			throw addPeer.error;
+		}
+
+		// wait for peer to be connected
+		let n = 0;
+		while (true) {
+			const { peers } = await lnd.listPeers();
+			if (peers.some((p) => p.pub_key === nodeId.value)) {
+				break;
+			}
+			await sleep(1000);
+			if (n++ === 20) {
+				throw new Error('Peer not connected');
+			}
+		}
+
+		// open a channel
+		await lnd.openChannelSync({
+			node_pubkey_string: nodeId.value,
+			local_funding_amount: '5000000',
+			private: true,
+		});
+		await rpc.generateToAddress(10, await rpc.getNewAddress());
+		await waitForElectrum({ lnd: true });
+
+		let syncLdk = await lm.syncLdk();
+		if (syncLdk.isErr()) {
+			throw syncLdk.error;
+		}
+
+		// wait for channel to be active
+		n = 0;
+		let listChannels: Result<TChannel[]>;
+		while (true) {
+			listChannels = await ldk.listChannels();
+			if (listChannels.isErr()) {
+				throw listChannels.error;
+			}
+			if (listChannels.value.length > 0 && listChannels.value[0].is_usable) {
+				break;
+			}
+			await sleep(1000);
+			if (n++ === 20) {
+				throw new Error('Channel not active');
+			}
+		}
+
+		const channel1 = listChannels.value[0];
+		expect(channel1.force_close_spend_delay).to.be.a('number');
+
+		// LND -> LDK, 100001 sats
+		const inv1 = await lm.createAndStorePaymentRequest({
+			amountSats: 100001,
+			description: 'trololo',
+			expiryDeltaSeconds: 60,
+		});
+		if (inv1.isErr()) {
+			throw inv1.error;
+		}
+		await sleep(1000); // FIXME, without it LND can't pay LDK. Looks like channel is not ready yet
+		const paymentResp = await lnd.sendPaymentSync({
+			payment_request: inv1.value.to_str,
+		});
+		expect(paymentResp).to.have.property('payment_error').that.is.empty;
+
+		// wait for LDK to broadcast channel close tx, timeout after 10s
+		const closingTxBroadcastPromise = waitForLDKEvent(
+			EEventTypes.broadcast_transaction,
+		);
+
+		// set hight fees and restart LDK so it catches up
+		fees = { highPriority: 30, normal: 20, background: 10 };
+		const syncRes0 = await lm.syncLdk();
+		await lm.setFees();
+		if (syncRes0.isErr()) {
+			throw syncRes0.error;
+		}
+
+		// force-close channel
+		const closeReq = await ldk.closeChannel({
+			channelId: channel1.channel_id,
+			counterPartyNodeId: lndPubKey,
+			force: true,
+		});
+		if (closeReq.isErr()) {
+			throw closeReq.error;
+		}
+		const { tx: closingTxHex } = await closingTxBroadcastPromise;
+		const closingTx = bitcoin.Transaction.fromHex(closingTxHex);
+		await rpc.generateToAddress(1, await rpc.getNewAddress());
+		await waitForElectrum({ lnd: true });
+
+		const syncRes1 = await lm.syncLdk();
+		if (syncRes1.isErr()) {
+			throw syncRes1.error;
+		}
+
+		const feeRate = await getTxFeeRate(closingTx.getId());
+		console.info('Closing transaction fee rate:', feeRate, 'sat/vbyte');
+
+		// start listening channel_manager_spendable_outputs event
+		const spendablePromise = waitForLDKEvent(
+			EEventTypes.channel_manager_spendable_outputs,
+		);
+
+		// check claimableBalances
+		const claimableBalances1 = await ldk.claimableBalances(true);
+		if (claimableBalances1.isErr()) {
+			throw claimableBalances1.error;
+		}
+
+		console.info('claimableBalances1', claimableBalances1);
+		// FIXME: threre should only be one item, but it might be 2 on android
+		if (Platform.OS === 'android') {
+			// @ts-ignore
+			claimableBalances1.value = claimableBalances1.value.filter(
+				({ claimable_amount_satoshis }) => claimable_amount_satoshis > 0,
+			);
+		}
+		expect(claimableBalances1.value).to.have.length(1);
+		expect(claimableBalances1.value[0]).to.include({
+			claimable_amount_satoshis: 100001,
+			type: 'ClaimableAwaitingConfirmations',
+		});
+		expect(claimableBalances1.value[0])
+			.to.have.property('confirmation_height')
+			.that.to.be.a('number');
+
+		// calculate how much blocks we need to mine, before LDK can spend the closing tx
+		const blocksToMine =
+			(claimableBalances1.value[0]?.confirmation_height ?? 0) -
+			(await rpc.getBlockCount()) +
+			1;
+		// const blocksToMine = 601;
+		console.info(`Mining ${blocksToMine} blocks...`);
+		await rpc.generateToAddress(blocksToMine, await rpc.getNewAddress());
+		await waitForElectrum({ lnd: true, checkInterval: 1000 });
+		console.info('Blocks mined');
+
+		const syncRes2 = await lm.syncLdk();
+		if (syncRes2.isErr()) {
+			throw syncRes2.error;
+		}
+
+		// wait for channel_manager_spendable_outputs event
+		await spendablePromise;
+
+		// now we need to wait for tx to be created and broadcasted my LN Manager
+		await sleep(3000);
+		await rpc.generateToAddress(1, await rpc.getNewAddress());
+		await waitForElectrum();
+
+		// check if sweep was successfull
+		const electrum = new ElectrumClient(
+			global.net,
+			global.tls,
+			60001,
+			'localhost',
+			'tcp',
+		);
+		await electrum.initElectrum({ client: 'get-balance', version: '1.4' });
+		const balance = await electrum.blockchainScripthash_getBalance(
+			getScriptHash(await profile.getAddress()),
+		);
+
+		expect(balance)
+			.to.have.property('confirmed')
+			.that.above(90000)
+			.and.below(100001);
 	});
 });

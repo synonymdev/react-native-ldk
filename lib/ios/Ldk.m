@@ -48,6 +48,7 @@ RCT_EXTERN_METHOD(stop:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(updateFees:(NSInteger *)high
                   normal:(NSInteger *)normal
                   low:(NSInteger *)low
+                  mempoolMinimum:(NSInteger *)mempoolMinimum
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setLogLevel:(NSString *)level
@@ -162,6 +163,9 @@ RCT_EXTERN_METHOD(reconstructAndSpendOutputs:(NSString *)outputScriptPubKey
                   outpointIndex:(NSInteger *)outpointIndex
                   feeRate:(NSInteger *)feeRate
                   changeDestinationScript:(NSString *)changeDestinationScript
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(nodeSign:(NSString *)message
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 @end

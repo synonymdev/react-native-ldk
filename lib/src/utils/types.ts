@@ -236,6 +236,7 @@ export type TFeeUpdateReq = {
 	highPriority: number;
 	normal: number;
 	background: number;
+	mempoolMinimum: number;
 };
 
 export type TPeer = {
@@ -323,6 +324,7 @@ export type TChannelHandshakeConfig = {
 	their_channel_reserve_proportional_millionths?: number; //UInt32
 	negotiate_anchors_zero_fee_htlc_tx?: boolean;
 	our_max_accepted_htlcs_arg?: number; //UInt16
+	max_inbound_htlc_value_in_flight_percent_of_channel?: number; //UInt8
 };
 
 export type TChannelHandshakeLimits = {
@@ -365,6 +367,7 @@ export const defaultUserConfig: TUserConfig = {
 		announced_channel: false,
 		minimum_depth: 1,
 		max_htlc_value_in_flight_percent_of_channel: 100,
+		max_inbound_htlc_value_in_flight_percent_of_channel: 100,
 		negotiate_anchors_zero_fee_htlc_tx: true,
 	},
 	manually_accept_inbound_channels: true,
@@ -576,7 +579,13 @@ export type TReconstructAndSpendOutputsReq = {
 	changeDestinationScript: string;
 };
 
+
 export type TBackupServerDetails = {
-	url: string;
-	token: string;
+    url: string;
+    token: string;
+};
+
+export type TNodeSignReq = {
+	message: string;
+	messagePrefix?: string;
 };
