@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@tweedegolf/storage-abstraction": "^1.4.6",
     "fastify": "^4.21.0",
     "ln-verifymessagejs": "^0.0.4"
   },

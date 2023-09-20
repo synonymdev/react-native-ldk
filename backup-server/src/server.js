@@ -2,10 +2,15 @@ const Fastify = require('fastify')
 const { deriveNodeId } = require("ln-verifymessagejs");
 const crypto = require('crypto');
 
-const FancyStorage = require('./fancyStorage');
+const Storage = require('./storage');
 const { formatFileSize } = require('./helpers');
 
-const storage = new FancyStorage(); //TODO actually make fancy
+const storage = new Storage({
+    type: 'local',
+    directory: './local-storage',
+    bucketName: 'ldk-backups'
+});
+
 const users = new Map(); // bearer -> {pubkey, expires}
 const challenges = new Map(); // pubkey -> {challenge, expires}
 
@@ -187,8 +192,7 @@ fastify.route({
             subdir = 'channel_monitors';
         }
 
-        storage.set({pubkey, network, subdir, key, value: body});
-
+        await storage.set({pubkey, network, subdir, key, value: body});
         fastify.log.info(`Saved ${formatFileSize(body.length)} for ${label}`);
 
         return {success: true};
@@ -219,7 +223,7 @@ fastify.route({
             subdir = 'channel_monitors';
         }
 
-        const backup = storage.get({pubkey, network, subdir, key});
+        const backup = await storage.get({pubkey, network, subdir, key});
         if (!backup) {
             reply.code(404).send("Backup not found");
             return;
@@ -254,7 +258,7 @@ fastify.route({
         const bearerToken = headers.authorization;
         const {pubkey} = users.get(bearerToken);
 
-        const list = storage.list({pubkey, network});
+        const list = await storage.list({pubkey, network});
         const channelMonitorList = storage.list({pubkey, network, subdir: 'channel_monitors'});
 
         const allFiles = {
