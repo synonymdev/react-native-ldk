@@ -6,7 +6,10 @@ const FancyStorage = require('./fancyStorage');
 const { formatFileSize } = require('./helpers');
 
 const storage = new FancyStorage(); //TODO actually make fancy
-const users = new Map(); // bearer -> pubkey
+const users = new Map(); // bearer -> {pubkey, expires}
+const challenges = new Map(); // pubkey -> {challenge, expires}
+
+const signedMessagePrefix = 'react-native-ldk backup server auth:';
 
 let labels = [
     'ping',
@@ -25,12 +28,10 @@ let networks = ['bitcoin', 'testnet', 'regtest', 'signet'];
 
 const version = 'v1';
 
-let authServer;
 const fastify = Fastify({
     logger: true
 });
 
-// Declare a route
 fastify.get(`/${version}/status`, async function handler (request, reply) {
     return { hello: 'world' };
 });
@@ -53,12 +54,73 @@ const querystring = {
 };
 
 fastify.route({
-    method: 'GET',
-    url: `/${version}/auth`,
+    method: 'POST',
+    url: `/${version}/auth/challenge`,
     handler: async (request, reply) => {
-        const sessionToken = createToken();
-        const slashauthURL = authServer.formatUrl(sessionToken)
-        return {slashauth: slashauthURL};
+        const {body, headers} = request;
+        const pubkey = headers['public-key'];
+        const {timestamp, signature} = body;
+
+        if (!pubkey || !timestamp || !signature) {
+            fastify.log.error("Missing public key, timestamp or signature");
+            reply.code(400);
+            return {error: "Missing public key, timestamp or signature"};
+        }
+
+        //Verify timestamp was signed by pubkey
+        const derivedNodeId = deriveNodeId(signature, `${signedMessagePrefix}${timestamp}`);
+        if (derivedNodeId !== pubkey) {
+            fastify.log.error(`Expected ${pubkey} but got ${derivedNodeId}`);
+            fastify.log.error("Unauthorized or invalid signature");
+            reply.code(401);
+            return {error: "Unauthorized"};
+        }
+
+        //Challenged don't need to live long, follow-up response should always be near instant
+        const challenge = crypto.randomBytes(32).toString('hex');
+        challenges.set(pubkey, {challenge, expires: Date.now() + 60 * 1000});
+
+        return {challenge};
+    }
+});
+
+fastify.route({
+    method: 'POST',
+    url: `/${version}/auth/response`,
+    handler: async (request, reply) => {
+        const {body, headers} = request;
+        const pubkey = headers['public-key'];
+        const signature = body['signature'];
+
+        if (!challenges.has(pubkey) || challenges.get(pubkey).expires < Date.now()) {
+            fastify.log.error("Missing or expired challenge");
+            reply.code(400);
+            return {error: "Missing or expired challenge"};
+        }
+
+        if (!signature) {
+            fastify.log.error("Missing signature");
+            reply.code(400);
+            return {error: "Missing signature"};
+        }
+
+        const challenge = challenges.get(pubkey).challenge;
+
+        //verify signature was signed by provided pubkey
+        const derivedNodeId = deriveNodeId(signature, `${signedMessagePrefix}${challenge}`);
+        if (derivedNodeId !== pubkey) {
+            fastify.log.error(`Expected ${pubkey} but got ${derivedNodeId}`);
+            fastify.log.error("Unauthorized or invalid signature");
+            reply.code(401);
+            return {error: "Unauthorized"};
+        }
+
+        const bearer = crypto.randomBytes(32).toString('hex');
+
+        //Valid for 30min, should only be used for doing a restore
+        users.set(bearer, {pubkey, expires: Date.now() + 30 * 60 * 1000});
+
+        return {bearer};
     }
 });
 
@@ -69,6 +131,14 @@ const authRetrieveCheckHandler = async (request, reply) => {
         fastify.log.error("Unauthorized or missing token");
         reply.code(401);
         return {error: "Unauthorized"};
+    }
+
+    const {expires} = users.get(bearerToken);
+    //Check if expired
+    if (expires < Date.now()) {
+        fastify.log.error("Expired token");
+        reply.code(401);
+        return {error: "Expired token"};
     }
 }
 
@@ -82,8 +152,7 @@ const signedPersistCheckHandler = async (request, reply) => {
     const hash = crypto.createHash('sha256').update(body).digest('hex');
 
     //verify signature was signed by provided pubkey
-    const messageThatHasBeenSigned = `Lightning Signed Message:${hash}`;
-    const derivedNodeId = deriveNodeId(signedHash, messageThatHasBeenSigned);
+    const derivedNodeId = deriveNodeId(signedHash, `${signedMessagePrefix}${hash}`);
 
     if (!signedHash || !pubkey || derivedNodeId !== pubkey) {
         fastify.log.error(`Expected ${pubkey} but got ${derivedNodeId}`);
@@ -141,7 +210,7 @@ fastify.route({
 
         const {label, channelId, network} = query;
         const bearerToken = headers.authorization;
-        const pubkey = users.get(bearerToken);
+        const {pubkey} = users.get(bearerToken);
 
         let key = label;
         let subdir = '';
@@ -183,7 +252,7 @@ fastify.route({
 
         const {network} = query;
         const bearerToken = headers.authorization;
-        const pubkey = users.get(bearerToken);
+        const {pubkey} = users.get(bearerToken);
 
         const list = storage.list({pubkey, network});
         const channelMonitorList = storage.list({pubkey, network, subdir: 'channel_monitors'});
@@ -198,16 +267,6 @@ fastify.route({
 });
 
 module.exports = async ({host, port}) => {
-    const magiclink = (publicKey) => {
-        const bearer = createToken();
-        users.set(bearer, publicKey);
-
-        return {
-            status: 'ok',
-            bearer,
-        }
-    }
-
     try {
         await fastify.listen({ port, host });
     } catch (err) {

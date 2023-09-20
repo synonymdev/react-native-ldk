@@ -17,9 +17,6 @@ import { ENetworks } from '@synonymdev/react-native-ldk/dist/utils/types';
 import networks from '@synonymdev/react-native-ldk/dist/utils/networks';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import Clipboard from '@react-native-clipboard/clipboard';
-import b4a from 'b4a';
-import sodium from 'sodium-native';
-import { SlashAuthClient } from '@slashtags/slashauth-client';
 
 /**
  * Use Keychain to save LDK name & seed.
@@ -293,74 +290,4 @@ export const simulateStaleRestore = async (
 	onUpdate(
 		"If this didn't crash and you can see your claimable balance, you're good!",
 	);
-};
-
-const createKeyPair = (
-	seed,
-): {
-	publicKey: Buffer;
-	secretKey: Buffer;
-} => {
-	const publicKey = b4a.allocUnsafe(sodium.crypto_sign_PUBLICKEYBYTES);
-	const secretKey = b4a.allocUnsafe(sodium.crypto_sign_SECRETKEYBYTES);
-
-	console.log(
-		'sodium.crypto_sign_seed_keypair',
-		sodium.crypto_sign_seed_keypair,
-	);
-
-	if (seed) {
-		sodium.crypto_sign_seed_keypair(publicKey, secretKey, seed);
-	} else {
-		sodium.crypto_sign_keypair(publicKey, secretKey);
-	}
-
-	return {
-		publicKey,
-		secretKey,
-	};
-};
-
-export const getBearerAuthToken = async (): Promise<string> => {
-	const DHLEN = sodium.crypto_scalarmult_ed25519_BYTES;
-	const PKLEN = sodium.crypto_scalarmult_ed25519_BYTES;
-	const SCALARLEN = sodium.crypto_scalarmult_ed25519_BYTES;
-
-	return JSON.stringify({ DHLEN, PKLEN, SCALARLEN });
-
-	const backupServer = 'http://0.0.0.0:3003/v1';
-	const seed =
-		'000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F'; //TODO get real seed
-
-	const res = await fetch(`${backupServer}/auth`);
-	const body = await res.json();
-	if (!body.slashauth) {
-		console.log(body);
-		throw new Error('No slashauth found in response');
-	}
-
-	const slashauth = body.slashauth;
-
-	const seedBuffer = Buffer.from(seed, 'hex');
-	const keypair = createKeyPair(seedBuffer);
-
-	console.log(`pubkey: ${keypair.publicKey.length}`);
-	console.log(`secretKey: ${keypair.secretKey.length}`);
-
-	const client = new SlashAuthClient({ keypair });
-
-	console.log(slashauth);
-
-	try {
-		const { status, bearer } = await client.magiclink(slashauth);
-	} catch (e) {
-		console.log(e);
-		return 'shitttt ' + e;
-	}
-
-	if (status !== 'ok') {
-		throw new Error('slashauth magiclink failed');
-	}
-
-	return 'bearer';
 };

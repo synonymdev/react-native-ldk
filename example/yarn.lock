@@ -1434,7 +1434,7 @@
     slashtags-request "github:slashtags/rpc-request"
 
 "@synonymdev/react-native-ldk@../lib":
-  version "0.0.104"
+  version "0.0.109"
   dependencies:
     bitcoinjs-lib "^6.0.2"
 
@@ -6777,10 +6777,6 @@ react-native-keychain@8.1.1:
   version "8.1.1"
   resolved "https://registry.yarnpkg.com/react-native-keychain/-/react-native-keychain-8.1.1.tgz#3bb5e37946b964a7bcf7df2fe470dd244e01a340"
   integrity sha512-8fxgeHKwGcL657eAYpdBTkDIxNhbIHI+kyyO0Yac2dgVAN184JoIwQcW2z6snahwDaCObQOu0biLFHnsH+4KSg==
-
-"react-native-libsodium@github:sodium-friends/react-native-libsodium":
-  version "0.0.1"
-  resolved "https://codeload.github.com/sodium-friends/react-native-libsodium/tar.gz/6fbfee572fdfde7e7eec7a1956951d106b342145"
 
 react-native-randombytes@3.6.1:
   version "3.6.1"

@@ -12,5 +12,8 @@
   "dependencies": {
     "fastify": "^4.21.0",
     "ln-verifymessagejs": "^0.0.4"
+  },
+  "devDependencies": {
+    "ln-service": "^56.13.0"
   }
 }
