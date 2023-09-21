@@ -474,20 +474,46 @@ class LightningManager {
 	/**
 	 * Fetches current best block and sends to LDK to update both channelManager and chainMonitor.
 	 * Also watches transactions and outputs for confirmed and unconfirmed transactions and updates LDK.
+	 * @param {number} [timeout] Timeout to set for each async function in this method. Potential overall timeout may be greater.
+	 * @param {boolean} [attemptRestart] Will attempt to restart LDK if an error or timeout occurs.
 	 * @returns {Promise<Result<string>>}
 	 */
-	async syncLdk(): Promise<Result<string>> {
+	async syncLdk({
+		timeout = 15000,
+		attemptRestart = true,
+	}: {
+		timeout?: number;
+		attemptRestart?: boolean;
+	} = {}): Promise<Result<string>> {
+		// Check that the getBestBlock method has been provided.
 		if (!this.getBestBlock) {
 			return err('No getBestBlock method provided.');
 		}
-		const bestBlock = await this.getBestBlock();
-		const height = bestBlock?.height;
+		const bestBlock = await promiseTimeout<THeader>(
+			timeout,
+			this.getBestBlock(),
+		);
+		if (!bestBlock?.height) {
+			if (attemptRestart) {
+				return await this.attemptRestart();
+			} else {
+				return err('Unable to get best block in syncLdk method.');
+			}
+		}
+		const height = bestBlock.height;
 
 		//Don't update unnecessarily
 		if (this.currentBlock.hash !== bestBlock?.hash) {
-			const syncToTip = await ldk.syncToTip(bestBlock);
+			const syncToTip = await promiseTimeout<Result<string>>(
+				timeout,
+				ldk.syncToTip(bestBlock),
+			);
 			if (syncToTip.isErr()) {
-				return syncToTip;
+				if (attemptRestart) {
+					return await this.attemptRestart();
+				} else {
+					return syncToTip;
+				}
 			}
 
 			this.currentBlock = bestBlock;
@@ -496,29 +522,76 @@ class LightningManager {
 		let channels: TChannel[] = [];
 		if (this.watchTxs.length > 0) {
 			// Get fresh array of channels.
-			const listChannelsResponse = await ldk.listChannels();
+			const listChannelsResponse = await promiseTimeout<Result<TChannel[]>>(
+				timeout,
+				ldk.listChannels(),
+			);
 			if (listChannelsResponse.isOk()) {
 				channels = listChannelsResponse.value;
 			}
 		}
 
 		// Iterate over watch transactions/outputs and set whether they are confirmed or unconfirmed.
-		await this.checkWatchTxs(this.watchTxs, channels, bestBlock);
-		await this.checkWatchOutputs(this.watchOutputs);
-		await this.checkUnconfirmedTransactions();
+		const r1 = await promiseTimeout<Result<string>>(
+			timeout,
+			this.checkWatchTxs(this.watchTxs, channels, bestBlock),
+		);
+		if (r1.isErr()) {
+			if (attemptRestart) {
+				return await this.attemptRestart();
+			} else {
+				return r1;
+			}
+		}
+		const r2 = await promiseTimeout<Result<string>>(
+			timeout,
+			this.checkWatchOutputs(this.watchOutputs),
+		);
+		if (r2.isErr()) {
+			if (attemptRestart) {
+				return await this.attemptRestart();
+			} else {
+				return r2;
+			}
+		}
+		const r3 = await promiseTimeout<Result<string>>(
+			timeout,
+			this.checkUnconfirmedTransactions(),
+		);
+		if (r3.isErr()) {
+			if (attemptRestart) {
+				return await this.attemptRestart();
+			} else {
+				return r3;
+			}
+		}
 
 		return ok(`Synced to block ${height}`);
 	}
+
+	/**
+	 * Attempts to Restart and Sync LDK
+	 * @param {number} [timeout]
+	 * @returns {Promise<Result<string>>}
+	 */
+	attemptRestart = async (timeout = 15000): Promise<Result<string>> => {
+		const r = await promiseTimeout<Result<string>>(timeout, ldk.restart());
+		if (r.isErr()) {
+			return r;
+		}
+		return await this.syncLdk({
+			attemptRestart: false,
+		});
+	};
 
 	checkWatchTxs = async (
 		watchTxs: TRegisterTxEvent[],
 		channels: TChannel[],
 		bestBlock: THeader,
-	): Promise<void> => {
+	): Promise<Result<string>> => {
 		const height = bestBlock?.height;
 		if (!height) {
-			console.log('No height provided');
-			return;
+			return err('No height provided');
 		}
 		await Promise.all(
 			watchTxs.map(async (watchTxData) => {
@@ -533,7 +606,7 @@ class LightningManager {
 					//Watch TX was never confirmed so there's no need to unconfirm it.
 					return;
 				}
-				if (!txData.transaction) {
+				if (!txData?.transaction) {
 					console.log(
 						'Unable to retrieve transaction data from the getTransactionData method.',
 					);
@@ -564,11 +637,12 @@ class LightningManager {
 				}
 			}),
 		);
+		return ok('Watch transactions checked');
 	};
 
 	checkWatchOutputs = async (
 		watchOutputs: TRegisterOutputEvent[],
-	): Promise<void> => {
+	): Promise<Result<string>> => {
 		await Promise.all(
 			watchOutputs.map(async ({ index, script_pubkey }) => {
 				const transactions = await this.getScriptPubKeyHistory(script_pubkey);
@@ -630,6 +704,7 @@ class LightningManager {
 				);
 			}),
 		);
+		return ok('Watch outputs checked');
 	};
 
 	/**
@@ -1127,7 +1202,7 @@ class LightningManager {
 		}
 	};
 
-	checkUnconfirmedTransactions = async (): Promise<void> => {
+	checkUnconfirmedTransactions = async (): Promise<Result<string>> => {
 		let needsToSync = false;
 		let newUnconfirmedTxs: TLdkUnconfirmedTransactions = [];
 		await Promise.all(
@@ -1171,6 +1246,7 @@ class LightningManager {
 		if (needsToSync) {
 			await this.syncLdk();
 		}
+		return ok('Unconfirmed transactions checked');
 	};
 
 	/**
