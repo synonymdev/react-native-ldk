@@ -1,13 +1,15 @@
 const lnService = require('ln-service');
 const crypto = require("crypto");
+const { deriveNodeId } = require("ln-verifymessagejs");
 
 const signedMessagePrefix = 'react-native-ldk backup server auth:';
 
 const LND_MACAROON = process.env.LND_MACAROON;
 const LND_SOCKET = process.env.LND_SOCKET;
+const SERVER_PUBKEY = process.env.SERVER_PUBKEY;
 
-if (!LND_MACAROON || !LND_SOCKET) {
-    console.error('LND_MACAROON or LND_SOCKET environment variable is not set');
+if (!LND_MACAROON || !LND_SOCKET || !SERVER_PUBKEY) {
+    console.error('LND_MACAROON or LND_SOCKET or SERVER_PUBKEY environment variable is not set');
     process.exit(1);
 }
 
@@ -31,12 +33,16 @@ const uploadBackup = async ({server, pubkey, content}) => {
     const hash = crypto.createHash('sha256').update(content).digest('hex');
     const signedHash = await nodeSign(hash);
 
+    //Hash of client pubkey + timestamp
+    const clientChallenge = crypto.createHash('sha256').update(Buffer.from(pubkey + Date.now(), 'utf8')).digest('hex');
+
     const res = await fetch(`${server}/persist?network=regtest&label=ping`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/octet-stream',
             'Public-Key': pubkey,
-            'Signed-Hash': signedHash
+            'Signed-Hash': signedHash,
+            'Challenge': clientChallenge,
         },
         body: content
     });
@@ -44,6 +50,19 @@ const uploadBackup = async ({server, pubkey, content}) => {
     //Check status is 200
     if (res.status !== 200) {
         throw new Error(`Expected 200 but got ${res.status}`);
+    }
+
+    //Verify server signed challenge returned in body
+    const body = await res.json();
+    const serverSignature = body.signature;
+
+    if (!serverSignature) {
+        throw new Error('No signature found in response');
+    }
+
+    const derivedNodeId = deriveNodeId(serverSignature, `${signedMessagePrefix}${clientChallenge}`);
+    if (derivedNodeId !== SERVER_PUBKEY) {
+        throw new Error(`Derived node id ${derivedNodeId} does not match server pubkey ${SERVER_PUBKEY}`);
     }
 }
 

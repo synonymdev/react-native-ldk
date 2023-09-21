@@ -44,6 +44,7 @@ struct CompleteBackup {
 
 class BackupClient {
     private static let version = "v1"
+    private static let signedMessagePrefix = "react-native-ldk backup server auth:"
     
     enum Label {
         case ping
@@ -165,6 +166,11 @@ class BackupClient {
             }
         }
     }
+    
+    static func verifySignature(message: String, signature: String, pubKey: String) -> Bool {
+//        Bindings.swiftVerify(msg: <#T##[UInt8]#>, sig: <#T##String#>, pk: <#T##[UInt8]#>)
+        return false
+    }
         
     static func persist(_ label: Label, _ bytes: [UInt8]) throws {
         guard !skipRemoteBackup else {
@@ -179,7 +185,7 @@ class BackupClient {
         let encryptedBackup = try encrypt(Data(bytes))
         let hash = hash(encryptedBackup)
         
-        let message = "Lightning Signed Message:\(hash)"
+        let message = "\(signedMessagePrefix)\(hash)"
         let signed = Bindings.swiftSign(msg: Array(message.utf8), sk: secretKey)
         if let _ = signed.getError() {
             throw BackupError.signingError

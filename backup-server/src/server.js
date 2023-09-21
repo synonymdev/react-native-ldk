@@ -3,7 +3,7 @@ const { deriveNodeId } = require("ln-verifymessagejs");
 const crypto = require('crypto');
 
 const Storage = require('./storage');
-const { formatFileSize } = require('./helpers');
+const { formatFileSize, getNodePubKey, nodeSign} = require('./helpers');
 
 const storage = new Storage({
     type: 'local',
@@ -81,7 +81,7 @@ fastify.route({
             return {error: "Unauthorized"};
         }
 
-        //Challenged don't need to live long, follow-up response should always be near instant
+        //Challenges don't need to live long, follow-up response should always be near instant
         const challenge = crypto.randomBytes(32).toString('hex');
         challenges.set(pubkey, {challenge, expires: Date.now() + 60 * 1000});
 
@@ -152,6 +152,13 @@ const signedPersistCheckHandler = async (request, reply) => {
 
     const signedHash = headers['signed-hash'];
     const pubkey = headers['public-key'];
+    const clientChallenge = headers['challenge'];
+
+    if (!signedHash || !pubkey || !clientChallenge) {
+        fastify.log.error("Missing signed hash, public key or challenge");
+        reply.code(400);
+        return {error: "Missing signed hash, public key or challenge"};
+    }
 
     //hash encrypted payload
     const hash = crypto.createHash('sha256').update(body).digest('hex');
@@ -159,7 +166,7 @@ const signedPersistCheckHandler = async (request, reply) => {
     //verify signature was signed by provided pubkey
     const derivedNodeId = deriveNodeId(signedHash, `${signedMessagePrefix}${hash}`);
 
-    if (!signedHash || !pubkey || derivedNodeId !== pubkey) {
+    if (derivedNodeId !== pubkey) {
         fastify.log.error(`Expected ${pubkey} but got ${derivedNodeId}`);
         fastify.log.error("Unauthorized or invalid signature");
         reply.code(401);
@@ -174,7 +181,11 @@ fastify.route({
         querystring,
         response: {
             200: {
-                type: 'string'
+                type: 'object',
+                properties: {
+                    success: {type: 'boolean'},
+                    signature: {type: 'string'},
+                }
             }
         }
     },
@@ -183,7 +194,8 @@ fastify.route({
         const {body, query, headers} = request;
 
         const {label, channelId, network} = query;
-        const pubkey = request.headers['public-key'];
+        const pubkey = headers['public-key'];
+        const clientChallenge = headers['challenge'];
 
         let key = label;
         let subdir = '';
@@ -195,7 +207,10 @@ fastify.route({
         await storage.set({pubkey, network, subdir, key, value: body});
         fastify.log.info(`Saved ${formatFileSize(body.length)} for ${label}`);
 
-        return {success: true};
+        //Sign client challenge
+        const signature = await nodeSign(`${signedMessagePrefix}${clientChallenge}`, pubkey);
+
+        return {success: true, signature};
     }
 });
 
@@ -272,6 +287,8 @@ fastify.route({
 
 module.exports = async ({host, port}) => {
     try {
+        const pubKey = await getNodePubKey();
+        fastify.log.info(`Server pubkey to be hard coded on the client: ${pubKey}`);
         await fastify.listen({ port, host });
     } catch (err) {
         fastify.log.error(err);
