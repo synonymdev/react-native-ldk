@@ -16,6 +16,7 @@ enum BackupError: Error {
     case invalidServerResponse(Int)
     case decryptFailed(String)
     case signingError
+    case serverChallengeResponseFailed
 }
 
 extension BackupError: LocalizedError {
@@ -33,6 +34,8 @@ extension BackupError: LocalizedError {
             return NSLocalizedString("Failed to decrypt backup payload. \(msg)", comment: "")
         case .signingError:
             return NSLocalizedString("Signing backup error", comment: "")
+        case .serverChallengeResponseFailed:
+            return NSLocalizedString("Client failed to validate server challenge response. Indicates server error or potential man in the middle attack.", comment: "")
         }
     }
 }
@@ -168,11 +171,19 @@ class BackupClient {
     }
     
     static func verifySignature(message: String, signature: String, pubKey: String) -> Bool {
-//        Bindings.swiftVerify(msg: <#T##[UInt8]#>, sig: <#T##String#>, pk: <#T##[UInt8]#>)
-        return false
+        return Bindings.swiftVerify(
+            msg: [UInt8](message.data(using: .utf8)!),
+            sig: signature,
+            pk: pubKey.hexaBytes
+        )
     }
         
     static func persist(_ label: Label, _ bytes: [UInt8]) throws {
+        struct PersistResponse: Codable {
+            let success: Bool
+            let signature: String
+        }
+        
         guard !skipRemoteBackup else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping remote backup for \(label.string)")
             return
@@ -182,26 +193,33 @@ class BackupClient {
             throw BackupError.requiresSetup
         }
 
-        let encryptedBackup = try encrypt(Data(bytes))
-        let hash = hash(encryptedBackup)
+        let pubKeyHex = Data(pubKey).hexEncodedString()
         
-        let message = "\(signedMessagePrefix)\(hash)"
+        let encryptedBackup = try encrypt(Data(bytes))
+        let hashToSign = hash(encryptedBackup)
+        
+        let message = "\(signedMessagePrefix)\(hashToSign)"
         let signed = Bindings.swiftSign(msg: Array(message.utf8), sk: secretKey)
         if let _ = signed.getError() {
             throw BackupError.signingError
         }
         
         let signedHash = signed.getValue()!
+        
+        //Hash of pubkey+timestamp
+        let clientChallenge = hash("\(pubKeyHex)\(Date().timeIntervalSince1970)".data(using: .utf8)!)
                 
         var request = URLRequest(url: try backupUrl(.persist, label))
         request.httpMethod = "POST"
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         request.setValue(signedHash, forHTTPHeaderField: "Signed-Hash")
-        request.setValue(Data(pubKey).hexEncodedString(), forHTTPHeaderField: "Public-Key")
-                
+        request.setValue(pubKeyHex, forHTTPHeaderField: "Public-Key")
+        request.setValue(clientChallenge, forHTTPHeaderField: "Challenge")
+
         request.httpBody = encryptedBackup
         
         var requestError: Error?
+        var persistResponse: PersistResponse?
         //Thread blocking, backups must be synchronous
         let semaphore = DispatchSemaphore(value: 0)
         let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
@@ -211,9 +229,15 @@ class BackupClient {
             
             if let httpURLResponse = response as? HTTPURLResponse {
                 let statusCode = httpURLResponse.statusCode
-                if statusCode == 200 {
-                    return;
-                } else {
+                if statusCode == 200, let data {
+                    do {
+                        persistResponse = try JSONDecoder().decode(PersistResponse.self, from: data)
+                        return
+                    } catch {
+                        requestError = BackupError.invalidServerResponse(0)
+                        return
+                    }
+                }  else {
                     requestError = BackupError.invalidServerResponse(httpURLResponse.statusCode)
                     return
                 }
@@ -233,6 +257,16 @@ class BackupClient {
             throw error
         }
         
+        guard let persistResponse else {
+            throw BackupError.invalidServerResponse(0)
+        }
+        
+        //Validate server's signed challenge response
+        let serverPubkey = "037e85dcfa44b4668e66fc8cc08d5c60b3813e343b4646e115f615b699662f260d"// "03a540d25c34b5a49b390a1e4aab97a3083b969ce992bebb7a949a675fc0729c7c"
+        guard verifySignature(message: "\(signedMessagePrefix)\(clientChallenge)", signature: persistResponse.signature, pubKey: serverPubkey) else {
+            throw BackupError.serverChallengeResponseFailed
+        }
+
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persist success for \(label.string)")
     }
     

@@ -123,9 +123,10 @@ fastify.route({
         const bearer = crypto.randomBytes(32).toString('hex');
 
         //Valid for 30min, should only be used for doing a restore
-        users.set(bearer, {pubkey, expires: Date.now() + 30 * 60 * 1000});
+        const expires = Date.now() + 30 * 60 * 1000;
+        users.set(bearer, {pubkey, expires});
 
-        return {bearer};
+        return {bearer, expires};
     }
 });
 
