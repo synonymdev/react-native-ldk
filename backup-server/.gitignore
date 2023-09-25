@@ -1,2 +1,3 @@
 local-storage
 node_modules
+.env

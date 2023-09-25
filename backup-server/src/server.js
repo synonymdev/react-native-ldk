@@ -1,9 +1,9 @@
 const Fastify = require('fastify')
-const { deriveNodeId } = require("ln-verifymessagejs");
+const { deriveNodeId, signMessage } = require("ln-verifymessagejs");
 const crypto = require('crypto');
 
 const Storage = require('./storage');
-const { formatFileSize, getNodePubKey, nodeSign} = require('./helpers');
+const { formatFileSize } = require('./helpers');
 
 const storage = new Storage({
     type: 'local',
@@ -32,6 +32,8 @@ let labels = [
 let networks = ['bitcoin', 'testnet', 'regtest', 'signet'];
 
 const version = 'v1';
+
+let signingKey;
 
 const fastify = Fastify({
     logger: true
@@ -135,8 +137,9 @@ const authRetrieveCheckHandler = async (request, reply) => {
 
     if (!bearerToken || !users.has(bearerToken)) {
         fastify.log.error("Unauthorized or missing token");
+        console.warn(`\n\nbearerToken: ${bearerToken}\n\n`)
         reply.code(401);
-        return {error: "Unauthorized"};
+        return reply.send({error: "Unauthorized"});
     }
 
     const {expires} = users.get(bearerToken);
@@ -144,7 +147,7 @@ const authRetrieveCheckHandler = async (request, reply) => {
     if (expires < Date.now()) {
         fastify.log.error("Expired token");
         reply.code(401);
-        return {error: "Expired token"};
+        reply.send({error: "Expired token"});
     }
 }
 
@@ -158,7 +161,7 @@ const signedPersistCheckHandler = async (request, reply) => {
     if (!signedHash || !pubkey || !clientChallenge) {
         fastify.log.error("Missing signed hash, public key or challenge");
         reply.code(400);
-        return {error: "Missing signed hash, public key or challenge"};
+        return reply.send({error: "Missing signed hash, public key or challenge"});
     }
 
     //hash encrypted payload
@@ -171,7 +174,7 @@ const signedPersistCheckHandler = async (request, reply) => {
         fastify.log.error(`Expected ${pubkey} but got ${derivedNodeId}`);
         fastify.log.error("Unauthorized or invalid signature");
         reply.code(401);
-        return {error: "Unauthorized"};
+        return reply.send({error: "Unauthorized"});
     }
 }
 
@@ -209,7 +212,7 @@ fastify.route({
         fastify.log.info(`Saved ${formatFileSize(body.length)} for ${label}`);
 
         //Sign client challenge
-        const signature = await nodeSign(`${signedMessagePrefix}${clientChallenge}`, pubkey);
+        const signature = await signMessage(`${signedMessagePrefix}${clientChallenge}`, signingKey);
 
         return {success: true, signature};
     }
@@ -286,10 +289,12 @@ fastify.route({
     }
 });
 
-module.exports = async ({host, port}) => {
+module.exports = async ({host, port, keypair}) => {
+    const {secretKey, publicKey} = keypair;
+    signingKey = secretKey;
+
     try {
-        const pubKey = await getNodePubKey();
-        fastify.log.info(`Server pubkey to be hard coded on the client: ${pubKey}`);
+        fastify.log.info(`Server pubkey to be hard coded on the client: ${publicKey}`);
         await fastify.listen({ port, host });
     } catch (err) {
         fastify.log.error(err);
