@@ -559,7 +559,7 @@ describe('LND', function () {
 		// - force close channel from LDK
 		// - check everything is ok
 
-		let fees = { highPriority: 3, normal: 2, background: 1 };
+		let fees = { highPriority: 3, normal: 2, background: 1, mempoolMinimum: 1 };
 
 		const lmStart = await lm.start({
 			...profile.getStartParams(),
@@ -655,8 +655,8 @@ describe('LND', function () {
 			EEventTypes.broadcast_transaction,
 		);
 
-		// set hight fees and restart LDK so it catches up
-		fees = { highPriority: 30, normal: 20, background: 10 };
+		// set height fees and restart LDK so it catches up
+		fees = { highPriority: 30, normal: 20, background: 10, mempoolMinimum: 1 };
 		const syncRes0 = await lm.syncLdk();
 		await lm.setFees();
 		if (syncRes0.isErr()) {
@@ -701,7 +701,7 @@ describe('LND', function () {
 		if (Platform.OS === 'android') {
 			// @ts-ignore
 			claimableBalances1.value = claimableBalances1.value.filter(
-				({ claimable_amount_satoshis }) => claimable_amount_satoshis > 0,
+				({ amount_satoshis }) => amount_satoshis > 0,
 			);
 		}
 		expect(claimableBalances1.value).to.have.length(1);
