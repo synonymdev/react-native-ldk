@@ -19,7 +19,6 @@ import {
 	syncLdk,
 	getAddressBalance,
 	updateHeader,
-	getBackupServerDetails,
 } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
@@ -30,7 +29,7 @@ import lm, {
 	TChannelManagerPaymentPathSuccessful,
 	TChannelUpdate,
 } from '@synonymdev/react-native-ldk';
-import { peers } from './utils/constants';
+import { backupServerDetails, peers } from './utils/constants';
 import {
 	createNewAccount,
 	getAccount,
@@ -640,10 +639,9 @@ const Dev = (): ReactElement => {
 							await ldk.stop();
 
 							const account = await getAccount();
-							const serverDetails = await getBackupServerDetails();
 							const restoreRes = await lm.restoreFromRemoteServer({
 								account,
-								serverDetails,
+								serverDetails: backupServerDetails,
 								overwrite: true,
 							});
 
@@ -655,6 +653,20 @@ const Dev = (): ReactElement => {
 							setMessage('Successfully restored wallet');
 						}}
 					/>
+
+					<Button
+						title={'Backup self check'}
+						onPress={async (): Promise<void> => {
+							setMessage('Checking...');
+							const backupCheckRes = await ldk.backupSelfCheck();
+							if (backupCheckRes.isErr()) {
+								console.error('Backup check failed', backupCheckRes.error);
+								setMessage(backupCheckRes.error.message);
+							}
+							setMessage('Backup server check passed ✅');
+						}}
+					/>
+
 					<Button
 						title={'Restart node'}
 						onPress={async (): Promise<void> => {

@@ -275,54 +275,6 @@ class LDK {
 	}
 
 	/**
-	 * Setup remote backup server
-	 * @param seed
-	 * @param network
-	 * @param details
-	 */
-	async backupSetup({
-		seed,
-		network,
-		details,
-	}: {
-		seed: string;
-		network: string;
-		details: TBackupServerDetails;
-	}): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.backupSetup(
-				seed,
-				network,
-				details.url,
-				details.token,
-			);
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
-	 * Restore from remote backup server if one exists
-	 * @param overwrite
-	 * @returns {Promise<Result<boolean>>} true if backup exists and was restored
-	 */
-	async restoreFromRemoteBackup(
-		{
-			overwrite,
-		}: {
-			overwrite: boolean;
-		} = { overwrite: false },
-	): Promise<Result<boolean>> {
-		try {
-			const res = await NativeLDK.restoreFromRemoteBackup(overwrite);
-			return ok(res);
-		} catch (e) {
-			return err(e);
-		}
-	}
-
-	/**
 	 * Writes a JS error to log file
 	 * @param funcName
 	 * @param error
@@ -1234,6 +1186,65 @@ class LDK {
 			return ok(res);
 		} catch (e) {
 			this.writeErrorToLog('nodeSign', e);
+			return err(e);
+		}
+	}
+
+	/**
+	 * Setup remote backup server
+	 * @param seed
+	 * @param network
+	 * @param details
+	 */
+	async backupSetup({
+		seed,
+		network,
+		details,
+	}: {
+		seed: string;
+		network: string;
+		details: TBackupServerDetails;
+	}): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.backupSetup(
+				seed,
+				network,
+				details.host,
+				details.serverPubKey,
+			);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Restore from remote backup server if one exists
+	 * @param bearer
+	 * @param overwrite
+	 * @returns {Promise<Result<boolean>>} true if backup exists and was restored
+	 */
+	async restoreFromRemoteBackup({
+		overwrite,
+	}: {
+		overwrite: boolean;
+	}): Promise<Result<boolean>> {
+		try {
+			const res = await NativeLDK.restoreFromRemoteBackup(overwrite);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Runs a self check by creating random string, encrypting, backing up, fetching, decrypting and validating content.
+	 */
+	async backupSelfCheck(): Promise<Result<boolean>> {
+		try {
+			const res = await NativeLDK.backupSelfCheck();
+			return ok(res);
+		} catch (e) {
 			return err(e);
 		}
 	}

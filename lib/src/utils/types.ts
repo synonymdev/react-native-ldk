@@ -579,10 +579,9 @@ export type TReconstructAndSpendOutputsReq = {
 	changeDestinationScript: string;
 };
 
-
 export type TBackupServerDetails = {
-    url: string;
-    token: string;
+	host: string;
+	serverPubKey: string;
 };
 
 export type TNodeSignReq = {

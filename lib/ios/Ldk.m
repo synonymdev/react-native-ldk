@@ -13,15 +13,7 @@ RCT_EXTERN_METHOD(setLogFilePath:(NSString *)path
 RCT_EXTERN_METHOD(writeToLogFile:(NSString *)line
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(backupSetup:(NSString *)seed
-                  network:(NSString *)network
-                  server:(NSString *)server
-                  token:(NSString *)token
-                  resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(restoreFromRemoteBackup:(BOOL *)overwrite
-                  resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
@@ -168,6 +160,20 @@ RCT_EXTERN_METHOD(reconstructAndSpendOutputs:(NSString *)outputScriptPubKey
 RCT_EXTERN_METHOD(nodeSign:(NSString *)message
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+
+//MARK: Backup methods
+RCT_EXTERN_METHOD(backupSetup:(NSString *)seed
+                  network:(NSString *)network
+                  server:(NSString *)server
+                  serverPubKey:(NSString *)serverPubKey
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(restoreFromRemoteBackup:(BOOL *)overwrite
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(backupSelfCheck:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+
 @end
 
 //MARK: Events

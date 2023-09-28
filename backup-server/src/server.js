@@ -124,8 +124,8 @@ fastify.route({
 
         const bearer = crypto.randomBytes(32).toString('hex');
 
-        //Valid for 30min, should only be used for doing a restore
-        const expires = Date.now() + 30 * 60 * 1000;
+        //Valid for 5min, should only be used for doing a restore
+        const expires = Date.now() + 5 * 60 * 1000;
         users.set(bearer, {pubkey, expires});
 
         return {bearer, expires};
@@ -278,7 +278,7 @@ fastify.route({
         const {pubkey} = users.get(bearerToken);
 
         const list = await storage.list({pubkey, network});
-        const channelMonitorList = storage.list({pubkey, network, subdir: 'channel_monitors'});
+        const channelMonitorList = await storage.list({pubkey, network, subdir: 'channel_monitors'});
 
         const allFiles = {
             list,

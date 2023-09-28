@@ -70,6 +70,7 @@ enum LdkErrors: String {
     case backup_setup_required = "backup_setup_required"
     case backup_setup_check_failed = "backup_setup_check_failed"
     case backup_setup_failed = "backup_setup_failed"
+    case backup_check_failed = "backup_check_failed"
     case backup_restore_failed = "backup_restore_failed"
     case backup_restore_failed_existing_files = "backup_restore_failed_existing_files"
 }
@@ -193,100 +194,6 @@ class Ldk: NSObject {
     func writeToLogFile(_ line: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         Logfile.log.write(String(line))
         return handleResolve(resolve, .log_write_success)
-    }
-    
-    @objc
-    func backupSetup(_ seed: NSString, network: NSString, server: NSString, token: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        let seedBytes = String(seed).hexaBytes
-        if keysManager == nil {
-            let seconds = UInt64(NSDate().timeIntervalSince1970)
-            let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
-            
-            guard seedBytes.count == 32 else {
-                return handleReject(reject, .invalid_seed_hex)
-            }
-            
-            keysManager = KeysManager(seed: String(seed).hexaBytes, startingTimeSecs: seconds, startingTimeNanos: nanoSeconds)
-        }
-        
-        guard let pubKey = keysManager!.asNodeSigner().getNodeId(recipient: .Node).getValue() else {
-            return handleReject(reject, .backup_setup_failed, "Failed to get nodeID from keysManager")
-        }
-        
-        do {
-            BackupClient.skipRemoteBackup = false
-            try BackupClient.setup(
-                secretKey: keysManager!.getNodeSecretKey(),
-                pubKey: keysManager!.asNodeSigner().getNodeId(recipient: .Node).getValue()!,
-                network: String(network),
-                server: String(server),
-                token: String(token)
-            )
-            
-            //Store a random encrypted string and retrieve it again to confirm the server is working
-            let ping = "ping\(arc4random_uniform(999))"
-            try BackupClient.persist(.ping, [UInt8](Data(ping.utf8)))
-            handleResolve(resolve, .backup_client_setup_success) //TODO remove
-//            let checkPing = try BackupClient.retrieve(.ping)
-//            if let checkRes = String(data: checkPing, encoding: .utf8) {
-//                if checkRes == ping {
-//                    handleResolve(resolve, .backup_client_setup_success)
-//                    return
-//                }
-//            }
-//
-//            handleReject(reject, .backup_setup_check_failed)
-//            return
-        } catch {
-            handleReject(reject, .backup_setup_failed, error, error.localizedDescription)
-            return
-        }
-    }
-    
-    @objc
-    func restoreFromRemoteBackup(_ overwrite: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard !BackupClient.requiresSetup else {
-            return handleReject(reject, .backup_setup_required)
-        }
-        
-        guard let accountStoragePath = Ldk.accountStoragePath else {
-            return handleReject(reject, .init_storage_path)
-        }
-        
-        guard let channelStoragePath = Ldk.channelStoragePath else {
-            return handleReject(reject, .init_storage_path)
-        }
-        
-        do {
-            if !overwrite {
-                let fileManager = FileManager.default
-                
-                //Make sure channel manager and channel monitors don't exist
-                if fileManager.fileExists(atPath: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).path) {
-                    handleReject(reject, .backup_restore_failed_existing_files)
-                    return
-                }
-                
-                if !(try fileManager.contentsOfDirectory(atPath: channelStoragePath.path).isEmpty) {
-                    handleReject(reject, .backup_restore_failed_existing_files)
-                    return
-                }
-            }
-            
-            let completeBackup = try BackupClient.retrieveCompleteBackup()
-        
-            for file in completeBackup.files {
-                try file.value.write(to: accountStoragePath.appendingPathComponent(file.key))
-            }
-            
-            for channel in completeBackup.channelFiles {
-                try channel.value.write(to: channelStoragePath.appendingPathComponent(channel.key))
-            }
-                        
-            handleResolve(resolve, .backup_restore_success)
-        } catch {
-            handleReject(reject, .backup_restore_failed, error, error.localizedDescription)
-        }
     }
     
     @objc
@@ -486,7 +393,7 @@ class Ldk: NSObject {
         
         print(Ldk.accountStoragePath)
         
-//        print("\(String(cString: strerror(22)))")
+        //        print("\(String(cString: strerror(22)))")
         
         let params = ChannelManagerConstructionParameters(
             config: userConfig,
@@ -550,15 +457,15 @@ class Ldk: NSObject {
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
         
-//        print("\n\n\n\n******SIGN**************")
-//        let sk = keysManager.getNodeSecretKey()
-//        let message = "Lightning Signed Message:look_at_me_im_a_node"
-//        let signed = Bindings.swiftSign(msg: Array(message.utf8), sk: sk)
-//        if let error = signed.getError() {
-//            print("SIGN ERROR")
-//        }
-//        print("Signing node: \(Data(channelManager!.getOurNodeId()).hexEncodedString())")
-//        print(signed.getValue()!)
+        //        print("\n\n\n\n******SIGN**************")
+        //        let sk = keysManager.getNodeSecretKey()
+        //        let message = "Lightning Signed Message:look_at_me_im_a_node"
+        //        let signed = Bindings.swiftSign(msg: Array(message.utf8), sk: sk)
+        //        if let error = signed.getError() {
+        //            print("SIGN ERROR")
+        //        }
+        //        print("Signing node: \(Data(channelManager!.getOurNodeId()).hexEncodedString())")
+        //        print(signed.getValue()!)
         
         return handleResolve(resolve, .channel_manager_init_success)
     }
@@ -1321,6 +1228,101 @@ class Ldk: NSObject {
         }
         
         return resolve(signed.getValue()!)
+    }
+    
+    //MARK: Backup methods
+    @objc
+    func backupSetup(_ seed: NSString, network: NSString, server: NSString, serverPubKey: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let seedBytes = String(seed).hexaBytes
+        if keysManager == nil {
+            let seconds = UInt64(NSDate().timeIntervalSince1970)
+            let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
+            
+            guard seedBytes.count == 32 else {
+                return handleReject(reject, .invalid_seed_hex)
+            }
+            
+            keysManager = KeysManager(seed: String(seed).hexaBytes, startingTimeSecs: seconds, startingTimeNanos: nanoSeconds)
+        }
+        
+        guard let pubKey = keysManager!.asNodeSigner().getNodeId(recipient: .Node).getValue() else {
+            return handleReject(reject, .backup_setup_failed, "Failed to get nodeID from keysManager")
+        }
+        
+        do {
+            BackupClient.skipRemoteBackup = false
+            try BackupClient.setup(
+                secretKey: keysManager!.getNodeSecretKey(),
+                pubKey: pubKey,
+                network: String(network),
+                server: String(server),
+                serverPubKey: String(serverPubKey)
+            )
+            
+            handleResolve(resolve, .backup_client_setup_success)
+        } catch {
+            handleReject(reject, .backup_setup_failed, error, error.localizedDescription)
+        }
+    }
+    
+    @objc
+    func restoreFromRemoteBackup(_ overwrite: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard !BackupClient.requiresSetup else {
+            return handleReject(reject, .backup_setup_required)
+        }
+        
+        guard let accountStoragePath = Ldk.accountStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        guard let channelStoragePath = Ldk.channelStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        do {
+            if !overwrite {
+                let fileManager = FileManager.default
+                
+                //Make sure channel manager and channel monitors don't exist
+                if fileManager.fileExists(atPath: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).path) {
+                    handleReject(reject, .backup_restore_failed_existing_files)
+                    return
+                }
+                
+                if !(try fileManager.contentsOfDirectory(atPath: channelStoragePath.path).isEmpty) {
+                    handleReject(reject, .backup_restore_failed_existing_files)
+                    return
+                }
+            }
+            
+            let completeBackup = try BackupClient.retrieveCompleteBackup()
+            
+            for file in completeBackup.files {
+                try file.value.write(to: accountStoragePath.appendingPathComponent(file.key))
+            }
+            
+            for channel in completeBackup.channelFiles {
+                try channel.value.write(to: channelStoragePath.appendingPathComponent(channel.key))
+            }
+            
+            handleResolve(resolve, .backup_restore_success)
+        } catch {
+            handleReject(reject, .backup_restore_failed, error, error.localizedDescription)
+        }
+    }
+    
+    @objc
+    func backupSelfCheck(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard !BackupClient.requiresSetup else {
+            return handleReject(reject, .backup_setup_required)
+        }
+        
+        do {
+            try BackupClient.selfCheck()
+            handleResolve(resolve, .backup_client_setup_success)
+        } catch {
+            handleReject(reject, .backup_check_failed, error, error.localizedDescription)
+        }
     }
 }
 

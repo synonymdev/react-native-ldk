@@ -12,11 +12,12 @@ import CryptoKit
 enum BackupError: Error {
     case invalidNetwork
     case requiresSetup
-    case missingBackup
-    case invalidServerResponse(Int)
+    case missingResponse
+    case invalidServerResponse(String)
     case decryptFailed(String)
     case signingError
     case serverChallengeResponseFailed
+    case checkError
 }
 
 extension BackupError: LocalizedError {
@@ -26,16 +27,18 @@ extension BackupError: LocalizedError {
             return NSLocalizedString("Invalid network passed to BackupClient setup", comment: "")
         case .requiresSetup:
             return NSLocalizedString("BackupClient requires setup", comment: "")
-        case .missingBackup:
-            return NSLocalizedString("Retrieve failed. Missing backup.", comment: "")
-        case .invalidServerResponse(let code):
-            return NSLocalizedString("Invalid backup server response (\(code))", comment: "")
+        case .missingResponse:
+            return NSLocalizedString("Request failed. Missing response from backup server.", comment: "")
+        case .invalidServerResponse(let response):
+            return NSLocalizedString("Invalid backup server response (\(response))", comment: "")
         case .decryptFailed(let msg):
             return NSLocalizedString("Failed to decrypt backup payload. \(msg)", comment: "")
         case .signingError:
             return NSLocalizedString("Signing backup error", comment: "")
         case .serverChallengeResponseFailed:
             return NSLocalizedString("Client failed to validate server challenge response. Indicates server error or potential man in the middle attack.", comment: "")
+        case .checkError:
+            return NSLocalizedString("Failed backup self check", comment: "")
         }
     }
 }
@@ -43,6 +46,11 @@ extension BackupError: LocalizedError {
 struct CompleteBackup {
     let files: [String: Data]
     let channelFiles: [String: Data]
+}
+
+struct BackupRetrieveBearer: Codable {
+    let bearer: String
+    let expires: Int
 }
 
 class BackupClient {
@@ -75,13 +83,15 @@ class BackupClient {
         case persist = "persist"
         case retrieve = "retrieve"
         case list = "list"
+        case authChallenge = "auth/challenge"
+        case authResponse = "auth/response"
     }
     
     static var skipRemoteBackup = true //Allow dev to opt out (for development), will not throw error when attempting to persist
     
     static var network: String?
     static var server: String?
-    static var token: String?
+    static var serverPubKey: String?
     static var secretKey: [UInt8]?
     static var encryptionKey: SymmetricKey? {
         if let secretKey {
@@ -91,12 +101,13 @@ class BackupClient {
         }
     }
     static var pubKey: [UInt8]?
+    static var cachedBearer: BackupRetrieveBearer?
     
     static var requiresSetup: Bool {
         return server == nil
     }
          
-    static func setup(secretKey: [UInt8], pubKey: [UInt8], network: String, server: String, token: String) throws {
+    static func setup(secretKey: [UInt8], pubKey: [UInt8], network: String, server: String, serverPubKey: String) throws {
         guard getNetwork(network) != nil else {
             throw BackupError.invalidNetwork
         }
@@ -104,7 +115,7 @@ class BackupClient {
         Self.pubKey = pubKey
         Self.network = network
         Self.server = server
-        Self.token = token //TODO only required when retrieving
+        Self.serverPubKey = serverPubKey
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "BackupClient setup for synchronous remote persistence. Server: \(server)")
     }
@@ -189,7 +200,7 @@ class BackupClient {
             return
         }
 
-        guard let pubKey, let secretKey else {
+        guard let pubKey, let serverPubKey else {
             throw BackupError.requiresSetup
         }
 
@@ -198,13 +209,7 @@ class BackupClient {
         let encryptedBackup = try encrypt(Data(bytes))
         let hashToSign = hash(encryptedBackup)
         
-        let message = "\(signedMessagePrefix)\(hashToSign)"
-        let signed = Bindings.swiftSign(msg: Array(message.utf8), sk: secretKey)
-        if let _ = signed.getError() {
-            throw BackupError.signingError
-        }
-        
-        let signedHash = signed.getValue()!
+        let signedHash = try sign(hashToSign)
         
         //Hash of pubkey+timestamp
         let clientChallenge = hash("\(pubKeyHex)\(Date().timeIntervalSince1970)".data(using: .utf8)!)
@@ -234,15 +239,15 @@ class BackupClient {
                         persistResponse = try JSONDecoder().decode(PersistResponse.self, from: data)
                         return
                     } catch {
-                        requestError = BackupError.invalidServerResponse(0)
+                        requestError = BackupError.invalidServerResponse(String(data: data, encoding: .utf8)!)
                         return
                     }
                 }  else {
-                    requestError = BackupError.invalidServerResponse(httpURLResponse.statusCode)
+                    requestError = BackupError.invalidServerResponse(String(httpURLResponse.statusCode))
                     return
                 }
             } else {
-                requestError = BackupError.invalidServerResponse(0)
+                requestError = BackupError.missingResponse
             }
             
             requestError = error
@@ -258,12 +263,10 @@ class BackupClient {
         }
         
         guard let persistResponse else {
-            throw BackupError.invalidServerResponse(0)
+            throw BackupError.missingResponse
         }
         
-        //Validate server's signed challenge response
-        let serverPubkey = "037e85dcfa44b4668e66fc8cc08d5c60b3813e343b4646e115f615b699662f260d"// "03a540d25c34b5a49b390a1e4aab97a3083b969ce992bebb7a949a675fc0729c7c"
-        guard verifySignature(message: "\(signedMessagePrefix)\(clientChallenge)", signature: persistResponse.signature, pubKey: serverPubkey) else {
+        guard verifySignature(message: "\(signedMessagePrefix)\(clientChallenge)", signature: persistResponse.signature, pubKey: serverPubKey) else {
             throw BackupError.serverChallengeResponseFailed
         }
 
@@ -271,11 +274,13 @@ class BackupClient {
     }
     
     static func retrieve(_ label: Label) throws -> Data {
+        let bearer = try authToken()
+        
         var encryptedBackup: Data?
         var request = URLRequest(url: try backupUrl(.retrieve, label))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(token, forHTTPHeaderField: "Authorization")
+        request.setValue(bearer, forHTTPHeaderField: "Authorization")
         
         var requestError: Error?
         let semaphore = DispatchSemaphore(value: 0)
@@ -290,11 +295,11 @@ class BackupClient {
                     encryptedBackup = data
                     return
                 } else {
-                    requestError = BackupError.invalidServerResponse(httpURLResponse.statusCode)
+                    requestError = BackupError.invalidServerResponse(String(httpURLResponse.statusCode))
                     return
                 }
             } else {
-                requestError = BackupError.invalidServerResponse(0)
+                requestError = BackupError.missingResponse
             }
         }
         
@@ -307,7 +312,7 @@ class BackupClient {
         }
         
         guard let encryptedBackup else {
-            throw BackupError.missingBackup
+            throw BackupError.missingResponse
         }
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote retrieve success for \(label.string).")
@@ -315,6 +320,8 @@ class BackupClient {
     }
     
     static func retrieveCompleteBackup() throws -> CompleteBackup {
+        let bearer = try authToken()
+
         struct ListFilesResponse: Codable {
             let list: [String]
             let channel_monitors: [String]
@@ -325,7 +332,7 @@ class BackupClient {
         var request = URLRequest(url: try backupUrl(.list))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(token, forHTTPHeaderField: "Authorization")
+        request.setValue(bearer, forHTTPHeaderField: "Authorization")
         
         var requestError: Error?
         let semaphore = DispatchSemaphore(value: 0)
@@ -341,15 +348,15 @@ class BackupClient {
                         backedUpFilenames = try JSONDecoder().decode(ListFilesResponse.self, from: data)
                         return
                     } catch {
-                        requestError = BackupError.invalidServerResponse(0)
+                        requestError = BackupError.invalidServerResponse(String(data: data, encoding: .utf8)!)
                         return
                     }
                 } else {
-                    requestError = BackupError.invalidServerResponse(httpURLResponse.statusCode)
+                    requestError = BackupError.invalidServerResponse(String(httpURLResponse.statusCode))
                     return
                 }
             } else {
-                requestError = BackupError.invalidServerResponse(0)
+                requestError = BackupError.invalidServerResponse("")
             }
         }
         
@@ -362,7 +369,7 @@ class BackupClient {
         }
         
         guard let backedUpFilenames else {
-            throw BackupError.missingBackup
+            throw BackupError.missingResponse
         }
         
         
@@ -386,5 +393,160 @@ class BackupClient {
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote list files success.")
         
         return CompleteBackup(files: allFiles, channelFiles: channelFiles)
+    }
+    
+    static func selfCheck() throws {
+        //Store a random encrypted string and retrieve it again to confirm the server is working
+        let ping = "ping\(arc4random_uniform(99999))"
+        try persist(.ping, [UInt8](Data(ping.utf8)))
+        
+        let checkPing = try BackupClient.retrieve(.ping)
+        if let checkRes = String(data: checkPing, encoding: .utf8) {
+            if checkRes != ping {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Backup check failed to verify ping content.")
+                throw BackupError.checkError
+            }
+        }
+    }
+    
+    private static func sign(_ message: String) throws -> String {
+        guard let secretKey else {
+            throw BackupError.requiresSetup
+        }
+
+        let fullMessage = "\(signedMessagePrefix)\(message)"
+        let signed = Bindings.swiftSign(msg: Array(fullMessage.utf8), sk: secretKey)
+        if let _ = signed.getError() {
+            throw BackupError.signingError
+        }
+        
+        return signed.getValue()!
+    }
+    
+    private static func authToken() throws -> String {
+        //Return cached token if still fresh
+        if let cachedBearer {
+            if Double(cachedBearer.expires) > Date().timeIntervalSince1970*1000 {
+                return cachedBearer.bearer
+            }
+        }
+        
+        //Fetch challenge
+        guard let pubKey else {
+            throw BackupError.requiresSetup
+        }
+
+        //Signed timestamp as nonce
+        let pubKeyHex = Data(pubKey).hexEncodedString()
+        let timestamp = String(Date().timeIntervalSince1970)
+        
+        let payload = [
+            "timestamp": timestamp,
+            "signature": try sign(timestamp)
+        ]
+
+        struct FetchChallengeResponse: Codable {
+            let challenge: String
+        }
+        var fetchChallengeResponse: FetchChallengeResponse?
+        
+        var request = URLRequest(url: try backupUrl(.authChallenge))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(pubKeyHex, forHTTPHeaderField: "Public-Key")
+                
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+        var requestError: Error?
+        let semaphore = DispatchSemaphore(value: 0)
+        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            defer {
+                semaphore.signal()
+            }
+            
+            if let httpURLResponse = response as? HTTPURLResponse {
+                let statusCode = httpURLResponse.statusCode
+                if statusCode == 200, let data {
+                    do {
+                        fetchChallengeResponse = try JSONDecoder().decode(FetchChallengeResponse.self, from: data)
+                        return
+                    } catch {
+                        requestError = BackupError.invalidServerResponse(String(data: data, encoding: .utf8)!)
+                        return
+                    }
+                } else {
+                    requestError = BackupError.invalidServerResponse(String(httpURLResponse.statusCode))
+                    return
+                }
+            } else {
+                requestError = BackupError.missingResponse
+            }
+        }
+        
+        task.resume()
+        semaphore.wait()
+                
+        if let error = requestError {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Fetch server challenge failed. \(error.localizedDescription)")
+            throw error
+        }
+            
+        guard let fetchChallengeResponse else {
+            throw BackupError.missingResponse
+        }
+        
+        //Fetch bearer token
+        let fetchPayload = [
+            "signature": try sign(fetchChallengeResponse.challenge),
+        ]
+        var fetchRequest = URLRequest(url: try backupUrl(.authResponse))
+        fetchRequest.httpMethod = "POST"
+        fetchRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        fetchRequest.setValue(pubKeyHex, forHTTPHeaderField: "Public-Key")
+                
+        fetchRequest.httpBody = try JSONSerialization.data(withJSONObject: fetchPayload)
+
+        var fetchRequestError: Error?
+        var fetchBearerResponse: BackupRetrieveBearer?
+        let fetchSemaphore = DispatchSemaphore(value: 0)
+        let fetchTask = URLSession.shared.dataTask(with: fetchRequest) { (data, response, error) in
+            defer {
+                fetchSemaphore.signal()
+            }
+            
+            if let httpURLResponse = response as? HTTPURLResponse {
+                let statusCode = httpURLResponse.statusCode
+                if statusCode == 200, let data {
+                    do {
+                        fetchBearerResponse = try JSONDecoder().decode(BackupRetrieveBearer.self, from: data)
+                        return
+                    } catch {
+                        fetchRequestError = BackupError.invalidServerResponse(String(data: data, encoding: .utf8)!)
+                        return
+                    }
+                } else {
+                    fetchRequestError = BackupError.invalidServerResponse(String(httpURLResponse.statusCode))
+                    return
+                }
+            } else {
+                fetchRequestError = BackupError.missingResponse
+            }
+        }
+        
+        fetchTask.resume()
+        fetchSemaphore.wait()
+                
+        if let error = fetchRequestError {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Fetch bearer token failed. \(error.localizedDescription)")
+            throw error
+        }
+        
+        guard let fetchBearerResponse else {
+            throw BackupError.missingResponse
+        }
+        
+        cachedBearer = fetchBearerResponse
+        
+        return fetchBearerResponse.bearer
     }
 }
