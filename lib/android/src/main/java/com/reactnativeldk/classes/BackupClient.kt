@@ -26,6 +26,7 @@ class BackupError : Exception() {
         val decryptFailed = DecryptFailed("")
         val signingError = SigningError()
         val serverChallengeResponseFailed = ServerChallengeResponseFailed()
+        val checkError = BackupCheckError()
     }
 }
 
@@ -36,6 +37,7 @@ class InvalidServerResponse(code: Int) : Exception("Invalid backup server respon
 class DecryptFailed(msg: String) : Exception("Failed to decrypt backup payload. $msg")
 class SigningError() : Exception("Failed to sign message")
 class ServerChallengeResponseFailed() : Exception("Server challenge response failed")
+class BackupCheckError() : Exception("Backup self check failed")
 
 class CompleteBackup(
     val files: Map<String, ByteArray>,
@@ -62,6 +64,11 @@ class BackupClient {
             AUTH_RESPONSE("auth/response")
         }
 
+        class CachedBearer(
+            val bearer: String,
+            val expires: Long
+        )
+
         private var version = "v1"
         private var signedMessagePrefix = "react-native-ldk backup server auth:"
 
@@ -78,6 +85,7 @@ class BackupClient {
                 null
             }
         private var pubKey: ByteArray? = null
+        private var cachedBearer: CachedBearer? = null
 
         val requiresSetup: Boolean
             get() = server == null
@@ -223,7 +231,7 @@ class BackupClient {
 
         @Throws(BackupError::class)
         fun retrieve(label: Label): ByteArray {
-            val bearer = "TODO"
+            val bearer = authToken()
             val url = backupUrl(Method.RETRIEVE, label)
 
             LdkEventEmitter.send(
@@ -267,7 +275,7 @@ class BackupClient {
 
         @Throws(BackupError::class)
         fun retrieveCompleteBackup(): CompleteBackup {
-            val bearer = "TODO"
+            val bearer = authToken()
 
             val url = backupUrl(Method.LIST)
 
@@ -320,14 +328,18 @@ class BackupClient {
             val ping = "ping${Random().nextInt(1000)}"
             persist(Label.PING(), ping.toByteArray())
 
-            //TODO add check back
-//            val pingRetrieved = BackupClient.retrieve(BackupClient.Label.PING())
-//            if (pingRetrieved.toString(Charsets.UTF_8) != ping) {
-//
-//            }
+            val pingRetrieved = retrieve(Label.PING())
+            if (pingRetrieved.toString(Charsets.UTF_8) != ping) {
+                LdkEventEmitter.send(
+                    EventTypes.native_log,
+                    "Backup check failed to verify ping content."
+                )
+
+                throw BackupError.checkError
+            }
         }
 
-        fun sign(message: String): String {
+        private fun sign(message: String): String {
             if (secretKey == null) {
                 throw BackupError.requiresSetup
             }
@@ -346,6 +358,83 @@ class BackupClient {
                 signature,
                 pubKey.hexa()
             )
+        }
+
+        @Throws(BackupError::class)
+        private fun authToken(): String {
+            if (cachedBearer != null && cachedBearer!!.expires > System.currentTimeMillis()) {
+                return cachedBearer!!.bearer
+            }
+
+            if (pubKey == null) {
+                throw BackupError.requiresSetup
+            }
+
+            //Fetch challenge with signed timestamp as nonce
+            val pubKeyHex = pubKey!!.hexEncodedString()
+            val timestamp = System.currentTimeMillis()
+            val payload = JSONObject(
+                mapOf(
+                    "timestamp" to timestamp,
+                    "signature" to sign(timestamp.toString())
+                )
+            )
+
+            val url = backupUrl(Method.AUTH_CHALLENGE)
+
+            val urlConnection = url.openConnection() as HttpURLConnection
+            urlConnection.requestMethod = "POST"
+            urlConnection.setRequestProperty("Content-Type", "application/json")
+            urlConnection.setRequestProperty("Public-Key", pubKeyHex)
+            val outputStream = urlConnection.outputStream
+            outputStream.write(payload.toString().toByteArray())
+            outputStream.close()
+
+            if (urlConnection.responseCode != 200) {
+                LdkEventEmitter.send(
+                    EventTypes.native_log,
+                    "Fetch server challenge failed."
+                )
+
+                throw InvalidServerResponse(urlConnection.responseCode)
+            }
+
+            val inputStream = urlConnection.inputStream
+            val jsonString = inputStream.bufferedReader().use { it.readText() }
+            inputStream.close()
+            val challenge = JSONObject(jsonString).getString("challenge")
+
+            //Sign challenge and fetch bearer token
+            val urlBearer = backupUrl(Method.AUTH_RESPONSE)
+            val urlConnectionBearer = urlBearer.openConnection() as HttpURLConnection
+            urlConnectionBearer.requestMethod = "POST"
+            urlConnectionBearer.setRequestProperty("Content-Type", "application/json")
+            urlConnectionBearer.setRequestProperty("Public-Key", pubKeyHex)
+            val outputStreamBearer = urlConnectionBearer.outputStream
+            outputStreamBearer.write(JSONObject(
+                mapOf(
+                    "signature" to sign(challenge)
+                )
+            ).toString().toByteArray())
+            outputStreamBearer.close()
+
+            if (urlConnectionBearer.responseCode != 200) {
+                LdkEventEmitter.send(
+                    EventTypes.native_log,
+                    "Fetch bearer token failed."
+                )
+
+                throw InvalidServerResponse(urlConnection.responseCode)
+            }
+
+            val inputStreamBearer = urlConnectionBearer.inputStream
+            val jsonBearer = JSONObject(inputStreamBearer.bufferedReader().use { it.readText() })
+            inputStreamBearer.close()
+            val bearer = jsonBearer.getString("bearer")
+            val expires = jsonBearer.getLong("expires")
+
+            cachedBearer = CachedBearer(bearer, expires)
+            return bearer
         }
     }
 }

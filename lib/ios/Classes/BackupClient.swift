@@ -54,8 +54,6 @@ struct BackupRetrieveBearer: Codable {
 }
 
 class BackupClient {
-    
-    
     enum Label {
         case ping
         case channelManager
@@ -430,12 +428,11 @@ class BackupClient {
             }
         }
         
-        //Fetch challenge
         guard let pubKey else {
             throw BackupError.requiresSetup
         }
 
-        //Signed timestamp as nonce
+        //Fetch challenge with signed timestamp as nonce
         let pubKeyHex = Data(pubKey).hexEncodedString()
         let timestamp = String(Date().timeIntervalSince1970)
         

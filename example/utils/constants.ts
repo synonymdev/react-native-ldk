@@ -1,4 +1,7 @@
-import { TAvailableNetworks } from '@synonymdev/react-native-ldk';
+import {
+	TAvailableNetworks,
+	TBackupServerDetails,
+} from '@synonymdev/react-native-ldk';
 
 export const selectedNetwork: TAvailableNetworks = 'bitcoinRegtest';
 
@@ -43,4 +46,10 @@ export const customPeers = {
 		// },
 	],
 	bitcoinSignet: [],
+};
+
+export const backupServerDetails: TBackupServerDetails = {
+	host: 'https://jaybird-logical-sadly.ngrok-free.app',
+	serverPubKey:
+		'0343a6c1b7700840ac7b76372617a6e9a05cf4c9716efdc847def65360b238f243',
 };

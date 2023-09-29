@@ -137,7 +137,6 @@ const authRetrieveCheckHandler = async (request, reply) => {
 
     if (!bearerToken || !users.has(bearerToken)) {
         fastify.log.error("Unauthorized or missing token");
-        console.warn(`\n\nbearerToken: ${bearerToken}\n\n`)
         reply.code(401);
         return reply.send({error: "Unauthorized"});
     }
