@@ -357,11 +357,11 @@ class LightningManager {
 			}
 
 			//TODO remove after dev
-			// const backupCheckRes = await ldk.backupSelfCheck();
-			// if (backupCheckRes.isErr()) {
-			// 	console.error('Backup check failed', backupCheckRes.error);
-			// 	return err(backupCheckRes.error);
-			// }
+			const backupCheckRes = await ldk.backupSelfCheck();
+			if (backupCheckRes.isErr()) {
+				console.error('Backup check failed', backupCheckRes.error);
+				return err(backupCheckRes.error);
+			}
 		}
 
 		// Step 1: Initialize the FeeEstimator

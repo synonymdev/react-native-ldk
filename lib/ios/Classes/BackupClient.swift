@@ -54,8 +54,7 @@ struct BackupRetrieveBearer: Codable {
 }
 
 class BackupClient {
-    private static let version = "v1"
-    private static let signedMessagePrefix = "react-native-ldk backup server auth:"
+    
     
     enum Label {
         case ping
@@ -79,7 +78,7 @@ class BackupClient {
         }
     }
     
-    enum Method: String {
+    private enum Method: String {
         case persist = "persist"
         case retrieve = "retrieve"
         case list = "list"
@@ -87,21 +86,24 @@ class BackupClient {
         case authResponse = "auth/response"
     }
     
+    private static let version = "v1"
+    private static let signedMessagePrefix = "react-native-ldk backup server auth:"
+
     static var skipRemoteBackup = true //Allow dev to opt out (for development), will not throw error when attempting to persist
     
-    static var network: String?
-    static var server: String?
-    static var serverPubKey: String?
-    static var secretKey: [UInt8]?
-    static var encryptionKey: SymmetricKey? {
+    private static var network: String?
+    private static var server: String?
+    private static var serverPubKey: String?
+    private static var secretKey: [UInt8]?
+    private static var encryptionKey: SymmetricKey? {
         if let secretKey {
             return SymmetricKey(data: secretKey)
         } else {
             return nil
         }
     }
-    static var pubKey: [UInt8]?
-    static var cachedBearer: BackupRetrieveBearer?
+    private static var pubKey: [UInt8]?
+    private static var cachedBearer: BackupRetrieveBearer?
     
     static var requiresSetup: Bool {
         return server == nil
@@ -180,14 +182,6 @@ class BackupClient {
             }
         }
     }
-    
-    static func verifySignature(message: String, signature: String, pubKey: String) -> Bool {
-        return Bindings.swiftVerify(
-            msg: [UInt8](message.data(using: .utf8)!),
-            sig: signature,
-            pk: pubKey.hexaBytes
-        )
-    }
         
     static func persist(_ label: Label, _ bytes: [UInt8]) throws {
         struct PersistResponse: Codable {
@@ -205,11 +199,8 @@ class BackupClient {
         }
 
         let pubKeyHex = Data(pubKey).hexEncodedString()
-        
         let encryptedBackup = try encrypt(Data(bytes))
-        let hashToSign = hash(encryptedBackup)
-        
-        let signedHash = try sign(hashToSign)
+        let signedHash = try sign(hash(encryptedBackup))
         
         //Hash of pubkey+timestamp
         let clientChallenge = hash("\(pubKeyHex)\(Date().timeIntervalSince1970)".data(using: .utf8)!)
@@ -266,7 +257,7 @@ class BackupClient {
             throw BackupError.missingResponse
         }
         
-        guard verifySignature(message: "\(signedMessagePrefix)\(clientChallenge)", signature: persistResponse.signature, pubKey: serverPubKey) else {
+        guard verifySignature(message: clientChallenge, signature: persistResponse.signature, pubKey: serverPubKey) else {
             throw BackupError.serverChallengeResponseFailed
         }
 
@@ -421,6 +412,14 @@ class BackupClient {
         }
         
         return signed.getValue()!
+    }
+    
+    static func verifySignature(message: String, signature: String, pubKey: String) -> Bool {
+        return Bindings.swiftVerify(
+            msg: [UInt8]("\(signedMessagePrefix)\(message)".data(using: .utf8)!),
+            sig: signature,
+            pk: pubKey.hexaBytes
+        )
     }
     
     private static func authToken() throws -> String {

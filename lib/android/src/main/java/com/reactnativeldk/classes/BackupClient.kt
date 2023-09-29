@@ -1,12 +1,18 @@
 package com.reactnativeldk.classes
 import com.reactnativeldk.EventTypes
+import com.reactnativeldk.LdkErrors
 import com.reactnativeldk.LdkEventEmitter
+import com.reactnativeldk.handleReject
 import com.reactnativeldk.hexEncodedString
 import com.reactnativeldk.hexa
 import org.json.JSONObject
+import org.ldk.structs.Result_StringErrorZ.Result_StringErrorZ_OK
+import org.ldk.structs.UtilMethods
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.Random
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.IvParameterSpec
@@ -18,6 +24,8 @@ class BackupError : Exception() {
         val missingBackup = MissingBackup()
         val invalidServerResponse = InvalidServerResponse(0)
         val decryptFailed = DecryptFailed("")
+        val signingError = SigningError()
+        val serverChallengeResponseFailed = ServerChallengeResponseFailed()
     }
 }
 
@@ -26,6 +34,8 @@ class RequiresSetup() : Exception("BackupClient requires setup")
 class MissingBackup() : Exception("Retrieve failed. Missing backup.")
 class InvalidServerResponse(code: Int) : Exception("Invalid backup server response ($code)")
 class DecryptFailed(msg: String) : Exception("Failed to decrypt backup payload. $msg")
+class SigningError() : Exception("Failed to sign message")
+class ServerChallengeResponseFailed() : Exception("Server challenge response failed")
 
 class CompleteBackup(
     val files: Map<String, ByteArray>,
@@ -47,33 +57,52 @@ class BackupClient {
         enum class Method(val value: String) {
             PERSIST("persist"),
             RETRIEVE("retrieve"),
-            LIST("list")
+            LIST("list"),
+            AUTH_CHALLENGE("auth/challenge"),
+            AUTH_RESPONSE("auth/response")
         }
+
+        private var version = "v1"
+        private var signedMessagePrefix = "react-native-ldk backup server auth:"
 
         var skipRemoteBackup = true //Allow dev to opt out (for development), will not throw error when attempting to persist
 
-        private val version = "v1"
-        var network: String? = null
-        var server: String? = null
-        var encryptionKey: SecretKeySpec? = null
-        var token: String? = null
+        private var network: String? = null
+        private var server: String? = null
+        private var serverPubKey: String? = null
+        private var secretKey: ByteArray? = null
+        private val encryptionKey: SecretKeySpec?
+            get() = if (secretKey != null) {
+                SecretKeySpec(secretKey, "AES")
+            } else {
+                null
+            }
+        private var pubKey: ByteArray? = null
 
-        var requiresSetup = {
-            server == null
-        }
+        val requiresSetup: Boolean
+            get() = server == null
 
-        fun setup(seed: ByteArray, network: String, server: String, token: String) {
+        fun setup(secretKey: ByteArray, pubKey: ByteArray, network: String, server: String, serverPubKey: String) {
+            this.secretKey = secretKey
+            this.pubKey = pubKey
             this.network = network
             this.server = server
-            this.encryptionKey = SecretKeySpec(seed, "AES")
-            this.token = token
+            this.serverPubKey = serverPubKey
+
+            LdkEventEmitter.send(
+                EventTypes.native_log,
+                "BackupClient setup for synchronous remote persistence. Server: $server"
+            )
+
+            if (requiresSetup) {
+                throw RuntimeException(this.server)
+            }
         }
 
         @Throws(BackupError::class)
         private fun backupUrl(
             method: Method,
-            label: Label? = null,
-            channelId: String = ""
+            label: Label? = null
         ): URL {
             val network = network ?: throw BackupError.requiresSetup
             val server = server ?: throw BackupError.requiresSetup
@@ -99,19 +128,20 @@ class BackupClient {
 
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             val random = SecureRandom()
-            val iv = ByteArray(12)
+            val nonce = ByteArray(12)
+            random.nextBytes(nonce)
 
-            random.nextBytes(iv)
-
-            val gcmParameterSpec = GCMParameterSpec(128, iv)
+            val gcmParameterSpec = GCMParameterSpec(128, nonce)
 
             cipher.init(Cipher.ENCRYPT_MODE, encryptionKey, gcmParameterSpec)
+            val cipherBytes = cipher.doFinal(blob)
+            return nonce + cipherBytes
+        }
 
-            // Encrypt the plain text
-            val cipherText = cipher.doFinal(blob)
-
-            // Return the IV concatenated with the cipher text
-            return iv + cipherText
+        private fun hash(blob: ByteArray): String {
+            val messageDigest = MessageDigest.getInstance("SHA-256")
+            val hash = messageDigest.digest(blob)
+            return hash.joinToString("") { String.format("%02x", it) }
         }
 
         private fun decrypt(blob: ByteArray): ByteArray {
@@ -136,7 +166,16 @@ class BackupClient {
                 return
             }
 
+            if (pubKey == null || serverPubKey == null) {
+                throw BackupError.requiresSetup
+            }
+
+            val pubKeyHex = pubKey!!.hexEncodedString()
             val encryptedBackup = encrypt(bytes)
+            val signedHash = sign(hash(encryptedBackup))
+            //Hash of pubKey+timestamp
+            val clientChallenge = hash("$pubKeyHex${System.currentTimeMillis()}".toByteArray(Charsets.UTF_8))
+
             val url = backupUrl(Method.PERSIST, label)
 
             LdkEventEmitter.send(
@@ -148,13 +187,34 @@ class BackupClient {
             urlConnection.requestMethod = "POST"
             urlConnection.doOutput = true
             urlConnection.setRequestProperty("Content-Type", "application/octet-stream")
-            urlConnection.setRequestProperty("Authorization", token)
+            urlConnection.setRequestProperty("Signed-Hash", signedHash)
+            urlConnection.setRequestProperty("Public-Key", pubKeyHex)
+            urlConnection.setRequestProperty("Challenge", clientChallenge)
 
             val outputStream = urlConnection.outputStream
             outputStream.write(encryptedBackup)
             outputStream.close()
 
-            val responseCode = urlConnection.responseCode
+            if (urlConnection.responseCode != 200) {
+                LdkEventEmitter.send(
+                    EventTypes.native_log,
+                    "Remote persist failed for ${label.string} with response code ${urlConnection.responseCode}"
+                )
+
+                throw InvalidServerResponse(urlConnection.responseCode)
+            }
+
+            //Verify signed response
+            val inputStream = urlConnection.inputStream
+            val jsonString = inputStream.bufferedReader().use { it.readText() }
+            inputStream.close()
+
+            val signature = JSONObject(jsonString).getString("signature")
+
+            if (!verifySignature(clientChallenge, signature, serverPubKey!!)) {
+                throw BackupError.serverChallengeResponseFailed
+            }
+
             LdkEventEmitter.send(
                 EventTypes.native_log,
                 "Remote persist success for ${label.string}"
@@ -163,6 +223,7 @@ class BackupClient {
 
         @Throws(BackupError::class)
         fun retrieve(label: Label): ByteArray {
+            val bearer = "TODO"
             val url = backupUrl(Method.RETRIEVE, label)
 
             LdkEventEmitter.send(
@@ -173,7 +234,7 @@ class BackupClient {
             val urlConnection = url.openConnection() as HttpURLConnection
             urlConnection.requestMethod = "GET"
             urlConnection.setRequestProperty("Content-Type", "application/octet-stream")
-            urlConnection.setRequestProperty("Authorization", token)
+            urlConnection.setRequestProperty("Authorization", bearer)
 
             val responseCode = urlConnection.responseCode
 
@@ -206,6 +267,8 @@ class BackupClient {
 
         @Throws(BackupError::class)
         fun retrieveCompleteBackup(): CompleteBackup {
+            val bearer = "TODO"
+
             val url = backupUrl(Method.LIST)
 
             LdkEventEmitter.send(
@@ -216,7 +279,7 @@ class BackupClient {
             val urlConnection = url.openConnection() as HttpURLConnection
             urlConnection.requestMethod = "GET"
             urlConnection.setRequestProperty("Content-Type", "application/json")
-            urlConnection.setRequestProperty("Authorization", token)
+            urlConnection.setRequestProperty("Authorization", bearer)
 
             val responseCode = urlConnection.responseCode
 
@@ -250,6 +313,39 @@ class BackupClient {
             }
 
             return CompleteBackup(files = files, channelFiles = channelFiles)
+        }
+
+        @Throws(BackupError::class)
+        fun selfCheck() {
+            val ping = "ping${Random().nextInt(1000)}"
+            persist(Label.PING(), ping.toByteArray())
+
+            //TODO add check back
+//            val pingRetrieved = BackupClient.retrieve(BackupClient.Label.PING())
+//            if (pingRetrieved.toString(Charsets.UTF_8) != ping) {
+//
+//            }
+        }
+
+        fun sign(message: String): String {
+            if (secretKey == null) {
+                throw BackupError.requiresSetup
+            }
+
+            val res = UtilMethods.sign("$signedMessagePrefix$message".toByteArray(Charsets.UTF_8), secretKey)
+            if (!res.is_ok) {
+                throw BackupError.signingError
+            }
+
+            return (res as Result_StringErrorZ_OK).res
+        }
+
+        private fun verifySignature(message: String, signature: String, pubKey: String): Boolean {
+            return UtilMethods.verify(
+                "$signedMessagePrefix$message".toByteArray(Charsets.UTF_8),
+                signature,
+                pubKey.hexa()
+            )
         }
     }
 }

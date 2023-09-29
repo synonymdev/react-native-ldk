@@ -101,6 +101,7 @@ enum LdkCallbackResponses: String {
     case abandon_payment_success = "abandon_payment_success"
     case backup_client_setup_success = "backup_client_setup_success"
     case backup_restore_success = "backup_restore_success"
+    case backup_client_check_success = "backup_client_check_success"
 }
 
 enum LdkFileNames: String {
@@ -1319,7 +1320,7 @@ class Ldk: NSObject {
         
         do {
             try BackupClient.selfCheck()
-            handleResolve(resolve, .backup_client_setup_success)
+            handleResolve(resolve, .backup_client_check_success)
         } catch {
             handleReject(reject, .backup_check_failed, error, error.localizedDescription)
         }

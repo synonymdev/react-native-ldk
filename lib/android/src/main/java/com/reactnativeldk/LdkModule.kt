@@ -8,12 +8,16 @@ import org.ldk.batteries.ChannelManagerConstructor
 import org.ldk.batteries.NioPeerHandler
 import org.ldk.enums.Currency
 import org.ldk.enums.Network
+import org.ldk.enums.Recipient
+import org.ldk.impl.bindings.LDKDestination.Node
 import org.ldk.impl.bindings.get_ldk_c_bindings_version
 import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
 import org.ldk.structs.Result_Bolt11InvoiceParseOrSemanticErrorZ.Result_Bolt11InvoiceParseOrSemanticErrorZ_OK
 import org.ldk.structs.Result_Bolt11InvoiceSignOrCreationErrorZ.Result_Bolt11InvoiceSignOrCreationErrorZ_OK
 import org.ldk.structs.Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_OK
+import org.ldk.structs.Result_PublicKeyErrorZ.Result_PublicKeyErrorZ_OK
+import org.ldk.structs.Result_PublicKeyNoneZ.Result_PublicKeyNoneZ_OK
 import org.ldk.structs.Result_StringErrorZ.Result_StringErrorZ_OK
 import org.ldk.util.UInt128
 import java.io.File
@@ -89,7 +93,7 @@ enum class LdkErrors {
     file_does_not_exist,
     data_too_large_for_rn,
     backup_setup_required,
-    backup_setup_check_failed,
+    backup_check_failed,
     backup_setup_failed,
     backup_restore_failed,
     backup_restore_failed_existing_files
@@ -119,7 +123,8 @@ enum class LdkCallbackResponses {
     close_channel_success,
     file_write_success,
     backup_client_setup_success,
-    backup_restore_success
+    backup_restore_success,
+    backup_client_check_success
 }
 
 enum class LdkFileNames(val fileName: String) {
@@ -224,67 +229,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun backupSetup(seed: String, network: String, server: String, token: String, promise: Promise) {
-        try {
-            BackupClient.skipRemoteBackup = false
-            BackupClient.setup(seed.hexa(), network, server, token)
-
-            val ping = "ping${Random().nextInt(1000)}"
-            BackupClient.persist(BackupClient.Label.PING(), ping.toByteArray())
-            val pingRetrieved = BackupClient.retrieve(BackupClient.Label.PING())
-            if (pingRetrieved.toString(Charsets.UTF_8) != ping) {
-                return handleReject(promise, LdkErrors.backup_setup_check_failed)
-            }
-
-            BackupClient.retrieveCompleteBackup()
-
-            handleResolve(promise, LdkCallbackResponses.backup_client_setup_success)
-        } catch (e: Exception) {
-            return handleReject(promise, LdkErrors.backup_setup_failed, Error(e))
-        }
-    }
-
-    @ReactMethod
-    fun restoreFromRemoteBackup(overwrite: Boolean, promise: Promise) {
-        if (BackupClient.requiresSetup()) {
-            return handleReject(promise, LdkErrors.backup_setup_required)
-        }
-
-        if (accountStoragePath == "") {
-            return handleReject(promise, LdkErrors.init_storage_path)
-        }
-        if (channelStoragePath == "") {
-            return handleReject(promise, LdkErrors.init_storage_path)
-        }
-
-        try {
-            if (!overwrite) {
-                val accountStoragePath = File(accountStoragePath)
-                val channelStoragePath = File(channelStoragePath)
-
-                if (accountStoragePath.exists() || channelStoragePath.exists()) {
-                    return handleReject(promise, LdkErrors.backup_restore_failed_existing_files)
-                }
-            }
-
-            val completeBackup = BackupClient.retrieveCompleteBackup()
-            for (file in completeBackup.files) {
-                val newFile = File(accountStoragePath + "/" + file.key)
-                newFile.writeBytes(file.value)
-            }
-
-            for (channelFile in completeBackup.channelFiles) {
-                val newFile = File(channelStoragePath + "/" + channelFile.key)
-                newFile.writeBytes(channelFile.value)
-            }
-
-            handleResolve(promise, LdkCallbackResponses.backup_restore_success)
-        } catch (e: Exception) {
-            return handleReject(promise, LdkErrors.backup_restore_failed, Error(e))
-        }
-    }
-
-    @ReactMethod
     fun initChainMonitor(promise: Promise) {
         if (chainMonitor !== null) {
             return handleReject(promise, LdkErrors.already_init)
@@ -304,7 +248,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     @ReactMethod
     fun initKeysManager(seed: String, promise: Promise) {
         if (keysManager !== null) {
-            return handleReject(promise, LdkErrors.already_init)
+            return handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
         }
 
         val nanoSeconds = System.currentTimeMillis() * 1000
@@ -1176,6 +1120,95 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         promise.resolve((res as Result_StringErrorZ_OK).res)
+    }
+
+    //Backup methods
+    @ReactMethod
+    fun backupSetup(seed: String, network: String, server: String, serverPubKey: String, promise: Promise) {
+        val seedBytes = seed.hexa()
+        if (keysManager == null) {
+            val nanoSeconds = System.currentTimeMillis() * 1000
+            val seconds = nanoSeconds / 1000 / 1000
+            if (seedBytes.count() != 32) {
+                return handleReject(promise, LdkErrors.invalid_seed_hex)
+            }
+
+            keysManager = KeysManager.of(seedBytes, seconds, nanoSeconds.toInt())
+        }
+
+        val pubKeyRes = keysManager!!.as_NodeSigner().get_node_id(Recipient.LDKRecipient_Node)
+        if (!pubKeyRes.is_ok) {
+            return handleReject(promise, LdkErrors.backup_setup_failed)
+        }
+
+        try {
+            BackupClient.skipRemoteBackup = false
+            BackupClient.setup(
+                keysManager!!._node_secret_key,
+                (pubKeyRes as Result_PublicKeyNoneZ_OK).res,
+                network,
+                server,
+                serverPubKey
+            )
+
+            handleResolve(promise, LdkCallbackResponses.backup_client_setup_success)
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.backup_setup_failed, Error(e))
+        }
+    }
+
+    @ReactMethod
+    fun restoreFromRemoteBackup(overwrite: Boolean, promise: Promise) {
+        if (BackupClient.requiresSetup) {
+            return handleReject(promise, LdkErrors.backup_setup_required)
+        }
+
+        if (accountStoragePath == "") {
+            return handleReject(promise, LdkErrors.init_storage_path)
+        }
+        if (channelStoragePath == "") {
+            return handleReject(promise, LdkErrors.init_storage_path)
+        }
+
+        try {
+            if (!overwrite) {
+                val accountStoragePath = File(accountStoragePath)
+                val channelStoragePath = File(channelStoragePath)
+
+                if (accountStoragePath.exists() || channelStoragePath.exists()) {
+                    return handleReject(promise, LdkErrors.backup_restore_failed_existing_files)
+                }
+            }
+
+            val completeBackup = BackupClient.retrieveCompleteBackup()
+            for (file in completeBackup.files) {
+                val newFile = File(accountStoragePath + "/" + file.key)
+                newFile.writeBytes(file.value)
+            }
+
+            for (channelFile in completeBackup.channelFiles) {
+                val newFile = File(channelStoragePath + "/" + channelFile.key)
+                newFile.writeBytes(channelFile.value)
+            }
+
+            handleResolve(promise, LdkCallbackResponses.backup_restore_success)
+        } catch (e: Exception) {
+            return handleReject(promise, LdkErrors.backup_restore_failed, Error(e))
+        }
+    }
+
+    @ReactMethod
+    fun backupSelfCheck(promise: Promise) {
+        if (BackupClient.requiresSetup) {
+            return handleReject(promise, LdkErrors.backup_setup_required)
+        }
+
+        try {
+            BackupClient.selfCheck()
+            handleResolve(promise, LdkCallbackResponses.backup_client_check_success)
+        } catch (e: Exception) {
+            handleReject(promise, LdkErrors.backup_check_failed, Error(e))
+        }
     }
 }
 
