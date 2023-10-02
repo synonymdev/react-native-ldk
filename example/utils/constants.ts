@@ -48,8 +48,10 @@ export const customPeers = {
 	bitcoinSignet: [],
 };
 
-export const backupServerDetails: TBackupServerDetails = {
-	host: 'https://jaybird-logical-sadly.ngrok-free.app',
-	serverPubKey:
-		'0343a6c1b7700840ac7b76372617a6e9a05cf4c9716efdc847def65360b238f243',
-};
+//Once local server is setup, add server details below to enable backups
+export const backupServerDetails: TBackupServerDetails | undefined = undefined;
+// 	{
+// 	host: 'https://jaybird-logical-sadly.ngrok-free.app',
+// 	serverPubKey:
+// 		'0343a6c1b7700840ac7b76372617a6e9a05cf4c9716efdc847def65360b238f243',
+// };

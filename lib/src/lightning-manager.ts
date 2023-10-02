@@ -355,13 +355,6 @@ class LightningManager {
 			if (backupSetupRes.isErr()) {
 				return err(backupSetupRes.error);
 			}
-
-			//TODO remove after dev
-			const backupCheckRes = await ldk.backupSelfCheck();
-			if (backupCheckRes.isErr()) {
-				console.error('Backup check failed', backupCheckRes.error);
-				return err(backupCheckRes.error);
-			}
 		}
 
 		// Step 1: Initialize the FeeEstimator

@@ -152,20 +152,25 @@ class BackupClient {
             return hash.joinToString("") { String.format("%02x", it) }
         }
 
+        @Throws(BackupError::class)
         private fun decrypt(blob: ByteArray): ByteArray {
-            if (encryptionKey == null) {
-                throw BackupError.requiresSetup
+            try {
+                if (encryptionKey == null) {
+                    throw BackupError.requiresSetup
+                }
+
+                val nonce = blob.take(12).toByteArray()
+                val encrypted = blob.copyOfRange(12, blob.size)
+
+                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                val gcmSpec = GCMParameterSpec(128, nonce)
+
+                cipher.init(Cipher.DECRYPT_MODE, encryptionKey, gcmSpec)
+                val decryptedBytes = cipher.doFinal(encrypted)
+                return decryptedBytes
+            } catch (e: Exception) {
+                throw DecryptFailed(e.message ?: "")
             }
-
-            val nonce = blob.take(12).toByteArray()
-            val encrypted = blob.copyOfRange(12, blob.size)
-
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            val gcmSpec = GCMParameterSpec(128, nonce)
-
-            cipher.init(Cipher.DECRYPT_MODE, encryptionKey, gcmSpec)
-            val decryptedBytes = cipher.doFinal(encrypted)
-            return decryptedBytes
         }
 
         @Throws(BackupError::class)

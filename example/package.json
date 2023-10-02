@@ -30,7 +30,6 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.17.10",
     "@react-native-clipboard/clipboard": "1.11.1",
-    "@slashtags/slashauth-client": "github:slashtags/slashauth-client",
     "@synonymdev/react-native-ldk": "../lib",
     "assert": "1.5.0",
     "b4a": "^1.6.4",

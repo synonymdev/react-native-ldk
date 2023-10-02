@@ -884,9 +884,7 @@ class Ldk: NSObject {
             guard let invoice = res.getValue() else {
                 return handleReject(reject, .invoice_create_failed)
             }
-            
-            invoice.features()?.setBasicMppRequired()
-            
+                        
             return resolve(invoice.asJson) //Invoice class extended in Helpers file
         }
         

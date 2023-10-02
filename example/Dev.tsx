@@ -635,6 +635,10 @@ const Dev = (): ReactElement => {
 					<Button
 						title={'Restore backup from server'}
 						onPress={async (): Promise<void> => {
+							if (!backupServerDetails) {
+								return setMessage('Set backupServerDetails in constants.ts');
+							}
+
 							setMessage('Stopping LDK...');
 							await ldk.stop();
 
