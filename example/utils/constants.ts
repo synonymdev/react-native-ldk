@@ -1,4 +1,7 @@
-import { TAvailableNetworks } from '@synonymdev/react-native-ldk';
+import {
+	TAvailableNetworks,
+	TBackupServerDetails,
+} from '@synonymdev/react-native-ldk';
 
 export const selectedNetwork: TAvailableNetworks = 'bitcoinRegtest';
 
@@ -6,13 +9,13 @@ export const selectedNetwork: TAvailableNetworks = 'bitcoinRegtest';
 export const peers = {
 	lnd: {
 		pubKey:
-			'0239af55c86cf84167bc216ffa48687b304a4f0601d6496febf8bbb286a65c814c',
-		address: '127.0.0.1',
-		port: 9735,
+			'02709a23bb26d78cc2425aa8651a8ae18d05d852079bdae4151b9759d15ab98c12',
+		address: '192.168.0.100',
+		port: 9736,
 	},
 	clightning: {
 		pubKey:
-			'03e8fa0ceb4aa0cc696278189269e01bac22b0549ad62fac726f26cc6c65008ef4',
+			'03ef67f43678c4bc7a1ef6c9ec5a57168a019657aab52c04798cecbf6561510d23',
 		address: '127.0.0.1',
 		port: 9836,
 	},
@@ -30,9 +33,9 @@ export const customPeers = {
 	bitcoinTestnet: [],
 	bitcoinRegtest: [
 		{
-			host: '35.233.47.252',
-			ssl: 18484,
-			tcp: 18483,
+			host: '192.168.0.100',
+			ssl: 50001,
+			tcp: 50001,
 			protocol: 'tcp',
 		},
 		// {
@@ -44,3 +47,11 @@ export const customPeers = {
 	],
 	bitcoinSignet: [],
 };
+
+//Once local server is setup, add server details below to enable backups
+export const backupServerDetails: TBackupServerDetails | undefined = undefined;
+// 	{
+// 	host: 'https://jaybird-logical-sadly.ngrok-free.app',
+// 	serverPubKey:
+// 		'0343a6c1b7700840ac7b76372617a6e9a05cf4c9716efdc847def65360b238f243',
+// };

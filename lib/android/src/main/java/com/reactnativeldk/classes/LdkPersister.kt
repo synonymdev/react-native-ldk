@@ -18,11 +18,14 @@ class LdkPersister {
                 throw Exception("Channel storage path not set")
             }
 
-            val file = File(LdkModule.channelStoragePath + "/" + id.to_channel_id().hexEncodedString() + ".bin")
+            val channelId = id.to_channel_id().hexEncodedString()
+
+            val file = File(LdkModule.channelStoragePath + "/" + channelId  + ".bin")
 
             val isNew = !file.exists()
 
             file.writeBytes(data.write())
+            BackupClient.persist(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write())
 
             LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${id.to_channel_id().hexEncodedString()}) to disk")
             LdkEventEmitter.send(EventTypes.backup, "")

@@ -32,6 +32,7 @@
     "@react-native-clipboard/clipboard": "1.11.1",
     "@synonymdev/react-native-ldk": "../lib",
     "assert": "1.5.0",
+    "b4a": "^1.6.4",
     "bip32": "2.0.6",
     "bip39": "3.0.4",
     "bitcoinjs-lib": "6.0.2",

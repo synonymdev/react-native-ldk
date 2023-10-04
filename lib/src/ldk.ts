@@ -32,6 +32,7 @@ import {
 	TReconstructAndSpendOutputsReq,
 	THeader,
 	TAcceptChannelReq,
+	TBackupServerDetails,
 	TNodeSignReq,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
@@ -1077,6 +1078,7 @@ class LDK {
 	 * @param path (optional) will use current account path as default if not provided
 	 * @param content
 	 * @param format
+	 * @param remotePersist
 	 * @returns {Promise<Ok<boolean> | Err<unknown>>}
 	 */
 	async writeToFile({
@@ -1084,6 +1086,7 @@ class LDK {
 		path,
 		content,
 		format,
+		remotePersist,
 	}: TFileWriteReq): Promise<Result<boolean>> {
 		try {
 			await NativeLDK.writeToFile(
@@ -1091,6 +1094,7 @@ class LDK {
 				path || '',
 				content,
 				format || 'string',
+				!!remotePersist,
 			);
 			this.writeDebugToLog('writeToFile', fileName);
 			return ok(true);
@@ -1182,6 +1186,65 @@ class LDK {
 			return ok(res);
 		} catch (e) {
 			this.writeErrorToLog('nodeSign', e);
+			return err(e);
+		}
+	}
+
+	/**
+	 * Setup remote backup server
+	 * @param seed
+	 * @param network
+	 * @param details
+	 */
+	async backupSetup({
+		seed,
+		network,
+		details,
+	}: {
+		seed: string;
+		network: string;
+		details: TBackupServerDetails;
+	}): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.backupSetup(
+				seed,
+				network,
+				details.host,
+				details.serverPubKey,
+			);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Restore from remote backup server if one exists
+	 * @param bearer
+	 * @param overwrite
+	 * @returns {Promise<Result<boolean>>} true if backup exists and was restored
+	 */
+	async restoreFromRemoteBackup({
+		overwrite,
+	}: {
+		overwrite: boolean;
+	}): Promise<Result<boolean>> {
+		try {
+			const res = await NativeLDK.restoreFromRemoteBackup(overwrite);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * Runs a self check by creating random string, encrypting, backing up, fetching, decrypting and validating content.
+	 */
+	async backupSelfCheck(): Promise<Result<boolean>> {
+		try {
+			const res = await NativeLDK.backupSelfCheck();
+			return ok(res);
+		} catch (e) {
 			return err(e);
 		}
 	}

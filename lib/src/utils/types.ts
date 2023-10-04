@@ -34,6 +34,7 @@ export enum EEventTypes {
 	new_channel = 'new_channel',
 	network_graph_updated = 'network_graph_updated',
 	channel_manager_restarted = 'channel_manager_restarted',
+	backup_failed = 'backup_failed',
 }
 
 //LDK event responses
@@ -417,6 +418,7 @@ export type TFileWriteReq = {
 	path?: string;
 	content: string;
 	format?: 'hex' | 'string';
+	remotePersist: boolean;
 };
 
 export type TFileReadReq = {
@@ -446,6 +448,7 @@ export type TGetTransactionPosition = (params: {
 }) => Promise<TTransactionPosition>;
 export type TGetBestBlock = () => Promise<THeader>;
 
+//LDK file names should match labels on backup server
 export enum ELdkFiles {
 	seed = 'seed', //32 bytes of entropy saved natively
 	channel_manager = 'channel_manager.bin', //Serialised rust object
@@ -550,6 +553,7 @@ export type TLdkStart = {
 	forceCloseOnStartup?: TForceCloseOnStartup;
 	userConfig?: TUserConfig;
 	trustedZeroConfPeers?: string[];
+	backupServerDetails?: TBackupServerDetails;
 };
 
 export type TGetAddress = () => Promise<string>;
@@ -573,6 +577,11 @@ export type TReconstructAndSpendOutputsReq = {
 	outpointIndex: number;
 	feeRate: number;
 	changeDestinationScript: string;
+};
+
+export type TBackupServerDetails = {
+	host: string;
+	serverPubKey: string;
 };
 
 export type TNodeSignReq = {

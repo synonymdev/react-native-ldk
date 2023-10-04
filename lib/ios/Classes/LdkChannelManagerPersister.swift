@@ -270,6 +270,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             try Data(channelManager.write()).write(to: managerStorage)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")
             
+            try BackupClient.persist(.channelManager, channelManager.write())
+                        
             LdkEventEmitter.shared.send(withEvent: .backup, body: "")
             
             return Result_NoneErrorZ.initWithOk()

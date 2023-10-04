@@ -18,7 +18,11 @@ import lm, {
 	TTransactionPosition,
 } from '@synonymdev/react-native-ldk';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
-import { peers, selectedNetwork } from '../utils/constants';
+import {
+	backupServerDetails,
+	peers,
+	selectedNetwork,
+} from '../utils/constants';
 import {
 	getAccount,
 	getAddress,
@@ -137,6 +141,7 @@ export const setupLdk = async (
 				manually_accept_inbound_channels: true,
 			},
 			trustedZeroConfPeers: [peers.lnd.pubKey],
+			backupServerDetails,
 		});
 
 		if (lmStart.isErr()) {

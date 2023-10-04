@@ -29,9 +29,10 @@ import lm, {
 	TChannelManagerPaymentPathSuccessful,
 	TChannelUpdate,
 } from '@synonymdev/react-native-ldk';
-import { peers } from './utils/constants';
+import { backupServerDetails, peers } from './utils/constants';
 import {
 	createNewAccount,
+	getAccount,
 	getAddress,
 	simulateStaleRestore,
 } from './utils/helpers';
@@ -631,6 +632,45 @@ const Dev = (): ReactElement => {
 							}
 						}}
 					/>
+					<Button
+						title={'Restore backup from server'}
+						onPress={async (): Promise<void> => {
+							if (!backupServerDetails) {
+								return setMessage('Set backupServerDetails in constants.ts');
+							}
+
+							setMessage('Stopping LDK...');
+							await ldk.stop();
+
+							const account = await getAccount();
+							const restoreRes = await lm.restoreFromRemoteServer({
+								account,
+								serverDetails: backupServerDetails,
+								overwrite: true,
+							});
+
+							if (restoreRes.isErr()) {
+								setMessage(restoreRes.error.message);
+								return;
+							}
+
+							setMessage('Successfully restored wallet');
+						}}
+					/>
+
+					<Button
+						title={'Backup self check'}
+						onPress={async (): Promise<void> => {
+							setMessage('Checking...');
+							const backupCheckRes = await ldk.backupSelfCheck();
+							if (backupCheckRes.isErr()) {
+								console.error('Backup check failed', backupCheckRes.error);
+								return setMessage(backupCheckRes.error.message);
+							}
+							setMessage('Backup server check passed ✅');
+						}}
+					/>
+
 					<Button
 						title={'Restart node'}
 						onPress={async (): Promise<void> => {

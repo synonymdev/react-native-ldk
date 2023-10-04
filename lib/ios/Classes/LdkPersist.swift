@@ -22,10 +22,13 @@ class LdkPersister: Persist {
             }
             
             let isNew = !FileManager().fileExists(atPath: channelStoragePath.path)
-            
+                        
             try Data(data.write()).write(to: channelStoragePath)
+            try BackupClient.persist(.channelMonitor(id: channelId), data.write())
+            
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel (\(channelId)) to disk")
             LdkEventEmitter.shared.send(withEvent: .backup, body: "")
+            
             
             if isNew {
                 LdkEventEmitter.shared.send(
@@ -37,11 +40,6 @@ class LdkPersister: Persist {
             return ChannelMonitorUpdateStatus.Completed
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel (\(channelId)) to disk Error \(error.localizedDescription).")
-            LdkEventEmitter.shared.send(
-                withEvent: .emergency_force_close_channel,
-                body: body
-            )
-
             return ChannelMonitorUpdateStatus.PermanentFailure
         }
     }

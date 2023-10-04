@@ -1,0 +1,22 @@
+{
+  "name": "backup-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "create-keypair": "node src/create-keypair.js",
+    "test": "node src/test.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@tweedegolf/storage-abstraction": "^1.4.6",
+    "dotenv": "^16.3.1",
+    "fastify": "^4.21.0",
+    "ln-verifymessagejs": "^1.0.0"
+  },
+  "devDependencies": {
+    "ln-service": "^56.13.0"
+  }
+}

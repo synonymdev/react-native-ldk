@@ -25,6 +25,7 @@ enum EventTypes: String, CaseIterable {
     case new_channel = "new_channel"
     case network_graph_updated = "network_graph_updated"
     case channel_manager_restarted = "channel_manager_restarted"
+    case backup_sync_persist_error = "backup_failed"
 }
 //*****************************************************************
 
@@ -66,6 +67,12 @@ enum LdkErrors: String {
     case file_does_not_exist = "file_does_not_exist"
     case init_network_graph_fail = "init_network_graph_fail"
     case data_too_large_for_rn = "data_too_large_for_rn"
+    case backup_setup_required = "backup_setup_required"
+    case backup_setup_check_failed = "backup_setup_check_failed"
+    case backup_setup_failed = "backup_setup_failed"
+    case backup_check_failed = "backup_check_failed"
+    case backup_restore_failed = "backup_restore_failed"
+    case backup_restore_failed_existing_files = "backup_restore_failed_existing_files"
 }
 
 enum LdkCallbackResponses: String {
@@ -92,6 +99,9 @@ enum LdkCallbackResponses: String {
     case close_channel_success = "close_channel_success"
     case file_write_success = "file_write_success"
     case abandon_payment_success = "abandon_payment_success"
+    case backup_client_setup_success = "backup_client_setup_success"
+    case backup_restore_success = "backup_restore_success"
+    case backup_client_check_success = "backup_client_check_success"
 }
 
 enum LdkFileNames: String {
@@ -206,8 +216,9 @@ class Ldk: NSObject {
     
     @objc
     func initKeysManager(_ seed: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard keysManager == nil else {
-            return handleReject(reject, .already_init)
+        if keysManager != nil {
+            //If previously started with the same key (by backup client) return success.
+            return handleResolve(resolve, .keys_manager_init_success)
         }
         
         let seconds = UInt64(NSDate().timeIntervalSince1970)
@@ -383,7 +394,7 @@ class Ldk: NSObject {
         
         print(Ldk.accountStoragePath)
         
-        print("\(String(cString: strerror(22)))")
+        //        print("\(String(cString: strerror(22)))")
         
         let params = ChannelManagerConstructionParameters(
             config: userConfig,
@@ -398,6 +409,7 @@ class Ldk: NSObject {
             scorer: scorer
             //TODO set payerRetries
         )
+        
         do {
             //Only restore a node if we have existing channel monitors to restore. Else we lose our UserConfig settings when restoring.
             //TOOD remove this check in 114 which should allow passing in userConfig
@@ -445,6 +457,16 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
+        
+        //        print("\n\n\n\n******SIGN**************")
+        //        let sk = keysManager.getNodeSecretKey()
+        //        let message = "Lightning Signed Message:look_at_me_im_a_node"
+        //        let signed = Bindings.swiftSign(msg: Array(message.utf8), sk: sk)
+        //        if let error = signed.getError() {
+        //            print("SIGN ERROR")
+        //        }
+        //        print("Signing node: \(Data(channelManager!.getOurNodeId()).hexEncodedString())")
+        //        print(signed.getValue()!)
         
         return handleResolve(resolve, .channel_manager_init_success)
     }
@@ -636,11 +658,11 @@ class Ldk: NSObject {
         userChannelId.withUnsafeMutableBytes { mutableBytes in
             arc4random_buf(mutableBytes.baseAddress, 32)
         }
-
+        
         let res = trustedPeer0Conf ?
         channelManager.acceptInboundChannelFromTrustedPeer0conf(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: [UInt8](userChannelId)) :
         channelManager.acceptInboundChannel(temporaryChannelId: temporaryChannelId, counterpartyNodeId: counterpartyNodeId, userChannelId: [UInt8](userChannelId))
-                
+        
         guard res.isOk() else {
             guard let error = res.getError() else {
                 return handleReject(reject, .channel_accept_fail)
@@ -862,7 +884,7 @@ class Ldk: NSObject {
             guard let invoice = res.getValue() else {
                 return handleReject(reject, .invoice_create_failed)
             }
-            
+                        
             return resolve(invoice.asJson) //Invoice class extended in Helpers file
         }
         
@@ -1086,7 +1108,7 @@ class Ldk: NSObject {
     
     //MARK: Misc functions
     @objc
-    func writeToFile(_ fileName: NSString, path: NSString, content: NSString, format: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func writeToFile(_ fileName: NSString, path: NSString, content: NSString, format: NSString, remotePersist: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         let fileUrl: URL
         
         do {
@@ -1109,10 +1131,24 @@ class Ldk: NSObject {
             }
             
             let fileContent = String(content)
+            var fileData: Data?
             if format == "hex" {
+                fileData = Data(fileContent.hexaBytes)
                 try Data(fileContent.hexaBytes).write(to: fileUrl)
             } else {
+                fileData = fileContent.data(using: .utf8)
                 try fileContent.data(using: .utf8)?.write(to: fileUrl)
+            }
+            
+            guard let fileData else {
+                return handleReject(reject, .write_fail, "Failed to parse contents of file to write to \(fileName)")
+            }
+            
+            try fileData.write(to: fileUrl)
+            
+            //Save to remote server if required
+            if remotePersist {
+                try  BackupClient.persist(.misc(fileName: String(fileName)), [UInt8](fileData))
             }
             
             return handleResolve(resolve, .file_write_success)
@@ -1191,6 +1227,101 @@ class Ldk: NSObject {
         }
         
         return resolve(signed.getValue()!)
+    }
+    
+    //MARK: Backup methods
+    @objc
+    func backupSetup(_ seed: NSString, network: NSString, server: NSString, serverPubKey: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let seedBytes = String(seed).hexaBytes
+        if keysManager == nil {
+            let seconds = UInt64(NSDate().timeIntervalSince1970)
+            let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
+            
+            guard seedBytes.count == 32 else {
+                return handleReject(reject, .invalid_seed_hex)
+            }
+            
+            keysManager = KeysManager(seed: String(seed).hexaBytes, startingTimeSecs: seconds, startingTimeNanos: nanoSeconds)
+        }
+        
+        guard let pubKey = keysManager!.asNodeSigner().getNodeId(recipient: .Node).getValue() else {
+            return handleReject(reject, .backup_setup_failed, "Failed to get nodeID from keysManager")
+        }
+        
+        do {
+            BackupClient.skipRemoteBackup = false
+            try BackupClient.setup(
+                secretKey: keysManager!.getNodeSecretKey(),
+                pubKey: pubKey,
+                network: String(network),
+                server: String(server),
+                serverPubKey: String(serverPubKey)
+            )
+            
+            handleResolve(resolve, .backup_client_setup_success)
+        } catch {
+            handleReject(reject, .backup_setup_failed, error, error.localizedDescription)
+        }
+    }
+    
+    @objc
+    func restoreFromRemoteBackup(_ overwrite: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard !BackupClient.requiresSetup else {
+            return handleReject(reject, .backup_setup_required)
+        }
+        
+        guard let accountStoragePath = Ldk.accountStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        guard let channelStoragePath = Ldk.channelStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        do {
+            if !overwrite {
+                let fileManager = FileManager.default
+                
+                //Make sure channel manager and channel monitors don't exist
+                if fileManager.fileExists(atPath: accountStoragePath.appendingPathComponent(LdkFileNames.channel_manager.rawValue).path) {
+                    handleReject(reject, .backup_restore_failed_existing_files)
+                    return
+                }
+                
+                if !(try fileManager.contentsOfDirectory(atPath: channelStoragePath.path).isEmpty) {
+                    handleReject(reject, .backup_restore_failed_existing_files)
+                    return
+                }
+            }
+            
+            let completeBackup = try BackupClient.retrieveCompleteBackup()
+            
+            for file in completeBackup.files {
+                try file.value.write(to: accountStoragePath.appendingPathComponent(file.key))
+            }
+            
+            for channel in completeBackup.channelFiles {
+                try channel.value.write(to: channelStoragePath.appendingPathComponent(channel.key))
+            }
+            
+            handleResolve(resolve, .backup_restore_success)
+        } catch {
+            handleReject(reject, .backup_restore_failed, error, error.localizedDescription)
+        }
+    }
+    
+    @objc
+    func backupSelfCheck(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard !BackupClient.requiresSetup else {
+            return handleReject(reject, .backup_setup_required)
+        }
+        
+        do {
+            try BackupClient.selfCheck()
+            handleResolve(resolve, .backup_client_check_success)
+        } catch {
+            handleReject(reject, .backup_check_failed, error, error.localizedDescription)
+        }
     }
 }
 
