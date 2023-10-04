@@ -1,3 +1,7 @@
 .idea/
 **/.DS_Store
 example/.watchman*
+
+# docker
+example/docker/lnd/
+example/docker/clightning/

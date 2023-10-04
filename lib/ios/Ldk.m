@@ -39,6 +39,7 @@ RCT_EXTERN_METHOD(stop:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(updateFees:(NSInteger *)high
                   normal:(NSInteger *)normal
                   low:(NSInteger *)low
+                  mempoolMinimum:(NSInteger *)mempoolMinimum
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setLogLevel:(NSString *)level
@@ -62,6 +63,11 @@ RCT_EXTERN_METHOD(setTxConfirmed:(NSString *)header
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setTxUnconfirmed:(NSString *)txId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(acceptChannel:(NSString *)temporaryChannelId
+                  counterPartyNodeId:(NSString *)counterPartyNodeId
+                  trustedPeer0Conf:(BOOL *)trustedPeer0Conf
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(closeChannel:(NSString *)channelId
@@ -147,6 +153,9 @@ RCT_EXTERN_METHOD(reconstructAndSpendOutputs:(NSString *)outputScriptPubKey
                   outpointIndex:(NSInteger *)outpointIndex
                   feeRate:(NSInteger *)feeRate
                   changeDestinationScript:(NSString *)changeDestinationScript
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(nodeSign:(NSString *)message
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 @end

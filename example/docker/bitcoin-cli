@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+CLI_NAME="$(basename $0)"
+CLI_DIR="$(dirname "$(readlink -f "$0")")"
+CONTAINER="bitcoind"
+RPC_USER=polaruser
+RPC_PASS=polarpass
+RPC_PORT=18443
+
+BASE_COMMAND=(docker compose exec $CONTAINER bitcoin-cli -rpcport=$RPC_PORT -rpcuser=$RPC_USER -rpcpassword=$RPC_PASS)
+
+DEFAULT_AMOUNT=0.001
+
+show_help() {
+  cat <<EOF
+Shortcuts for bitcoin-cli.
+Usage: ${CLI_NAME} <command> [options]
+Flags:
+    -h, --help                         Show this help message
+Commands:
+    fund <amount>                      Fund the wallet
+    mine <amount> [--auto]             Generate a number of blocks
+    send <address> <amount>            Send to address or BIP21 URI
+    getInvoice <amount>                Get a new BIP21 URI with a bech32 address
+EOF
+}
+
+if [ -z ${1+x} ]; then
+  command=""
+else
+  command="$1"
+fi
+
+# Fund the wallet
+if [[ "$command" = "fund" ]]; then
+  "${BASE_COMMAND[@]}" -generate 101
+  exit
+fi
+
+# Mine some blocks
+if [[ "$command" = "mine" ]]; then
+  shift
+
+  if [ -z ${1+x} ]; then
+    echo "Specify the number of blocks to generate."
+    echo "Usage: \`$CLI_NAME $command <amount>\`"
+    exit 1
+  fi
+
+  POSITIONAL_ARGS=()
+
+  auto=false
+
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+    -l | --auto)
+      auto=true
+      shift
+      ;;
+    -* | --*)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+    esac
+  done
+
+  set -- "${POSITIONAL_ARGS[@]}"
+
+  # default to 5 seconds
+  interval=${2:-5}
+
+  if $auto; then
+    printf "Generating a block every $interval seconds. Press [CTRL+C] to stop...\n\n"
+
+    while true; do
+      "${BASE_COMMAND[@]}" -generate 1
+      sleep $interval
+    done
+  else
+    "${BASE_COMMAND[@]}" -generate "$@"
+  fi
+
+  exit
+fi
+
+# Send to a transaction
+if [[ "$command" = "send" ]]; then
+  shift
+
+  if [ -z ${1+x} ]; then
+    read -p "Enter a BIP21 URI or address: " uri
+    echo
+  else
+    uri="$1"
+  fi
+
+  if [ -z ${2+x} ]; then
+    amount=$DEFAULT_AMOUNT
+  else
+    amount="$2"
+  fi
+
+  protocol=$(echo "${uri%%:*}")
+
+  if [[ "$protocol" == "bitcoin" ]]; then
+    # BIP21 URI
+    # Remove the protocol
+    url_no_protocol=$(echo "${uri/$protocol/}" | cut -d":" -f2-)
+
+    address=$(echo $url_no_protocol | grep "?" | cut -d"/" -f1 | rev | cut -d"?" -f2- | rev || echo $url_no_protocol)
+    uri_amount=$(echo $url_no_protocol | cut -d'?' -f 2 | cut -d'=' -f 2 | cut -d'&' -f 1)
+
+    if echo "$uri_amount" | grep -qE '^[0-9]*\.?[0-9]+$'; then
+      amount=$uri_amount
+    fi
+  else
+    address=$uri
+  fi
+
+  tx_id=$("${BASE_COMMAND[@]}" -named sendtoaddress address="$address" amount="$amount" fee_rate="25")
+
+  echo "Sent $amount BTC to $address"
+  echo "Transaction ID: $tx_id"
+
+  exit
+fi
+
+# Get a new BIP21 URI
+if [[ "$command" = "getInvoice" ]]; then
+  shift
+
+  if [ -z ${1+x} ]; then
+    amount=$DEFAULT_AMOUNT
+  else
+    amount="$1"
+  fi
+
+  address=$("${BASE_COMMAND[@]}" getnewaddress -addresstype bech32 | tr -d '\r')
+  uri="bitcoin:$address?amount=$amount"
+
+  # print URI
+  echo $uri
+
+  # copy to clipboard (MacOS)
+  echo $uri | pbcopy
+  echo "Copied to clipboard."
+
+  exit
+fi
+
+# Show usage information for this CLI
+if [[ "$command" = "--help" ]] || [[ "$command" = "-h" ]]; then
+  show_help
+  exit
+fi
+
+# If no command specified pass all args straight to bitcoin-cli
+"${BASE_COMMAND[@]}" "$@"
+exit

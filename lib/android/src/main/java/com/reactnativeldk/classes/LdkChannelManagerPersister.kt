@@ -6,6 +6,9 @@ import com.reactnativeldk.*
 import org.json.JSONArray
 import org.ldk.batteries.ChannelManagerConstructor
 import org.ldk.structs.Event
+import org.ldk.structs.Option_PaymentHashZ
+import org.ldk.structs.Option_PaymentIdZ
+import org.ldk.structs.Option_PaymentPreimageZ
 import org.ldk.structs.Option_u64Z
 import org.ldk.structs.PaymentPurpose
 import java.io.File
@@ -26,7 +29,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             body.putHexString("payment_hash", paymentClaimable.payment_hash)
             body.putInt("amount_sat", paymentClaimable.amount_msat.toInt() / 1000)
             (paymentClaimable.purpose as? PaymentPurpose.InvoicePayment)?.let {
-                body.putHexString("payment_preimage", it.payment_preimage)
+                body.putHexString("payment_preimage", (it.payment_preimage as Option_PaymentPreimageZ.Some).some)
                 body.putHexString("payment_secret", it.payment_secret)
             }
             (paymentClaimable.purpose as? PaymentPurpose.SpontaneousPayment)?.let {
@@ -41,7 +44,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
 
         (event as? Event.PaymentSent)?.let { paymentSent ->
             val body = Arguments.createMap()
-            body.putHexString("payment_id", paymentSent.payment_id)
+            body.putHexString("payment_id", (paymentSent.payment_id as Option_PaymentIdZ.Some).some)
             body.putHexString("payment_preimage", paymentSent.payment_preimage)
             body.putHexString("payment_hash", paymentSent.payment_hash)
             body.putInt("fee_paid_sat", (paymentSent.fee_paid_msat as Option_u64Z.Some).some.toInt() / 1000)
@@ -60,7 +63,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             body.putHexString("counterparty_node_id", openChannelRequest.counterparty_node_id)
             body.putInt("push_sat", openChannelRequest.push_msat.toInt() / 1000)
             body.putInt("funding_satoshis", openChannelRequest.funding_satoshis.toInt())
-            body.putHexString("channel_type", openChannelRequest.channel_type.write())
+            body.putBoolean("requires_zero_conf", openChannelRequest.channel_type.requires_zero_conf())
+            body.putBoolean("supports_zero_conf", openChannelRequest.channel_type.supports_zero_conf())
+            body.putBoolean("requires_anchors_zero_fee_htlc_tx", openChannelRequest.channel_type.requires_anchors_zero_fee_htlc_tx())
             return LdkEventEmitter.send(EventTypes.channel_manager_open_channel_request, body)
         }
 
@@ -68,7 +73,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             val body = Arguments.createMap()
 
             body.putHexString("payment_id", paymentPathSuccessful.payment_id)
-            body.putHexString("payment_hash", paymentPathSuccessful.payment_hash)
+            body.putHexString("payment_hash", (paymentPathSuccessful.payment_hash as Option_PaymentHashZ.Some).some)
 
             val pathHops = Arguments.createArray()
             println(paymentPathSuccessful.path)
@@ -79,7 +84,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
 
         (event as? Event.PaymentPathFailed)?.let { paymentPathFailed ->
             val body = Arguments.createMap()
-            body.putHexString("payment_id", paymentPathFailed.payment_id)
+            body.putHexString("payment_id", (paymentPathFailed.payment_id as Option_PaymentIdZ.Some).some)
             body.putHexString("payment_hash", paymentPathFailed.payment_hash)
             body.putBoolean("payment_failed_permanently", paymentPathFailed.payment_failed_permanently)
             body.putInt("short_channel_id", (paymentPathFailed.short_channel_id as Option_u64Z.Some).some.toInt())
@@ -89,7 +94,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
 
             if (paymentPathFailed.payment_id != null) {
                 persistPaymentSent(hashMapOf(
-                    "payment_id" to paymentPathFailed.payment_id!!.hexEncodedString(),
+                    "payment_id" to (paymentPathFailed.payment_id!! as Option_PaymentIdZ.Some).some.hexEncodedString(),
                     "payment_hash" to paymentPathFailed.payment_hash.hexEncodedString(),
                     "unix_timestamp" to (System.currentTimeMillis() / 1000).toInt(),
                     "state" to if (paymentPathFailed.payment_failed_permanently) "failed" else "pending"
@@ -154,7 +159,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             body.putHexString("payment_hash", paymentClaimed.payment_hash)
             body.putInt("amount_sat", paymentClaimed.amount_msat.toInt() / 1000)
             (paymentClaimed.purpose as? PaymentPurpose.InvoicePayment)?.let {
-                body.putHexString("payment_preimage", it.payment_preimage)
+                body.putHexString("payment_preimage", (it.payment_preimage as Option_PaymentPreimageZ.Some).some)
                 body.putHexString("payment_secret", it.payment_secret)
             }
             (paymentClaimed.purpose as? PaymentPurpose.SpontaneousPayment)?.let {
