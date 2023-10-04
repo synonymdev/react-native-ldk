@@ -7,9 +7,11 @@ import com.reactnativeldk.hexEncodedString
 import org.ldk.structs.BroadcasterInterface
 
 class LdkBroadcaster {
-    var broadcaster = BroadcasterInterface.new_impl{ tx ->
-        val body = Arguments.createMap()
-        body.putString("tx", tx.hexEncodedString())
-        LdkEventEmitter.send(EventTypes.broadcast_transaction, body)
+    var broadcaster = BroadcasterInterface.new_impl{ txs ->
+        txs.forEach { tx ->
+            val body = Arguments.createMap()
+            body.putString("tx", tx.hexEncodedString())
+            LdkEventEmitter.send(EventTypes.broadcast_transaction, body)
+        }
     }
 }

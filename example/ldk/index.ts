@@ -4,13 +4,13 @@ import { err, ok, Result } from '../utils/result';
 import Clipboard from '@react-native-clipboard/clipboard';
 import RNFS from 'react-native-fs';
 import {
-	getBlockHashFromHeight,
 	getBlockHeader,
 	getBlockHex,
 	getScriptPubKeyHistory,
 } from '../electrum';
 import lm, {
 	DefaultTransactionDataShape,
+	defaultUserConfig,
 	TAccount,
 	TAccountBackup,
 	THeader,
@@ -34,7 +34,7 @@ import * as bitcoin from 'bitcoinjs-lib';
  * @param {string} key
  * @returns {Promise<string>}
  */
-export const getItem = async (key = ''): Promise<any> => {
+export const getItem = async (key: string = ''): Promise<any> => {
 	try {
 		return await AsyncStorage.getItem(key);
 	} catch (e) {
@@ -91,21 +91,16 @@ export const syncLdk = async (): Promise<Result<string>> => {
 /**
  * Used to spin-up LDK services.
  * In order, this method:
- * 1. Fetches and sets the genesis hash.
- * 2. Retrieves and sets the seed from storage.
- * 3. Starts ldk with the necessary params.
- * 4. Adds/Connects saved peers from storage. (Note: Not needed as LDK handles this automatically once a peer has been added successfully. Only used to make example app easier to test.)
- * 5. Syncs LDK.
+ * 1. Retrieves and sets the seed from storage.
+ * 2. Starts ldk with the necessary params.
+ * 3. Adds/Connects saved peers from storage. (Note: Not needed as LDK handles this automatically once a peer has been added successfully. Only used to make example app easier to test.)
+ * 4. Syncs LDK.
  */
-export const setupLdk = async (): Promise<Result<string>> => {
+export const setupLdk = async (
+	forceCloseAllChannels = false,
+): Promise<Result<string>> => {
 	try {
-		await ldk.reset();
-		const genesisHash = await getBlockHashFromHeight({
-			height: 0,
-		});
-		if (genesisHash.isErr()) {
-			return err(genesisHash.error.message);
-		}
+		await ldk.stop();
 		const account = await getAccount();
 		const storageRes = await lm.setBaseStoragePath(
 			`${RNFS.DocumentDirectoryPath}/ldk/`,
@@ -116,20 +111,32 @@ export const setupLdk = async (): Promise<Result<string>> => {
 
 		const lmStart = await lm.start({
 			getBestBlock,
-			genesisHash: genesisHash.value,
 			account,
 			getAddress,
 			getScriptPubKeyHistory,
 			getFees: () =>
 				Promise.resolve({
-					highPriority: 12500,
-					normal: 12500,
-					background: 12500,
+					highPriority: 10,
+					normal: 5,
+					background: 1,
+					mempoolMinimum: 1,
 				}),
 			getTransactionData,
 			getTransactionPosition,
 			broadcastTransaction,
 			network: ldkNetwork(selectedNetwork),
+			forceCloseOnStartup: forceCloseAllChannels
+				? { forceClose: true, broadcastLatestTx: false }
+				: undefined,
+			userConfig: {
+				...defaultUserConfig,
+				channel_handshake_config: {
+					...defaultUserConfig.channel_handshake_config,
+					negotiate_anchors_zero_fee_htlc_tx: true,
+				},
+				manually_accept_inbound_channels: true,
+			},
+			trustedZeroConfPeers: [peers.lnd.pubKey],
 		});
 
 		if (lmStart.isErr()) {
@@ -185,7 +192,7 @@ export const setupLdk = async (): Promise<Result<string>> => {
  */
 export const getTransactionData = async (
 	txId: string = '',
-): Promise<TTransactionData> => {
+): Promise<TTransactionData | undefined> => {
 	let transactionData = DefaultTransactionDataShape;
 	const data = {
 		key: 'tx_hash',
@@ -199,6 +206,23 @@ export const getTransactionData = async (
 		txHashes: data,
 		network: selectedNetwork,
 	});
+
+	if (
+		//TODO: Update types for electrum response.
+		// @ts-ignore
+		response?.error &&
+		//TODO: Update types for electrum response.
+		// @ts-ignore
+		response?.error?.message &&
+		/No such mempool or blockchain transaction|Invalid tx hash/.test(
+			//TODO: Update types for electrum response.
+			// @ts-ignore
+			response?.error?.message,
+		)
+	) {
+		//Transaction may have been removed/bumped from the mempool or potentially reorg'd out.
+		return undefined;
+	}
 
 	if (response.error || !response.data || response.data[0].error) {
 		return transactionData;
@@ -316,6 +340,7 @@ export const backupAccount = async (
  */
 export const importAccount = async (
 	backup: string | TAccountBackup,
+	forceCloseAllChannels = false,
 ): Promise<Result<TAccount>> => {
 	const importResponse = await lm.importAccount({
 		backup,
@@ -326,35 +351,7 @@ export const importAccount = async (
 	}
 	await setAccount(importResponse.value);
 	await setItem(EAccount.currentAccountKey, importResponse.value.name);
-	await setupLdk();
+	await setupLdk(forceCloseAllChannels);
 	await syncLdk();
 	return ok(importResponse.value);
-};
-
-/**
- * Iterates over watch transactions for spends. Sets them as confirmed as needed.
- * @returns {Promise<boolean>}
- */
-export const checkWatchTxs = async (): Promise<boolean> => {
-	const checkedScriptPubKeys: string[] = [];
-	const watchTransactionIds = lm.watchTxs.map((tx) => tx.txid);
-	for (const watchTx of lm.watchTxs) {
-		if (!checkedScriptPubKeys.includes(watchTx.script_pubkey)) {
-			const scriptPubKeyHistory: { txid: string; height: number }[] =
-				await getScriptPubKeyHistory(watchTx.script_pubkey);
-			for (const data of scriptPubKeyHistory) {
-				if (!watchTransactionIds.includes(data?.txid)) {
-					const txData = await getTransactionData(data?.txid);
-					await ldk.setTxConfirmed({
-						header: txData.header,
-						height: txData.height,
-						txData: [{ transaction: txData.transaction, pos: 0 }],
-					});
-					return true;
-				}
-			}
-			checkedScriptPubKeys.push(watchTx.script_pubkey);
-		}
-	}
-	return false;
 };

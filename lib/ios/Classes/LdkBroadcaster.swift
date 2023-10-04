@@ -8,8 +8,10 @@
 import Foundation
 import LightningDevKit
 
-class LdkBroadcaster: BroadcasterInterface {
-    override func broadcastTransaction(tx: [UInt8]) {
-        LdkEventEmitter.shared.send(withEvent: .broadcast_transaction, body: ["tx": Data(tx).hexEncodedString()])
+class LdkBroadcaster: BroadcasterInterface {    
+    override func broadcastTransactions(txs: [[UInt8]]) {
+        txs.forEach { tx in
+            LdkEventEmitter.shared.send(withEvent: .broadcast_transaction, body: ["tx": Data(tx).hexEncodedString()])
+        }
     }
 }

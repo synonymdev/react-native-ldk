@@ -1,13 +1,11 @@
 import { ENetworks, TLdkStart } from './types';
 import { err, ok, Result } from './result';
 import * as bitcoin from 'bitcoinjs-lib';
-import { networks } from 'bitcoinjs-lib';
-
+import networks from './networks';
 /**
  * This method runs a check on each parameter passed to the start method
  * to ensure that they are providing the expected data.
  * @param {string} seed
- * @param {string} genesisHash
  * @param {TGetBestBlock} getBestBlock
  * @param {TGetTransactionData} getTransactionData
  * @param {TBroadcastTransaction} broadcastTransaction
@@ -18,7 +16,6 @@ import { networks } from 'bitcoinjs-lib';
  */
 export const startParamCheck = async ({
 	account,
-	genesisHash,
 	getBestBlock,
 	getTransactionData,
 	getTransactionPosition,
@@ -33,15 +30,12 @@ export const startParamCheck = async ({
 		if (typeof network !== 'string') {
 			return err('network must be a string.');
 		}
-		if (
-			!(
-				network === ENetworks.mainnet ||
-				network === ENetworks.testnet ||
-				network === ENetworks.regtest
-			)
-		) {
+
+		if (!Object.values(ENetworks).includes(network)) {
 			return err(
-				`The provided network (${network}) is invalid. It must be either '${ENetworks.mainnet}', '${ENetworks.testnet}' or '${ENetworks.regtest}'.`,
+				`The provided network (${network}) is invalid. It must on of the following: '${Object.values(
+					ENetworks,
+				).join(', ')}'.`,
 			);
 		}
 
@@ -51,11 +45,6 @@ export const startParamCheck = async ({
 		}
 		if (!account?.name || !account?.seed) {
 			return err('account must contain both a name and seed.');
-		}
-
-		// Test genesisHash
-		if (typeof genesisHash !== 'string') {
-			return err('genesisHash must be a string.');
 		}
 
 		// Test getBestBlock
@@ -97,7 +86,7 @@ export const startParamCheck = async ({
 		}
 
 		// Test getTransactionData response if using mainnet or testnet.
-		if (network !== ENetworks.regtest) {
+		if (network === ENetworks.mainnet || network === ENetworks.testnet) {
 			const expectedData = {
 				[ENetworks.mainnet]: {
 					txid: '0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098',
@@ -270,5 +259,51 @@ export const promiseTimeout = <T>(
 	return Promise.race([promise, timeout]).then((result) => {
 		clearTimeout(id);
 		return result;
+	});
+};
+
+type TFindOutputsFromRawTxsRes = {
+	outputScriptPubKey: string;
+	outputValue: number;
+	outpointTxId: string;
+	outpointIndex: number;
+};
+export const findOutputsFromRawTxs = (
+	rawTxs: string[],
+	txId: string,
+	index: number,
+): TFindOutputsFromRawTxsRes | undefined => {
+	let result: TFindOutputsFromRawTxsRes | undefined;
+	for (const hexTx of rawTxs) {
+		const tx = bitcoin.Transaction.fromHex(hexTx);
+		if (tx.getId() !== txId) {
+			continue;
+		}
+
+		if (tx.outs.length <= index) {
+			continue;
+		}
+
+		const output = tx.outs[index];
+
+		result = {
+			outputScriptPubKey: output.script.toString('hex'),
+			outputValue: output.value,
+			outpointTxId: txId,
+			outpointIndex: index,
+		};
+	}
+
+	return result;
+};
+
+/**
+ * Pauses execution of a function.
+ * @param {number} ms The time to wait in milliseconds.
+ * @returns {Promise<void>}
+ */
+export const sleep = (ms = 1000): Promise<void> => {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
 	});
 };

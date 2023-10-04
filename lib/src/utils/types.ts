@@ -1,8 +1,15 @@
 export enum ENetworks {
+	signet = 'signet',
 	regtest = 'regtest',
 	testnet = 'testnet',
-	mainnet = 'mainnet',
+	mainnet = 'bitcoin',
 }
+
+export type TAvailableNetworks =
+	| 'bitcoin'
+	| 'bitcoinTestnet'
+	| 'bitcoinRegtest'
+	| 'bitcoinSignet';
 
 export enum EEventTypes {
 	ldk_log = 'ldk_log',
@@ -48,19 +55,26 @@ export type TChannelManagerFundingGenerationReady = {
 	value_satoshis: number;
 };
 
+type TPaymentState = 'pending' | 'failed' | 'successful';
+
 export type TChannelManagerClaim = {
 	payment_hash: string;
 	amount_sat: number;
 	payment_preimage: string;
 	payment_secret: string;
 	spontaneous_payment_preimage: string;
+	unix_timestamp: number;
+	state: TPaymentState;
 };
 
 export type TChannelManagerPaymentSent = {
 	payment_id: string;
-	payment_preimage: string;
+	payment_preimage?: string;
 	payment_hash: string;
 	fee_paid_sat: number;
+	amount_sat?: number;
+	unix_timestamp: number;
+	state: TPaymentState;
 };
 
 export type TChannelManagerOpenChannelRequest = {
@@ -68,7 +82,9 @@ export type TChannelManagerOpenChannelRequest = {
 	counterparty_node_id: string;
 	push_sat: number;
 	funding_satoshis: number;
-	channel_type: string;
+	requires_zero_conf: boolean;
+	supports_zero_conf: boolean;
+	requires_anchors_zero_fee_htlc_tx: boolean;
 };
 
 export type TChannelUpdate = {
@@ -76,7 +92,7 @@ export type TChannelUpdate = {
 	counterparty_node_id: string;
 };
 
-type TPath = {
+type TPathHop = {
 	pubkey: string;
 	fee_sat: number;
 	short_channel_id: string;
@@ -86,7 +102,7 @@ type TPath = {
 export type TChannelManagerPaymentPathSuccessful = {
 	payment_id: string;
 	payment_hash: string;
-	path: TPath[];
+	path_hops: TPathHop[];
 };
 
 export type TChannelManagerPaymentPathFailed = {
@@ -94,8 +110,7 @@ export type TChannelManagerPaymentPathFailed = {
 	payment_hash: string;
 	payment_failed_permanently: boolean;
 	short_channel_id: string;
-	path: TPath[];
-	network_update: string;
+	path_hops: TPathHop[];
 };
 
 export type TChannelManagerPaymentFailed = {
@@ -144,6 +159,7 @@ export type TChannel = {
 	unspendable_punishment_reserve?: number;
 	config_forwarding_fee_base_msat: number;
 	config_forwarding_fee_proportional_millionths: number;
+	confirmations: number;
 };
 
 export type TNetworkGraphChannelInfo = {
@@ -168,8 +184,6 @@ export type TNetworkGraphChannelInfo = {
 export type TNetworkGraphNodeInfo = {
 	id: string;
 	shortChannelIds: string[];
-	lowest_inbound_channel_fees_base_sat: number;
-	lowest_inbound_channel_fees_proportional_millionths: number;
 	announcement_info_last_update: number;
 };
 
@@ -221,11 +235,7 @@ export type TFeeUpdateReq = {
 	highPriority: number;
 	normal: number;
 	background: number;
-};
-
-export type TSyncTipReq = {
-	header: string;
-	height: number;
+	mempoolMinimum: number;
 };
 
 export type TPeer = {
@@ -250,14 +260,16 @@ export type TSetTxConfirmedReq = {
 	height: number;
 };
 
-export type TSetTxUnconfirmedReq = {
-	txId: string;
-};
-
 export type TCloseChannelReq = {
 	channelId: string;
 	counterPartyNodeId: string;
 	force?: boolean;
+};
+
+export type TAcceptChannelReq = {
+	temporaryChannelId: string;
+	counterPartyNodeId: string;
+	trustedPeer0Conf: boolean;
 };
 
 export type TSpendOutputsReq = {
@@ -273,6 +285,7 @@ export type TSpendOutputsReq = {
 export type TPaymentReq = {
 	paymentRequest: string;
 	amountSats?: number;
+	timeout?: number; //ms
 };
 
 export type TPaymentTimeoutReq = TPaymentReq & {
@@ -294,7 +307,7 @@ export type TInitChannelManagerReq = {
 };
 
 export type TInitNetworkGraphReq = {
-	genesisHash: string;
+	network: ENetworks;
 	rapidGossipSyncUrl?: string;
 };
 
@@ -308,6 +321,9 @@ export type TChannelHandshakeConfig = {
 	announced_channel?: boolean;
 	commit_upfront_shutdown_pubkey?: boolean;
 	their_channel_reserve_proportional_millionths?: number; //UInt32
+	negotiate_anchors_zero_fee_htlc_tx?: boolean;
+	our_max_accepted_htlcs_arg?: number; //UInt16
+	max_inbound_htlc_value_in_flight_percent_of_channel?: number; //UInt8
 };
 
 export type TChannelHandshakeLimits = {
@@ -327,8 +343,10 @@ export type TChannelConfig = {
 	forwarding_fee_proportional_millionths?: number; //UInt32
 	forwarding_fee_base_msat?: number; //UInt32
 	cltv_expiry_delta?: number; //UInt16
-	max_dust_htlc_exposure_msat?: number; //UInt64
+	max_dust_htlc_exposure_type?: 'fixed_limit' | 'fee_rate_multiplier';
+	max_dust_htlc_exposure?: number; //UInt64
 	force_close_avoidance_max_fee_satoshis?: number; //UInt64
+	accept_underpaying_htlcs?: boolean;
 };
 
 //Mirrors the rust struct
@@ -340,6 +358,7 @@ export type TUserConfig = {
 	accept_inbound_channels?: boolean;
 	manually_accept_inbound_channels?: boolean;
 	accept_intercept_htlcs?: boolean;
+	accept_mpp_keysend?: boolean;
 };
 
 export const defaultUserConfig: TUserConfig = {
@@ -347,8 +366,10 @@ export const defaultUserConfig: TUserConfig = {
 		announced_channel: false,
 		minimum_depth: 1,
 		max_htlc_value_in_flight_percent_of_channel: 100,
+		max_inbound_htlc_value_in_flight_percent_of_channel: 100,
+		negotiate_anchors_zero_fee_htlc_tx: true,
 	},
-	manually_accept_inbound_channels: false,
+	manually_accept_inbound_channels: true,
 	accept_inbound_channels: true,
 };
 
@@ -377,7 +398,7 @@ export type TTransactionData = {
 export type TTransactionPosition = number;
 
 export type TClaimableBalance = {
-	claimable_amount_satoshis: number;
+	amount_satoshis: number;
 	type:
 		| 'ClaimableAwaitingConfirmations'
 		| 'ClaimableOnChannelClose'
@@ -416,7 +437,9 @@ export const DefaultTransactionDataShape: TTransactionData = {
 	vout: [],
 };
 
-export type TGetTransactionData = (txid: string) => Promise<TTransactionData>;
+export type TGetTransactionData = (
+	txid: string,
+) => Promise<TTransactionData | undefined>;
 export type TGetTransactionPosition = (params: {
 	tx_hash: string;
 	height: number;
@@ -427,35 +450,42 @@ export enum ELdkFiles {
 	seed = 'seed', //32 bytes of entropy saved natively
 	channel_manager = 'channel_manager.bin', //Serialised rust object
 	channels = 'channels', //Path containing multiple files of serialised channels
-	peers = 'peers.json', //JSON file saved from JS
-	watch_transactions = 'watch_transactions.json', //JSON file saved from JS
-	watch_outputs = 'watch_outputs.json', //JSON file saved from JS
-	confirmed_transactions = 'confirmed_transactions.json',
-	confirmed_outputs = 'confirmed_outputs.json',
+	peers = 'peers.json', //File saved from JS
+	unconfirmed_transactions = 'unconfirmed_transactions.json',
 	broadcasted_transactions = 'broadcasted_transactions.json',
 	payment_ids = 'payment_ids.json',
+	spendable_outputs = 'spendable_outputs.json',
+	payments_claimed = 'payments_claimed.json', // Written in swift/kotlin and read from JS
+	payments_sent = 'payments_sent.json', // Written in swift/kotlin and read from JS
+	bolt11_invoices = 'bolt11_invoices.json', // Saved/read from JS
 }
 
 export enum ELdkData {
 	channel_manager = 'channel_manager',
 	channel_monitors = 'channel_monitors',
 	peers = 'peers',
-	confirmed_transactions = 'confirmed_transactions',
-	confirmed_outputs = 'confirmed_outputs',
+	unconfirmed_transactions = 'unconfirmed_transactions',
 	broadcasted_transactions = 'broadcasted_transactions',
 	payment_ids = 'payment_ids',
 	timestamp = 'timestamp',
+	spendable_outputs = 'spendable_outputs',
+	payments_claimed = 'payments_claimed',
+	payments_sent = 'payments_sent',
+	bolt11_invoices = 'bolt11_invoices',
 }
 
 export type TLdkData = {
 	[ELdkData.channel_manager]: string;
 	[ELdkData.channel_monitors]: { [key: string]: string };
 	[ELdkData.peers]: TLdkPeers;
-	[ELdkData.confirmed_transactions]: TLdkConfirmedTransactions;
-	[ELdkData.confirmed_outputs]: TLdkConfirmedOutputs;
+	[ELdkData.unconfirmed_transactions]: TLdkUnconfirmedTransactions;
 	[ELdkData.broadcasted_transactions]: TLdkBroadcastedTransactions;
 	[ELdkData.payment_ids]: TLdkPaymentIds;
 	[ELdkData.timestamp]: number;
+	[ELdkData.spendable_outputs]: TLdkSpendableOutputs;
+	[ELdkData.payments_claimed]: TChannelManagerClaim[];
+	[ELdkData.payments_sent]: TChannelManagerPaymentSent[];
+	[ELdkData.bolt11_invoices]: TBolt11Invoices;
 };
 
 export type TAccountBackup = {
@@ -467,38 +497,47 @@ export type TAccountBackup = {
 
 export type TLdkPeers = TPeer[];
 
-export type TLdkConfirmedTransactions = string[];
+export type TLdkUnconfirmedTransaction = TTransactionData & {
+	txid: string;
+	script_pubkey: string;
+};
 
-export type TLdkConfirmedOutputs = string[];
+export type TLdkUnconfirmedTransactions = TLdkUnconfirmedTransaction[];
 
 export type TLdkBroadcastedTransactions = string[];
 
 export type TLdkPaymentIds = string[];
 
+export type TBolt11Invoices = string[];
+
+export type TLdkSpendableOutputs = string[];
+
 export const DefaultLdkDataShape: TLdkData = {
 	[ELdkData.channel_manager]: '',
 	[ELdkData.channel_monitors]: {},
 	[ELdkData.peers]: [],
-	[ELdkData.confirmed_transactions]: [],
-	[ELdkData.confirmed_outputs]: [],
+	[ELdkData.unconfirmed_transactions]: [],
 	[ELdkData.broadcasted_transactions]: [],
 	[ELdkData.payment_ids]: [],
 	[ELdkData.timestamp]: 0,
+	[ELdkData.spendable_outputs]: [],
+	[ELdkData.payments_claimed]: [],
+	[ELdkData.payments_sent]: [],
+	[ELdkData.bolt11_invoices]: [],
 };
-
-export type TAvailableNetworks =
-	| 'bitcoin'
-	| 'bitcoinTestnet'
-	| 'bitcoinRegtest';
 
 export type TAccount = {
 	name: string;
 	seed: string;
 };
 
+type TForceCloseOnStartup = {
+	forceClose: boolean;
+	broadcastLatestTx: boolean;
+};
+
 export type TLdkStart = {
 	account: TAccount;
-	genesisHash: string;
 	getBestBlock: TGetBestBlock;
 	getTransactionData: TGetTransactionData;
 	getTransactionPosition: TGetTransactionPosition;
@@ -507,7 +546,10 @@ export type TLdkStart = {
 	getFees: TGetFees;
 	broadcastTransaction: TBroadcastTransaction;
 	network: ENetworks;
+	rapidGossipSyncUrl?: string;
+	forceCloseOnStartup?: TForceCloseOnStartup;
 	userConfig?: TUserConfig;
+	trustedZeroConfPeers?: string[];
 };
 
 export type TGetAddress = () => Promise<string>;
@@ -523,3 +565,17 @@ export type TBroadcastTransaction = (rawTx: string) => Promise<any>;
 export type TGetFees = () => Promise<TFeeUpdateReq>;
 
 export type TVout = { hex: string; n: number; value: number };
+
+export type TReconstructAndSpendOutputsReq = {
+	outputScriptPubKey: string;
+	outputValue: number;
+	outpointTxId: string;
+	outpointIndex: number;
+	feeRate: number;
+	changeDestinationScript: string;
+};
+
+export type TNodeSignReq = {
+	message: string;
+	messagePrefix?: string;
+};

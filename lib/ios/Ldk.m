@@ -21,7 +21,7 @@ RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
 RCT_EXTERN_METHOD(initUserConfig:(NSDictionary *)userConfig
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)genesisHash
+RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)network
                   rapidGossipSyncUrl:(NSString *)rapidGossipSyncUrl
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
@@ -30,13 +30,16 @@ RCT_EXTERN_METHOD(initChannelManager:(NSString *)network
                   blockHeight:(NSInteger *)blockHeight
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(reset:(RCTPromiseResolveBlock)resolve
+RCT_EXTERN_METHOD(restart:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(stop:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
 //MARK: Update methods
 RCT_EXTERN_METHOD(updateFees:(NSInteger *)high
                   normal:(NSInteger *)normal
                   low:(NSInteger *)low
+                  mempoolMinimum:(NSInteger *)mempoolMinimum
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setLogLevel:(NSString *)level
@@ -44,6 +47,7 @@ RCT_EXTERN_METHOD(setLogLevel:(NSString *)level
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(syncToTip:(NSString *)header
+                  blockHash:(NSString *)blockHash
                   height:(NSInteger *)height
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
@@ -61,9 +65,17 @@ RCT_EXTERN_METHOD(setTxConfirmed:(NSString *)header
 RCT_EXTERN_METHOD(setTxUnconfirmed:(NSString *)txId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(acceptChannel:(NSString *)temporaryChannelId
+                  counterPartyNodeId:(NSString *)counterPartyNodeId
+                  trustedPeer0Conf:(BOOL *)trustedPeer0Conf
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(closeChannel:(NSString *)channelId
                   counterPartyNodeId:(NSString *)counterPartyNodeId
                   force:(BOOL *)force
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(forceCloseAllChannels:(BOOL *)broadcastLatestTx
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(spendOutputs:(NSArray *)descriptorsSerialized
@@ -106,17 +118,7 @@ RCT_EXTERN_METHOD(decode:(NSString *)paymentRequest
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(pay:(NSString *)paymentRequest
                   amountSats:(NSInteger *)amountSats
-                  resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(payWithRoute:(NSArray *)route
-                  destinationNodeId:(NSString *)destinationNodeId
-                  amountSats:(NSInteger *)amountSats
-                  cltvExpiryDelta:(NSInteger *)cltvExpiryDelta
-                  paymentHash:(NSString *)paymentHash
-                  paymentSecret:(NSString *)paymentSecret
-                  resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
-RCT_EXTERN_METHOD(payWithRoute2:(NSString *)payReq
+                  timeoutSeconds:(NSInteger *)timeoutSeconds
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(abandonPayment:(NSString *)paymentId
@@ -143,6 +145,17 @@ RCT_EXTERN_METHOD(writeToFile:(NSString *)fileName
 RCT_EXTERN_METHOD(readFromFile:(NSString *)fileName
                   path:(NSString *)path
                   format:(NSString *)format
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(reconstructAndSpendOutputs:(NSString *)outputScriptPubKey
+                  outputValue:(NSInteger *)outputValue
+                  outpointTxId:(NSString *)outpointTxId
+                  outpointIndex:(NSInteger *)outpointIndex
+                  feeRate:(NSInteger *)feeRate
+                  changeDestinationScript:(NSString *)changeDestinationScript
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(nodeSign:(NSString *)message
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 @end

@@ -15,10 +15,8 @@ import {
 	TInitChannelManagerReq,
 	TLogListener,
 	TPaymentReq,
-	TSyncTipReq,
 	TCreatePaymentReq,
 	TSetTxConfirmedReq,
-	TSetTxUnconfirmedReq,
 	TInitNetworkGraphReq,
 	TCloseChannelReq,
 	TSpendOutputsReq,
@@ -31,6 +29,10 @@ import {
 	TPaymentRoute,
 	TPaymentHop,
 	TUserConfig,
+	TReconstructAndSpendOutputsReq,
+	THeader,
+	TAcceptChannelReq,
+	TNodeSignReq,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -110,42 +112,21 @@ class LDK {
 	}
 
 	/**
-	 * Accepts array of hex encoded channel monitors from storage.
-	 * If blank array is set then initChannelManager will init new channelManager.
-	 * @param channelMonitors
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
-	 */
-	async loadChannelMonitors(
-		channelMonitors: string[],
-	): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.loadChannelMonitors(channelMonitors);
-			this.writeDebugToLog(
-				'loadChannelMonitors',
-				`Loaded ${channelMonitors.length} monitors`,
-			);
-			return ok(res);
-		} catch (e) {
-			this.writeErrorToLog('loadChannelMonitors', e);
-			return err(e);
-		}
-	}
-
-	/**
-	 * Inits the network graph from previous cache or syncs from scratch using genesis block hash.
+	 * Inits the network graph from previous cache or syncs from scratch.
 	 * By passing in rapidGossipSyncUrl p2p gossip sync will be disabled in favor out rapid gossip sync.
 	 * For local regtest p2p works fine but for mainnet it is better to enable rapid gossip sync.
 	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetworkGraph.html
-	 * @param genesisHash
+	 * @param network
+	 * @param rapidGossipSyncUrl
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async initNetworkGraph({
-		genesisHash,
+		network,
 		rapidGossipSyncUrl,
 	}: TInitNetworkGraphReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initNetworkGraph(
-				genesisHash,
+				network,
 				rapidGossipSyncUrl ?? '',
 			);
 			this.writeDebugToLog(
@@ -186,11 +167,8 @@ class LDK {
 	 * Accepts array of hex encoded channel manager and channel monitors from storage.
 	 * NOTE: If empty channelManagerSerialized string then initChannelManager will create a new channel manager.
 	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/index.html
-	 * @param network
-	 * @param channelManagerSerialized
-	 * @param channelMonitorsSerialized
-	 * @param bestBlock
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {TInitChannelManagerReq} data
+	 * @returns {Promise<Result<string>>}
 	 */
 	async initChannelManager(
 		data: TInitChannelManagerReq,
@@ -211,16 +189,33 @@ class LDK {
 	}
 
 	/**
+	 * Safely shutdown node and start it up again with the exact same params as it was initially started with.
+	 * Useful for refreshing the TCP peer handler near instantly.
+	 * lightning-manager.ts will receive an event to confirm the restart and then re add peers and sync the node.
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async restart(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.restart();
+			this.writeDebugToLog('restart');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('restart', e);
+			return err(e);
+		}
+	}
+
+	/**
 	 * Unsets all LDK components. Can be used to safely shutdown node.
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async reset(): Promise<Result<string>> {
+	async stop(): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.reset();
-			this.writeDebugToLog('reset');
+			const res = await NativeLDK.stop();
+			this.writeDebugToLog('stop');
 			return ok(res);
 		} catch (e) {
-			this.writeErrorToLog('reset', e);
+			this.writeErrorToLog('stop', e);
 			return err(e);
 		}
 	}
@@ -246,9 +241,8 @@ class LDK {
 
 	/**
 	 * If set will write all LDK logging to file.
-	 * @param level
-	 * @param active
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {string} path
+	 * @returns {Promise<Result<string>>}
 	 */
 	async setLogFilePath(path: string): Promise<Result<string>> {
 		try {
@@ -261,17 +255,18 @@ class LDK {
 
 	/**
 	 * Write a line to current LDK log file
-	 * @param line
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {'error' | 'info' | 'debug'} type
+	 * @param {string} line
+	 * @returns {Promise<Result<string>>}
 	 */
 	async writeToLogFile(
 		type: 'error' | 'info' | 'debug',
 		line: string,
 	): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.writeToLogFile(
-				`${type.toUpperCase()} (JS): ${line}`,
-			);
+			const writeLine = `${type.toUpperCase()} (JS): ${line}`;
+			console.log(writeLine);
+			const res = await NativeLDK.writeToLogFile(writeLine);
 			return ok(res);
 		} catch (e) {
 			return err(e);
@@ -303,15 +298,22 @@ class LDK {
 
 	/**
 	 * Provide fee rate information on a number of time horizons.
+	 * Values are in satoshis per byte but are represented as satoshis per 1000 weight units
 	 * https://docs.rs/lightning/latest/lightning/chain/chaininterface/enum.ConfirmationTarget.html
-	 * @param high
-	 * @param normal
+	 * Re https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html#tymethod.get_est_sat_per_1000_weight
+	 * @param fees
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async updateFees(fees: TFeeUpdateReq): Promise<Result<string>> {
-		const { highPriority, normal, background } = fees;
+		const { highPriority, normal, background, mempoolMinimum } = fees;
 		try {
-			const res = await NativeLDK.updateFees(highPriority, normal, background);
+			const satsPerKw = 250;
+			const res = await NativeLDK.updateFees(
+				highPriority * satsPerKw,
+				normal * satsPerKw,
+				background * satsPerKw,
+				mempoolMinimum * satsPerKw,
+			);
 			this.writeDebugToLog('updateFees', fees);
 			return ok(res);
 		} catch (e) {
@@ -322,14 +324,13 @@ class LDK {
 
 	/**
 	 * Sets current best block on channelManager and chainMonitor
-	 * @param header
-	 * @param height
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {THeader} tip
+	 * @returns {Promise<Result<string>>}
 	 */
-	async syncToTip(tip: TSyncTipReq): Promise<Result<string>> {
-		const { header, height } = tip;
+	async syncToTip(tip: THeader): Promise<Result<string>> {
+		const { hex, hash, height } = tip;
 		try {
-			const res = await NativeLDK.syncToTip(header, height);
+			const res = await NativeLDK.syncToTip(hex, hash, height);
 			this.writeDebugToLog('syncToTip', tip);
 			return ok(res);
 		} catch (e) {
@@ -340,11 +341,8 @@ class LDK {
 
 	/**
 	 * Connect to remote peer
-	 * @param pubKey
-	 * @param address
-	 * @param port
-	 * @param timeout (Android only)
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {TAddPeerReq} peer
+	 * @returns {Promise<Result<string>>}
 	 */
 	async addPeer(peer: TAddPeerReq): Promise<Result<string>> {
 		const { pubKey, address, port, timeout } = peer;
@@ -360,10 +358,9 @@ class LDK {
 
 	/**
 	 * Updates a watched transaction as confirmed
-	 * @param txId
-	 * @param transaction
+	 * @param header
+	 * @param txData
 	 * @param height
-	 * @param pos
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async setTxConfirmed({
@@ -383,14 +380,12 @@ class LDK {
 
 	/**
 	 * Updates a watched transaction as unconfirmed in the event of a reorg
-	 * @param txId
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param {string} txid
+	 * @returns {Promise<Result<string>>}
 	 */
-	async setTxUnconfirmed({
-		txId,
-	}: TSetTxUnconfirmedReq): Promise<Result<string>> {
+	async setTxUnconfirmed(txid: string): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.setTxUnconfirmed(txId);
+			const res = await NativeLDK.setTxUnconfirmed(txid);
 			this.writeDebugToLog('setTxUnconfirmed');
 			return ok(res);
 		} catch (e) {
@@ -445,6 +440,51 @@ class LDK {
 	}
 
 	/**
+	 * Force close all channels
+	 * @param broadcastLatestTx
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async forceCloseAllChannels(
+		broadcastLatestTx: boolean,
+	): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.forceCloseAllChannels(broadcastLatestTx);
+			this.writeDebugToLog('forceCloseAllChannels');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('forceCloseAllChannels', e);
+			return err(e);
+		}
+	}
+
+	/**
+	 * Accepts an incoming channel open request.
+	 * Set trustedPeer0Conf to true ONLY if you trust the peer's zero conf channel.
+	 * @param temporaryChannelId
+	 * @param counterPartyNodeId
+	 * @param userChannelId
+	 * @param trustedPeer0Conf
+	 */
+	async acceptChannel({
+		temporaryChannelId,
+		counterPartyNodeId,
+		trustedPeer0Conf,
+	}: TAcceptChannelReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.acceptChannel(
+				temporaryChannelId,
+				counterPartyNodeId,
+				trustedPeer0Conf,
+			);
+			this.writeDebugToLog('closeChannel');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('closeChannel', e);
+			return err(e);
+		}
+	}
+
+	/**
 	 * Use LDK key manager to spend spendable outputs
 	 * https://docs.rs/lightning/latest/lightning/chain/keysinterface/struct.KeysManager.html#method.spend_spendable_outputs
 	 * @param descriptors
@@ -477,7 +517,7 @@ class LDK {
 	/**
 	 * Decodes a bolt11 payment request
 	 * @param paymentRequest
-	 * @returns {Promise<Ok<any> | Err<unknown>>}
+	 * @returns {Promise<Result<TInvoice>>}
 	 */
 	async decode({ paymentRequest }: TPaymentReq): Promise<Result<TInvoice>> {
 		const cleanedPaymentRequest = extractPaymentRequest(paymentRequest);
@@ -493,8 +533,9 @@ class LDK {
 
 	/**
 	 * Creates bolt11 payment request
-	 * @param amountSats
-	 * @param description
+	 * @param {number | undefined} amountSats
+	 * @param {string} description
+	 * @param {number} expiryDeltaSeconds
 	 * @returns {Promise<Ok<Ok<TInvoice> | Err<TInvoice>> | Err<unknown>>}
 	 */
 	async createPaymentRequest({
@@ -510,6 +551,7 @@ class LDK {
 				expiryDeltaSeconds,
 			);
 			this.writeDebugToLog('createPaymentRequest');
+
 			return ok(res);
 		} catch (e) {
 			this.writeErrorToLog('createPaymentRequest', e);
@@ -556,6 +598,7 @@ class LDK {
 	async pay({
 		paymentRequest: anyPaymentRequest,
 		amountSats,
+		timeout = 20000,
 	}: TPaymentReq): Promise<Result<string>> {
 		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
 
@@ -568,7 +611,12 @@ class LDK {
 		}
 
 		try {
-			const res = await NativeLDK.pay(paymentRequest, amountSats || 0);
+			const timeoutSeconds = timeout / 1000; //Rust demands seconds
+			const res = await NativeLDK.pay(
+				paymentRequest,
+				amountSats || 0,
+				timeoutSeconds,
+			);
 			this.writeDebugToLog('pay');
 			return ok(res);
 		} catch (e) {
@@ -744,62 +792,6 @@ class LDK {
 	}
 
 	/**
-	 * Builds a custom route to ensure a direct path if only 1 hop is required.
-	 * Experimental and shouldn't be required to use if LDK is routing correctly.
-	 * Only available on iOS for now.
-	 * @param paymentRequest
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
-	 */
-	async payWithRoute({
-		paymentRequest: anyPaymentRequest,
-		amountSats,
-	}: TPaymentReq): Promise<Result<string>> {
-		if (Platform.OS !== 'ios') {
-			return err('Currently only working on iOS');
-		}
-
-		const paymentRequest = extractPaymentRequest(anyPaymentRequest);
-		const decodeRes = await this.decode({ paymentRequest });
-		if (decodeRes.isErr()) {
-			return err(decodeRes.error);
-		}
-
-		const routeRes = await this.buildPathToDestination({
-			paymentRequest,
-			amountSats,
-		});
-		if (routeRes.isErr()) {
-			return err(routeRes.error);
-		}
-
-		const {
-			recover_payee_pub_key,
-			payment_secret,
-			payment_hash,
-			amount_satoshis,
-			min_final_cltv_expiry,
-		} = decodeRes.value;
-
-		const sats = amount_satoshis || amountSats; //TODO validate
-
-		try {
-			const res = await NativeLDK.payWithRoute(
-				routeRes.value,
-				recover_payee_pub_key,
-				sats,
-				min_final_cltv_expiry,
-				payment_hash,
-				payment_secret,
-			);
-			this.writeDebugToLog('pay');
-			return ok(res);
-		} catch (e) {
-			this.writeErrorToLog('pay', e);
-			return err(e);
-		}
-	}
-
-	/**
 	 * Abandons a payment
 	 * @param paymentId
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
@@ -962,8 +954,7 @@ class LDK {
 
 	/**
 	 * Fetches full list of nodes and their details
-	 * @param nodeId
-	 * @returns {Promise<Ok<Ok<TNetworkGraphChannelInfo> | Err<string>> | Err<unknown>>}
+	 * @returns {Promise<Result<TNetworkGraphNodeInfo[]>>}
 	 */
 	async completeGraphNodes(): Promise<Result<TNetworkGraphNodeInfo[]>> {
 		try {
@@ -1029,8 +1020,7 @@ class LDK {
 
 	/**
 	 * Fetches full list of channels and their details
-	 * @param shortChannelId
-	 * @returns {Promise<Ok<Ok<TNetworkGraphChannelInfo> | Err<string>> | Err<unknown>>}
+	 * @returns {Promise<Result<TNetworkGraphChannelInfo[]>>}
 	 */
 	async completeGraphChannels(): Promise<Result<TNetworkGraphChannelInfo[]>> {
 		try {
@@ -1135,6 +1125,63 @@ class LDK {
 			return ok({ ...res, timestamp: Math.round(res.timestamp) });
 		} catch (e) {
 			this.writeErrorToLog('readFromFile', e);
+			return err(e);
+		}
+	}
+
+	/**
+	 * Rebuilds a transaction when the spendable output was not previously saved.
+	 * Returns the raw transaction hex.
+	 * @param outputScriptPubKey
+	 * @param outputValue
+	 * @param outpointTxId
+	 * @param outpointIndex
+	 * @param feeRate
+	 * @param changeDestinationScript
+	 * @returns {Promise<Ok<string> | Err<unknown>>}
+	 */
+	async reconstructAndSpendOutputs({
+		outputScriptPubKey,
+		outputValue,
+		outpointTxId,
+		outpointIndex,
+		feeRate,
+		changeDestinationScript,
+	}: TReconstructAndSpendOutputsReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.reconstructAndSpendOutputs(
+				outputScriptPubKey,
+				outputValue,
+				outpointTxId,
+				outpointIndex,
+				feeRate,
+				changeDestinationScript,
+			);
+			this.writeDebugToLog('reconstructAndSpendOutputs', res);
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('reconstructAndSpendOutputs', e);
+			return err(e);
+		}
+	}
+
+	/**
+	 * Creates a digital signature of a message the node's secret key.
+	 * A receiver knowing the PublicKey (e.g. the node's id) and the message can be sure that the signature was generated by the caller.
+	 * Signatures are EC recoverable, meaning that given the message and the signature the PublicKey of the signer can be extracted.
+	 * @param message
+	 * @param messagePrefix
+	 */
+	async nodeSign({
+		message,
+		messagePrefix = 'Lightning Signed Message:',
+	}: TNodeSignReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.nodeSign(`${messagePrefix}${message}`);
+			this.writeDebugToLog('nodeSign', res);
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('nodeSign', e);
 			return err(e);
 		}
 	}

@@ -42,24 +42,6 @@ export const getBlockHeader = async (): Promise<THeader> => {
 };
 
 /**
- * Returns the block hash for the provided height and network.
- * @param {number} [height]
- * @returns {Promise<Result<string>>}
- */
-export const getBlockHashFromHeight = async ({
-	height = 0,
-}: {
-	height?: number;
-}): Promise<Result<string>> => {
-	const response = await getBlockHex({ height });
-	if (response.isErr()) {
-		return err(response.error.message);
-	}
-	const blockHash = await getBlockHashFromHex({ blockHex: response.value });
-	return ok(blockHash);
-};
-
-/**
  * Returns the block hex of the provided block height.
  * @param {number} [height]
  * @returns {Promise<Result<string>>}
@@ -125,7 +107,7 @@ export const subscribeToHeader = async ({
 		network: selectedNetwork,
 		onReceive: async (data) => {
 			const hex = data[0].hex;
-			const hash = getBlockHashFromHex({ blockHex: hex });
+			const hash = await getBlockHashFromHex({ blockHex: hex });
 			const header = { ...data[0], hash };
 			await updateHeader({
 				header,

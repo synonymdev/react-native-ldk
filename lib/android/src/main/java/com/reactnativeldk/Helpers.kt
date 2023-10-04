@@ -1,5 +1,8 @@
 package com.reactnativeldk
 import com.facebook.react.bridge.*
+import org.json.JSONObject
+import org.ldk.enums.Currency
+import org.ldk.enums.Network
 import org.ldk.structs.*
 import java.io.File
 import java.io.FileOutputStream
@@ -35,7 +38,7 @@ fun String.hexa(): ByteArray {
 }
 
 fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Logger): ProbabilisticScorer? {
-    val params = ProbabilisticScoringParameters.with_default()
+    val params = ProbabilisticScoringDecayParameters.with_default()
 
     val scorerFile = File(path + "/" + LdkFileNames.scorer.fileName)
     if (scorerFile.exists()) {
@@ -59,7 +62,7 @@ fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Log
     return (score_res as Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK).res
 }
 
-val Invoice.asJson: WritableMap
+val Bolt11Invoice.asJson: WritableMap
     get() {
         val result = Arguments.createMap()
         val signedInv = into_signed_raw()
@@ -71,14 +74,14 @@ val Invoice.asJson: WritableMap
         result.putBoolean("is_expired",  is_expired)
         result.putInt("duration_since_epoch",  duration_since_epoch().toInt())
         result.putInt("expiry_time",  expiry_time().toInt())
-        result.putInt("min_final_cltv_expiry",  min_final_cltv_expiry().toInt())
+        result.putInt("min_final_cltv_expiry",  min_final_cltv_expiry_delta().toInt())
         result.putHexString("payee_pub_key", rawInvoice.payee_pub_key()?._a)
         result.putHexString("recover_payee_pub_key", recover_payee_pub_key())
         result.putHexString("payment_hash", payment_hash())
         result.putHexString("payment_secret", payment_secret())
         result.putInt("timestamp", timestamp().toInt())
         result.putHexString("features", features()?.write())
-        result.putInt("currency", currency().ordinal)
+        result.putString("currency", currencyString(currency()))
         result.putString("to_str", signedInv.to_str())
 
         val hints = Arguments.createArray()
@@ -132,6 +135,9 @@ val ChannelDetails.asJson: WritableMap
         (_force_close_spend_delay as? Option_u16Z.Some)?.some?.toInt()
             ?.let { result.putInt("force_close_spend_delay", it) }
         result.putInt("unspendable_punishment_reserve", (_unspendable_punishment_reserve as Option_u64Z.Some).some.toInt())
+        result.putInt("config_forwarding_fee_base_msat", (_config?._forwarding_fee_base_msat ?: 0))
+        result.putInt("config_forwarding_fee_proportional_millionths", (_config?._forwarding_fee_proportional_millionths ?: 0))
+        result.putInt("confirmations", (_confirmations_required as Option_u32Z.Some).some)
 
         return result
     }
@@ -169,8 +175,6 @@ val NodeInfo.asJson: WritableMap
         val shortChannelIds = Arguments.createArray()
         _channels.iterator().forEach { shortChannelIds.pushString(it.toString()) }
         result.putArray("shortChannelIds", shortChannelIds)
-        result.putInt("lowest_inbound_channel_fees_base_sat", (_lowest_inbound_channel_fees?._base_msat ?: 0) / 1000)
-        result.putInt("lowest_inbound_channel_fees_proportional_millionths", _lowest_inbound_channel_fees?._proportional_millionths ?: 0)
         result.putDouble("announcement_info_last_update", (_announcement_info?._last_update ?: 0).toDouble() * 1000)
         return result
     }
@@ -218,7 +222,7 @@ fun RapidGossipSync.downloadAndUpdateGraph(downloadUrl: String, tempStoragePath:
             return@downloadFile completion(it)
         }
 
-        val res = update_network_graph(File(destinationFile).readBytes())
+        val res = update_network_graph_no_std(File(destinationFile).readBytes(), Option_u64Z.some((System.currentTimeMillis() / 1000)))
         if (!res.is_ok()) {
             val error = res as? Result_u32GraphSyncErrorZ.Result_u32GraphSyncErrorZ_Err
 
@@ -278,6 +282,12 @@ fun ChannelHandshakeConfig.mergeWithMap(map: ReadableMap?): ChannelHandshakeConf
     try {
         _their_channel_reserve_proportional_millionths = map.getInt("their_channel_reserve_proportional_millionths")
     } catch (_: Exception) {}
+    try {
+        _negotiate_anchors_zero_fee_htlc_tx = map.getBoolean("negotiate_anchors_zero_fee_htlc_tx")
+    } catch (_: Exception) {}
+    try {
+        _our_max_accepted_htlcs = map.getInt("our_max_accepted_htlcs_arg").toShort()
+    } catch (_: Exception) {}
 
     return this
 }
@@ -336,10 +346,17 @@ fun ChannelConfig.mergeWithMap(map: ReadableMap?): ChannelConfig {
         _cltv_expiry_delta = map.getInt("cltv_expiry_delta").toShort()
     } catch (_: Exception) {}
     try {
-        _max_dust_htlc_exposure_msat = map.getInt("max_dust_htlc_exposure_msat").toLong()
+        if (map.getString("max_dust_htlc_exposure_type") == "fixed_limit") {
+            _max_dust_htlc_exposure = MaxDustHTLCExposure.fixed_limit_msat(map.getInt("max_dust_htlc_exposure").toLong())
+        } else if (map.getString("max_dust_htlc_exposure_type") == "fee_rate_multiplier") {
+            _max_dust_htlc_exposure = MaxDustHTLCExposure.fee_rate_multiplier(map.getInt("max_dust_htlc_exposure").toLong())
+        }
     } catch (_: Exception) {}
     try {
         _force_close_avoidance_max_fee_satoshis = map.getInt("force_close_avoidance_max_fee_satoshis").toLong()
+    } catch (_: Exception) {}
+    try {
+        _accept_underpaying_htlcs = map.getBoolean("_accept_underpaying_htlcs")
     } catch (_: Exception) {}
 
     return this
@@ -366,5 +383,45 @@ fun UserConfig.mergeWithMap(map: ReadableMap): UserConfig {
         _accept_intercept_htlcs = map.getBoolean("accept_intercept_htlcs")
     } catch (_: Exception) {}
 
+    try {
+        _accept_mpp_keysend = map.getBoolean("accept_mpp_keysend")
+    } catch (_: Exception) {}
+
     return this
+}
+
+/// Helper for returning real network and currency as a tuple from a string
+fun getNetwork(chain: String): Pair<Network, Currency> {
+    return when (chain) {
+        "bitcoin" -> Pair(Network.LDKNetwork_Bitcoin, Currency.LDKCurrency_Bitcoin)
+        "testnet" -> Pair(Network.LDKNetwork_Testnet, Currency.LDKCurrency_BitcoinTestnet)
+        "regtest" -> Pair(Network.LDKNetwork_Regtest, Currency.LDKCurrency_Regtest)
+        "signet" -> Pair(Network.LDKNetwork_Signet, Currency.LDKCurrency_Signet)
+        else -> Pair(Network.LDKNetwork_Bitcoin, Currency.LDKCurrency_Bitcoin)
+    }
+}
+
+fun currencyString(currency: Currency): String {
+    return when (currency) {
+        Currency.LDKCurrency_Bitcoin -> "Bitcoin"
+        Currency.LDKCurrency_BitcoinTestnet -> "BitcoinTestnet"
+        Currency.LDKCurrency_Regtest -> "Regtest"
+        Currency.LDKCurrency_Simnet -> "Simnet"
+        Currency.LDKCurrency_Signet -> "Signet"
+        else -> "Unknown"
+    }
+}
+
+fun mergeObj(obj1: JSONObject, obj2: HashMap<String, Any>): HashMap<String, Any> {
+    val newObj = HashMap<String, Any>()
+
+    obj1.keys().forEach { key ->
+        newObj[key] = obj1[key]
+    }
+
+    obj2.keys.forEach { key ->
+        newObj[key] = obj2[key]!!
+    }
+
+    return newObj
 }

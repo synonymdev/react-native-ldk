@@ -11,16 +11,16 @@ import org.ldk.enums.Network
 import org.ldk.impl.bindings.get_ldk_c_bindings_version
 import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
-import org.ldk.structs.Result_InvoiceParseOrSemanticErrorZ.Result_InvoiceParseOrSemanticErrorZ_OK
-import org.ldk.structs.Result_InvoiceSignOrCreationErrorZ.Result_InvoiceSignOrCreationErrorZ_OK
-import org.ldk.structs.Result_ProbabilisticScorerDecodeErrorZ.Result_ProbabilisticScorerDecodeErrorZ_OK
+import org.ldk.structs.Result_Bolt11InvoiceParseOrSemanticErrorZ.Result_Bolt11InvoiceParseOrSemanticErrorZ_OK
+import org.ldk.structs.Result_Bolt11InvoiceSignOrCreationErrorZ.Result_Bolt11InvoiceSignOrCreationErrorZ_OK
+import org.ldk.structs.Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_OK
+import org.ldk.structs.Result_StringErrorZ.Result_StringErrorZ_OK
+import org.ldk.util.UInt128
 import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 
 
 //MARK: ************Replicate in typescript and swift************
@@ -45,7 +45,8 @@ enum class EventTypes {
     channel_manager_payment_claimed,
     emergency_force_close_channel,
     new_channel,
-    network_graph_updated
+    network_graph_updated,
+    channel_manager_restarted
 }
 //*****************************************************************
 
@@ -70,7 +71,6 @@ enum class LdkErrors {
     invoice_payment_fail_must_specify_amount,
     invoice_payment_fail_must_not_specify_amount,
     invoice_payment_fail_invoice,
-    invoice_payment_fail_routing,
     invoice_payment_fail_sending,
     invoice_payment_fail_resend_safe,
     invoice_payment_fail_parameter_error,
@@ -80,7 +80,9 @@ enum class LdkErrors {
     invoice_create_failed,
     init_scorer_failed,
     channel_close_fail,
+    channel_accept_fail,
     spend_outputs_fail,
+    failed_signing_request,
     write_fail,
     read_fail,
     file_does_not_exist,
@@ -105,7 +107,9 @@ enum class LdkCallbackResponses {
     tx_set_unconfirmed,
     process_pending_htlc_forwards_success,
     claim_funds_success,
-    ldk_reset,
+    ldk_stop,
+    ldk_restart,
+    accept_channel_success,
     close_channel_success,
     file_write_success
 }
@@ -113,7 +117,9 @@ enum class LdkCallbackResponses {
 enum class LdkFileNames(val fileName: String) {
     network_graph("network_graph.bin"),
     channel_manager("channel_manager.bin"),
-    scorer("scorer.bin")
+    scorer("scorer.bin"),
+    paymentsClaimed("payments_claimed.json"),
+    paymentsSent("payments_sent.json"),
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -143,9 +149,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private var peerManager: PeerManager? = null
     private var peerHandler: NioPeerHandler? = null
     private var channelManagerConstructor: ChannelManagerConstructor? = null
-    private var invoicePayer: InvoicePayer? = null
     private var ldkNetwork: Network? = null
     private var ldkCurrency: Currency? = null
+
+    //Keep these in memory for restarting the channel manager constructor
+    private var currentNetwork: String? = null
+    private var currentBlockchainTipHash: String? = null
+    private var currentBlockchainHeight: Double? = null
 
     //Static to be accessed from other classes
     companion object {
@@ -162,10 +172,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun setAccountStoragePath(storagePath: String, promise: Promise) {
-        if (accountStoragePath != "") {
-            return handleReject(promise, LdkErrors.already_init)
-        }
-
         val accountStoragePath = File(storagePath)
         val channelStoragePath = File("$storagePath/channels/")
 
@@ -257,7 +263,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initNetworkGraph(genesisHash: String, rapidGossipSyncUrl: String, promise: Promise) {
+    fun initNetworkGraph(network: String, rapidGossipSyncUrl: String, promise: Promise) {
         if (networkGraph !== null) {
             return handleReject(promise, LdkErrors.already_init)
         }
@@ -270,8 +276,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         if (networkGraph == null) {
+            val ldkNetwork = getNetwork(network);
+            networkGraph = NetworkGraph.of(ldkNetwork.first, logger.logger)
+
             LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached network graph from disk. Will sync from scratch.")
-            networkGraph = NetworkGraph.of(genesisHash.hexa().reversedArray(), logger.logger)
         }
 
         //Normal p2p gossip sync
@@ -288,10 +296,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.create_storage_dir_fail, Error(e))
         }
 
-        rapidGossipSync = RapidGossipSync.of(networkGraph)
+        rapidGossipSync = RapidGossipSync.of(networkGraph, logger.logger)
 
         //If it's been more than 24 hours then we need to update RGS
-        var timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
+        val timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
         val hoursDiffSinceLastRGS = (System.currentTimeMillis() / 1000 - timestamp) / 60 / 60
         if (hoursDiffSinceLastRGS < 24) {
             LdkEventEmitter.send(EventTypes.native_log, "Skipping rapid gossip sync. Last updated $hoursDiffSinceLastRGS hours ago.")
@@ -351,23 +359,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.init_storage_path)
         }
 
-        when (network) {
-            "regtest" -> {
-                ldkNetwork = Network.LDKNetwork_Regtest
-                ldkCurrency = Currency.LDKCurrency_Regtest
-            }
-            "testnet" -> {
-                ldkNetwork = Network.LDKNetwork_Testnet
-                ldkCurrency = Currency.LDKCurrency_BitcoinTestnet
-            }
-            "mainnet" -> {
-                ldkNetwork = Network.LDKNetwork_Bitcoin
-                ldkCurrency = Currency.LDKCurrency_Bitcoin
-            }
-            else -> {
-                return handleReject(promise, LdkErrors.invalid_network)
-            }
-        }
+        ldkNetwork = getNetwork(network).first
+        ldkCurrency = getNetwork(network).second
+
+        val enableP2PGossip = rapidGossipSync == null
         
         var channelManagerSerialized: ByteArray? = null
         val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.channel_manager.fileName)
@@ -375,11 +370,23 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
            channelManagerSerialized = channelManagerFile.readBytes()
         }
 
+        //Scorer setup
+        val probabilisticScorer = getProbabilisticScorer(
+            accountStoragePath,
+            networkGraph!!,
+            logger.logger
+        ) ?: return handleReject(promise, LdkErrors.init_scorer_failed)
+
+        val scorer = MultiThreadedLockableScore.of(probabilisticScorer.as_Score())
+
+        val scoringParams = ProbabilisticScoringDecayParameters.with_default()
+        val scoringFeeParams = ProbabilisticScoringFeeParameters.with_default()
+
         try {
             if (channelManagerSerialized != null) {
                 //Restoring node
                 LdkEventEmitter.send(EventTypes.native_log, "Restoring node from disk")
-                var channelMonitors: MutableList<ByteArray> = arrayListOf()
+                val channelMonitors: MutableList<ByteArray> = arrayListOf()
                 Files.walk(Paths.get(channelStoragePath))
                     .filter { Files.isRegularFile(it) }
                     .forEach {
@@ -390,12 +397,18 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 channelManagerConstructor = ChannelManagerConstructor(
                     channelManagerSerialized,
                     channelMonitors.toTypedArray(),
-                    userConfig,
-                    keysManager!!.as_KeysInterface(),
+                    userConfig!!,
+                    keysManager!!.as_EntropySource(),
+                    keysManager!!.as_NodeSigner(),
+                    keysManager!!.as_SignerProvider(),
                     feeEstimator.feeEstimator,
-                    chainMonitor,
+                    chainMonitor!!,
                     filter.filter,
                     networkGraph!!.write(),
+                    scoringParams,
+                    scoringFeeParams,
+                    scorer.write(),
+                    null,
                     broadcaster.broadcaster,
                     logger.logger
                 )
@@ -407,10 +420,15 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     userConfig,
                     blockHash.hexa().reversedArray(),
                     blockHeight.toInt(),
-                    keysManager!!.as_KeysInterface(),
+                    keysManager!!.as_EntropySource(),
+                    keysManager!!.as_NodeSigner(),
+                    keysManager!!.as_SignerProvider(),
                     feeEstimator.feeEstimator,
                     chainMonitor,
                     networkGraph!!,
+                    scoringParams,
+                    scoringFeeParams,
+                    null,
                     broadcaster.broadcaster,
                     logger.logger,
                 )
@@ -421,26 +439,63 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         channelManager = channelManagerConstructor!!.channel_manager
 
-        //Scorer setup
-        val probabilisticScorer = getProbabilisticScorer(
-            accountStoragePath,
-            networkGraph!!,
-            logger.logger
-        ) ?: return handleReject(promise, LdkErrors.init_scorer_failed)
+        LogFile.write("Node ID: ${channelManager!!._our_node_id.hexEncodedString()}")
 
-        val scorer = MultiThreadedLockableScore.of(probabilisticScorer.as_Score())
-
-        channelManagerConstructor!!.chain_sync_completed(channelManagerPersister, scorer)
+        channelManagerConstructor!!.chain_sync_completed(channelManagerPersister, enableP2PGossip)
         peerManager = channelManagerConstructor!!.peer_manager
 
         peerHandler = channelManagerConstructor!!.nio_peer_handler
-        invoicePayer = channelManagerConstructor!!.payer
+
+        //Cached for restarts
+        currentNetwork = network
+        currentBlockchainTipHash = blockHash
+        currentBlockchainHeight = blockHeight
 
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
     }
+    @ReactMethod
+    fun restart(promise: Promise) {
+        if (channelManagerConstructor == null) {
+            return handleReject(promise, LdkErrors.init_channel_manager)
+        }
+
+        //Node was never started
+        val currentNetwork = currentNetwork ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        val currentBlockchainTipHash = currentBlockchainTipHash ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        val currentBlockchainHeight = currentBlockchainHeight ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        LdkEventEmitter.send(EventTypes.native_log, "Stopping LDK background tasks")
+
+        //Reset only objects created by initChannelManager
+        channelManagerConstructor?.interrupt()
+        channelManagerConstructor = null
+        channelManager = null
+        peerManager = null
+        peerHandler = null
+
+        LdkEventEmitter.send(EventTypes.native_log, "Starting LDK background tasks again")
+
+        val initPromise = PromiseImpl(
+            { resolve ->
+                LdkEventEmitter.send(EventTypes.channel_manager_restarted, "")
+                LdkEventEmitter.send(EventTypes.native_log, "LDK restarted successfully")
+                handleResolve(promise, LdkCallbackResponses.ldk_restart)
+        },
+            { reject ->
+                LdkEventEmitter.send(EventTypes.native_log, "Error restarting LDK. Error: $reject")
+                handleReject(promise, LdkErrors.unknown_error)
+        })
+
+        initChannelManager(
+            currentNetwork,
+            currentBlockchainTipHash,
+            currentBlockchainHeight,
+            initPromise
+        )
+    }
 
     @ReactMethod
-    fun reset(promise: Promise) {
+    fun stop(promise: Promise) {
         channelManagerConstructor?.interrupt()
         channelManagerConstructor = null
         chainMonitor = null
@@ -452,17 +507,15 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         peerHandler = null
         ldkNetwork = null
         ldkCurrency = null
-        accountStoragePath = ""
-        channelStoragePath = ""
 
-        handleResolve(promise, LdkCallbackResponses.ldk_reset)
+        handleResolve(promise, LdkCallbackResponses.ldk_stop)
     }
 
     //MARK: Update methods
 
     @ReactMethod
-    fun updateFees(high: Double, normal: Double, low: Double, promise: Promise) {
-        feeEstimator.update(high.toInt(), normal.toInt(), low.toInt())
+    fun updateFees(high: Double, normal: Double, low: Double, mempoolMinimum: Double, promise: Promise) {
+        feeEstimator.update(high.toInt(), normal.toInt(), low.toInt(), mempoolMinimum.toInt())
         handleResolve(promise, LdkCallbackResponses.fees_updated)
     }
 
@@ -473,7 +526,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun syncToTip(header: String, height: Double, promise: Promise) {
+    fun syncToTip(header: String, blockHash: String, height: Double, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
         chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
 
@@ -483,6 +536,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         } catch (e: Exception) {
             return handleReject(promise, LdkErrors.unknown_error, Error(e))
         }
+
+        //Used for quick restarts
+        currentBlockchainTipHash = blockHash
+        currentBlockchainHeight = height
 
         handleResolve(promise, LdkCallbackResponses.chain_sync_success)
     }
@@ -536,12 +593,52 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
+    fun acceptChannel(temporaryChannelId: String, counterPartyNodeId: String, trustedPeer0Conf: Boolean, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        val temporaryChannelId = temporaryChannelId.hexa()
+        val counterPartyNodeId = counterPartyNodeId.hexa()
+        val userChannelIdBytes = ByteArray(16)
+        Random().nextBytes(userChannelIdBytes)
+        val userChannelId = UInt128(userChannelIdBytes)
+
+        val res = if (trustedPeer0Conf)
+            channelManager!!.accept_inbound_channel_from_trusted_peer_0conf(temporaryChannelId, counterPartyNodeId, userChannelId)
+        else channelManager!!.accept_inbound_channel(temporaryChannelId, counterPartyNodeId, userChannelId)
+
+        if (!res.is_ok) {
+            val error = res as Result_NoneAPIErrorZ.Result_NoneAPIErrorZ_Err
+
+            if (error.err is APIError.APIMisuseError) {
+                return handleReject(promise, LdkErrors.channel_accept_fail, Error((error.err as APIError.APIMisuseError).err))
+            }
+
+            return handleReject(promise, LdkErrors.channel_accept_fail, Error(error.err.toString()))
+        }
+
+        handleResolve(promise, LdkCallbackResponses.accept_channel_success)
+    }
+
+    @ReactMethod
     fun closeChannel(channelId: String, counterpartyNodeId: String, force: Boolean, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
         val res = if (force) channelManager!!.force_close_broadcasting_latest_txn(channelId.hexa(), counterpartyNodeId.hexa()) else channelManager!!.close_channel(channelId.hexa(), counterpartyNodeId.hexa())
         if (!res.is_ok) {
             return handleReject(promise, LdkErrors.channel_close_fail)
+        }
+
+        handleResolve(promise, LdkCallbackResponses.close_channel_success)
+    }
+
+    @ReactMethod
+    fun forceCloseAllChannels(broadcastLatestTx: Boolean, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        if (broadcastLatestTx) {
+            channelManager!!.force_close_all_channels_broadcasting_latest_txn()
+        } else {
+            channelManager!!.force_close_all_channels_without_broadcasting_txn()
         }
 
         handleResolve(promise, LdkCallbackResponses.close_channel_success)
@@ -573,7 +670,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             ldkDescriptors.toTypedArray(),
             ldkOutputs.toTypedArray(),
             changeDestinationScript.hexa(),
-            feeRate.toInt()
+            feeRate.toInt(),
+            Option_PackedLockTimeZ.none()
         )
 
         if (!res.is_ok) {
@@ -586,25 +684,25 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     //MARK: Payments
     @ReactMethod
     fun decode(paymentRequest: String, promise: Promise) {
-        val parsed = Invoice.from_str(paymentRequest)
+        val parsed = Bolt11Invoice.from_str(paymentRequest)
         if (!parsed.is_ok) {
             return handleReject(promise, LdkErrors.decode_invoice_fail)
         }
 
-        val parsedInvoice = parsed as Result_InvoiceParseOrSemanticErrorZ_OK
+        val parsedInvoice = parsed as Result_Bolt11InvoiceParseOrSemanticErrorZ_OK
 
         promise.resolve(parsedInvoice.res.asJson)
     }
 
     @ReactMethod
-    fun pay(paymentRequest: String, amountSats: Double, promise: Promise) {
-        invoicePayer ?: return handleReject(promise, LdkErrors.init_invoice_payer)
+    fun pay(paymentRequest: String, amountSats: Double, timeoutSeconds: Double, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
-        val invoiceParse = Invoice.from_str(paymentRequest)
+        val invoiceParse = Bolt11Invoice.from_str(paymentRequest)
         if (!invoiceParse.is_ok) {
             return handleReject(promise, LdkErrors.decode_invoice_fail)
         }
-        val invoice = (invoiceParse as Result_InvoiceParseOrSemanticErrorZ_OK).res
+        val invoice = (invoiceParse as Result_Bolt11InvoiceParseOrSemanticErrorZ_OK).res
 
         val isZeroValueInvoice = invoice.amount_milli_satoshis() is Option_u64Z.None
 
@@ -619,9 +717,17 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         val res = if (isZeroValueInvoice)
-                invoicePayer!!.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000) else
-                invoicePayer!!.pay_invoice(invoice)
+            UtilMethods.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000, Retry.timeout(timeoutSeconds.toLong()), channelManager) else
+            UtilMethods.pay_invoice(invoice, Retry.timeout(timeoutSeconds.toLong()), channelManager)
         if (res.is_ok) {
+            channelManagerPersister.persistPaymentSent(hashMapOf(
+                "payment_id" to (res as Result_PaymentIdPaymentErrorZ_OK).res.hexEncodedString(),
+                "payment_hash" to invoice.payment_hash().hexEncodedString(),
+                "amount_sat" to if (isZeroValueInvoice) amountSats.toLong() else ((invoice.amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000),
+                "unix_timestamp" to (System.currentTimeMillis() / 1000).toInt(),
+                "state" to "pending"
+            ))
+
             return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
         }
 
@@ -630,11 +736,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val invoiceError = error?.err as? PaymentError.Invoice
         if (invoiceError != null) {
             return handleReject(promise, LdkErrors.invoice_payment_fail_invoice, Error(invoiceError.invoice))
-        }
-
-        val routingError = error?.err as? PaymentError.Routing
-        if (routingError != null) {
-            return handleReject(promise, LdkErrors.invoice_payment_fail_routing, Error(routingError.routing._err))
         }
 
         val sendingError = error?.err as? PaymentError.Sending
@@ -680,19 +781,20 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val res = UtilMethods.create_invoice_from_channelmanager(
             channelManager,
-            keysManager!!.as_KeysInterface(),
+            keysManager!!.as_NodeSigner(),
             logger.logger,
             ldkCurrency,
             if (amountSats == 0.0) Option_u64Z.none() else Option_u64Z.some((amountSats * 1000).toLong()),
             description,
-            expiryDelta.toInt()
+            expiryDelta.toInt(),
+            Option_u16Z.none()
         );
 
         if (res.is_ok) {
-            return promise.resolve((res as Result_InvoiceSignOrCreationErrorZ_OK).res.asJson)
+            return promise.resolve((res as Result_Bolt11InvoiceSignOrCreationErrorZ_OK).res.asJson)
         }
 
-        val error = res as Result_InvoiceSignOrCreationErrorZ
+        val error = res as Result_Bolt11InvoiceSignOrCreationErrorZ
         return handleReject(promise, LdkErrors.invoice_create_failed, Error(error.toString()))
     }
 
@@ -738,7 +840,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val res = Arguments.createArray()
         val list = peerManager!!._peer_node_ids
         list.iterator().forEach {
-            res.pushString(it.hexEncodedString())
+            res.pushString(it._a.hexEncodedString())
         }
 
         promise.resolve(res)
@@ -852,39 +954,39 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         chainMonitor.get_claimable_balances(ignoredChannels).iterator().forEach { balance ->
             val map = Arguments.createMap()
             //Defaults if all castings for balance fail
-            map.putInt("claimable_amount_satoshis", 0)
+            map.putInt("amount_satoshis", 0)
             map.putString("type", "Unknown")
 
             (balance as? Balance.ClaimableAwaitingConfirmations)?.let { claimableAwaitingConfirmations ->
-                map.putInt("claimable_amount_satoshis", claimableAwaitingConfirmations.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", claimableAwaitingConfirmations.amount_satoshis.toInt())
                 map.putInt("confirmation_height", claimableAwaitingConfirmations.confirmation_height)
                 map.putString("type", "ClaimableAwaitingConfirmations")
             }
 
             (balance as? Balance.ClaimableOnChannelClose)?.let { claimableOnChannelClose ->
-                map.putInt("claimable_amount_satoshis", claimableOnChannelClose.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", claimableOnChannelClose.amount_satoshis.toInt())
                 map.putString("type", "ClaimableOnChannelClose")
             }
 
             (balance as? Balance.ContentiousClaimable)?.let { contentiousClaimable ->
-                map.putInt("claimable_amount_satoshis", contentiousClaimable.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", contentiousClaimable.amount_satoshis.toInt())
                 map.putInt("timeout_height", contentiousClaimable.timeout_height)
                 map.putString("type", "ContentiousClaimable")
             }
 
             (balance as? Balance.CounterpartyRevokedOutputClaimable)?.let { counterpartyRevokedOutputClaimable ->
-                map.putInt("claimable_amount_satoshis", counterpartyRevokedOutputClaimable.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", counterpartyRevokedOutputClaimable.amount_satoshis.toInt())
                 map.putString("type", "CounterpartyRevokedOutputClaimable")
             }
 
             (balance as? Balance.MaybePreimageClaimableHTLC)?.let { maybePreimageClaimableHTLC ->
-                map.putInt("claimable_amount_satoshis", maybePreimageClaimableHTLC.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", maybePreimageClaimableHTLC.amount_satoshis.toInt())
                 map.putInt("expiry_height", maybePreimageClaimableHTLC.expiry_height)
                 map.putString("type", "MaybePreimageClaimableHTLC")
             }
 
             (balance as? Balance.MaybeTimeoutClaimableHTLC)?.let { maybeTimeoutClaimableHTLC ->
-                map.putInt("claimable_amount_satoshis", maybeTimeoutClaimableHTLC.claimable_amount_satoshis.toInt())
+                map.putInt("amount_satoshis", maybeTimeoutClaimableHTLC.amount_satoshis.toInt())
                 map.putInt("claimable_height", maybeTimeoutClaimableHTLC.claimable_height)
                 map.putString("type", "MaybeTimeoutClaimableHTLC")
             }
@@ -961,6 +1063,46 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         } catch (e: Exception) {
             return handleReject(promise, LdkErrors.read_fail, Error(e))
         }
+    }
+
+    @ReactMethod
+    fun reconstructAndSpendOutputs(outputScriptPubKey: String, outputValue: Double, outpointTxId: String, outpointIndex: Double, feeRate: Double, changeDestinationScript: String, promise: Promise) {
+        keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
+
+        val output = TxOut(outputValue.toLong(), outputScriptPubKey.hexa())
+        val outpoint = OutPoint.of(outpointTxId.hexa().reversedArray(), outpointIndex.toInt().toShort())
+        val descriptor = SpendableOutputDescriptor.static_output(outpoint, output)
+
+        val ldkDescriptors: MutableList<SpendableOutputDescriptor> = arrayListOf()
+        ldkDescriptors.add(descriptor)
+
+        val res = keysManager!!.spend_spendable_outputs(
+            ldkDescriptors.toTypedArray(),
+            emptyArray(),
+            changeDestinationScript.hexa(),
+            feeRate.toInt(),
+            Option_PackedLockTimeZ.none()
+        )
+
+        if (!res.is_ok) {
+            return handleReject(promise, LdkErrors.spend_outputs_fail)
+        }
+
+        promise.resolve((res as Result_TransactionNoneZ.Result_TransactionNoneZ_OK).res.hexEncodedString())
+    }
+
+
+    @ReactMethod
+    fun nodeSign(message: String, promise: Promise) {
+        keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
+
+        val res = UtilMethods.sign(message.toByteArray(Charsets.UTF_8), keysManager!!._node_secret_key)
+
+        if (!res.is_ok) {
+            return handleReject(promise, LdkErrors.failed_signing_request)
+        }
+
+        promise.resolve((res as Result_StringErrorZ_OK).res)
     }
 }
 

@@ -1,6 +1,10 @@
 import Keychain from 'react-native-keychain';
-import { TAccount, TAvailableNetworks } from '@synonymdev/react-native-ldk';
-import { getItem, setItem } from '../ldk';
+import {
+	EEventTypes,
+	TAccount,
+	TAvailableNetworks,
+} from '@synonymdev/react-native-ldk';
+import { backupAccount, getItem, importAccount, setItem } from '../ldk';
 import { EAccount } from './types';
 import { err, ok, Result } from './result';
 import { randomBytes } from 'react-native-randombytes';
@@ -10,6 +14,9 @@ import RNFS from 'react-native-fs';
 import * as bip32 from 'bip32';
 import * as bip39 from 'bip39';
 import { ENetworks } from '@synonymdev/react-native-ldk/dist/utils/types';
+import networks from '@synonymdev/react-native-ldk/dist/utils/networks';
+import ldk from '@synonymdev/react-native-ldk/dist/ldk';
+import Clipboard from '@react-native-clipboard/clipboard';
 
 /**
  * Use Keychain to save LDK name & seed.
@@ -119,13 +126,15 @@ export const getNetwork = (
 ): bitcoin.networks.Network => {
 	switch (network) {
 		case 'bitcoin':
-			return bitcoin.networks.bitcoin;
+			return networks.bitcoin;
 		case 'bitcoinTestnet':
-			return bitcoin.networks.testnet;
+			return networks.testnet;
 		case 'bitcoinRegtest':
-			return bitcoin.networks.regtest;
+			return networks.regtest;
+		case 'bitcoinSignet':
+			return networks.signet;
 		default:
-			return bitcoin.networks.regtest;
+			return networks.regtest;
 	}
 };
 
@@ -203,5 +212,82 @@ export const ldkNetwork = (network: TAvailableNetworks): ENetworks => {
 			return ENetworks.testnet;
 		case 'bitcoin':
 			return ENetworks.mainnet;
+		case 'bitcoinSignet':
+			return ENetworks.signet;
 	}
+};
+
+export const simulateStaleRestore = async (
+	onUpdate: (string) => void,
+): Promise<void> => {
+	const channels = await ldk.listChannels();
+	if (channels.isErr()) {
+		throw channels.error;
+	}
+	if (channels.value.filter((c) => c.is_usable).length === 0) {
+		throw new Error('No usable channels. Open a channel first.');
+	}
+
+	onUpdate('Backing up...');
+	const backupResponse = await backupAccount();
+	if (backupResponse.isErr()) {
+		throw backupResponse.error;
+	}
+
+	const timeoutSeconds = 30;
+	const invoice = await ldk.createPaymentRequest({
+		amountSats: 12,
+		description: 'crash test',
+		expiryDeltaSeconds: timeoutSeconds,
+	});
+	if (invoice.isErr()) {
+		throw invoice.error;
+	}
+
+	let paymentClaimed = false;
+	let paymentSubscription = ldk.onEvent(
+		EEventTypes.channel_manager_payment_claimed,
+		() => (paymentClaimed = true),
+	);
+
+	Clipboard.setString(invoice.value.to_str);
+
+	//Keep checking if we got the payment
+	for (let i = 0; i < timeoutSeconds; i++) {
+		onUpdate(
+			`Please pay invoice in clipboard to continue (${timeoutSeconds - i})...`,
+		);
+
+		if (paymentClaimed) {
+			onUpdate('Payment claimed! Testing stale restore...');
+			break;
+		}
+
+		await new Promise((resolve) => setTimeout(resolve, 1000));
+	}
+
+	paymentSubscription.remove();
+
+	if (!paymentClaimed) {
+		throw new Error('No payment claimed. Timeout out.');
+	}
+
+	onUpdate('Importing stale backup and force closing all channels...');
+
+	await new Promise((resolve) => setTimeout(resolve, 2500));
+
+	await ldk.stop();
+	const forceCloseAllChannels = true; //To test the crash restore set to false
+	const importResponse = await importAccount(
+		backupResponse.value,
+		forceCloseAllChannels,
+	);
+	if (importResponse.isErr()) {
+		throw importResponse.error;
+	}
+
+	await new Promise((resolve) => setTimeout(resolve, 2500));
+	onUpdate(
+		"If this didn't crash and you can see your claimable balance, you're good!",
+	);
 };
