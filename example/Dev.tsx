@@ -665,7 +665,7 @@ const Dev = (): ReactElement => {
 							const backupCheckRes = await ldk.backupSelfCheck();
 							if (backupCheckRes.isErr()) {
 								console.error('Backup check failed', backupCheckRes.error);
-								setMessage(backupCheckRes.error.message);
+								return setMessage(backupCheckRes.error.message);
 							}
 							setMessage('Backup server check passed ✅');
 						}}

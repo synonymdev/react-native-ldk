@@ -96,6 +96,7 @@ class BackupClient {
             this.network = network
             this.server = server
             this.serverPubKey = serverPubKey
+            this.cachedBearer = null
 
             LdkEventEmitter.send(
                 EventTypes.native_log,

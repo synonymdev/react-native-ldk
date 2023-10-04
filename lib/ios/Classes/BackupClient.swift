@@ -116,6 +116,7 @@ class BackupClient {
         Self.network = network
         Self.server = server
         Self.serverPubKey = serverPubKey
+        Self.cachedBearer = nil
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "BackupClient setup for synchronous remote persistence. Server: \(server)")
     }
