@@ -1491,18 +1491,15 @@ class LightningManager {
 		paymentHash: string,
 	): Promise<TInvoice | undefined> => {
 		const invoices = await this.getBolt11Invoices();
-		let invoice: TInvoice | undefined;
 		for (let index = 0; index < invoices.length; index++) {
 			const paymentRequest = invoices[index];
 			const invoiceRes = await ldk.decode({ paymentRequest });
 			if (invoiceRes.isOk()) {
 				if (invoiceRes.value.payment_hash === paymentHash) {
-					invoice = invoiceRes.value;
+					return invoiceRes.value;
 				}
 			}
 		}
-
-		return invoice;
 	};
 
 	private getLdkSpendableOutputs = async (): Promise<TLdkSpendableOutputs> => {
