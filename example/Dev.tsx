@@ -698,6 +698,19 @@ const Dev = (): ReactElement => {
 							setMessage(res.value);
 						}}
 					/>
+
+					<Button
+						title={'Node state'}
+						onPress={async (): Promise<void> => {
+							const res = await ldk.nodeStateDump();
+							if (res.isErr()) {
+								setMessage(res.error.message);
+								return;
+							}
+
+							setMessage(res.value);
+						}}
+					/>
 				</View>
 			</ScrollView>
 

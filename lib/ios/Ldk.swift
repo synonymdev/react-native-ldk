@@ -380,6 +380,7 @@ class Ldk: NSObject {
         
         var channelMonitorsSerialized: Array<[UInt8]> = []
         let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Channel files \(channelFiles.count)")
         for channelFile in channelFiles {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel from file \(channelFile.lastPathComponent)")
             channelMonitorsSerialized.append([UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)))
@@ -391,9 +392,7 @@ class Ldk: NSObject {
         let scorer = MultiThreadedLockableScore(score: score)
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Enabled P2P gossip: \(enableP2PGossip)")
-        
-        print(Ldk.accountStoragePath)
-        
+
         //        print("\(String(cString: strerror(22)))")
         
         let params = ChannelManagerConstructionParameters(
@@ -457,17 +456,7 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
-        
-        //        print("\n\n\n\n******SIGN**************")
-        //        let sk = keysManager.getNodeSecretKey()
-        //        let message = "Lightning Signed Message:look_at_me_im_a_node"
-        //        let signed = Bindings.swiftSign(msg: Array(message.utf8), sk: sk)
-        //        if let error = signed.getError() {
-        //            print("SIGN ERROR")
-        //        }
-        //        print("Signing node: \(Data(channelManager!.getOurNodeId()).hexEncodedString())")
-        //        print(signed.getValue()!)
-        
+                
         return handleResolve(resolve, .channel_manager_init_success)
     }
     
@@ -884,7 +873,7 @@ class Ldk: NSObject {
             guard let invoice = res.getValue() else {
                 return handleReject(reject, .invoice_create_failed)
             }
-                        
+            
             return resolve(invoice.asJson) //Invoice class extended in Helpers file
         }
         
@@ -1046,64 +1035,7 @@ class Ldk: NSObject {
         
         let ignoredChannels = ignoreOpenChannels ? channelManager.listChannels() : []
         
-        var result: [Any] = []
-        
-        let claimableBalances = chainMonitor.getClaimableBalances(ignoredChannels: ignoredChannels)
-        for balance in claimableBalances {
-            switch balance.getValueType() {
-            case .ClaimableAwaitingConfirmations:
-                let b = balance.getValueAsClaimableAwaitingConfirmations()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "confirmation_height": b.getConfirmationHeight(),
-                    "type": "ClaimableAwaitingConfirmations"
-                ] as [String : Any])
-                break
-            case .ClaimableOnChannelClose:
-                let b = balance.getValueAsClaimableOnChannelClose()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "type": "ClaimableOnChannelClose",
-                ] as [String : Any])
-                break
-            case .ContentiousClaimable:
-                let b = balance.getValueAsContentiousClaimable()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "timeout_height": b.getTimeoutHeight(),
-                    "type": "ContentiousClaimable"
-                ] as [String : Any])
-                break
-            case .CounterpartyRevokedOutputClaimable:
-                let b = balance.getValueAsCounterpartyRevokedOutputClaimable()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "type": "CounterpartyRevokedOutputClaimable"
-                ] as [String : Any])
-                break
-            case .MaybePreimageClaimableHTLC:
-                let b = balance.getValueAsMaybePreimageClaimableHtlc()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "expiry_height": b.getExpiryHeight(),
-                    "type": "MaybePreimageClaimableHTLC"
-                ] as [String : Any])
-                break
-            case .MaybeTimeoutClaimableHTLC:
-                let b = balance.getValueAsMaybeTimeoutClaimableHtlc()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "claimable_height": b.getClaimableHeight(),
-                    "type": "MaybeTimeoutClaimableHTLC"
-                ] as [String : Any])
-                break
-            default:
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances() \(balance.getValueType())")
-                result.append(["amount_satoshis": 0, "type": "Unknown"] as [String : Any])
-            }
-        }
-        
-        return resolve(result)
+        return resolve(chainMonitor.getClaimableBalancesAsJson(ignoredChannels: ignoredChannels))
     }
     
     //MARK: Misc functions
@@ -1227,6 +1159,70 @@ class Ldk: NSObject {
         }
         
         return resolve(signed.getValue()!)
+    }
+    
+    @objc
+    func nodeStateDump(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        var logDump: [String] = []
+        
+        if let pubKey = keysManager?.asNodeSigner().getNodeId(recipient: .Node).getValue() {
+            logDump.append("NodeID: \(Data(pubKey).hexEncodedString())")
+        }
+        
+        if let channelManager {
+            channelManager.listChannels().forEach { channel in
+                logDump.append("Open channel:")
+                
+                if let txId = channel.getFundingTxo()?.getTxid() {
+                    logDump.append("Funding txid: \(Data(txId).hexEncodedString())")
+                }
+                
+                logDump.append("Ready: \(channel.getIsChannelReady() ? "YES" : "NO")")
+                logDump.append("Usable: \(channel.getIsUsable() ? "YES" : "NO")")
+                logDump.append("Balance: \(channel.getBalanceMsat()/1000) sats")
+            }
+        }
+        
+        if let chainMonitor {
+            logDump.append("All claimable balances:\n \(chainMonitor.getClaimableBalancesAsJson(ignoredChannels: []))")
+        } else {
+            logDump.append("Claimable balances unavailable. Chain monitor not set yet")
+        }
+        
+        if let syncTimestamp = networkGraph?.getLastRapidGossipSyncTimestamp() {
+            let date = Date(timeIntervalSince1970: TimeInterval(syncTimestamp))
+
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            
+            logDump.append("Last rapid gossip sync time: \(dateFormatter.string(from: date))")
+        } else {
+            logDump.append("RGS last sync time unavailable.")
+        }
+        
+        if let peers = peerManager?.getPeerNodeIds()  {
+            if peers.count > 0 {
+                peers.forEach { (pubKey, address) in
+                    logDump.append("Connected peer: \(Data(pubKey).hexEncodedString())")
+                }
+            } else {
+                logDump.append("No connected peers")
+            }
+        } else {
+            logDump.append("Connected peers unavailable. Peer manager not set.")
+        }
+        
+        if let storage = Ldk.accountStoragePath {
+            logDump.append("Storage: \(storage.path)")
+        }
+        
+        logDump.append("BackupClient setup: \(BackupClient.requiresSetup ? "NO" : "YES")")
+        logDump.append("Skip remote backups: \(BackupClient.skipRemoteBackup ? "YES" : "NO")")
+        
+        let logString = "********NODE STATE********\n" + logDump.joined(separator: "\n") + "\n****************"
+        Logfile.log.write(logString)
+        
+        resolve(logString)
     }
     
     //MARK: Backup methods
