@@ -465,6 +465,9 @@ class LightningManager {
 		// Step 13: Initialize networking
 		// Done with initChannelManager
 
+		//Writes node state to log files
+		ldk.nodeStateDump().catch(console.error);
+
 		return ok('Node running');
 	}
 
@@ -619,6 +622,7 @@ class LightningManager {
 		}
 		const result = ok(`Synced to block ${height}`);
 		this.resolveAllPendingSyncPromises(result);
+		ldk.nodeStateDump().catch(console.error);
 		return result;
 	}
 

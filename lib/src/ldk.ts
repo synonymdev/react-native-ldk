@@ -1192,6 +1192,20 @@ class LDK {
 	}
 
 	/**
+	 * Returns and writes to log file the current state of each node component for debugging.
+	 */
+	async nodeStateDump(): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.nodeStateDump();
+			this.writeDebugToLog('nodeStateDump');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('nodeStateDump', e);
+			return err(e);
+		}
+	}
+
+	/**
 	 * Setup remote backup server
 	 * @param seed
 	 * @param network

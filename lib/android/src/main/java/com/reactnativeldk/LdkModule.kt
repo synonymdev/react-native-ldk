@@ -24,6 +24,7 @@ import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.text.SimpleDateFormat
 import java.util.*
 
 
@@ -962,52 +963,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             channelManager.list_channels() else
             arrayOf<ChannelDetails>()
 
-        val result = Arguments.createArray()
 
-        chainMonitor.get_claimable_balances(ignoredChannels).iterator().forEach { balance ->
-            val map = Arguments.createMap()
-            //Defaults if all castings for balance fail
-            map.putInt("amount_satoshis", 0)
-            map.putString("type", "Unknown")
 
-            (balance as? Balance.ClaimableAwaitingConfirmations)?.let { claimableAwaitingConfirmations ->
-                map.putInt("amount_satoshis", claimableAwaitingConfirmations.amount_satoshis.toInt())
-                map.putInt("confirmation_height", claimableAwaitingConfirmations.confirmation_height)
-                map.putString("type", "ClaimableAwaitingConfirmations")
-            }
-
-            (balance as? Balance.ClaimableOnChannelClose)?.let { claimableOnChannelClose ->
-                map.putInt("amount_satoshis", claimableOnChannelClose.amount_satoshis.toInt())
-                map.putString("type", "ClaimableOnChannelClose")
-            }
-
-            (balance as? Balance.ContentiousClaimable)?.let { contentiousClaimable ->
-                map.putInt("amount_satoshis", contentiousClaimable.amount_satoshis.toInt())
-                map.putInt("timeout_height", contentiousClaimable.timeout_height)
-                map.putString("type", "ContentiousClaimable")
-            }
-
-            (balance as? Balance.CounterpartyRevokedOutputClaimable)?.let { counterpartyRevokedOutputClaimable ->
-                map.putInt("amount_satoshis", counterpartyRevokedOutputClaimable.amount_satoshis.toInt())
-                map.putString("type", "CounterpartyRevokedOutputClaimable")
-            }
-
-            (balance as? Balance.MaybePreimageClaimableHTLC)?.let { maybePreimageClaimableHTLC ->
-                map.putInt("amount_satoshis", maybePreimageClaimableHTLC.amount_satoshis.toInt())
-                map.putInt("expiry_height", maybePreimageClaimableHTLC.expiry_height)
-                map.putString("type", "MaybePreimageClaimableHTLC")
-            }
-
-            (balance as? Balance.MaybeTimeoutClaimableHTLC)?.let { maybeTimeoutClaimableHTLC ->
-                map.putInt("amount_satoshis", maybeTimeoutClaimableHTLC.amount_satoshis.toInt())
-                map.putInt("claimable_height", maybeTimeoutClaimableHTLC.claimable_height)
-                map.putString("type", "MaybeTimeoutClaimableHTLC")
-            }
-
-            result.pushMap(map)
-        }
-
-        promise.resolve(result)
+        promise.resolve(chainMonitor.getClaimableBalancesAsJson(ignoredChannels))
     }
 
     //MARK: Misc methods
@@ -1119,6 +1077,70 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         promise.resolve((res as Result_StringErrorZ_OK).res)
+    }
+
+    @ReactMethod
+    fun nodeStateDump(promise: Promise) {
+        val logDump: MutableList<String> = mutableListOf()
+
+        keysManager?.as_NodeSigner()?.get_node_id(Recipient.LDKRecipient_Node)?.let { pubKeyRes ->
+            if (pubKeyRes.is_ok) {
+                logDump.add("NodeID: ${(pubKeyRes as Result_PublicKeyNoneZ_OK).res.hexEncodedString()}")
+            }
+        }
+
+        channelManager?.list_channels()?.forEach { channel ->
+            logDump.add("Open channel:")
+
+            channel._funding_txo?._txid?.let { txId ->
+                logDump.add("Funding txid: ${txId.hexEncodedString()}")
+            }
+
+            logDump.add("Ready: ${if (channel._is_channel_ready) "YES" else "NO"}")
+            logDump.add("Usable: ${if (channel._is_usable) "YES" else "NO"}")
+            logDump.add("Balance: ${channel._balance_msat / 1000} sats")
+        }
+
+        chainMonitor?.getClaimableBalancesAsJson(arrayOf())?.let { claimableBalances ->
+            logDump.add("All claimable balances:\n $claimableBalances")
+        } ?: run {
+            logDump.add("Claimable balances unavailable. Chain monitor not set yet")
+        }
+
+        networkGraph?._last_rapid_gossip_sync_timestamp?.let { res ->
+            val syncTimestamp = if (res is Option_u32Z.Some) (res as Option_u32Z.Some).some.toLong() else 0
+            if (syncTimestamp == 0L) {
+                logDump.add("Last rapid gossip sync time: NEVER")
+            } else {
+                val date = Date(syncTimestamp * 1000)
+                val dateFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                logDump.add("Last rapid gossip sync time: ${dateFormatter.format(date)}")
+            }
+        } ?: run {
+            logDump.add("RGS last sync time unavailable.")
+        }
+
+        peerManager?._peer_node_ids?.let { peers ->
+            if (peers.isNotEmpty()) {
+                peers.forEach { peer ->
+                    logDump.add("Connected peer: ${peer._a.hexEncodedString()}")
+                }
+            } else {
+                logDump.add("No connected peers")
+            }
+        } ?: run {
+            logDump.add("Connected peers unavailable. Peer manager not set.")
+        }
+
+        logDump.add("Storage: ${accountStoragePath}")
+
+        logDump.add("BackupClient setup: ${if (BackupClient.requiresSetup) "NO" else "YES"}")
+        logDump.add("Skip remote backups: ${if (BackupClient.skipRemoteBackup) "YES" else "NO"}")
+
+        val logString = "********NODE STATE********\n" + logDump.joinToString("\n") + "\n****************"
+        LogFile.write(logString)
+
+        promise.resolve(logString)
     }
 
     //Backup methods
