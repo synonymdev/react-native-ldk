@@ -1108,7 +1108,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         promise.resolve((res as Result_TransactionNoneZ.Result_TransactionNoneZ_OK).res.hexEncodedString())
     }
 
-
     @ReactMethod
     fun nodeSign(message: String, promise: Promise) {
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
@@ -1206,6 +1205,29 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         try {
             BackupClient.selfCheck()
             handleResolve(promise, LdkCallbackResponses.backup_client_check_success)
+        } catch (e: Exception) {
+            handleReject(promise, LdkErrors.backup_check_failed, Error(e))
+        }
+    }
+
+    @ReactMethod
+    fun backupListFiles(promise: Promise) {
+        if (BackupClient.requiresSetup) {
+            return handleReject(promise, LdkErrors.backup_setup_required)
+        }
+
+        try {
+            val list = BackupClient.listFiles()
+
+            val map = Arguments.createMap()
+            val files = Arguments.createArray()
+            list.first.forEach { files.pushString(it) }
+            val channelMonitors = Arguments.createArray()
+            list.second.forEach { channelMonitors.pushString(it) }
+            map.putArray("list", files)
+            map.putArray("channel_monitors", channelMonitors)
+
+            promise.resolve(map)
         } catch (e: Exception) {
             handleReject(promise, LdkErrors.backup_check_failed, Error(e))
         }

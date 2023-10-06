@@ -173,6 +173,8 @@ RCT_EXTERN_METHOD(restoreFromRemoteBackup:(BOOL *)overwrite
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(backupSelfCheck:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(backupListFiles:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 
 @end
 

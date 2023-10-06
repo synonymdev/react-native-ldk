@@ -73,6 +73,7 @@ enum LdkErrors: String {
     case backup_check_failed = "backup_check_failed"
     case backup_restore_failed = "backup_restore_failed"
     case backup_restore_failed_existing_files = "backup_restore_failed_existing_files"
+    case backup_list_files_failed = "backup_list_files_failed"
 }
 
 enum LdkCallbackResponses: String {
@@ -884,7 +885,7 @@ class Ldk: NSObject {
             guard let invoice = res.getValue() else {
                 return handleReject(reject, .invoice_create_failed)
             }
-                        
+            
             return resolve(invoice.asJson) //Invoice class extended in Helpers file
         }
         
@@ -1321,6 +1322,23 @@ class Ldk: NSObject {
             handleResolve(resolve, .backup_client_check_success)
         } catch {
             handleReject(reject, .backup_check_failed, error, error.localizedDescription)
+        }
+    }
+    
+    @objc
+    func backupListFiles(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard !BackupClient.requiresSetup else {
+            return handleReject(reject, .backup_setup_required)
+        }
+        
+        do {
+            let result = try BackupClient.listFiles()
+            resolve([
+                "list": result.list,
+                "channel_monitors": result.channel_monitors
+            ])
+        } catch {
+            handleReject(reject, .backup_list_files_failed, error, error.localizedDescription)
         }
     }
 }

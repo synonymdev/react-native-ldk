@@ -584,6 +584,11 @@ export type TBackupServerDetails = {
 	serverPubKey: string;
 };
 
+export type TBackedUpFileList = {
+	list: [string];
+	channel_monitors: [string];
+};
+
 export type TNodeSignReq = {
 	message: string;
 	messagePrefix?: string;

@@ -34,6 +34,7 @@ import {
 	TAcceptChannelReq,
 	TBackupServerDetails,
 	TNodeSignReq,
+	TBackedUpFileList,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -1243,6 +1244,18 @@ class LDK {
 	async backupSelfCheck(): Promise<Result<boolean>> {
 		try {
 			const res = await NativeLDK.backupSelfCheck();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	/**
+	 * List all files that have been backed up
+	 */
+	async backupListFiles(): Promise<Result<TBackedUpFileList>> {
+		try {
+			const res = await NativeLDK.backupListFiles();
 			return ok(res);
 		} catch (e) {
 			return err(e);

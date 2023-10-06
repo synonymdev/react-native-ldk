@@ -59,10 +59,17 @@ class Storage {
         //TODO must be a better way instead of iterating over all files
         let files = [];
         const list = await this.storage.listFiles();
+
         list.forEach((file) => {
-            const [fileName] = file;
-            if (fileName.startsWith(filePath) && fileName.endsWith('.bin')) {
-                files.push(fileName.substring(fileName.lastIndexOf('/') + 1));
+            const [fullFilePath] = file;
+
+            if (fullFilePath.startsWith(filePath) && fullFilePath.endsWith('.bin')) {
+                //Ignore directories
+                if (fullFilePath.replaceAll(filePath, '').replace(/^\//, "").indexOf('/') !== -1) {
+                    return;
+                }
+
+                files.push(fullFilePath.substring(fullFilePath.lastIndexOf('/') + 1));
             }
         });
 

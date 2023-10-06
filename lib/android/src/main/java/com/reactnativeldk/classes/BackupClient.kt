@@ -280,7 +280,7 @@ class BackupClient {
         }
 
         @Throws(BackupError::class)
-        fun retrieveCompleteBackup(): CompleteBackup {
+        fun listFiles(): Pair<Array<String>, Array<String>> {
             val bearer = authToken()
 
             val url = backupUrl(Method.LIST)
@@ -310,20 +310,35 @@ class BackupClient {
             inputStream.close()
 
             val jsonObject = JSONObject(jsonString)
+            val fileList = jsonObject.getJSONArray("list")
+            val channelFileList = jsonObject.getJSONArray("channel_monitors")
+
+            println("fileList: $fileList")
+
+            return Pair(
+                Array(fileList.length()) { idx ->
+                    fileList.getString(idx)
+                },
+                Array(channelFileList.length()) { idx ->
+                    channelFileList.getString(idx)
+                },
+            )
+        }
+
+        @Throws(BackupError::class)
+        fun retrieveCompleteBackup(): CompleteBackup {
+            val list = listFiles()
+            val fileNames = list.first
+            val channelFileNames = list.second
 
             val files = mutableMapOf<String, ByteArray>()
-            val fileNames = jsonObject.getJSONArray("list")
-            for (i in 0 until fileNames.length()) {
-                val filename = fileNames.getString(i)
-                files[filename] = retrieve(Label.MISC(filename))
+            for (fileName in fileNames) {
+                files[fileName] = retrieve(Label.MISC(fileName))
             }
 
             val channelFiles = mutableMapOf<String, ByteArray>()
-            val channelFileNames = jsonObject.getJSONArray("channel_monitors")
-            for (i in 0 until channelFileNames.length()) {
-                val filename = channelFileNames.getString(i)
-
-                channelFiles[filename] = retrieve(Label.CHANNEL_MONITOR(channelId=filename.replace(".bin", "")))
+            for (fileName in channelFileNames) {
+                channelFiles[fileName] = retrieve(Label.CHANNEL_MONITOR(channelId=fileName.replace(".bin", "")))
             }
 
             return CompleteBackup(files = files, channelFiles = channelFiles)
