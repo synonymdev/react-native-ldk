@@ -33,11 +33,17 @@ export const customPeers = {
 	bitcoinTestnet: [],
 	bitcoinRegtest: [
 		{
-			host: '192.168.0.100',
-			ssl: 50001,
-			tcp: 50001,
+			host: '35.233.47.252',
+			ssl: 18484,
+			tcp: 18483,
 			protocol: 'tcp',
 		},
+		// {
+		// 	host: '192.168.0.100',
+		// 	ssl: 50001,
+		// 	tcp: 50001,
+		// 	protocol: 'tcp',
+		// },
 		// {
 		// 	host: 'localhost',
 		// 	ssl: 60001,
