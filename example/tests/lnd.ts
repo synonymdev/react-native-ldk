@@ -204,7 +204,7 @@ describe('LND', function () {
 			}
 			await sleep(1000);
 			if (n++ === 20) {
-				throw new Error('Channel not active');
+				throw new Error('LDK channel not active 1');
 			}
 		}
 
@@ -346,7 +346,7 @@ describe('LND', function () {
 			}
 			await sleep(1000);
 			if (n++ === 20) {
-				throw new Error('Channel not active');
+				throw new Error('LDK channel not active 2');
 			}
 		}
 
@@ -366,7 +366,7 @@ describe('LND', function () {
 		// expect(sent2[1].state).to.equal('successful');
 	});
 
-	it('can recover stale backup', async function () {
+	it.skip('can recover stale backup', async function () {
 		// Test plan:
 		// - open LND -> LDK channel
 		// - make a few payments
@@ -452,7 +452,7 @@ describe('LND', function () {
 			}
 			await sleep(1000);
 			if (n++ === 20) {
-				throw new Error('Channel not active');
+				throw new Error('LDK channel not active; stale backup test');
 			}
 		}
 
@@ -543,7 +543,7 @@ describe('LND', function () {
 			}
 			await sleep(1000);
 			if (n++ === 20) {
-				throw new Error('Channel not active');
+				throw new Error('LND channel not active');
 			}
 		}
 

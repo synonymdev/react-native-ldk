@@ -71,9 +71,10 @@ export default class TestProfile {
 			getScriptPubKeyHistory: this.getScriptPubKeyHistory,
 			getFees: () =>
 				Promise.resolve({
-					highPriority: 3,
-					normal: 2,
-					background: 1,
+					highPriority: 4,
+					normal: 3,
+					background: 2,
+					mempoolMinimum: 1,
 				}),
 			getTransactionData: this.getTransactionData,
 			getTransactionPosition: this.getTransactionPosition,
