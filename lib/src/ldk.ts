@@ -33,8 +33,9 @@ import {
 	THeader,
 	TAcceptChannelReq,
 	TBackupServerDetails,
-	TNodeSignReq, TBackedUpFileList,
-} from "./utils/types";
+	TNodeSignReq,
+	TBackedUpFileList,
+} from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
 const LINKING_ERROR =
