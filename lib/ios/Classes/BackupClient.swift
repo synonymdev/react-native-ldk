@@ -53,6 +53,11 @@ struct BackupRetrieveBearer: Codable {
     let expires: Int
 }
 
+struct ListFilesResponse: Codable {
+    let list: [String]
+    let channel_monitors: [String]
+}
+
 class BackupClient {
     enum Label {
         case ping
@@ -309,13 +314,8 @@ class BackupClient {
         return try decrypt(encryptedBackup)
     }
     
-    static func retrieveCompleteBackup() throws -> CompleteBackup {
+    static func listFiles() throws -> ListFilesResponse {
         let bearer = try authToken()
-
-        struct ListFilesResponse: Codable {
-            let list: [String]
-            let channel_monitors: [String]
-        }
         
         var backedUpFilenames: ListFilesResponse?
         
@@ -362,6 +362,11 @@ class BackupClient {
             throw BackupError.missingResponse
         }
         
+        return backedUpFilenames
+    }
+    
+    static func retrieveCompleteBackup() throws -> CompleteBackup {
+        let backedUpFilenames = try listFiles()
         
         var allFiles: [String: Data] = [:]
         var channelFiles: [String: Data] = [:]
@@ -383,6 +388,11 @@ class BackupClient {
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote list files success.")
         
         return CompleteBackup(files: allFiles, channelFiles: channelFiles)
+    }
+    
+    struct BackupExists {
+        let exists: Bool
+        let channelFiles: Int
     }
     
     static func selfCheck() throws {
