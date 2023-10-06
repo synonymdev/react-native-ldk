@@ -58,7 +58,12 @@ describe('Unit', function () {
 			getAddress: async () => 'bcrt1qtk89me2ae95dmlp3yfl4q9ynpux8mxjus4s872',
 			getScriptPubKeyHistory: async () => [],
 			getFees: () => {
-				return Promise.resolve({ highPriority: 10, normal: 5, background: 1 });
+				return Promise.resolve({
+					highPriority: 10,
+					normal: 5,
+					background: 2,
+					mempoolMinimum: 1,
+				});
 			},
 			getTransactionData: async () => ({
 				header: '',

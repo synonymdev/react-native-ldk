@@ -131,6 +131,7 @@ describe('Eclair', function () {
 					highPriority: 30,
 					normal: 20,
 					background: 10,
+					mempoolMinimum: 5,
 				});
 			},
 		});
