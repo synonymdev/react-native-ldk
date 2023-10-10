@@ -261,9 +261,9 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         }
     }
     
-    override func persistManager(channelManager: ChannelManager) -> Result_NoneErrorZ {
+    override func persistManager(channelManager: Bindings.ChannelManager) -> Bindings.Result_NoneIOErrorZ {
         guard let managerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channel_manager.rawValue) else {
-            return Result_NoneErrorZ.initWithErr(e: .Other)
+            return Result_NoneIOErrorZ.initWithErr(e: .Other)
         }
         
         do {
@@ -274,44 +274,44 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                         
             LdkEventEmitter.shared.send(withEvent: .backup, body: "")
             
-            return Result_NoneErrorZ.initWithOk()
+            return Result_NoneIOErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel manager to disk Error \(error.localizedDescription).")
-            return Result_NoneErrorZ.initWithErr(e: .Other)
+            return Result_NoneIOErrorZ.initWithErr(e: .Other)
         }
     }
     
-    override func persistGraph(networkGraph: NetworkGraph) -> Result_NoneErrorZ {
+    override func persistGraph(networkGraph: Bindings.NetworkGraph) -> Bindings.Result_NoneIOErrorZ {
         guard let graphStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.network_graph.rawValue) else {
-            return Result_NoneErrorZ.initWithErr(e: .Other)
+            return Result_NoneIOErrorZ.initWithErr(e: .Other)
         }
         
         do {
             try Data(networkGraph.write()).write(to: graphStorage)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted network graph to disk")
             
-            return Result_NoneErrorZ.initWithOk()
+            return Result_NoneIOErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist network graph to disk Error \(error.localizedDescription).")
-            return Result_NoneErrorZ.initWithErr(e: .Other)
+            return Result_NoneIOErrorZ.initWithErr(e: .Other)
         }
     }
     
-    override func persistScorer(scorer: WriteableScore) -> Bindings.Result_NoneErrorZ {
+    override func persistScorer(scorer: Bindings.WriteableScore) -> Bindings.Result_NoneIOErrorZ {
         guard let scorerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.scorer.rawValue) else {
-            return Result_NoneErrorZ.initWithErr(e: .Other)
+            return Result_NoneIOErrorZ.initWithErr(e: .Other)
         }
 
         do {
             try Data(scorer.write()).write(to: scorerStorage)
 
-            return Result_NoneErrorZ.initWithOk()
+            return Result_NoneIOErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist scorer to disk Error \(error.localizedDescription).")
-            return Result_NoneErrorZ.initWithErr(e: .Other)
+            return Result_NoneIOErrorZ.initWithErr(e: .Other)
         }
     }
-
+    
     /// Saves claiming/claimed payment to disk. If payment hash exists already then the payment values are merged into the existing entry as an update
     /// - Parameter payment: payment obj
     private func persistPaymentClaimed(_ payment: [String: Any]) {
