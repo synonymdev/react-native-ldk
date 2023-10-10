@@ -6,7 +6,7 @@ import com.reactnativeldk.handleReject
 import com.reactnativeldk.hexEncodedString
 import com.reactnativeldk.hexa
 import org.json.JSONObject
-import org.ldk.structs.Result_StringErrorZ.Result_StringErrorZ_OK
+import org.ldk.structs.Result_StrSecp256k1ErrorZ.Result_StrSecp256k1ErrorZ_OK
 import org.ldk.structs.UtilMethods
 import java.net.HttpURLConnection
 import java.net.URL
@@ -370,7 +370,7 @@ class BackupClient {
                 throw BackupError.signingError
             }
 
-            return (res as Result_StringErrorZ_OK).res
+            return (res as Result_StrSecp256k1ErrorZ_OK).res
         }
 
         private fun verifySignature(message: String, signature: String, pubKey: String): Boolean {
