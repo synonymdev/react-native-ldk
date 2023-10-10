@@ -9,16 +9,13 @@ import org.ldk.batteries.NioPeerHandler
 import org.ldk.enums.Currency
 import org.ldk.enums.Network
 import org.ldk.enums.Recipient
-import org.ldk.impl.bindings.LDKDestination.Node
 import org.ldk.impl.bindings.get_ldk_c_bindings_version
 import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
 import org.ldk.structs.Result_Bolt11InvoiceParseOrSemanticErrorZ.Result_Bolt11InvoiceParseOrSemanticErrorZ_OK
 import org.ldk.structs.Result_Bolt11InvoiceSignOrCreationErrorZ.Result_Bolt11InvoiceSignOrCreationErrorZ_OK
-import org.ldk.structs.Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_OK
-import org.ldk.structs.Result_PublicKeyErrorZ.Result_PublicKeyErrorZ_OK
 import org.ldk.structs.Result_PublicKeyNoneZ.Result_PublicKeyNoneZ_OK
-import org.ldk.structs.Result_StringErrorZ.Result_StringErrorZ_OK
+import org.ldk.structs.Result_StrSecp256k1ErrorZ.Result_StrSecp256k1ErrorZ_OK
 import org.ldk.util.UInt128
 import java.io.File
 import java.net.InetSocketAddress
@@ -685,7 +682,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             ldkOutputs.toTypedArray(),
             changeDestinationScript.hexa(),
             feeRate.toInt(),
-            Option_PackedLockTimeZ.none()
+            Option_u32Z.none()
         )
 
         if (!res.is_ok) {
@@ -735,7 +732,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             UtilMethods.pay_invoice(invoice, Retry.timeout(timeoutSeconds.toLong()), channelManager)
         if (res.is_ok) {
             channelManagerPersister.persistPaymentSent(hashMapOf(
-                "payment_id" to (res as Result_PaymentIdPaymentErrorZ_OK).res.hexEncodedString(),
+                "payment_id" to (res as Result_ThirtyTwoBytesPaymentErrorZ.Result_ThirtyTwoBytesPaymentErrorZ_OK).res.hexEncodedString(),
                 "payment_hash" to invoice.payment_hash().hexEncodedString(),
                 "amount_sat" to if (isZeroValueInvoice) amountSats.toLong() else ((invoice.amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000),
                 "unix_timestamp" to (System.currentTimeMillis() / 1000).toInt(),
@@ -745,7 +742,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
         }
 
-        val error = res as? Result_PaymentIdPaymentErrorZ.Result_PaymentIdPaymentErrorZ_Err
+        val error = res as? Result_ThirtyTwoBytesPaymentErrorZ.Result_ThirtyTwoBytesPaymentErrorZ_Err
 
         val invoiceError = error?.err as? PaymentError.Invoice
         if (invoiceError != null) {
@@ -1056,7 +1053,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             emptyArray(),
             changeDestinationScript.hexa(),
             feeRate.toInt(),
-            Option_PackedLockTimeZ.none()
+            Option_u32Z.none()
         )
 
         if (!res.is_ok) {
@@ -1076,7 +1073,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.failed_signing_request)
         }
 
-        promise.resolve((res as Result_StringErrorZ_OK).res)
+        promise.resolve((res as Result_StrSecp256k1ErrorZ_OK).res)
     }
 
     @ReactMethod

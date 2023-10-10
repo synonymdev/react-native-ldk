@@ -37,7 +37,7 @@ class LdkPersister {
             return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_Completed
         } catch (e: Exception) {
             LdkEventEmitter.send(EventTypes.emergency_force_close_channel, body)
-            return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_PermanentFailure
+            return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_UnrecoverableError
         }
     }
 

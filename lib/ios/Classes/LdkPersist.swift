@@ -40,7 +40,7 @@ class LdkPersister: Persist {
             return ChannelMonitorUpdateStatus.Completed
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel (\(channelId)) to disk Error \(error.localizedDescription).")
-            return ChannelMonitorUpdateStatus.PermanentFailure
+            return ChannelMonitorUpdateStatus.UnrecoverableError
         }
     }
     
