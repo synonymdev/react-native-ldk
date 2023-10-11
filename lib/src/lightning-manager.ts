@@ -905,10 +905,12 @@ class LightningManager {
 	restoreFromRemoteServer = async ({
 		account,
 		serverDetails,
+		network,
 		overwrite = false,
 	}: {
 		account: TAccount;
 		serverDetails: TBackupServerDetails;
+		network: ENetworks;
 		overwrite?: boolean;
 	}): Promise<Result<string>> => {
 		//Make sure LDK is not running.
@@ -924,7 +926,7 @@ class LightningManager {
 
 		const backupSetupRes = await ldk.backupSetup({
 			seed: account.seed,
-			network: this.network,
+			network,
 			details: serverDetails,
 		});
 		if (backupSetupRes.isErr()) {

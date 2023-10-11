@@ -14,16 +14,17 @@ import {
 import Clipboard from '@react-native-clipboard/clipboard';
 import {
 	backupAccount,
+	getAddressBalance,
 	importAccount,
 	setupLdk,
 	syncLdk,
-	getAddressBalance,
 	updateHeader,
 } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm, {
 	EEventTypes,
+	ENetworks,
 	TChannelManagerClaim,
 	TChannelManagerPaymentPathFailed,
 	TChannelManagerPaymentPathSuccessful,
@@ -646,6 +647,7 @@ const Dev = (): ReactElement => {
 							const restoreRes = await lm.restoreFromRemoteServer({
 								account,
 								serverDetails: backupServerDetails,
+								network: ENetworks.regtest,
 								overwrite: true,
 							});
 
