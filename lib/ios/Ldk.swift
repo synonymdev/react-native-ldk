@@ -1230,25 +1230,27 @@ class Ldk: NSObject {
     @objc
     func backupSetup(_ seed: NSString, network: NSString, server: NSString, serverPubKey: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         let seedBytes = String(seed).hexaBytes
-        if keysManager == nil {
-            let seconds = UInt64(NSDate().timeIntervalSince1970)
-            let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
-            
-            guard seedBytes.count == 32 else {
-                return handleReject(reject, .invalid_seed_hex)
-            }
-            
-            keysManager = KeysManager(seed: String(seed).hexaBytes, startingTimeSecs: seconds, startingTimeNanos: nanoSeconds)
-        }
         
-        guard let pubKey = keysManager!.asNodeSigner().getNodeId(recipient: .Node).getValue() else {
+        guard seedBytes.count == 32 else {
+            return handleReject(reject, .invalid_seed_hex)
+        }
+
+        let seconds = UInt64(NSDate().timeIntervalSince1970)
+        let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
+        let keysManager = KeysManager(
+            seed: String(seed).hexaBytes,
+            startingTimeSecs: seconds,
+            startingTimeNanos: nanoSeconds
+        )
+        
+        guard let pubKey = keysManager.asNodeSigner().getNodeId(recipient: .Node).getValue() else {
             return handleReject(reject, .backup_setup_failed, "Failed to get nodeID from keysManager")
         }
         
         do {
             BackupClient.skipRemoteBackup = false
             try BackupClient.setup(
-                secretKey: keysManager!.getNodeSecretKey(),
+                secretKey: keysManager.getNodeSecretKey(),
                 pubKey: pubKey,
                 network: String(network),
                 server: String(server),

@@ -1144,17 +1144,14 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     @ReactMethod
     fun backupSetup(seed: String, network: String, server: String, serverPubKey: String, promise: Promise) {
         val seedBytes = seed.hexa()
-        if (keysManager == null) {
-            val nanoSeconds = System.currentTimeMillis() * 1000
-            val seconds = nanoSeconds / 1000 / 1000
-            if (seedBytes.count() != 32) {
-                return handleReject(promise, LdkErrors.invalid_seed_hex)
-            }
-
-            keysManager = KeysManager.of(seedBytes, seconds, nanoSeconds.toInt())
+        if (seedBytes.count() != 32) {
+            return handleReject(promise, LdkErrors.invalid_seed_hex)
         }
 
-        val pubKeyRes = keysManager!!.as_NodeSigner().get_node_id(Recipient.LDKRecipient_Node)
+        val nanoSeconds = System.currentTimeMillis() * 1000
+        val seconds = nanoSeconds / 1000 / 1000
+        val keysManager = KeysManager.of(seedBytes, seconds, nanoSeconds.toInt())
+        val pubKeyRes = keysManager.as_NodeSigner().get_node_id(Recipient.LDKRecipient_Node)
         if (!pubKeyRes.is_ok) {
             return handleReject(promise, LdkErrors.backup_setup_failed)
         }
@@ -1162,7 +1159,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         try {
             BackupClient.skipRemoteBackup = false
             BackupClient.setup(
-                keysManager!!._node_secret_key,
+                keysManager._node_secret_key,
                 (pubKeyRes as Result_PublicKeyNoneZ_OK).res,
                 network,
                 server,
