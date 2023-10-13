@@ -496,10 +496,19 @@ class Ldk: NSObject {
         //Reset only objects created by initChannelManager
         channelManagerConstructor?.interrupt()
         channelManagerConstructor = nil
+        chainMonitor = nil
         channelManager = nil
         peerManager = nil
         peerHandler = nil
         
+        chainMonitor = ChainMonitor(
+            chainSource: filter,
+            broadcaster: broadcaster,
+            logger: logger,
+            feeest: feeEstimator,
+            persister: persister
+        )
+                
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting LDK background tasks again")
         initChannelManager(currentNetwork, blockHash: currentBlockchainTipHash, blockHeight: currentBlockchainHeight) { success in
             //Notify JS that a sync is required
