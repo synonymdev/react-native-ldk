@@ -215,39 +215,58 @@ fun URL.downloadFile(destination: String, completion: (error: Error?) -> Unit) {
 }
 
 fun RapidGossipSync.downloadAndUpdateGraph(downloadUrl: String, tempStoragePath: String, timestamp: Long, completion: (error: Error?) -> Unit) {
-    val destinationFile = "$tempStoragePath$timestamp.bin"
+    Thread(Runnable {
+        val destinationFile = "$tempStoragePath$timestamp.bin"
 
-    URL(downloadUrl + timestamp).downloadFile(destinationFile) {
-        if (it != null) {
-            return@downloadFile completion(it)
-        }
-
-        val res = update_network_graph_no_std(File(destinationFile).readBytes(), Option_u64Z.some((System.currentTimeMillis() / 1000)))
-        if (!res.is_ok()) {
-            val error = res as? Result_u32GraphSyncErrorZ.Result_u32GraphSyncErrorZ_Err
-
-            (error?.err as? GraphSyncError.LightningError)?.let { lightningError ->
-                return@downloadFile completion(Error("Rapid sync LightningError. " + lightningError.lightning_error._err))
+        URL(downloadUrl + timestamp).downloadFile(destinationFile) {
+            if (it != null) {
+                UiThreadUtil.runOnUiThread {
+                    completion(it)
+                }
+                return@downloadFile
             }
 
-            (error?.err as? GraphSyncError.DecodeError)?.let { decodeError ->
-                (decodeError.decode_error as? DecodeError.Io)?.let { decodeIOError ->
-                    return@downloadFile completion(Error("Rapid sync DecodeError. " + decodeIOError.io.ordinal))
+            val res = update_network_graph_no_std(File(destinationFile).readBytes(), Option_u64Z.some((System.currentTimeMillis() / 1000)))
+            if (!res.is_ok()) {
+                val error = res as? Result_u32GraphSyncErrorZ.Result_u32GraphSyncErrorZ_Err
+
+                (error?.err as? GraphSyncError.LightningError)?.let { lightningError ->
+                    UiThreadUtil.runOnUiThread {
+                        completion(Error("Rapid sync LightningError. " + lightningError.lightning_error._err))
+                    }
+                    return@downloadFile
                 }
 
-                return@downloadFile completion(Error("Rapid sync DecodeError"))
+                (error?.err as? GraphSyncError.DecodeError)?.let { decodeError ->
+                    (decodeError.decode_error as? DecodeError.Io)?.let { decodeIOError ->
+                        UiThreadUtil.runOnUiThread {
+                            completion(Error("Rapid sync DecodeError. " + decodeIOError.io.ordinal))
+                        }
+                        return@downloadFile
+                    }
+
+                    UiThreadUtil.runOnUiThread {
+                        completion(Error("Rapid sync DecodeError"))
+                    }
+                    return@downloadFile
+                }
+
+                UiThreadUtil.runOnUiThread {
+                    completion(Error("Unknown rapid sync error."))
+                }
+                return@downloadFile
             }
 
-            return@downloadFile completion(Error("Unknown rapid sync error."))
-        }
+            val usedFile = File(destinationFile)
+            if (usedFile.exists()) {
+                usedFile.delete()
+            }
 
-        val usedFile = File(destinationFile)
-        if (usedFile.exists()) {
-            usedFile.delete()
+            UiThreadUtil.runOnUiThread {
+                completion(null)
+            }
         }
-
-        completion(null)
-    }
+    }).start()
 }
 
 fun ChannelHandshakeConfig.mergeWithMap(map: ReadableMap?): ChannelHandshakeConfig {
