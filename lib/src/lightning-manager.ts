@@ -141,6 +141,10 @@ class LightningManager {
 	private forceSync: boolean = false;
 	private pendingSyncPromises: Array<(result: Result<string>) => void> = [];
 
+	private isStarting: boolean = false;
+	private pendingStartPromises: Array<(result: Result<string>) => void> = [];
+	private previousAccountName: string = '';
+
 	constructor() {
 		// Step 0: Subscribe to all events
 		ldk.onEvent(EEventTypes.native_log, (line) => {
@@ -237,6 +241,33 @@ class LightningManager {
 	}
 
 	/**
+	 * Resolves all pending start promises with the provided result.
+	 * @private
+	 * @param {Result<string>} result
+	 * @returns {void}
+	 */
+	private resolveAllPendingStartPromises(result: Result<string>): void {
+		while (this.pendingStartPromises.length > 0) {
+			const resolve = this.pendingStartPromises.shift();
+			if (resolve) {
+				resolve(result);
+			}
+		}
+	}
+
+	/**
+	 * Sets isStarting to false, resolves all start promises and returns error.
+	 * @private
+	 * @param {Err<string>} e
+	 * @returns {Promise<Result<string>>}
+	 */
+	private handleStartError = (e: Err<string>): Result<string> => {
+		this.isStarting = false;
+		this.resolveAllPendingStartPromises(e);
+		return e;
+	};
+
+	/**
 	 * Spins up and syncs all processes
 	 * @param {string} seed
 	 * @param {TGetBestBlock} getBestBlock
@@ -281,6 +312,19 @@ class LightningManager {
 			return err('getTransactionPosition is not set in start method.');
 		}
 
+		// Retry start method if presented with a new account name.
+		if (this.previousAccountName !== account.name) {
+			this.isStarting = false;
+			this.previousAccountName = account.name;
+		}
+
+		if (this.isStarting) {
+			return new Promise<Result<string>>((resolve) => {
+				this.pendingStartPromises.push(resolve);
+			});
+		}
+		this.isStarting = true;
+
 		// Ensure the start params function as expected.
 		const paramCheckResponse = await startParamCheck({
 			account,
@@ -294,7 +338,7 @@ class LightningManager {
 			network,
 		});
 		if (paramCheckResponse.isErr()) {
-			return err(paramCheckResponse.error.message);
+			return this.handleStartError(paramCheckResponse);
 		}
 
 		this.getBestBlock = getBestBlock;
@@ -313,14 +357,16 @@ class LightningManager {
 		this.trustedZeroConfPeers = trustedZeroConfPeers;
 
 		if (!this.baseStoragePath) {
-			return err(
-				'baseStoragePath required for wallet persistence. Call setBaseStoragePath(path) first.',
+			return this.handleStartError(
+				err(
+					'baseStoragePath required for wallet persistence. Call setBaseStoragePath(path) first.',
+				),
 			);
 		}
 
 		const storageSetRes = await this.setStorage(account);
 		if (storageSetRes.isErr()) {
-			return err(storageSetRes.error);
+			return this.handleStartError(storageSetRes);
 		}
 
 		//Validate we didn't change the seed for this account if one exists
@@ -338,15 +384,17 @@ class LightningManager {
 					remotePersist: false,
 				});
 				if (writeRes.isErr()) {
-					return err(writeRes.error);
+					return this.handleStartError(err(writeRes.error));
 				}
 			} else {
-				return err(readSeed.error);
+				return this.handleStartError(err(readSeed.error));
 			}
 		} else {
 			//Cannot start an existing node with a different seed
 			if (readSeed.value.content !== account.seed) {
-				return err('Seed for current node cannot be changed.');
+				return this.handleStartError(
+					err('Seed for current node cannot be changed.'),
+				);
 			}
 		}
 
@@ -358,7 +406,7 @@ class LightningManager {
 				details: backupServerDetails,
 			});
 			if (backupSetupRes.isErr()) {
-				return err(backupSetupRes.error);
+				return this.handleStartError(err(backupSetupRes.error));
 			}
 		}
 
@@ -390,13 +438,13 @@ class LightningManager {
 		// Step 5: Initialize the ChainMonitor
 		const chainMonitorRes = await ldk.initChainMonitor();
 		if (chainMonitorRes.isErr()) {
-			return chainMonitorRes;
+			return this.handleStartError(chainMonitorRes);
 		}
 
 		// Step 6: Initialize the KeysManager
 		const keysManager = await ldk.initKeysManager(this.account.seed);
 		if (keysManager.isErr()) {
-			return keysManager;
+			return this.handleStartError(keysManager);
 		}
 
 		// Step 7: Read ChannelMonitors state from disk
@@ -413,14 +461,14 @@ class LightningManager {
 			rapidGossipSyncUrl,
 		});
 		if (networkGraphRes.isErr()) {
-			return networkGraphRes;
+			return this.handleStartError(networkGraphRes);
 		}
 
 		// Step 8: Initialize the UserConfig ChannelManager
 		const confRes = await ldk.initUserConfig(userConfig);
 
 		if (confRes.isErr()) {
-			return confRes;
+			return this.handleStartError(confRes);
 		}
 
 		const channelManagerRes = await ldk.initChannelManager({
@@ -428,7 +476,7 @@ class LightningManager {
 			bestBlock,
 		});
 		if (channelManagerRes.isErr()) {
-			return channelManagerRes;
+			return this.handleStartError(channelManagerRes);
 		}
 
 		// Attempt to abandon any stored payment ids.
@@ -468,7 +516,10 @@ class LightningManager {
 		//Writes node state to log files
 		ldk.nodeStateDump().catch(console.error);
 
-		return ok('Node running');
+		this.isStarting = false;
+		const result = ok('Node started');
+		this.resolveAllPendingStartPromises(result);
+		return result;
 	}
 
 	async setStorage(account: TAccount): Promise<Result<string>> {
