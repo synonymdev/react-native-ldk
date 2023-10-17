@@ -186,6 +186,28 @@ class BackupClient {
             }
         }
     }
+    
+    static func persist(_ label: Label, _ bytes: [UInt8], retry: Int) throws {
+        var attempts: UInt32 = 0
+        
+        var persistError: Error?
+        while attempts < retry {
+            do {
+                try persist(label, bytes)
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persist success for \(label.string) after \(attempts+1) attempts")
+                return
+            } catch {
+                persistError = error
+                attempts += 1
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persist failed for \(label.string) (\(attempts) attempts)")
+                sleep(attempts) //Ease off with each attempt
+            }
+        }
+        
+        if let persistError {
+            throw persistError
+        }
+    }
         
     static func persist(_ label: Label, _ bytes: [UInt8]) throws {
         struct PersistResponse: Codable {

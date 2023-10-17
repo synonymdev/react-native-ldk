@@ -45,11 +45,10 @@ enum class EventTypes {
     channel_manager_channel_closed,
     channel_manager_discard_funding,
     channel_manager_payment_claimed,
-    emergency_force_close_channel,
     new_channel,
     network_graph_updated,
     channel_manager_restarted,
-    backup_failed
+    backup_sync_persist_error
 }
 //*****************************************************************
 
@@ -69,7 +68,6 @@ enum class LdkErrors {
     add_peer_fail,
     init_channel_manager,
     decode_invoice_fail,
-    init_invoice_payer,
     invoice_payment_fail_unknown,
     invoice_payment_fail_must_specify_amount,
     invoice_payment_fail_must_not_specify_amount,
@@ -103,7 +101,6 @@ enum class LdkCallbackResponses {
     log_level_updated,
     log_path_updated,
     log_write_success,
-    chain_monitor_init_success,
     keys_manager_init_success,
     channel_manager_init_success,
     config_init_success,
@@ -227,23 +224,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initChainMonitor(promise: Promise) {
-        if (chainMonitor !== null) {
-            return handleReject(promise, LdkErrors.already_init)
-        }
-
-        chainMonitor = ChainMonitor.of(
-            Option_FilterZ.some(filter.filter),
-            broadcaster.broadcaster,
-            logger.logger,
-            feeEstimator.feeEstimator,
-            persister.persister
-        )
-
-        handleResolve(promise, LdkCallbackResponses.chain_monitor_init_success)
-    }
-
-    @ReactMethod
     fun initKeysManager(seed: String, promise: Promise) {
         if (keysManager !== null) {
             return handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
@@ -359,7 +339,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.already_init)
         }
 
-        chainMonitor ?: return handleReject(promise, LdkErrors.init_chain_monitor)
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
         userConfig ?: return handleReject(promise, LdkErrors.init_user_config)
         networkGraph ?: return handleReject(promise, LdkErrors.init_network_graph)
@@ -392,6 +371,14 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val scoringParams = ProbabilisticScoringDecayParameters.with_default()
         val scoringFeeParams = ProbabilisticScoringFeeParameters.with_default()
+
+        chainMonitor = ChainMonitor.of(
+            Option_FilterZ.some(filter.filter),
+            broadcaster.broadcaster,
+            logger.logger,
+            feeEstimator.feeEstimator,
+            persister.persister
+        )
 
         try {
             if (channelManagerSerialized != null) {

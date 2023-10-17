@@ -267,10 +267,10 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         }
         
         do {
+            try BackupClient.persist(.channelManager, channelManager.write(), retry: 100)
+
             try Data(channelManager.write()).write(to: managerStorage)
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")
-            
-            try BackupClient.persist(.channelManager, channelManager.write())
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")            
                         
             LdkEventEmitter.shared.send(withEvent: .backup, body: "")
             

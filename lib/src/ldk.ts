@@ -81,22 +81,6 @@ class LDK {
 	}
 
 	/**
-	 * Connected and disconnected blocks must be provided
-	 * https://docs.rs/lightning/latest/lightning/chain/chainmonitor/struct.ChainMonitor.html
-	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
-	 */
-	async initChainMonitor(): Promise<Result<string>> {
-		try {
-			const res = await NativeLDK.initChainMonitor();
-			this.writeDebugToLog('initChainMonitor');
-			return ok(res);
-		} catch (e) {
-			this.writeErrorToLog('initChainMonitor', e);
-			return err(e);
-		}
-	}
-
-	/**
 	 * Private key for node. Used to derive node public key. 32-byte entropy.
 	 * https://docs.rs/lightning/latest/lightning/chain/keysinterface/struct.KeysManager.html
 	 * @param seed
@@ -1129,7 +1113,9 @@ class LDK {
 			this.writeDebugToLog('readFromFile', fileName);
 			return ok({ ...res, timestamp: Math.round(res.timestamp) });
 		} catch (e) {
-			this.writeErrorToLog('readFromFile', e);
+			if (JSON.stringify(e).indexOf('Could not locate file') < 0) {
+				this.writeErrorToLog('readFromFile', e);
+			}
 			return err(e);
 		}
 	}

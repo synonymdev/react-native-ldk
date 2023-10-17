@@ -435,11 +435,7 @@ class LightningManager {
 		// Lazy loaded in native code
 		// https://docs.rs/lightning/latest/lightning/chain/chainmonitor/trait.Persist.html
 
-		// Step 5: Initialize the ChainMonitor
-		const chainMonitorRes = await ldk.initChainMonitor();
-		if (chainMonitorRes.isErr()) {
-			return this.handleStartError(chainMonitorRes);
-		}
+		// Step 5: Initialize the ChainMonitor (happens when we init the ChannelManager)
 
 		// Step 6: Initialize the KeysManager
 		const keysManager = await ldk.initKeysManager(this.account.seed);

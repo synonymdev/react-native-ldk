@@ -24,8 +24,8 @@ class LdkPersister {
 
             val isNew = !file.exists()
 
+            BackupClient.persist(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write(), retry = 100)
             file.writeBytes(data.write())
-            BackupClient.persist(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write())
 
             LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${id.to_channel_id().hexEncodedString()}) to disk")
             LdkEventEmitter.send(EventTypes.backup, "")

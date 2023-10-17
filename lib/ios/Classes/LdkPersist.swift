@@ -23,12 +23,11 @@ class LdkPersister: Persist {
             
             let isNew = !FileManager().fileExists(atPath: channelStoragePath.path)
                         
+            try BackupClient.persist(.channelMonitor(id: channelId), data.write(), retry: 100)
             try Data(data.write()).write(to: channelStoragePath)
-            try BackupClient.persist(.channelMonitor(id: channelId), data.write())
             
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel (\(channelId)) to disk")
             LdkEventEmitter.shared.send(withEvent: .backup, body: "")
-            
             
             if isNew {
                 LdkEventEmitter.shared.send(
