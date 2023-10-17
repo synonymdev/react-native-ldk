@@ -175,6 +175,36 @@ class BackupClient {
         }
 
         @Throws(BackupError::class)
+        fun persist(label: Label, bytes: ByteArray, retry: Int) {
+            var attempts = 0
+            var persistError: Exception? = null
+
+            while (attempts < retry) {
+                try {
+                    persist(label, bytes)
+
+                    LdkEventEmitter.send(
+                        EventTypes.native_log,
+                        "Remote persist success for ${label.string} after ${attempts+1} attempts"
+                    )
+                    return
+                } catch (error: Exception) {
+                    persistError = error
+                    attempts += 1
+                    LdkEventEmitter.send(
+                        EventTypes.native_log,
+                        "Remote persist failed for ${label.string} ($attempts attempts)"
+                    )
+                    Thread.sleep(attempts.toLong()) // Ease off with each attempt
+                }
+            }
+
+            if (persistError != null) {
+                throw persistError
+            }
+        }
+
+        @Throws(BackupError::class)
         fun persist(label: Label, bytes: ByteArray) {
             if (skipRemoteBackup) {
                 return
