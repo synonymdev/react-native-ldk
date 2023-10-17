@@ -25,7 +25,7 @@ enum EventTypes: String, CaseIterable {
     case new_channel = "new_channel"
     case network_graph_updated = "network_graph_updated"
     case channel_manager_restarted = "channel_manager_restarted"
-    case backup_sync_persist_error = "backup_failed"
+    case backup_sync_persist_error = "backup_sync_persist_error"
 }
 //*****************************************************************
 
@@ -45,7 +45,6 @@ enum LdkErrors: String {
     case add_peer_fail = "add_peer_fail"
     case init_channel_manager = "init_channel_manager"
     case decode_invoice_fail = "decode_invoice_fail"
-    case init_invoice_payer = "init_invoice_payer"
     case invoice_payment_fail_unknown = "invoice_payment_fail_unknown"
     case invoice_payment_fail_must_specify_amount = "invoice_payment_fail_must_specify_amount"
     case invoice_payment_fail_must_not_specify_amount = "invoice_payment_fail_must_not_specify_amount"
@@ -82,7 +81,6 @@ enum LdkCallbackResponses: String {
     case log_level_updated = "log_level_updated"
     case log_path_updated = "log_path_updated"
     case log_write_success = "log_write_success"
-    case chain_monitor_init_success = "chain_monitor_init_success"
     case keys_manager_init_success = "keys_manager_init_success"
     case channel_manager_init_success = "channel_manager_init_success"
     case config_init_success = "config_init_success"
@@ -196,23 +194,6 @@ class Ldk: NSObject {
     func writeToLogFile(_ line: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         Logfile.log.write(String(line))
         return handleResolve(resolve, .log_write_success)
-    }
-    
-    @objc
-    func initChainMonitor(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard chainMonitor == nil else {
-            return handleReject(reject, .already_init)
-        }
-        
-        chainMonitor = ChainMonitor(
-            chainSource: filter,
-            broadcaster: broadcaster,
-            logger: logger,
-            feeest: feeEstimator,
-            persister: persister
-        )
-        
-        return handleResolve(resolve, .chain_monitor_init_success)
     }
     
     @objc
@@ -344,10 +325,6 @@ class Ldk: NSObject {
             return handleReject(reject, .already_init)
         }
         
-        guard let chainMonitor = chainMonitor else {
-            return handleReject(reject, .init_chain_monitor)
-        }
-        
         guard let keysManager = keysManager else {
             return handleReject(reject, .init_keys_manager)
         }
@@ -392,6 +369,14 @@ class Ldk: NSObject {
         let score = probabilisticScorer.asScore()
         let scorer = MultiThreadedLockableScore(score: score)
         
+        chainMonitor = ChainMonitor(
+            chainSource: filter,
+            broadcaster: broadcaster,
+            logger: logger,
+            feeest: feeEstimator,
+            persister: persister
+        )
+        
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Enabled P2P gossip: \(enableP2PGossip)")
 
         //        print("\(String(cString: strerror(22)))")
@@ -402,7 +387,7 @@ class Ldk: NSObject {
             nodeSigner: keysManager.asNodeSigner(),
             signerProvider: keysManager.asSignerProvider(),
             feeEstimator: feeEstimator,
-            chainMonitor: chainMonitor,
+            chainMonitor: chainMonitor!,
             txBroadcaster: broadcaster,
             logger: logger,
             enableP2PGossip: enableP2PGossip,
@@ -500,14 +485,6 @@ class Ldk: NSObject {
         channelManager = nil
         peerManager = nil
         peerHandler = nil
-        
-        chainMonitor = ChainMonitor(
-            chainSource: filter,
-            broadcaster: broadcaster,
-            logger: logger,
-            feeest: feeEstimator,
-            persister: persister
-        )
                 
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting LDK background tasks again")
         initChannelManager(currentNetwork, blockHash: currentBlockchainTipHash, blockHeight: currentBlockchainHeight) { success in
