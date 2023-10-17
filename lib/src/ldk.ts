@@ -1129,7 +1129,9 @@ class LDK {
 			this.writeDebugToLog('readFromFile', fileName);
 			return ok({ ...res, timestamp: Math.round(res.timestamp) });
 		} catch (e) {
-			this.writeErrorToLog('readFromFile', e);
+			if (JSON.stringify(e).indexOf('Could not locate file') < 0) {
+				this.writeErrorToLog('readFromFile', e);
+			}
 			return err(e);
 		}
 	}
