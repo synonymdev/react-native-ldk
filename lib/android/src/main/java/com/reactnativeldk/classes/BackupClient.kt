@@ -214,6 +214,10 @@ class BackupClient {
                     EventTypes.native_log,
                     "Remote persist failed for ${label.string} with response code ${urlConnection.responseCode}"
                 )
+                LdkEventEmitter.send(
+                    EventTypes.backup_sync_persist_error,
+                    "Response: ${urlConnection.responseMessage}"
+                )
 
                 throw InvalidServerResponse(urlConnection.responseCode)
             }
