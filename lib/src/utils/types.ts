@@ -151,8 +151,8 @@ export type TChannel = {
 	user_channel_id: string;
 	confirmations_required?: number;
 	short_channel_id: string;
-	inbound_scid_alias?: number;
-	inbound_payment_scid?: number;
+	inbound_scid_alias: string;
+	inbound_payment_scid: string;
 	inbound_capacity_sat: number;
 	outbound_capacity_sat: number;
 	channel_value_satoshis: number;

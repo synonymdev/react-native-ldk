@@ -123,12 +123,21 @@ val ChannelDetails.asJson: WritableMap
         result.putHexString("channel_type", _channel_type?.write())
         result.putString("user_channel_id", _user_channel_id.leBytes.hexEncodedString())
         result.putInt("confirmations_required", (_confirmations_required as Option_u32Z.Some).some)
-        (_short_channel_id as? Option_u64Z.Some)?.some?.toInt()
-            ?.let { result.putString("short_channel_id", it.toString()) } //Optional number
-        (_inbound_scid_alias as? Option_u64Z.Some)?.some?.toInt()
-            ?.let { result.putInt("inbound_scid_alias", it) }
-        (_inbound_scid_alias as? Option_u64Z.Some)?.some?.toInt()
-            ?.let { result.putInt("inbound_payment_scid", it) }
+        if (_short_channel_id is Option_u64Z.Some) {
+            result.putString("short_channel_id", (_short_channel_id as Option_u64Z.Some).some.toULong().toString())
+        } else {
+            result.putString("short_channel_id", "")
+        }
+        if (_inbound_scid_alias is Option_u64Z.Some) {
+            result.putString("inbound_scid_alias", (_inbound_scid_alias as Option_u64Z.Some).some.toULong().toString())
+        } else {
+            result.putString("inbound_scid_alias", "")
+        }
+        if (_inbound_payment_scid is Option_u64Z.Some) {
+            result.putString("inbound_payment_scid", (_inbound_payment_scid as Option_u64Z.Some).some.toULong().toString())
+        } else {
+            result.putString("inbound_payment_scid", "")
+        }
         result.putInt("inbound_capacity_sat", (_inbound_capacity_msat / 1000).toInt())
         result.putInt("outbound_capacity_sat", (_outbound_capacity_msat / 1000).toInt())
         result.putInt("channel_value_satoshis", _channel_value_satoshis.toInt())
