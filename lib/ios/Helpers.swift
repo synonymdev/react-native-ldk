@@ -112,6 +112,8 @@ extension RouteHintHop {
 //Our own channels
 extension ChannelDetails {
     var asJson: [String: Any] {
+        let shortChannelId = getShortChannelId() != nil ? String(getShortChannelId()!) : ""
+        
         return [
             "channel_id": Data(getChannelId() ?? []).hexEncodedString(),
             "is_public": getIsPublic(),
@@ -124,9 +126,9 @@ extension ChannelDetails {
             "channel_type": Data(getChannelType()?.write() ?? []).hexEncodedString(),
             "user_channel_id": Data(getUserChannelId()).hexEncodedString(), //String
             "confirmations_required": getConfirmationsRequired() as Any, // Optional number
-            "short_channel_id": getShortChannelId() != nil ? String(getShortChannelId()!) : "", //String
-            "inbound_scid_alias": getInboundScidAlias() != nil ? String(getInboundScidAlias()!) : "", //String
-            "inbound_payment_scid": getInboundPaymentScid() != nil ? String(getInboundPaymentScid()!) : "", //String
+            "short_channel_id": shortChannelId,
+            "inbound_scid_alias": getInboundScidAlias() != nil ? String(getInboundScidAlias()!) : shortChannelId, //String
+            "inbound_payment_scid": getInboundPaymentScid() as Any, //Optional number,
             "inbound_capacity_sat": getInboundCapacityMsat() / 1000,
             "outbound_capacity_sat": getOutboundCapacityMsat() / 1000,
             "channel_value_satoshis": getChannelValueSatoshis(),
@@ -279,7 +281,7 @@ extension RapidGossipSync {
             
             guard let self = self else { return }
             
-            let res = self.updateNetworkGraphNoStd(updateData: [UInt8](try! Data(contentsOf: destinationFile)), currentTimeUnix: UInt64(Date().timeIntervalSince1970))
+            let res = self.updateNetworkGraph(updateData: [UInt8](try! Data(contentsOf: destinationFile)))
             guard res.isOk() else {
                 var errorMessage = "Failed to update network graph."
                 switch res.getError()?.getValueType() {

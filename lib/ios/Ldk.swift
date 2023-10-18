@@ -272,14 +272,14 @@ class Ldk: NSObject {
             
             //If it's been more than 24 hours then we need to update RGS
             let timestamp = networkGraph?.getLastRapidGossipSyncTimestamp() ?? 0
-            let hoursDiffSinceLastRGS = (Calendar.current.dateComponents([.hour], from: Date.init(timeIntervalSince1970: TimeInterval(timestamp)), to: Date()).hour)!
+            let minutesDiffSinceLastRGS = (Calendar.current.dateComponents([.minute], from: Date.init(timeIntervalSince1970: TimeInterval(timestamp)), to: Date()).minute)!
             
-            guard hoursDiffSinceLastRGS > 24 else {
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping rapid gossip sync. Last updated \(hoursDiffSinceLastRGS) hours ago.")
+            guard minutesDiffSinceLastRGS > 60 else {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping rapid gossip sync. Last updated \(minutesDiffSinceLastRGS/60) hours ago.")
                 return handleResolve(resolve, .network_graph_init_success)
             }
             
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync applying update. Last updated \(hoursDiffSinceLastRGS) hours ago.")
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rapid gossip sync applying update. Last updated \(minutesDiffSinceLastRGS/60) hours ago.")
             
             rapidGossipSync!.downloadAndUpdateGraph(downloadUrl: String(rapidGossipSyncUrl), tempStoragePath: rapidGossipSyncStoragePath, timestamp: timestamp) { [weak self] error in
                 guard let self = self else { return }
@@ -1176,7 +1176,7 @@ class Ldk: NSObject {
             logDump.append("Claimable balances unavailable. Chain monitor not set yet")
         }
         
-        if let syncTimestamp = networkGraph?.getLastRapidGossipSyncTimestamp() {
+        if let syncTimestamp = channelManagerConstructor?.netGraph?.getLastRapidGossipSyncTimestamp() {
             let date = Date(timeIntervalSince1970: TimeInterval(syncTimestamp))
 
             let dateFormatter = DateFormatter()
