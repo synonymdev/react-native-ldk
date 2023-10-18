@@ -112,7 +112,6 @@ extension RouteHintHop {
 //Our own channels
 extension ChannelDetails {
     var asJson: [String: Any] {
-        let shortChannelId = getShortChannelId()
         return [
             "channel_id": Data(getChannelId() ?? []).hexEncodedString(),
             "is_public": getIsPublic(),
@@ -123,11 +122,11 @@ extension ChannelDetails {
             "counterparty_node_id": Data(getCounterparty().getNodeId()).hexEncodedString(),
             "funding_txid": Data(getFundingTxo()?.getTxid()?.reversed() ?? []).hexEncodedString(),
             "channel_type": Data(getChannelType()?.write() ?? []).hexEncodedString(),
-            "user_channel_id": Data(getUserChannelId()).hexEncodedString(), //Sting
+            "user_channel_id": Data(getUserChannelId()).hexEncodedString(), //String
             "confirmations_required": getConfirmationsRequired() as Any, // Optional number
-            "short_channel_id": shortChannelId != nil ? String(shortChannelId!) : "",
-            "inbound_scid_alias": getInboundScidAlias() as Any, //Optional number
-            "inbound_payment_scid": getInboundPaymentScid() as Any, //Optional number,
+            "short_channel_id": getShortChannelId() != nil ? String(getShortChannelId()!) : "", //String
+            "inbound_scid_alias": getInboundScidAlias() != nil ? String(getInboundScidAlias()!) : "", //String
+            "inbound_payment_scid": getInboundPaymentScid() != nil ? String(getInboundPaymentScid()!) : "", //String
             "inbound_capacity_sat": getInboundCapacityMsat() / 1000,
             "outbound_capacity_sat": getOutboundCapacityMsat() / 1000,
             "channel_value_satoshis": getChannelValueSatoshis(),
