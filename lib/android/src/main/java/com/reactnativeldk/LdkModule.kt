@@ -291,13 +291,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         //If it's been more than 24 hours then we need to update RGS
         val timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
-        val hoursDiffSinceLastRGS = (System.currentTimeMillis() / 1000 - timestamp) / 60 / 60
-        if (hoursDiffSinceLastRGS < 24) {
-            LdkEventEmitter.send(EventTypes.native_log, "Skipping rapid gossip sync. Last updated $hoursDiffSinceLastRGS hours ago.")
+        val minutesDiffSinceLastRGS = (System.currentTimeMillis() / 1000 - timestamp) / 60
+        if (minutesDiffSinceLastRGS < 60) {
+            LdkEventEmitter.send(EventTypes.native_log, "Skipping rapid gossip sync. Last updated ${minutesDiffSinceLastRGS/60} hours ago.")
             return handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
         }
 
-        LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync applying update. Last updated $hoursDiffSinceLastRGS hours ago.")
+        LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync applying update. Last updated ${minutesDiffSinceLastRGS/60} hours ago.")
 
         rapidGossipSync!!.downloadAndUpdateGraph(rapidGossipSyncUrl, "$accountStoragePath/rapid_gossip_sync/", timestamp) { error ->
             if (error != null) {
@@ -1091,7 +1091,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             logDump.add("Claimable balances unavailable. Chain monitor not set yet")
         }
 
-        networkGraph?._last_rapid_gossip_sync_timestamp?.let { res ->
+        channelManagerConstructor?.net_graph?._last_rapid_gossip_sync_timestamp?.let { res ->
             val syncTimestamp = if (res is Option_u32Z.Some) (res as Option_u32Z.Some).some.toLong() else 0
             if (syncTimestamp == 0L) {
                 logDump.add("Last rapid gossip sync time: NEVER")

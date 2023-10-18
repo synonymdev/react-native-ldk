@@ -235,7 +235,7 @@ fun RapidGossipSync.downloadAndUpdateGraph(downloadUrl: String, tempStoragePath:
                 return@downloadFile
             }
 
-            val res = update_network_graph_no_std(File(destinationFile).readBytes(), Option_u64Z.some((System.currentTimeMillis() / 1000)))
+            val res = update_network_graph(File(destinationFile).readBytes())
             if (!res.is_ok()) {
                 val error = res as? Result_u32GraphSyncErrorZ.Result_u32GraphSyncErrorZ_Err
 
