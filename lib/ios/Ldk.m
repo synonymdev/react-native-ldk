@@ -37,10 +37,13 @@ RCT_EXTERN_METHOD(stop:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
 //MARK: Update methods
-RCT_EXTERN_METHOD(updateFees:(NSInteger *)high
-                  normal:(NSInteger *)normal
-                  low:(NSInteger *)low
-                  mempoolMinimum:(NSInteger *)mempoolMinimum
+RCT_EXTERN_METHOD(updateFees:(NSInteger *)anchorChannelFee
+                  nonAnchorChannelFee:(NSInteger *)nonAnchorChannelFee
+                  channelCloseMinimum:(NSInteger *)channelCloseMinimum
+                  minAllowedAnchorChannelRemoteFee:(NSInteger *)minAllowedAnchorChannelRemoteFee
+                  maxAllowedNonAnchorChannelRemoteFee:(NSInteger *)maxAllowedNonAnchorChannelRemoteFee
+                  onChainSweep:(NSInteger *)onChainSweep
+                  minAllowedNonAnchorChannelRemoteFee:(NSInteger *)minAllowedNonAnchorChannelRemoteFee
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setLogLevel:(NSString *)level

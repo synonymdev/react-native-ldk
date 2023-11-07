@@ -291,14 +291,25 @@ class LDK {
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async updateFees(fees: TFeeUpdateReq): Promise<Result<string>> {
-		const { highPriority, normal, background, mempoolMinimum } = fees;
+		const {
+			anchorChannelFee,
+			nonAnchorChannelFee,
+			channelCloseMinimum,
+			minAllowedAnchorChannelRemoteFee,
+			maxAllowedNonAnchorChannelRemoteFee,
+			onChainSweep,
+			minAllowedNonAnchorChannelRemoteFee,
+		} = fees;
 		try {
 			const satsPerKw = 250;
 			const res = await NativeLDK.updateFees(
-				highPriority * satsPerKw,
-				normal * satsPerKw,
-				background * satsPerKw,
-				mempoolMinimum * satsPerKw,
+				anchorChannelFee * satsPerKw,
+				nonAnchorChannelFee * satsPerKw,
+				channelCloseMinimum * satsPerKw,
+				minAllowedAnchorChannelRemoteFee * satsPerKw,
+				maxAllowedNonAnchorChannelRemoteFee * satsPerKw,
+				onChainSweep * satsPerKw,
+				minAllowedNonAnchorChannelRemoteFee * satsPerKw,
 			);
 			this.writeDebugToLog('updateFees', fees);
 			return ok(res);

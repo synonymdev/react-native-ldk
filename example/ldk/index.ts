@@ -120,10 +120,13 @@ export const setupLdk = async (
 			getScriptPubKeyHistory,
 			getFees: () =>
 				Promise.resolve({
-					highPriority: 10,
-					normal: 5,
-					background: 1,
-					mempoolMinimum: 1,
+					anchorChannelFee: 10,
+					nonAnchorChannelFee: 10,
+					channelCloseMinimum: 10,
+					minAllowedAnchorChannelRemoteFee: 10,
+					maxAllowedNonAnchorChannelRemoteFee: 10,
+					onChainSweep: 10,
+					minAllowedNonAnchorChannelRemoteFee: 10,
 				}),
 			getTransactionData,
 			getTransactionPosition,
