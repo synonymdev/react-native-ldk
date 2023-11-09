@@ -564,6 +564,7 @@ export type TLdkStart = {
 	userConfig?: TUserConfig;
 	trustedZeroConfPeers?: string[];
 	backupServerDetails?: TBackupServerDetails;
+	skipParamCheck?: boolean;
 };
 
 export type TGetAddress = () => Promise<string>;

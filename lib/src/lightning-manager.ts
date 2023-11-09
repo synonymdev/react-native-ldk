@@ -295,6 +295,7 @@ class LightningManager {
 		userConfig = defaultUserConfig,
 		trustedZeroConfPeers = [],
 		backupServerDetails,
+		skipParamCheck = false,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
 			return err(
@@ -329,20 +330,24 @@ class LightningManager {
 		}
 		this.isStarting = true;
 
-		// Ensure the start params function as expected.
-		const paramCheckResponse = await startParamCheck({
-			account,
-			getBestBlock,
-			getTransactionData,
-			getTransactionPosition,
-			broadcastTransaction,
-			getAddress,
-			getScriptPubKeyHistory,
-			getFees,
-			network,
-		});
-		if (paramCheckResponse.isErr()) {
-			return this.handleStartError(paramCheckResponse);
+		if (!skipParamCheck) {
+			// Ensure the start params function as expected.
+			const paramCheckResponse = await startParamCheck({
+				account,
+				getBestBlock,
+				getTransactionData,
+				getTransactionPosition,
+				broadcastTransaction,
+				getAddress,
+				getScriptPubKeyHistory,
+				getFees,
+				network,
+			});
+			if (paramCheckResponse.isErr()) {
+				return this.handleStartError(paramCheckResponse);
+			}
+		} else {
+			console.warn('Skipping start param check. Switch back on for debugging.');
 		}
 
 		this.getBestBlock = getBestBlock;
@@ -402,61 +407,28 @@ class LightningManager {
 			}
 		}
 
-		//Setup remote backup server
-		if (backupServerDetails) {
-			const backupSetupRes = await ldk.backupSetup({
-				seed: account.seed,
-				network: this.network,
-				details: backupServerDetails,
-			});
-			if (backupSetupRes.isErr()) {
-				return this.handleStartError(err(backupSetupRes.error));
-			}
-		}
-
-		// Step 1: Initialize the FeeEstimator
-		// Lazy loaded in native code
-		// https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html
-
-		// Step 2: Initialize the Logger
-		// Lazy loaded in native code
-		// https://docs.rs/lightning/latest/lightning/util/logger/index.html
-
-		//Switch on log levels we're interested in. All levels are false by default.
-		await ldk.setLogLevel(ELdkLogLevels.info, true);
-		await ldk.setLogLevel(ELdkLogLevels.warn, true);
-		await ldk.setLogLevel(ELdkLogLevels.error, true);
-		await ldk.setLogLevel(ELdkLogLevels.debug, true);
-
-		//TODO might not always need this one as they make the logs a little noisy
-		// await ldk.setLogLevel(ELdkLogLevels.trace, true);
-
-		// Step 3: Initialize the BroadcasterInterface
-		// Lazy loaded in native code
-		// https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.BroadcasterInterface.html
-
-		// Step 4: Initialize Persist
-		// Lazy loaded in native code
-		// https://docs.rs/lightning/latest/lightning/chain/chainmonitor/trait.Persist.html
-
-		// Step 5: Initialize the ChainMonitor (happens when we init the ChannelManager)
-
-		// Step 6: Initialize the KeysManager
-		const keysManager = await ldk.initKeysManager(this.account.seed);
-		if (keysManager.isErr()) {
-			return this.handleStartError(keysManager);
-		}
-
-		// Step 7: Read ChannelMonitors state from disk
-		// Handled in initChannelManager below
-
 		if (network !== ENetworks.mainnet) {
 			//RGS and pre-populated scorer only available for mainnet
 			rapidGossipSyncUrl = '';
 			scorerDownloadUrl = '';
 		}
 
-		let promises: Promise<Result<string>>[] = [];
+		//All these calls don't need to be done in any particular sequence
+		let promises: Promise<Result<string>>[] = [
+			ldk.setLogLevel(ELdkLogLevels.info, true),
+			ldk.setLogLevel(ELdkLogLevels.warn, true),
+			ldk.setLogLevel(ELdkLogLevels.error, true),
+			ldk.setLogLevel(ELdkLogLevels.debug, true),
+			// ldk.setLogLevel(ELdkLogLevels.trace, true),
+			ldk.initKeysManager(this.account.seed),
+			ldk.initNetworkGraph({
+				network,
+				rapidGossipSyncUrl,
+				skipHoursThreshold: 3,
+			}),
+			this.setFees(),
+			ldk.initUserConfig(userConfig),
+		];
 
 		if (scorerDownloadUrl) {
 			promises.push(
@@ -465,54 +437,24 @@ class LightningManager {
 					skipHoursThreshold: 3,
 				}),
 			);
-		} else {
-			promises.push(Promise.resolve(ok('')));
 		}
 
-		promises.push(
-			ldk.initNetworkGraph({
-				network,
-				rapidGossipSyncUrl,
-				skipHoursThreshold: 3,
-			}),
-		);
-
-		//
-		//
-		//
-		// if (scorerDownloadUrl) {
-		// 	const scorerRes = await ldk.downloadScorer({
-		// 		scorerDownloadUrl,
-		// 		skipHoursThreshold: 3,
-		// 	});
-		// 	if (scorerRes.isErr()) {
-		// 		return this.handleStartError(scorerRes);
-		// 	}
-		// }
-		//
-		// // Step 11: Optional: Initialize the NetGraphMsgHandler
-		// const networkGraphRes = await ldk.initNetworkGraph({
-		// 	network,
-		// 	rapidGossipSyncUrl,
-		// 	skipHoursThreshold: 3,
-		// });
-		// if (networkGraphRes.isErr()) {
-		// 	return this.handleStartError(networkGraphRes);
-		// }
-
-		const [scorerRes, networkGraphRes] = await Promise.all(promises);
-		if (scorerRes.isErr()) {
-			return this.handleStartError(scorerRes);
-		}
-		if (networkGraphRes.isErr()) {
-			return this.handleStartError(networkGraphRes);
+		if (backupServerDetails) {
+			promises.push(
+				ldk.backupSetup({
+					seed: account.seed,
+					network: this.network,
+					details: backupServerDetails,
+				}),
+			);
 		}
 
-		// Step 8: Initialize the UserConfig ChannelManager
-		const confRes = await ldk.initUserConfig(userConfig);
-
-		if (confRes.isErr()) {
-			return this.handleStartError(confRes);
+		// Check for any errors before starting channel manager.
+		const results = await Promise.all(promises);
+		for (const result of results) {
+			if (result.isErr()) {
+				return this.handleStartError(result);
+			}
 		}
 
 		const channelManagerRes = await ldk.initChannelManager({
@@ -534,28 +476,18 @@ class LightningManager {
 			);
 		}
 
-		// Set fee estimates
-		await this.setFees();
-
 		//Force close all channels on startup. Likely to recover funds after restoring from a stale backup.
 		if (forceCloseOnStartup && forceCloseOnStartup.forceClose) {
 			await ldk.forceCloseAllChannels(forceCloseOnStartup.broadcastLatestTx);
 		}
 
 		if (!forceCloseOnStartup || forceCloseOnStartup.broadcastLatestTx) {
-			// If we're force closing without broadcasting latest state don't add peers as we're likely doing this to recovery from a stale backup
-			await this.addPeers();
+			// If we're force closing without broadcasting the latest state don't add peers as we're likely doing this to recovery from a stale backup
+			this.addPeers().catch(console.error);
 		}
 
-		// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
-		await this.syncLdk();
-
-		// Step 10: Give ChannelMonitors to ChainMonitor
-
-		// Step 12: Initialize the PeerManager
-		// Done with initChannelManager
-		// Step 13: Initialize networking
-		// Done with initChannelManager
+		//Can continue in the background
+		this.syncLdk().catch(console.error);
 
 		//Writes node state to log files
 		ldk.nodeStateDump().catch(console.error);
@@ -593,9 +525,9 @@ class LightningManager {
 		);
 	}
 
-	async setFees(): Promise<void> {
+	async setFees(): Promise<Result<string>> {
 		const fees = await this.getFees();
-		await ldk.updateFees(fees);
+		return await ldk.updateFees(fees);
 	}
 
 	/**
