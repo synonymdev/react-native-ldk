@@ -126,10 +126,13 @@ class LightningManager {
 		TGetScriptPubKeyHistoryResponse[]
 	> => [];
 	getFees: TGetFees = async (): Promise<TFeeUpdateReq> => ({
-		highPriority: 15,
-		normal: 10,
-		background: 5,
-		mempoolMinimum: 1,
+		nonAnchorChannelFee: 5,
+		anchorChannelFee: 5,
+		maxAllowedNonAnchorChannelRemoteFee: 5,
+		channelCloseMinimum: 5,
+		minAllowedAnchorChannelRemoteFee: 5,
+		minAllowedNonAnchorChannelRemoteFee: 5,
+		onChainSweep: 5,
 	});
 	trustedZeroConfPeers: string[] = [];
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
@@ -1753,7 +1756,7 @@ class LightningManager {
 					outputValue: outputFromChannelCloseTx.outputValue,
 					outpointTxId: outputFromChannelCloseTx.outpointTxId,
 					outpointIndex: outputFromChannelCloseTx.outpointIndex,
-					feeRate: await this.getNormalFeeRate(),
+					feeRate: await this.getOnChainSweepFeeRate(),
 					changeDestinationScript: changeDestinationScript,
 				};
 				const res = await ldk.reconstructAndSpendOutputs(req);
@@ -2017,32 +2020,13 @@ class LightningManager {
 	 * Returns a normal fee rate and will fall back to a rational default if unable to retrieve fee.
 	 * @returns {Promise<number>} Fee rate in sats per 1000 weight
 	 */
-	private async getNormalFeeRate(): Promise<number> {
+	private async getOnChainSweepFeeRate(): Promise<number> {
 		try {
-			let satsPerKW = (await this.getFees()).normal;
+			let satsPerVByte = (await this.getFees()).onChainSweep;
 			// Multiply by 250 because https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html#tymethod.get_est_sat_per_1000_weight
-			return satsPerKW * 250;
+			return satsPerVByte * 250;
 		} catch (error) {
 			let fallbackSatsPerByte = 10;
-			await ldk.writeToLogFile(
-				'error',
-				`Unable to retrieve fee for spending output. Falling back to ${fallbackSatsPerByte} sats per byte. Error: ${error}`,
-			);
-			return fallbackSatsPerByte * 250; //Reasonable 10 sat/vbyte fallback
-		}
-	}
-
-	/**
-	 * Returns a high fee rate and will fall back to a rational default if unable to retrieve fee.
-	 * @returns {Promise<number>} Fee rate in sats per 1000 weight
-	 */
-	private async getHighFeeRate(): Promise<number> {
-		try {
-			let satsPerKW = (await this.getFees()).highPriority;
-			// Multiply by 250 because https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html#tymethod.get_est_sat_per_1000_weight
-			return satsPerKW * 250;
-		} catch (error) {
-			let fallbackSatsPerByte = 20;
 			await ldk.writeToLogFile(
 				'error',
 				`Unable to retrieve fee for spending output. Falling back to ${fallbackSatsPerByte} sats per byte. Error: ${error}`,
@@ -2081,7 +2065,7 @@ class LightningManager {
 			return;
 		}
 
-		const fee = await this.getHighFeeRate();
+		const fee = await this.getOnChainSweepFeeRate();
 		const spendRes = await ldk.spendOutputs({
 			descriptorsSerialized: res.outputsSerialized,
 			outputs: [], //Shouldn't need to specify this if we're sweeping all funds to dest script

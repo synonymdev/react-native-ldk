@@ -5,39 +5,40 @@ import org.ldk.enums.ConfirmationTarget
 import org.ldk.structs.FeeEstimator
 
 class LdkFeeEstimator {
-    var high: Int = 0
-    var normal: Int = 0
-    var low: Int = 0
-    var mempoolMinimum: Int = 0
-    var feeEstimator = FeeEstimator.new_impl { target: ConfirmationTarget ->
-        if (target.equals(ConfirmationTarget.LDKConfirmationTarget_HighPriority)) {
-            return@new_impl high
-        }
+    var anchorChannelFee: Int = 0
+    var nonAnchorChannelFee: Int = 0
+    var channelCloseMinimum: Int = 0
+    var minAllowedAnchorChannelRemoteFee: Int = 0
+    var maxAllowedNonAnchorChannelRemoteFee: Int = 0
+    var onChainSweep: Int = 0
+    var minAllowedNonAnchorChannelRemoteFee: Int = 0
 
-        if (target.equals(ConfirmationTarget.LDKConfirmationTarget_Normal)) {
-            return@new_impl normal
-        }
-
-        if (target.equals(ConfirmationTarget.LDKConfirmationTarget_Background)) {
-            return@new_impl low
-        }
-
-        if (target.equals(ConfirmationTarget.LDKConfirmationTarget_MempoolMinimum)) {
-            return@new_impl mempoolMinimum
-        }
-
-        LdkEventEmitter.send(EventTypes.native_log, "WARNING: New ConfirmationTarget added. Update LdkFeeEstimator.")
-
-        return@new_impl normal
-    }
-
-    fun update(high: Int, normal: Int, low: Int, mempoolMinimum: Int) {
-        this.high = high
-        this.normal = normal
-        this.low = low
-        this.mempoolMinimum = mempoolMinimum
+    fun update(anchorChannelFee: Int, nonAnchorChannelFee: Int, channelCloseMinimum: Int, minAllowedAnchorChannelRemoteFee: Int, maxAllowedNonAnchorChannelRemoteFee: Int, onChainSweep: Int, minAllowedNonAnchorChannelRemoteFee: Int) {
+        this.anchorChannelFee = anchorChannelFee
+        this.nonAnchorChannelFee = nonAnchorChannelFee
+        this.channelCloseMinimum = channelCloseMinimum
+        this.minAllowedAnchorChannelRemoteFee = minAllowedAnchorChannelRemoteFee
+        this.maxAllowedNonAnchorChannelRemoteFee = maxAllowedNonAnchorChannelRemoteFee
+        this.onChainSweep = onChainSweep
+        this.minAllowedNonAnchorChannelRemoteFee = minAllowedNonAnchorChannelRemoteFee
 
         LdkEventEmitter.send(EventTypes.native_log, "Fee estimator updated")
+    }
+
+    var feeEstimator = FeeEstimator.new_impl { target: ConfirmationTarget ->
+        return@new_impl when (target) {
+            ConfirmationTarget.LDKConfirmationTarget_AnchorChannelFee -> anchorChannelFee
+            ConfirmationTarget.LDKConfirmationTarget_NonAnchorChannelFee -> nonAnchorChannelFee
+            ConfirmationTarget.LDKConfirmationTarget_ChannelCloseMinimum -> channelCloseMinimum
+            ConfirmationTarget.LDKConfirmationTarget_MinAllowedAnchorChannelRemoteFee -> minAllowedAnchorChannelRemoteFee
+            ConfirmationTarget.LDKConfirmationTarget_MaxAllowedNonAnchorChannelRemoteFee -> maxAllowedNonAnchorChannelRemoteFee
+            ConfirmationTarget.LDKConfirmationTarget_OnChainSweep -> onChainSweep
+            ConfirmationTarget.LDKConfirmationTarget_MinAllowedNonAnchorChannelRemoteFee -> minAllowedNonAnchorChannelRemoteFee
+            else -> {
+                LdkEventEmitter.send(EventTypes.native_log, "ERROR: New ConfirmationTarget added. Update LdkFeeEstimator.")
+                return@new_impl 0
+            }
+        }
     }
 }
 

@@ -233,10 +233,13 @@ export type TLogListener = {
 };
 
 export type TFeeUpdateReq = {
-	highPriority: number;
-	normal: number;
-	background: number;
-	mempoolMinimum: number;
+	anchorChannelFee: number;
+	nonAnchorChannelFee: number;
+	channelCloseMinimum: number;
+	minAllowedAnchorChannelRemoteFee: number;
+	maxAllowedNonAnchorChannelRemoteFee: number;
+	onChainSweep: number;
+	minAllowedNonAnchorChannelRemoteFee: number;
 };
 
 export type TPeer = {

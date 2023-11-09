@@ -9,16 +9,22 @@ import Foundation
 import LightningDevKit
 
 class LdkFeeEstimator: FeeEstimator {
-    private var high: UInt32 = 0
-    private var normal: UInt32 = 0
-    private var low: UInt32 = 0
-    private var mempoolMinimum: UInt32 = 0
+    private var anchorChannelFee: UInt32 = 0
+    private var nonAnchorChannelFee: UInt32 = 0
+    private var channelCloseMinimum: UInt32 = 0
+    private var minAllowedAnchorChannelRemoteFee: UInt32 = 0
+    private var maxAllowedNonAnchorChannelRemoteFee: UInt32 = 0
+    private var onChainSweep: UInt32 = 0
+    private var minAllowedNonAnchorChannelRemoteFee: UInt32 = 0
     
-    func update(high: UInt32, normal: UInt32, low: UInt32, mempoolMinimum: UInt32) {
-        self.high = high
-        self.normal = normal
-        self.low = low
-        self.mempoolMinimum = mempoolMinimum
+    func update(anchorChannelFee: UInt32, nonAnchorChannelFee: UInt32, channelCloseMinimum: UInt32, minAllowedAnchorChannelRemoteFee: UInt32, maxAllowedNonAnchorChannelRemoteFee: UInt32, onChainSweep: UInt32, minAllowedNonAnchorChannelRemoteFee: UInt32) {
+        self.anchorChannelFee = anchorChannelFee
+        self.nonAnchorChannelFee = nonAnchorChannelFee
+        self.channelCloseMinimum = channelCloseMinimum
+        self.minAllowedAnchorChannelRemoteFee = minAllowedAnchorChannelRemoteFee
+        self.maxAllowedNonAnchorChannelRemoteFee = maxAllowedNonAnchorChannelRemoteFee
+        self.onChainSweep = onChainSweep
+        self.minAllowedNonAnchorChannelRemoteFee = minAllowedNonAnchorChannelRemoteFee
 
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Fee estimator updated")
     }
@@ -26,24 +32,24 @@ class LdkFeeEstimator: FeeEstimator {
     override func getEstSatPer1000Weight(confirmationTarget: Bindings.ConfirmationTarget) -> UInt32 {
         let target = confirmationTarget
         
-        if case ConfirmationTarget.HighPriority = target {
-            return high
+        switch target {
+        case .AnchorChannelFee:
+            return anchorChannelFee
+        case .NonAnchorChannelFee:
+            return nonAnchorChannelFee
+        case .ChannelCloseMinimum:
+            return channelCloseMinimum
+        case .MinAllowedAnchorChannelRemoteFee:
+            return minAllowedAnchorChannelRemoteFee
+        case .MaxAllowedNonAnchorChannelRemoteFee:
+            return maxAllowedNonAnchorChannelRemoteFee
+        case .OnChainSweep:
+            return onChainSweep
+        case .MinAllowedNonAnchorChannelRemoteFee:
+            return minAllowedNonAnchorChannelRemoteFee
+        @unknown default:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "ERROR: New ConfirmationTarget added. Update LdkFeeEstimator.")
+            return 0
         }
-        
-        if case ConfirmationTarget.Normal = target {
-            return normal
-        }
-        
-        if case ConfirmationTarget.Background = target {
-            return low
-        }
-        
-        if case ConfirmationTarget.MempoolMinimum = target {
-            return mempoolMinimum
-        }
-        
-        LdkEventEmitter.shared.send(withEvent: .native_log, body: "WARNING: New ConfirmationTarget added. Update LdkFeeEstimator.")
-
-        return normal
     }
 }
