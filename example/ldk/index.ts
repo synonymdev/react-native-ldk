@@ -11,8 +11,6 @@ import {
 import lm, {
 	DefaultTransactionDataShape,
 	defaultUserConfig,
-	TAccount,
-	TAccountBackup,
 	THeader,
 	TTransactionData,
 	TTransactionPosition,
@@ -28,9 +26,7 @@ import {
 	getAddress,
 	getNetwork,
 	ldkNetwork,
-	setAccount,
 } from '../utils/helpers';
-import { EAccount } from '../utils/types';
 import * as bitcoin from 'bitcoinjs-lib';
 
 /**
@@ -323,43 +319,4 @@ export const broadcastTransaction = async (rawTx: string): Promise<string> => {
 		console.log(e);
 		return '';
 	}
-};
-
-/**
- * Used to backup a given account.
- * @param {TAccount} [account]
- * @returns {Promise<Result<string>>}
- */
-export const backupAccount = async (
-	account?: TAccount,
-): Promise<Result<TAccountBackup>> => {
-	if (!account) {
-		account = await getAccount();
-	}
-	return await lm.backupAccount({
-		account,
-	});
-};
-
-/**
- * Used to import an account using the backup JSON string or TAccountBackup object.
- * @param {string | TAccountBackup} backup
- * @returns {Promise<Result<TAccount>>}
- */
-export const importAccount = async (
-	backup: string | TAccountBackup,
-	forceCloseAllChannels = false,
-): Promise<Result<TAccount>> => {
-	const importResponse = await lm.importAccount({
-		backup,
-		overwrite: true,
-	});
-	if (importResponse.isErr()) {
-		return err(importResponse.error.message);
-	}
-	await setAccount(importResponse.value);
-	await setItem(EAccount.currentAccountKey, importResponse.value.name);
-	await setupLdk(forceCloseAllChannels);
-	await syncLdk();
-	return ok(importResponse.value);
 };

@@ -559,7 +559,15 @@ describe('LND', function () {
 		// - force close channel from LDK
 		// - check everything is ok
 
-		let fees = { highPriority: 3, normal: 2, background: 1, mempoolMinimum: 1 };
+		let fees = {
+			nonAnchorChannelFee: 5,
+			anchorChannelFee: 5,
+			maxAllowedNonAnchorChannelRemoteFee: 5,
+			channelCloseMinimum: 5,
+			minAllowedAnchorChannelRemoteFee: 5,
+			minAllowedNonAnchorChannelRemoteFee: 5,
+			onChainSweep: 5,
+		};
 
 		const lmStart = await lm.start({
 			...profile.getStartParams(),
@@ -656,7 +664,15 @@ describe('LND', function () {
 		);
 
 		// set height fees and restart LDK so it catches up
-		fees = { highPriority: 30, normal: 20, background: 10, mempoolMinimum: 1 };
+		fees = {
+			nonAnchorChannelFee: 30,
+			anchorChannelFee: 30,
+			maxAllowedNonAnchorChannelRemoteFee: 30,
+			channelCloseMinimum: 5,
+			minAllowedAnchorChannelRemoteFee: 5,
+			minAllowedNonAnchorChannelRemoteFee: 5,
+			onChainSweep: 30,
+		};
 		const syncRes0 = await lm.syncLdk();
 		await lm.setFees();
 		if (syncRes0.isErr()) {

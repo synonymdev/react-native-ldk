@@ -148,6 +148,8 @@ class LightningManager {
 	private pendingStartPromises: Array<(result: Result<string>) => void> = [];
 	private previousAccountName: string = '';
 
+	private backupsServerSetup = false;
+
 	constructor() {
 		// Step 0: Subscribe to all events
 		ldk.onEvent(EEventTypes.native_log, (line) => {
@@ -447,6 +449,7 @@ class LightningManager {
 					details: backupServerDetails,
 				}),
 			);
+			this.backupsServerSetup = true;
 		}
 
 		// Check for any errors before starting channel manager.
@@ -984,7 +987,7 @@ class LightningManager {
 		overwrite?: boolean;
 	}): Promise<Result<TAccount>> => {
 		console.warn(
-			'This method is deprecated and should only be used to import accounts that were backed up with a previous async method.',
+			'importAccount() is deprecated and should only be used to import accounts that were backed up with a previous async method.',
 		);
 		if (!this.baseStoragePath) {
 			return err(
@@ -1148,6 +1151,9 @@ class LightningManager {
 		account: TAccount;
 		includeTransactionHistory?: boolean;
 	}): Promise<Result<TAccountBackup>> => {
+		console.warn(
+			'backupAccount() is deprecated and will be removed in future versions. Use remote backup server instead.',
+		);
 		if (!this.baseStoragePath) {
 			return err(
 				'baseStoragePath required for wallet persistence. Call setBaseStoragePath(path) first.',
@@ -1350,6 +1356,9 @@ class LightningManager {
 	subscribeToBackups(
 		callback: (backup: Result<TAccountBackup>) => void,
 	): string {
+		console.warn(
+			'subscribeToBackups() is deprecated, use backup server instead.',
+		);
 		this.backupSubscriptionsId++;
 		const id = `${this.backupSubscriptionsId}`;
 		this.backupSubscriptions[id] = callback;
@@ -1361,6 +1370,9 @@ class LightningManager {
 	 * @param id
 	 */
 	unsubscribeFromBackups(id: string): void {
+		console.warn(
+			'unsubscribeFromBackups() is deprecated, use backup server instead.',
+		);
 		if (this.backupSubscriptions[id]) {
 			delete this.backupSubscriptions[id];
 		}
@@ -1372,6 +1384,9 @@ class LightningManager {
 	 * @returns {Promise<void>}
 	 */
 	private async onLdkBackupEvent(): Promise<void> {
+		if (this.backupsServerSetup) {
+			return;
+		}
 		if (this.backupSubscriptionsDebounceTimer) {
 			clearTimeout(this.backupSubscriptionsDebounceTimer);
 		}
