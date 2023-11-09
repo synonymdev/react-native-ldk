@@ -310,9 +310,15 @@ export type TInitChannelManagerReq = {
 	};
 };
 
+export type TDownloadScorer = {
+	scorerDownloadUrl: string;
+	skipHoursThreshold?: number;
+};
+
 export type TInitNetworkGraphReq = {
 	network: ENetworks;
 	rapidGossipSyncUrl?: string;
+	skipHoursThreshold?: number;
 };
 
 export type TChannelHandshakeConfig = {
@@ -553,6 +559,7 @@ export type TLdkStart = {
 	broadcastTransaction: TBroadcastTransaction;
 	network: ENetworks;
 	rapidGossipSyncUrl?: string;
+	scorerDownloadUrl?: string;
 	forceCloseOnStartup?: TForceCloseOnStartup;
 	userConfig?: TUserConfig;
 	trustedZeroConfPeers?: string[];

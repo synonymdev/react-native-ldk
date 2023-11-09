@@ -73,6 +73,7 @@ enum LdkErrors: String {
     case backup_restore_failed = "backup_restore_failed"
     case backup_restore_failed_existing_files = "backup_restore_failed_existing_files"
     case backup_list_files_failed = "backup_list_files_failed"
+    case scorer_download_fail = "scorer_download_fail"
 }
 
 enum LdkCallbackResponses: String {
@@ -101,6 +102,8 @@ enum LdkCallbackResponses: String {
     case backup_client_setup_success = "backup_client_setup_success"
     case backup_restore_success = "backup_restore_success"
     case backup_client_check_success = "backup_client_check_success"
+    case scorer_download_success = "scorer_download_success"
+    case scorer_download_skip = "scorer_download_skip"
 }
 
 enum LdkFileNames: String {
@@ -228,7 +231,43 @@ class Ldk: NSObject {
     }
     
     @objc
-    func initNetworkGraph(_ network: NSString, rapidGossipSyncUrl: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func downloadScorer(_ scorerSyncUrl: NSString, skipHoursThreshold: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let accountStoragePath = Ldk.accountStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        let destinationFile = accountStoragePath.appendingPathComponent(LdkFileNames.scorer.rawValue)
+        
+        //If old one is still recent, skip download. Else delete it.
+        if FileManager().fileExists(atPath: destinationFile.path) {
+            let fileAttributes = try? FileManager().attributesOfItem(atPath: destinationFile.path)
+            if let creationDate = fileAttributes?[.creationDate] as? Date {
+                let currentTime = Date()
+                let timeInterval = currentTime.timeIntervalSince(creationDate)
+                let hoursPassed = timeInterval / 3600
+                
+                if hoursPassed <= Double(skipHoursThreshold) {
+                    return handleResolve(resolve, .scorer_download_skip)
+                }
+            }
+            
+            try? FileManager().removeItem(atPath: destinationFile.path)
+        }
+        
+        let url = URL(string: String(scorerSyncUrl))!
+        let task = url.downloadTask(destination: destinationFile) { error in
+            if let error = error {
+                return handleReject(reject, .scorer_download_fail, error)
+            }
+            
+            handleResolve(resolve, .scorer_download_success)
+        }
+        
+        task?.resume()
+    }
+    
+    @objc
+    func initNetworkGraph(_ network: NSString, rapidGossipSyncUrl: NSString, skipHoursThreshold: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard networkGraph == nil else {
             return handleReject(reject, .already_init)
         }
@@ -260,6 +299,7 @@ class Ldk: NSObject {
         }
         
         print("rapidGossipSyncUrl: \(rapidGossipSyncUrl)")
+        print("accountStoragePath: \(accountStoragePath)")
         
         //Download url passed, enable rapid gossip sync
         do {
@@ -274,7 +314,7 @@ class Ldk: NSObject {
             let timestamp = networkGraph?.getLastRapidGossipSyncTimestamp() ?? 0
             let minutesDiffSinceLastRGS = (Calendar.current.dateComponents([.minute], from: Date.init(timeIntervalSince1970: TimeInterval(timestamp)), to: Date()).minute)!
             
-            guard minutesDiffSinceLastRGS > 60 else {
+            guard minutesDiffSinceLastRGS > 60 * skipHoursThreshold else {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping rapid gossip sync. Last updated \(minutesDiffSinceLastRGS/60) hours ago.")
                 return handleResolve(resolve, .network_graph_init_success)
             }
@@ -442,6 +482,11 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
+        
+        print("Scorer:")
+//        Task {
+//            probabilisticScorer.debugLogLiquidityStats()
+//        }
                 
         return handleResolve(resolve, .channel_manager_init_success)
     }

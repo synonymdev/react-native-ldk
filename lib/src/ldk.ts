@@ -35,6 +35,7 @@ import {
 	TBackupServerDetails,
 	TNodeSignReq,
 	TBackedUpFileList,
+	TDownloadScorer,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -98,22 +99,49 @@ class LDK {
 	}
 
 	/**
+	 * Downloads a pre-populated scorer from remote server to be used on startup.
+	 * Should be called before channel manager is initialized.
+	 * @param scorerDownloadUrl
+	 * @param skipHoursThreshold
+	 */
+	async downloadScorer({
+		scorerDownloadUrl,
+		skipHoursThreshold,
+	}: TDownloadScorer): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.downloadScorer(
+				scorerDownloadUrl,
+				skipHoursThreshold ?? 3,
+			);
+			this.writeDebugToLog('downloadScorer');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('downloadScorer', e);
+			return err(e);
+		}
+	}
+
+	/**
 	 * Inits the network graph from previous cache or syncs from scratch.
 	 * By passing in rapidGossipSyncUrl p2p gossip sync will be disabled in favor out rapid gossip sync.
 	 * For local regtest p2p works fine but for mainnet it is better to enable rapid gossip sync.
+	 * Use skipHoursThreshold to avoid unnecessary http calls that check if there is an update.
 	 * https://docs.rs/lightning/latest/lightning/routing/network_graph/struct.NetworkGraph.html
 	 * @param network
 	 * @param rapidGossipSyncUrl
+	 * @param skipHoursThreshold
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
 	async initNetworkGraph({
 		network,
 		rapidGossipSyncUrl,
+		skipHoursThreshold,
 	}: TInitNetworkGraphReq): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.initNetworkGraph(
 				network,
 				rapidGossipSyncUrl ?? '',
+				skipHoursThreshold ?? 3, // default to 3 hours as that is the current RGS schedule.
 			);
 			this.writeDebugToLog(
 				'initNetworkGraph',

@@ -290,6 +290,7 @@ class LightningManager {
 		broadcastTransaction,
 		network,
 		rapidGossipSyncUrl = 'https://rapidsync.lightningdevkit.org/snapshot/',
+		scorerDownloadUrl = 'https://rapidsync.lightningdevkit.org/scoring/scorer.bin',
 		forceCloseOnStartup,
 		userConfig = defaultUserConfig,
 		trustedZeroConfPeers = [],
@@ -450,15 +451,59 @@ class LightningManager {
 		// Handled in initChannelManager below
 
 		if (network !== ENetworks.mainnet) {
-			//RGS only currently working for mainnet
+			//RGS and pre-populated scorer only available for mainnet
 			rapidGossipSyncUrl = '';
+			scorerDownloadUrl = '';
 		}
 
-		// Step 11: Optional: Initialize the NetGraphMsgHandler
-		const networkGraphRes = await ldk.initNetworkGraph({
-			network,
-			rapidGossipSyncUrl,
-		});
+		let promises: Promise<Result<string>>[] = [];
+
+		if (scorerDownloadUrl) {
+			promises.push(
+				ldk.downloadScorer({
+					scorerDownloadUrl,
+					skipHoursThreshold: 3,
+				}),
+			);
+		} else {
+			promises.push(Promise.resolve(ok('')));
+		}
+
+		promises.push(
+			ldk.initNetworkGraph({
+				network,
+				rapidGossipSyncUrl,
+				skipHoursThreshold: 3,
+			}),
+		);
+
+		//
+		//
+		//
+		// if (scorerDownloadUrl) {
+		// 	const scorerRes = await ldk.downloadScorer({
+		// 		scorerDownloadUrl,
+		// 		skipHoursThreshold: 3,
+		// 	});
+		// 	if (scorerRes.isErr()) {
+		// 		return this.handleStartError(scorerRes);
+		// 	}
+		// }
+		//
+		// // Step 11: Optional: Initialize the NetGraphMsgHandler
+		// const networkGraphRes = await ldk.initNetworkGraph({
+		// 	network,
+		// 	rapidGossipSyncUrl,
+		// 	skipHoursThreshold: 3,
+		// });
+		// if (networkGraphRes.isErr()) {
+		// 	return this.handleStartError(networkGraphRes);
+		// }
+
+		const [scorerRes, networkGraphRes] = await Promise.all(promises);
+		if (scorerRes.isErr()) {
+			return this.handleStartError(scorerRes);
+		}
 		if (networkGraphRes.isErr()) {
 			return this.handleStartError(networkGraphRes);
 		}
