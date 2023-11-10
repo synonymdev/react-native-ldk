@@ -482,12 +482,7 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
-        
-        print("Scorer:")
-//        Task {
-//            probabilisticScorer.debugLogLiquidityStats()
-//        }
-                
+           
         return handleResolve(resolve, .channel_manager_init_success)
     }
     

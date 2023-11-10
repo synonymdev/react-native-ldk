@@ -349,7 +349,12 @@ class LightningManager {
 				return this.handleStartError(paramCheckResponse);
 			}
 		} else {
-			console.warn('Skipping start param check. Switch back on for debugging.');
+			ldk
+				.writeToLogFile(
+					'info',
+					'Skipping start param check. Set skipParamCheck=false for debugging.',
+				)
+				.catch(console.error);
 		}
 
 		this.getBestBlock = getBestBlock;

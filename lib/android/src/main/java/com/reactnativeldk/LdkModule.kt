@@ -19,6 +19,7 @@ import org.ldk.structs.Result_StrSecp256k1ErrorZ.Result_StrSecp256k1ErrorZ_OK
 import org.ldk.util.UInt128
 import java.io.File
 import java.net.InetSocketAddress
+import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
@@ -92,7 +93,8 @@ enum class LdkErrors {
     backup_check_failed,
     backup_setup_failed,
     backup_restore_failed,
-    backup_restore_failed_existing_files
+    backup_restore_failed_existing_files,
+    scorer_download_fail
 }
 
 enum class LdkCallbackResponses {
@@ -119,7 +121,9 @@ enum class LdkCallbackResponses {
     file_write_success,
     backup_client_setup_success,
     backup_restore_success,
-    backup_client_check_success
+    backup_client_check_success,
+    scorer_download_success,
+    scorer_download_skip
 }
 
 enum class LdkFileNames(val fileName: String) {
@@ -254,7 +258,41 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initNetworkGraph(network: String, rapidGossipSyncUrl: String, promise: Promise) {
+    fun downloadScorer(scorerSyncUrl: String, skipHoursThreshold: Double, promise: Promise) {
+        val scorerFile = File(accountStoragePath + "/" + LdkFileNames.scorer.fileName)
+        //If old one is still recent, skip download. Else delete it.
+        if (scorerFile.exists()) {
+            val lastModifiedHours = (System.currentTimeMillis().toDouble() - scorerFile.lastModified().toDouble()) / 1000 / 60 / 60
+            if (lastModifiedHours < skipHoursThreshold) {
+                LdkEventEmitter.send(EventTypes.native_log, "Skipping scorer download. Last updated $lastModifiedHours hours ago.")
+                return handleResolve(promise, LdkCallbackResponses.scorer_download_skip)
+            }
+
+            scorerFile.delete()
+        }
+
+        Thread(Runnable {
+            val destinationFile = accountStoragePath + "/" + LdkFileNames.scorer.fileName
+
+            URL(scorerSyncUrl).downloadFile(destinationFile) { error ->
+                if (error != null) {
+                    UiThreadUtil.runOnUiThread {
+                        handleReject(promise, LdkErrors.scorer_download_fail, Error(error))
+                    }
+                    return@downloadFile
+                }
+
+                UiThreadUtil.runOnUiThread {
+                    LdkEventEmitter.send(EventTypes.native_log, "Scorer downloaded successfully.")
+                    handleResolve(promise, LdkCallbackResponses.scorer_download_success)
+                }
+                return@downloadFile
+            }
+        }).start()
+    }
+
+    @ReactMethod
+    fun initNetworkGraph(network: String, rapidGossipSyncUrl: String, skipHoursThreshold: Double, promise: Promise) {
         if (networkGraph !== null) {
             return handleReject(promise, LdkErrors.already_init)
         }
@@ -292,7 +330,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         //If it's been more than 24 hours then we need to update RGS
         val timestamp = if (networkGraph!!._last_rapid_gossip_sync_timestamp is Option_u32Z.Some) (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some.toLong() else 0 // (networkGraph!!._last_rapid_gossip_sync_timestamp as Option_u32Z.Some).some
         val minutesDiffSinceLastRGS = (System.currentTimeMillis() / 1000 - timestamp) / 60
-        if (minutesDiffSinceLastRGS < 60) {
+        if (minutesDiffSinceLastRGS < (60 * skipHoursThreshold)) {
             LdkEventEmitter.send(EventTypes.native_log, "Skipping rapid gossip sync. Last updated ${minutesDiffSinceLastRGS/60} hours ago.")
             return handleResolve(promise, LdkCallbackResponses.network_graph_init_success)
         }
@@ -366,7 +404,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             networkGraph!!,
             logger.logger
         ) ?: return handleReject(promise, LdkErrors.init_scorer_failed)
-
+        
         val scorer = MultiThreadedLockableScore.of(probabilisticScorer.as_Score())
 
         val scoringParams = ProbabilisticScoringDecayParameters.with_default()
