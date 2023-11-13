@@ -436,9 +436,7 @@ class Ldk: NSObject {
         )
         
         do {
-            //Only restore a node if we have existing channel monitors to restore. Else we lose our UserConfig settings when restoring.
-            //TOOD remove this check in 114 which should allow passing in userConfig
-            if let channelManagerSerialized = storedChannelManager, channelMonitorsSerialized.count > 0 {
+            if let channelManagerSerialized = storedChannelManager {
                 //Restoring node
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restoring node from disk")
                 
