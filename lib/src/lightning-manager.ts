@@ -473,17 +473,6 @@ class LightningManager {
 			return this.handleStartError(channelManagerRes);
 		}
 
-		// Attempt to abandon any stored payment ids.
-		const paymentIds = await this.getLdkPaymentIds();
-		if (paymentIds.length) {
-			await Promise.all(
-				paymentIds.map(async (paymentId) => {
-					await ldk.abandonPayment(paymentId);
-					await this.removeLdkPaymentId(paymentId);
-				}),
-			);
-		}
-
 		//Force close all channels on startup. Likely to recover funds after restoring from a stale backup.
 		if (forceCloseOnStartup && forceCloseOnStartup.forceClose) {
 			await ldk.forceCloseAllChannels(forceCloseOnStartup.broadcastLatestTx);
