@@ -12,14 +12,7 @@ import {
 	View,
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import {
-	backupAccount,
-	getAddressBalance,
-	importAccount,
-	setupLdk,
-	syncLdk,
-	updateHeader,
-} from './ldk';
+import { getAddressBalance, setupLdk, syncLdk, updateHeader } from './ldk';
 import { connectToElectrum, subscribeToHeader } from './electrum';
 import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm, {
@@ -31,12 +24,7 @@ import lm, {
 	TChannelUpdate,
 } from '@synonymdev/react-native-ldk';
 import { backupServerDetails, peers } from './utils/constants';
-import {
-	createNewAccount,
-	getAccount,
-	getAddress,
-	simulateStaleRestore,
-} from './utils/helpers';
+import { createNewAccount, getAccount, getAddress } from './utils/helpers';
 import RNFS from 'react-native-fs';
 
 let logSubscription: EmitterSubscription | undefined;
@@ -44,7 +32,6 @@ let paymentSubscription: EmitterSubscription | undefined;
 let onChannelSubscription: EmitterSubscription | undefined;
 let paymentFailedSubscription: EmitterSubscription | undefined;
 let paymentPathSuccess: EmitterSubscription | undefined;
-let backupSubscriptionId: string | undefined;
 
 const Dev = (): ReactElement => {
 	const [message, setMessage] = useState('...');
@@ -144,25 +131,12 @@ const Dev = (): ReactElement => {
 			);
 		}
 
-		if (!backupSubscriptionId) {
-			backupSubscriptionId = lm.subscribeToBackups((backupRes) => {
-				if (backupRes.isErr()) {
-					return alert('Backup required but failed to export account');
-				}
-
-				console.log(
-					`Backup updated for account ${backupRes.value.account.name}`,
-				);
-			});
-		}
-
 		return (): void => {
 			logSubscription && logSubscription.remove();
 			paymentSubscription && paymentSubscription.remove();
 			paymentFailedSubscription && paymentFailedSubscription.remove();
 			paymentPathSuccess && paymentPathSuccess.remove();
 			onChannelSubscription && onChannelSubscription.remove();
-			backupSubscriptionId && lm.unsubscribeFromBackups(backupSubscriptionId);
 		};
 	}, []);
 
@@ -589,50 +563,6 @@ const Dev = (): ReactElement => {
 						}}
 					/>
 
-					<Button
-						title={'Backup Current Account'}
-						onPress={async (): Promise<void> => {
-							const backupResponse = await backupAccount();
-							if (backupResponse.isErr()) {
-								setMessage(backupResponse.error.message);
-								return;
-							}
-							console.log(backupResponse.value);
-							Clipboard.setString(JSON.stringify(backupResponse.value));
-							setMessage(
-								`Backup of the following account copied to clipboard:\n${JSON.stringify(
-									backupResponse.value.account,
-								)}`,
-							);
-						}}
-					/>
-					<Button
-						title={'Import Account From Clipboard'}
-						onPress={async (): Promise<void> => {
-							setMessage('Importing Account...');
-							const clipboardBackup = await Clipboard.getString();
-							const importResponse = await importAccount(clipboardBackup);
-							if (importResponse.isErr()) {
-								setMessage(importResponse.error.message);
-								return;
-							}
-							const accountData = JSON.stringify(importResponse.value);
-							setMessage(
-								`Successfully imported the following account: ${accountData}`,
-							);
-						}}
-					/>
-					<Button
-						title={'Simulate stale backup restore'}
-						onPress={async (): Promise<void> => {
-							try {
-								await simulateStaleRestore((msg) => setMessage(msg));
-							} catch (e) {
-								setMessage(e.message);
-								return;
-							}
-						}}
-					/>
 					<Button
 						title={'Restore backup from server'}
 						onPress={async (): Promise<void> => {

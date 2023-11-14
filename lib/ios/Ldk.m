@@ -13,7 +13,6 @@ RCT_EXTERN_METHOD(setLogFilePath:(NSString *)path
 RCT_EXTERN_METHOD(writeToLogFile:(NSString *)line
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-
 RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
@@ -22,8 +21,13 @@ RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
 RCT_EXTERN_METHOD(initUserConfig:(NSDictionary *)userConfig
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(downloadScorer:(NSString *)scorerSyncUrl
+                  skipHoursThreshold:(NSInteger *)skipHoursThreshold
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initNetworkGraph:(NSString *)network
                   rapidGossipSyncUrl:(NSString *)rapidGossipSyncUrl
+                  skipHoursThreshold:(NSInteger *)skipHoursThreshold
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initChannelManager:(NSString *)network

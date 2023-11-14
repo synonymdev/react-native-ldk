@@ -148,6 +148,8 @@ class LightningManager {
 	private pendingStartPromises: Array<(result: Result<string>) => void> = [];
 	private previousAccountName: string = '';
 
+	private backupsServerSetup = false;
+
 	constructor() {
 		// Step 0: Subscribe to all events
 		ldk.onEvent(EEventTypes.native_log, (line) => {
@@ -290,10 +292,12 @@ class LightningManager {
 		broadcastTransaction,
 		network,
 		rapidGossipSyncUrl = 'https://rapidsync.lightningdevkit.org/snapshot/',
+		scorerDownloadUrl = 'https://rapidsync.lightningdevkit.org/scoring/scorer.bin',
 		forceCloseOnStartup,
 		userConfig = defaultUserConfig,
 		trustedZeroConfPeers = [],
 		backupServerDetails,
+		skipParamCheck = false,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
 			return err(
@@ -328,20 +332,29 @@ class LightningManager {
 		}
 		this.isStarting = true;
 
-		// Ensure the start params function as expected.
-		const paramCheckResponse = await startParamCheck({
-			account,
-			getBestBlock,
-			getTransactionData,
-			getTransactionPosition,
-			broadcastTransaction,
-			getAddress,
-			getScriptPubKeyHistory,
-			getFees,
-			network,
-		});
-		if (paramCheckResponse.isErr()) {
-			return this.handleStartError(paramCheckResponse);
+		if (!skipParamCheck) {
+			// Ensure the start params function as expected.
+			const paramCheckResponse = await startParamCheck({
+				account,
+				getBestBlock,
+				getTransactionData,
+				getTransactionPosition,
+				broadcastTransaction,
+				getAddress,
+				getScriptPubKeyHistory,
+				getFees,
+				network,
+			});
+			if (paramCheckResponse.isErr()) {
+				return this.handleStartError(paramCheckResponse);
+			}
+		} else {
+			ldk
+				.writeToLogFile(
+					'info',
+					'Skipping start param check. Set skipParamCheck=false for debugging.',
+				)
+				.catch(console.error);
 		}
 
 		this.getBestBlock = getBestBlock;
@@ -401,73 +414,55 @@ class LightningManager {
 			}
 		}
 
-		//Setup remote backup server
-		if (backupServerDetails) {
-			const backupSetupRes = await ldk.backupSetup({
-				seed: account.seed,
-				network: this.network,
-				details: backupServerDetails,
-			});
-			if (backupSetupRes.isErr()) {
-				return this.handleStartError(err(backupSetupRes.error));
-			}
-		}
-
-		// Step 1: Initialize the FeeEstimator
-		// Lazy loaded in native code
-		// https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html
-
-		// Step 2: Initialize the Logger
-		// Lazy loaded in native code
-		// https://docs.rs/lightning/latest/lightning/util/logger/index.html
-
-		//Switch on log levels we're interested in. All levels are false by default.
-		await ldk.setLogLevel(ELdkLogLevels.info, true);
-		await ldk.setLogLevel(ELdkLogLevels.warn, true);
-		await ldk.setLogLevel(ELdkLogLevels.error, true);
-		await ldk.setLogLevel(ELdkLogLevels.debug, true);
-
-		//TODO might not always need this one as they make the logs a little noisy
-		// await ldk.setLogLevel(ELdkLogLevels.trace, true);
-
-		// Step 3: Initialize the BroadcasterInterface
-		// Lazy loaded in native code
-		// https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.BroadcasterInterface.html
-
-		// Step 4: Initialize Persist
-		// Lazy loaded in native code
-		// https://docs.rs/lightning/latest/lightning/chain/chainmonitor/trait.Persist.html
-
-		// Step 5: Initialize the ChainMonitor (happens when we init the ChannelManager)
-
-		// Step 6: Initialize the KeysManager
-		const keysManager = await ldk.initKeysManager(this.account.seed);
-		if (keysManager.isErr()) {
-			return this.handleStartError(keysManager);
-		}
-
-		// Step 7: Read ChannelMonitors state from disk
-		// Handled in initChannelManager below
-
 		if (network !== ENetworks.mainnet) {
-			//RGS only currently working for mainnet
+			//RGS and pre-populated scorer only available for mainnet
 			rapidGossipSyncUrl = '';
+			scorerDownloadUrl = '';
 		}
 
-		// Step 11: Optional: Initialize the NetGraphMsgHandler
-		const networkGraphRes = await ldk.initNetworkGraph({
-			network,
-			rapidGossipSyncUrl,
-		});
-		if (networkGraphRes.isErr()) {
-			return this.handleStartError(networkGraphRes);
+		//All these calls don't need to be done in any particular sequence
+		let promises: Promise<Result<string>>[] = [
+			ldk.setLogLevel(ELdkLogLevels.info, true),
+			ldk.setLogLevel(ELdkLogLevels.warn, true),
+			ldk.setLogLevel(ELdkLogLevels.error, true),
+			ldk.setLogLevel(ELdkLogLevels.debug, true),
+			// ldk.setLogLevel(ELdkLogLevels.trace, true),
+			ldk.initKeysManager(this.account.seed),
+			ldk.initNetworkGraph({
+				network,
+				rapidGossipSyncUrl,
+				skipHoursThreshold: 3,
+			}),
+			this.setFees(),
+			ldk.initUserConfig(userConfig),
+		];
+
+		if (scorerDownloadUrl) {
+			promises.push(
+				ldk.downloadScorer({
+					scorerDownloadUrl,
+					skipHoursThreshold: 3,
+				}),
+			);
 		}
 
-		// Step 8: Initialize the UserConfig ChannelManager
-		const confRes = await ldk.initUserConfig(userConfig);
+		if (backupServerDetails) {
+			promises.push(
+				ldk.backupSetup({
+					seed: account.seed,
+					network: this.network,
+					details: backupServerDetails,
+				}),
+			);
+			this.backupsServerSetup = true;
+		}
 
-		if (confRes.isErr()) {
-			return this.handleStartError(confRes);
+		// Check for any errors before starting channel manager.
+		const results = await Promise.all(promises);
+		for (const result of results) {
+			if (result.isErr()) {
+				return this.handleStartError(result);
+			}
 		}
 
 		const channelManagerRes = await ldk.initChannelManager({
@@ -478,39 +473,18 @@ class LightningManager {
 			return this.handleStartError(channelManagerRes);
 		}
 
-		// Attempt to abandon any stored payment ids.
-		const paymentIds = await this.getLdkPaymentIds();
-		if (paymentIds.length) {
-			await Promise.all(
-				paymentIds.map(async (paymentId) => {
-					await ldk.abandonPayment(paymentId);
-					await this.removeLdkPaymentId(paymentId);
-				}),
-			);
-		}
-
-		// Set fee estimates
-		await this.setFees();
-
 		//Force close all channels on startup. Likely to recover funds after restoring from a stale backup.
 		if (forceCloseOnStartup && forceCloseOnStartup.forceClose) {
 			await ldk.forceCloseAllChannels(forceCloseOnStartup.broadcastLatestTx);
 		}
 
 		if (!forceCloseOnStartup || forceCloseOnStartup.broadcastLatestTx) {
-			// If we're force closing without broadcasting latest state don't add peers as we're likely doing this to recovery from a stale backup
-			await this.addPeers();
+			// If we're force closing without broadcasting the latest state don't add peers as we're likely doing this to recovery from a stale backup
+			this.addPeers().catch(console.error);
 		}
 
-		// Step 9: Sync ChannelMonitors and ChannelManager to chain tip
-		await this.syncLdk();
-
-		// Step 10: Give ChannelMonitors to ChainMonitor
-
-		// Step 12: Initialize the PeerManager
-		// Done with initChannelManager
-		// Step 13: Initialize networking
-		// Done with initChannelManager
+		//Can continue in the background
+		this.syncLdk().catch(console.error);
 
 		//Writes node state to log files
 		ldk.nodeStateDump().catch(console.error);
@@ -548,9 +522,9 @@ class LightningManager {
 		);
 	}
 
-	async setFees(): Promise<void> {
+	async setFees(): Promise<Result<string>> {
 		const fees = await this.getFees();
-		await ldk.updateFees(fees);
+		return await ldk.updateFees(fees);
 	}
 
 	/**
@@ -1007,7 +981,7 @@ class LightningManager {
 		overwrite?: boolean;
 	}): Promise<Result<TAccount>> => {
 		console.warn(
-			'This method is deprecated and should only be used to import accounts that were backed up with a previous async method.',
+			'importAccount() is deprecated and should only be used to import accounts that were backed up with a previous async method.',
 		);
 		if (!this.baseStoragePath) {
 			return err(
@@ -1171,6 +1145,9 @@ class LightningManager {
 		account: TAccount;
 		includeTransactionHistory?: boolean;
 	}): Promise<Result<TAccountBackup>> => {
+		console.warn(
+			'backupAccount() is deprecated and will be removed in future versions. Use remote backup server instead.',
+		);
 		if (!this.baseStoragePath) {
 			return err(
 				'baseStoragePath required for wallet persistence. Call setBaseStoragePath(path) first.',
@@ -1373,6 +1350,9 @@ class LightningManager {
 	subscribeToBackups(
 		callback: (backup: Result<TAccountBackup>) => void,
 	): string {
+		console.warn(
+			'subscribeToBackups() is deprecated, use backup server instead.',
+		);
 		this.backupSubscriptionsId++;
 		const id = `${this.backupSubscriptionsId}`;
 		this.backupSubscriptions[id] = callback;
@@ -1384,6 +1364,9 @@ class LightningManager {
 	 * @param id
 	 */
 	unsubscribeFromBackups(id: string): void {
+		console.warn(
+			'unsubscribeFromBackups() is deprecated, use backup server instead.',
+		);
 		if (this.backupSubscriptions[id]) {
 			delete this.backupSubscriptions[id];
 		}
@@ -1395,6 +1378,9 @@ class LightningManager {
 	 * @returns {Promise<void>}
 	 */
 	private async onLdkBackupEvent(): Promise<void> {
+		if (this.backupsServerSetup) {
+			return;
+		}
 		if (this.backupSubscriptionsDebounceTimer) {
 			clearTimeout(this.backupSubscriptionsDebounceTimer);
 		}

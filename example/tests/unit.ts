@@ -59,10 +59,13 @@ describe('Unit', function () {
 			getScriptPubKeyHistory: async () => [],
 			getFees: () => {
 				return Promise.resolve({
-					highPriority: 10,
-					normal: 5,
-					background: 2,
-					mempoolMinimum: 1,
+					nonAnchorChannelFee: 5,
+					anchorChannelFee: 5,
+					maxAllowedNonAnchorChannelRemoteFee: 5,
+					channelCloseMinimum: 5,
+					minAllowedAnchorChannelRemoteFee: 5,
+					minAllowedNonAnchorChannelRemoteFee: 5,
+					onChainSweep: 5,
 				});
 			},
 			getTransactionData: async () => ({
