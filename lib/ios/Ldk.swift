@@ -421,6 +421,11 @@ class Ldk: NSObject {
 
         //        print("\(String(cString: strerror(22)))")
         
+        let scoreParams = ProbabilisticScoringFeeParameters.initWithDefault()
+        scoreParams.setBasePenaltyMsat(val: 500*1000)
+        
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Overriding basePenaltyMsat: \(scoreParams.getBasePenaltyMsat())")
+        
         let params = ChannelManagerConstructionParameters(
             config: userConfig,
             entropySource: keysManager.asEntropySource(),
@@ -431,7 +436,8 @@ class Ldk: NSObject {
             txBroadcaster: broadcaster,
             logger: logger,
             enableP2PGossip: enableP2PGossip,
-            scorer: scorer
+            scorer: scorer,
+            scoreParams: scoreParams
             //TODO set payerRetries
         )
         
@@ -899,7 +905,7 @@ class Ldk: NSObject {
             amtMsat: amountSats == 0 ? nil : UInt64(amountSats) * 1000,
             description: String(description).withoutEmojis, //TODO remove to allow emojis when fixed in ldk
             invoiceExpiryDeltaSecs: UInt32(expiryDelta),
-            minFinalCltvExpiryDelta: nil //TOOD
+            minFinalCltvExpiryDelta: nil
         )
         
         if res.isOk() {
