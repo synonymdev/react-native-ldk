@@ -409,6 +409,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val scoringParams = ProbabilisticScoringDecayParameters.with_default()
         val scoringFeeParams = ProbabilisticScoringFeeParameters.with_default()
+        scoringFeeParams._base_penalty_msat = 500*1000
+
+        LdkEventEmitter.send(EventTypes.native_log, "Overriding base_penalty_msat: ${scoringFeeParams._base_penalty_msat}")
 
         chainMonitor = ChainMonitor.of(
             Option_FilterZ.some(filter.filter),
