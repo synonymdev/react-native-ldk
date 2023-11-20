@@ -501,10 +501,10 @@ class LDK {
 				counterPartyNodeId,
 				trustedPeer0Conf,
 			);
-			this.writeDebugToLog('closeChannel');
+			this.writeDebugToLog('acceptChannel');
 			return ok(res);
 		} catch (e) {
-			this.writeErrorToLog('closeChannel', e);
+			this.writeErrorToLog('acceptChannel', e);
 			return err(e);
 		}
 	}
