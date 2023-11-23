@@ -79,6 +79,25 @@ class BackupClient {
                     .replacingOccurrences(of: ".bin", with: "")
             }
         }
+        
+        var queueId: String {
+            switch self {
+            case .ping:
+                return "ping"
+            case .channelManager:
+                return "channel_manager"
+            case .channelMonitor(let id):
+                return "channel_monitor_\(id)"
+            case .misc(let fileName): //Tx history, watch txs, etc
+                return fileName
+                    .replacingOccurrences(of: ".json", with: "")
+                    .replacingOccurrences(of: ".bin", with: "")
+            }
+        }
+        
+        var processQueue: DispatchQueue {
+            DispatchQueue(label: "ldk.backup.client.\(queueId)", qos: .background)
+        }
     }
     
     private enum Method: String {
@@ -91,6 +110,11 @@ class BackupClient {
     
     private static let version = "v1"
     private static let signedMessagePrefix = "react-native-ldk backup server auth:"
+        
+    //Key -> label, Value -> (uuid, label, bytes, callback)
+    private static var persistQueues: [String: [(UUID, Label, [UInt8], (() -> Void)?)]] = [:]
+    //Key -> label, Value -> locked (true/false)
+    private static var persistQueuesLock: [String: Bool] = [:]
 
     static var skipRemoteBackup = true //Allow dev to opt out (for development), will not throw error when attempting to persist
     
@@ -187,7 +211,7 @@ class BackupClient {
         }
     }
     
-    static func persist(_ label: Label, _ bytes: [UInt8], retry: Int) throws {
+    fileprivate static func persist(_ label: Label, _ bytes: [UInt8], retry: Int) throws {
         var attempts: UInt32 = 0
         
         var persistError: Error?
@@ -208,8 +232,8 @@ class BackupClient {
             throw persistError
         }
     }
-        
-    static func persist(_ label: Label, _ bytes: [UInt8]) throws {
+
+    fileprivate static func persist(_ label: Label, _ bytes: [UInt8]) throws {
         struct PersistResponse: Codable {
             let success: Bool
             let signature: String
@@ -577,5 +601,56 @@ class BackupClient {
         cachedBearer = fetchBearerResponse
         
         return fetchBearerResponse.bearer
+    }
+}
+
+//Backup queue management
+extension BackupClient {
+    static func addToPersistQueue(_ label: Label, _ bytes: [UInt8], callback: (() -> Void)? = nil) {
+        guard !skipRemoteBackup else {
+            callback?()
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping remote backup queue append for \(label.string)")
+            return
+        }
+        
+        //Data to persist is added to a queue to retain order
+        persistQueues[label.queueId, default: []].append((.init(), label, bytes, callback))
+
+        //Start processing the queue
+        processPersistNextInQueue(label)
+    }
+    
+    static func processPersistNextInQueue(_ label: Label) {
+        label.processQueue.async {
+            guard persistQueuesLock[label.queueId] != true else {
+                //Already in progress
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Backup queue (\(label.queueId)) processor already in progress.")
+                return
+            }
+            
+            persistQueuesLock[label.queueId] = true
+            
+            //TODO should we procress from bottom of the queue and purge the rest?
+            guard let topItem = persistQueues[label.queueId]?.first else {
+                persistQueuesLock[label.queueId] = false
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Backup queue (\(label.queueId)) empty.")
+                return
+            }
+            
+            let (uuid, label, bytes, callback) = topItem
+            do {
+                try persist(label, bytes, retry: 10)
+                
+                persistQueues[label.queueId, default: []].removeAll { $0.0 == uuid }
+                
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Backup item from queue \(label.queueId) processed backup successfully.")
+                callback?()
+            } catch {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Backup item from queue \(label.queueId) failed. \(error.localizedDescription)")
+            }
+            
+            persistQueuesLock[label.queueId] = false
+            processPersistNextInQueue(label)
+        }
     }
 }

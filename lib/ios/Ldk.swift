@@ -125,7 +125,7 @@ class Ldk: NSObject {
     lazy var channelManagerPersister = {LdkChannelManagerPersister()}()
     
     //Config required to setup below objects
-    var chainMonitor: ChainMonitor? //TODO lazy load chainMonitor
+    static var chainMonitor: ChainMonitor? //TODO lazy load chainMonitor
     var keysManager: KeysManager?
     var channelManager: ChannelManager?
     var userConfig: UserConfig?
@@ -409,7 +409,7 @@ class Ldk: NSObject {
         let score = probabilisticScorer.asScore()
         let scorer = MultiThreadedLockableScore(score: score)
         
-        chainMonitor = ChainMonitor(
+        Self.chainMonitor = ChainMonitor(
             chainSource: filter,
             broadcaster: broadcaster,
             logger: logger,
@@ -432,7 +432,7 @@ class Ldk: NSObject {
             nodeSigner: keysManager.asNodeSigner(),
             signerProvider: keysManager.asSignerProvider(),
             feeEstimator: feeEstimator,
-            chainMonitor: chainMonitor!,
+            chainMonitor: Self.chainMonitor!,
             txBroadcaster: broadcaster,
             logger: logger,
             enableP2PGossip: enableP2PGossip,
@@ -525,7 +525,7 @@ class Ldk: NSObject {
         //Reset only objects created by initChannelManager
         channelManagerConstructor?.interrupt()
         channelManagerConstructor = nil
-        chainMonitor = nil
+        Self.chainMonitor = nil
         channelManager = nil
         peerManager = nil
         peerHandler = nil
@@ -553,7 +553,7 @@ class Ldk: NSObject {
         removeForegroundObserver() //LDK was intentionally stopped and we shouldn't attempt a restart
         cm.interrupt()
         channelManagerConstructor = nil
-        chainMonitor = nil
+        Self.chainMonitor = nil
         keysManager = nil
         channelManager = nil
         userConfig = nil
@@ -595,7 +595,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
         
-        guard let chainMonitor = chainMonitor else {
+        guard let chainMonitor = Self.chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
         
@@ -632,7 +632,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
         
-        guard let chainMonitor = chainMonitor else {
+        guard let chainMonitor = Self.chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
         
@@ -663,7 +663,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
         
-        guard let chainMonitor = chainMonitor else {
+        guard let chainMonitor = Self.chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
         
@@ -1068,7 +1068,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
         
-        guard let chainMonitor = chainMonitor else {
+        guard let chainMonitor = Self.chainMonitor else {
             return handleReject(reject, .init_chain_monitor)
         }
         
@@ -1119,7 +1119,8 @@ class Ldk: NSObject {
             
             //Save to remote server if required
             if remotePersist {
-                try  BackupClient.persist(.misc(fileName: String(fileName)), [UInt8](fileData))
+                //Continue to retry remote persist in background
+                BackupClient.addToPersistQueue(.misc(fileName: String(fileName)), [UInt8](fileData))
             }
             
             return handleResolve(resolve, .file_write_success)
@@ -1222,7 +1223,7 @@ class Ldk: NSObject {
             }
         }
         
-        if let chainMonitor {
+        if let chainMonitor = Self.chainMonitor {
             logDump.append("All claimable balances:\n \(chainMonitor.getClaimableBalancesAsJson(ignoredChannels: []))")
         } else {
             logDump.append("Claimable balances unavailable. Chain monitor not set yet")
