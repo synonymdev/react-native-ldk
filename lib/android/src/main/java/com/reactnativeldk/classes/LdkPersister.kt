@@ -8,7 +8,7 @@ import org.ldk.structs.Persist.PersistInterface
 import java.io.File
 
 class LdkPersister {
-    fun handleChannel(id: OutPoint, data: ChannelMonitor): ChannelMonitorUpdateStatus {
+    fun handleChannel(id: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
         val body = Arguments.createMap()
         body.putHexString("channel_id", id.to_channel_id())
         body.putHexString("counterparty_node_id", data._counterparty_node_id)
@@ -24,17 +24,24 @@ class LdkPersister {
 
             val isNew = !file.exists()
 
-            BackupClient.persist(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write(), retry = 100)
-            file.writeBytes(data.write())
+            BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write()) {
+                file.writeBytes(data.write())
 
-            LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${id.to_channel_id().hexEncodedString()}) to disk")
-            LdkEventEmitter.send(EventTypes.backup, "")
+                //Update chainmonitor with successful persist
+                val res = LdkModule.chainMonitor?.channel_monitor_updated(id, update_id)
+                if (res == null || !res.is_ok) {
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to update chain monitor with persisted channel (${id.to_channel_id().hexEncodedString()})")
+                } else {
+                    LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${id.to_channel_id().hexEncodedString()}) to disk")
+                    LdkEventEmitter.send(EventTypes.backup, "")
+                }
+            }
 
             if (isNew) {
                 LdkEventEmitter.send(EventTypes.new_channel, body)
             }
 
-            return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_Completed
+            return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_InProgress
         } catch (e: Exception) {
             return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_UnrecoverableError
         }
@@ -42,11 +49,11 @@ class LdkPersister {
 
     var persister = Persist.new_impl(object : PersistInterface {
         override fun persist_new_channel(id: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
-            return handleChannel(id, data)
+            return handleChannel(id, data, update_id)
         }
 
         override fun update_persisted_channel(id: OutPoint, update: ChannelMonitorUpdate?, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
-            return handleChannel(id, data)
+            return handleChannel(id, data, update_id)
         }
     })
 }
