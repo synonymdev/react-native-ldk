@@ -79,25 +79,6 @@ class BackupClient {
                     .replacingOccurrences(of: ".bin", with: "")
             }
         }
-        
-        var queueId: String {
-            switch self {
-            case .ping:
-                return "ping"
-            case .channelManager:
-                return "channel_manager"
-            case .channelMonitor(let id):
-                return "channel_monitor_\(id)"
-            case .misc(let fileName): //Tx history, watch txs, etc
-                return fileName
-                    .replacingOccurrences(of: ".json", with: "")
-                    .replacingOccurrences(of: ".bin", with: "")
-            }
-        }
-        
-        var processQueue: DispatchQueue {
-            DispatchQueue(label: "ldk.backup.client.\(queueId)", qos: .background)
-        }
     }
     
     private enum Method: String {
@@ -110,12 +91,11 @@ class BackupClient {
     
     private static let version = "v1"
     private static let signedMessagePrefix = "react-native-ldk backup server auth:"
-        
-    //Key -> label, Value -> (uuid, label, bytes, callback)
-    private static var persistQueues: [String: [(UUID, Label, [UInt8], (() -> Void)?)]] = [:]
-    //Key -> label, Value -> locked (true/false)
-    private static var persistQueuesLock: [String: Bool] = [:]
-
+    
+    private static let channelManagerBackupQueue = DispatchQueue(label: "ldk.backup.client.channel-manager", qos: .userInitiated)
+    private static let channelMonitorBackupQueue = DispatchQueue(label: "ldk.backup.client.channel-monitor", qos: .userInitiated)
+    private static let miscBackupQueue = DispatchQueue(label: "ldk.backup.client.misc", qos: .background)
+    
     static var skipRemoteBackup = true //Allow dev to opt out (for development), will not throw error when attempting to persist
     
     private static var network: String?
@@ -613,44 +593,35 @@ extension BackupClient {
             return
         }
         
-        //Data to persist is added to a queue to retain order
-        persistQueues[label.queueId, default: []].append((.init(), label, bytes, callback))
-
-        //Start processing the queue
-        processPersistNextInQueue(label)
-    }
-    
-    static func processPersistNextInQueue(_ label: Label) {
-        label.processQueue.async {
-            guard persistQueuesLock[label.queueId] != true else {
-                //Already in progress
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Backup queue (\(label.queueId)) processor already in progress.")
-                return
-            }
-            
-            persistQueuesLock[label.queueId] = true
-            
-            //TODO should we procress from bottom of the queue and purge the rest?
-            guard let topItem = persistQueues[label.queueId]?.first else {
-                persistQueuesLock[label.queueId] = false
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Backup queue (\(label.queueId)) empty.")
-                return
-            }
-            
-            let (uuid, label, bytes, callback) = topItem
+        var backupQueue: DispatchQueue?
+        
+        switch label {
+        case .channelManager:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Adding channel manager backup to queue")
+            backupQueue = channelManagerBackupQueue
+            break
+        case .channelMonitor(_):
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Adding channel monitor backup to queue")
+            backupQueue = channelMonitorBackupQueue
+            break
+        default:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Adding \(label.string) to misc backup queue")
+            backupQueue = miscBackupQueue
+            break
+        }
+        
+        guard let backupQueue else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to add \(label.string) to backup queue")
+            return
+        }
+        
+        backupQueue.async {
             do {
                 try persist(label, bytes, retry: 10)
-                
-                persistQueues[label.queueId, default: []].removeAll { $0.0 == uuid }
-                
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Backup item from queue \(label.queueId) processed backup successfully.")
                 callback?()
             } catch {
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Backup item from queue \(label.queueId) failed. \(error.localizedDescription)")
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to persist channel manager backup. \(error.localizedDescription)")
             }
-            
-            persistQueuesLock[label.queueId] = false
-            processPersistNextInQueue(label)
         }
     }
 }
