@@ -152,7 +152,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private val channelManagerPersister: LdkChannelManagerPersister by lazy { LdkChannelManagerPersister() }
 
     //Config required to setup below objects
-    private var chainMonitor: ChainMonitor? = null
     private var keysManager: KeysManager? = null
     private var channelManager: ChannelManager? = null
     private var userConfig: UserConfig? = null
@@ -173,6 +172,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     companion object {
         lateinit var accountStoragePath: String
         lateinit var channelStoragePath: String
+
+        var chainMonitor: ChainMonitor? = null
     }
 
     init {
@@ -1023,7 +1024,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             }
 
             if (remotePersist) {
-                BackupClient.persist(BackupClient.Label.MISC(fileName), file.readBytes())
+                BackupClient.addToPersistQueue(BackupClient.Label.MISC(fileName), file.readBytes())
             }
 
             handleResolve(promise, LdkCallbackResponses.file_write_success)

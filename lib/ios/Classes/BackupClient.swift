@@ -91,7 +91,11 @@ class BackupClient {
     
     private static let version = "v1"
     private static let signedMessagePrefix = "react-native-ldk backup server auth:"
-
+    
+    private static let channelManagerBackupQueue = DispatchQueue(label: "ldk.backup.client.channel-manager", qos: .userInitiated)
+    private static let channelMonitorBackupQueue = DispatchQueue(label: "ldk.backup.client.channel-monitor", qos: .userInitiated)
+    private static let miscBackupQueue = DispatchQueue(label: "ldk.backup.client.misc", qos: .background)
+    
     static var skipRemoteBackup = true //Allow dev to opt out (for development), will not throw error when attempting to persist
     
     private static var network: String?
@@ -187,7 +191,7 @@ class BackupClient {
         }
     }
     
-    static func persist(_ label: Label, _ bytes: [UInt8], retry: Int) throws {
+    fileprivate static func persist(_ label: Label, _ bytes: [UInt8], retry: Int) throws {
         var attempts: UInt32 = 0
         
         var persistError: Error?
@@ -208,8 +212,8 @@ class BackupClient {
             throw persistError
         }
     }
-        
-    static func persist(_ label: Label, _ bytes: [UInt8]) throws {
+
+    fileprivate static func persist(_ label: Label, _ bytes: [UInt8]) throws {
         struct PersistResponse: Codable {
             let success: Bool
             let signature: String
@@ -577,5 +581,47 @@ class BackupClient {
         cachedBearer = fetchBearerResponse
         
         return fetchBearerResponse.bearer
+    }
+}
+
+//Backup queue management
+extension BackupClient {
+    static func addToPersistQueue(_ label: Label, _ bytes: [UInt8], callback: (() -> Void)? = nil) {
+        guard !skipRemoteBackup else {
+            callback?()
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping remote backup queue append for \(label.string)")
+            return
+        }
+        
+        var backupQueue: DispatchQueue?
+        
+        switch label {
+        case .channelManager:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Adding channel manager backup to queue")
+            backupQueue = channelManagerBackupQueue
+            break
+        case .channelMonitor(_):
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Adding channel monitor backup to queue")
+            backupQueue = channelMonitorBackupQueue
+            break
+        default:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Adding \(label.string) to misc backup queue")
+            backupQueue = miscBackupQueue
+            break
+        }
+        
+        guard let backupQueue else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to add \(label.string) to backup queue")
+            return
+        }
+        
+        backupQueue.async {
+            do {
+                try persist(label, bytes, retry: 10)
+                callback?()
+            } catch {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to persist channel manager backup. \(error.localizedDescription)")
+            }
+        }
     }
 }

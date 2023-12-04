@@ -127,7 +127,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             
             let paymentId = Data(paymentPathFailed.getPaymentId() ?? []).hexEncodedString()
             let paymentHash = Data(paymentPathFailed.getPaymentHash()).hexEncodedString()
-             
+            
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_payment_path_failed,
                 body: [
@@ -256,8 +256,36 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             
             //Save to disk for TX history
             persistPaymentClaimed(body)
-        default:
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "ERROR: unknown LdkChannelManagerPersister.handle_event type")
+            return
+        case .BumpTransaction:
+            guard let bumpTransaction = event.getValueAsBumpTransaction() else {
+                return handleEventError(event)
+            }
+            
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "TODO📣: BumpTransaction")
+            
+            return
+        case .ProbeFailed:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ProbeFailed")
+            return
+        case .ProbeSuccessful:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ProbeSuccessful")
+            return
+        case .InvoiceRequestFailed:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: InvoiceRequestFailed")
+            return
+        case .HTLCIntercepted:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: HTLCIntercepted")
+            return
+        case .ChannelPending:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ChannelPending")
+            return
+        case .ChannelReady:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ChannelReady")
+            return
+        case .HTLCHandlingFailed:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: HTLCHandlingFailed")
+            return
         }
     }
     
@@ -267,7 +295,9 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         }
         
         do {
-            try BackupClient.persist(.channelManager, channelManager.write(), retry: 100)
+            BackupClient.addToPersistQueue(.channelManager, channelManager.write()) {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persisted channel manager")
+            }
 
             try Data(channelManager.write()).write(to: managerStorage)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")            

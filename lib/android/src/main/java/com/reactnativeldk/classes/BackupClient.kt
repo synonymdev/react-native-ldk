@@ -1,8 +1,6 @@
 package com.reactnativeldk.classes
 import com.reactnativeldk.EventTypes
-import com.reactnativeldk.LdkErrors
 import com.reactnativeldk.LdkEventEmitter
-import com.reactnativeldk.handleReject
 import com.reactnativeldk.hexEncodedString
 import com.reactnativeldk.hexa
 import org.json.JSONObject
@@ -13,24 +11,22 @@ import java.net.URL
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Random
+import java.util.UUID
+import java.util.concurrent.locks.ReentrantLock
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 class BackupError : Exception() {
     companion object {
         val requiresSetup = RequiresSetup()
         val missingBackup = MissingBackup()
-        val invalidServerResponse = InvalidServerResponse(0)
-        val decryptFailed = DecryptFailed("")
         val signingError = SigningError()
         val serverChallengeResponseFailed = ServerChallengeResponseFailed()
         val checkError = BackupCheckError()
     }
 }
 
-class InvalidNetwork() : Exception("Invalid network passed to BackupClient setup")
 class RequiresSetup() : Exception("BackupClient requires setup")
 class MissingBackup() : Exception("Retrieve failed. Missing backup.")
 class InvalidServerResponse(code: Int) : Exception("Invalid backup server response ($code)")
@@ -44,6 +40,15 @@ class CompleteBackup(
     val channelFiles: Map<String, ByteArray>
 )
 
+typealias BackupCompleteCallback = () -> Unit
+
+class BackupQueueEntry(
+    val uuid: UUID,
+    val label: BackupClient.Label,
+    val bytes: ByteArray,
+    val callback: BackupCompleteCallback? = null
+)
+
 class BackupClient {
     sealed class Label(val string: String, channelId: String = "") {
         data class PING(val customName: String = "") : Label("ping")
@@ -53,6 +58,13 @@ class BackupClient {
 
         data class MISC(val customName: String) :
             Label(customName.replace(".json", "").replace(".bin", ""))
+
+        val queueId: String
+            get() = when (this) {
+                is CHANNEL_MONITOR -> "$string-$channelId"
+                is MISC -> "$string-$customName"
+                else -> string
+            }
     }
 
     companion object {
@@ -71,6 +83,9 @@ class BackupClient {
 
         private var version = "v1"
         private var signedMessagePrefix = "react-native-ldk backup server auth:"
+
+        private var persistQueues: HashMap<String, ArrayList<BackupQueueEntry>> = HashMap()
+        private var persistQueuesLock: HashMap<String, Boolean> = HashMap()
 
         var skipRemoteBackup = true //Allow dev to opt out (for development), will not throw error when attempting to persist
 
@@ -175,7 +190,7 @@ class BackupClient {
         }
 
         @Throws(BackupError::class)
-        fun persist(label: Label, bytes: ByteArray, retry: Int) {
+        private fun persist(label: Label, bytes: ByteArray, retry: Int) {
             var attempts = 0
             var persistError: Exception? = null
 
@@ -205,7 +220,7 @@ class BackupClient {
         }
 
         @Throws(BackupError::class)
-        fun persist(label: Label, bytes: ByteArray) {
+        private fun persist(label: Label, bytes: ByteArray) {
             if (skipRemoteBackup) {
                 return
             }
@@ -491,5 +506,69 @@ class BackupClient {
             cachedBearer = CachedBearer(bearer, expires)
             return bearer
         }
+
+        //Backup queue management
+        fun addToPersistQueue(label: BackupClient.Label, bytes: ByteArray, callback: (() -> Unit)? = null) {
+            if (BackupClient.skipRemoteBackup) {
+                callback?.invoke()
+                LdkEventEmitter.send(
+                    EventTypes.native_log,
+                    "Skipping remote backup queue append for ${label.string}"
+                )
+                return
+            }
+
+            persistQueues[label.queueId] = persistQueues[label.queueId] ?: ArrayList()
+            persistQueues[label.queueId]!!.add(BackupQueueEntry(UUID.randomUUID(), label, bytes, callback))
+
+            processPersistNextInQueue(label)
+        }
+
+        private val backupQueueLock = ReentrantLock()
+        private fun processPersistNextInQueue(label: Label) {
+            //Check if queue is locked, if not lock it and process next in queue
+            var backupEntry: BackupQueueEntry? = null
+            backupQueueLock.lock()
+            try {
+                if (persistQueuesLock[label.queueId] == true) {
+                    return
+                }
+
+                persistQueuesLock[label.queueId] = true
+
+                backupEntry = persistQueues[label.queueId]?.firstOrNull()
+                if (backupEntry == null) {
+                    persistQueuesLock[label.queueId] = false
+                    return
+                }
+            } finally {
+                backupQueueLock.unlock()
+            }
+
+            Thread {
+                try {
+                    persist(backupEntry!!.label, backupEntry.bytes, 10)
+                    backupEntry.callback?.invoke()
+                } catch (e: Exception) {
+                    LdkEventEmitter.send(
+                        EventTypes.native_log,
+                        "Remote persist failed for ${label.string} with error ${e.message}"
+                    )
+                } finally {
+                    backupQueueLock.lock()
+                    try {
+                        persistQueues[label.queueId]?.remove(backupEntry)
+                        persistQueuesLock[label.queueId] = false
+                    } finally {
+                        backupQueueLock.unlock()
+                    }
+
+                    processPersistNextInQueue(label)
+                }
+            }.start()
+        }
     }
 }
+
+
+
