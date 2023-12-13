@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "npm": ">=8.0.0 <9.0.0",
+    "node": ">=19.0.0"
+  },
+  "engineStrict" : true,
   "scripts": {
     "start": "node index.js",
     "create-keypair": "node src/create-keypair.js",
