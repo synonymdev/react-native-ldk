@@ -653,6 +653,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 return handleReject(promise, LdkErrors.channel_accept_fail, Error((error.err as APIError.APIMisuseError).err))
             }
 
+            if (error.err is APIError.ChannelUnavailable) {
+                return handleReject(promise, LdkErrors.channel_accept_fail, Error((error.err as APIError.ChannelUnavailable).err))
+            }
+
             return handleReject(promise, LdkErrors.channel_accept_fail, Error(error.err.toString()))
         }
 

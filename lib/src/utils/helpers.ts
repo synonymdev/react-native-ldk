@@ -177,7 +177,8 @@ export const startParamCheck = async ({
 				);
 			}
 
-			const address = await getAddress();
+			//TODO validate entire object
+			const address = (await getAddress()).address;
 			if (typeof address !== 'string') {
 				return err('getAddress is not returning the expected data.');
 			}

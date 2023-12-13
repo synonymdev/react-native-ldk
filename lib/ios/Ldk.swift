@@ -112,6 +112,7 @@ enum LdkFileNames: String {
     case scorer = "scorer.bin"
     case paymentsClaimed = "payments_claimed.json"
     case paymentsSent = "payments_sent.json"
+    case channelsOpenedWithCustomKeysManager = "channel_opened_with_custom_keys_manager.json"
 }
 
 @objc(Ldk)
@@ -125,8 +126,8 @@ class Ldk: NSObject {
     lazy var channelManagerPersister = {LdkChannelManagerPersister()}()
     
     //Config required to setup below objects
-    static var chainMonitor: ChainMonitor? //TODO lazy load chainMonitor
-    var keysManager: KeysManager?
+    static var chainMonitor: ChainMonitor?
+    var keysManager: CustomKeysManager?
     var channelManager: ChannelManager?
     var userConfig: UserConfig?
     var networkGraph: NetworkGraph?
@@ -200,7 +201,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func initKeysManager(_ seed: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initKeysManager(_ seed: NSString, destinationScriptPublicKey: NSString, witnessProgram: NSString, witnessProgramVersion: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         if keysManager != nil {
             //If previously started with the same key (by backup client) return success.
             return handleResolve(resolve, .keys_manager_init_success)
@@ -214,7 +215,14 @@ class Ldk: NSObject {
             return handleReject(reject, .invalid_seed_hex)
         }
         
-        keysManager = KeysManager(seed: String(seed).hexaBytes, startingTimeSecs: seconds, startingTimeNanos: nanoSeconds)
+        keysManager = CustomKeysManager(
+            seed: String(seed).hexaBytes,
+            startingTimeSecs: seconds,
+            startingTimeNanos: nanoSeconds,
+            destinationScriptPublicKey: String(destinationScriptPublicKey).hexaBytes,
+            witnessProgram: String(witnessProgram).hexaBytes,
+            witnessProgramVersion: UInt8(witnessProgramVersion)
+        )
         
         return handleResolve(resolve, .keys_manager_init_success)
     }
@@ -428,9 +436,9 @@ class Ldk: NSObject {
         
         let params = ChannelManagerConstructionParameters(
             config: userConfig,
-            entropySource: keysManager.asEntropySource(),
-            nodeSigner: keysManager.asNodeSigner(),
-            signerProvider: keysManager.asSignerProvider(),
+            entropySource: keysManager.inner.asEntropySource(),
+            nodeSigner: keysManager.inner.asNodeSigner(),
+            signerProvider: keysManager.signerProvider,
             feeEstimator: feeEstimator,
             chainMonitor: Self.chainMonitor!,
             txBroadcaster: broadcaster,
@@ -700,7 +708,7 @@ class Ldk: NSObject {
             case .APIMisuseError:
                 return handleReject(reject, .channel_accept_fail, nil, error.getValueAsApiMisuseError()?.getErr())
             case .ChannelUnavailable:
-                return handleReject(reject, .channel_accept_fail, nil, "Channel unavailable for accepting") //Crashes when returning error.getValueAsChannelUnavailable()?.getErr()
+                return handleReject(reject, .channel_accept_fail, nil, error.getValueAsChannelUnavailable()?.getErr())
             case .FeeRateTooHigh:
                 return handleReject(reject, .channel_accept_fail, nil, error.getValueAsFeeRateTooHigh()?.getErr())
             case .IncompatibleShutdownScript:
@@ -793,7 +801,7 @@ class Ldk: NSObject {
             outputs: ldkOutputs,
             changeDestinationScript: String(changeDestinationScript).hexaBytes,
             feerateSatPer1000Weight: UInt32(feeRate),
-            locktime: nil //TODO check nil is fine
+            locktime: nil
         )
         
         guard res.isOk() else {
@@ -899,7 +907,7 @@ class Ldk: NSObject {
         
         let res = Bindings.createInvoiceFromChannelmanager(
             channelmanager: channelManager,
-            nodeSigner: keysManager.asNodeSigner(),
+            nodeSigner: keysManager.inner.asNodeSigner(),
             logger: logger,
             network: ldkCurrency,
             amtMsat: amountSats == 0 ? nil : UInt64(amountSats) * 1000,
@@ -1193,7 +1201,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_keys_manager)
         }
         
-        let signed = Bindings.swiftSign(msg: Array(String(message).utf8), sk: keysManager.getNodeSecretKey())
+        let signed = Bindings.swiftSign(msg: Array(String(message).utf8), sk: keysManager.inner.getNodeSecretKey())
         if let _ = signed.getError() {
             handleReject(reject, .failed_signing_request)
         }
@@ -1205,7 +1213,7 @@ class Ldk: NSObject {
     func nodeStateDump(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         var logDump: [String] = []
         
-        if let pubKey = keysManager?.asNodeSigner().getNodeId(recipient: .Node).getValue() {
+        if let pubKey = keysManager?.inner.asNodeSigner().getNodeId(recipient: .Node).getValue() {
             logDump.append("NodeID: \(Data(pubKey).hexEncodedString())")
         }
         
@@ -1214,7 +1222,7 @@ class Ldk: NSObject {
                 logDump.append("Open channel:")
                 
                 if let txId = channel.getFundingTxo()?.getTxid() {
-                    logDump.append("Funding txid: \(Data(txId).hexEncodedString())")
+                    logDump.append("Funding txid: \(Data(txId.reversed()).hexEncodedString())")
                 }
                 
                 logDump.append("Ready: \(channel.getIsChannelReady() ? "YES" : "NO")")

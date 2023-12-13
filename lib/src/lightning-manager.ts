@@ -56,6 +56,7 @@ import {
 	TInvoice,
 	TCreatePaymentReq,
 	TBackupServerDetails,
+	IAddress,
 } from './utils/types';
 import {
 	appendPath,
@@ -121,7 +122,12 @@ class LightningManager {
 	network: ENetworks = ENetworks.regtest;
 	baseStoragePath = '';
 	logFilePath = '';
-	getAddress: TGetAddress = async (): Promise<string> => '';
+	getAddress: TGetAddress = async (): Promise<IAddress> => ({
+		address: '',
+		publicKey: '',
+		witnessProgram: '',
+		witnessProgramVersion: 0,
+	});
 	getScriptPubKeyHistory: TGetScriptPubKeyHistory = async (): Promise<
 		TGetScriptPubKeyHistoryResponse[]
 	> => [];
@@ -420,6 +426,8 @@ class LightningManager {
 			scorerDownloadUrl = '';
 		}
 
+		const closeAddress = await this.getAddress();
+
 		//All these calls don't need to be done in any particular sequence
 		let promises: Promise<Result<string>>[] = [
 			ldk.setLogLevel(ELdkLogLevels.info, true),
@@ -427,7 +435,12 @@ class LightningManager {
 			ldk.setLogLevel(ELdkLogLevels.error, true),
 			ldk.setLogLevel(ELdkLogLevels.debug, true),
 			// ldk.setLogLevel(ELdkLogLevels.trace, true),
-			ldk.initKeysManager(this.account.seed),
+			ldk.initKeysManager({
+				seed: this.account.seed,
+				channelCloseDestinationScriptPublicKey: closeAddress.publicKey,
+				channelCloseWitnessProgram: closeAddress.witnessProgram,
+				channelCloseWitnessProgramVersion: closeAddress.witnessProgramVersion,
+			}),
 			ldk.initNetworkGraph({
 				network,
 				rapidGossipSyncUrl,
@@ -1709,8 +1722,9 @@ class LightningManager {
 				await ldk.writeToLogFile('info', 'Reconstructing output from tx...');
 
 				const address = await this.getAddress();
-				const changeDestinationScript =
-					this.getChangeDestinationScript(address);
+				const changeDestinationScript = this.getChangeDestinationScript(
+					address.address,
+				);
 				if (!changeDestinationScript) {
 					await ldk.writeToLogFile(
 						'error',
@@ -2024,6 +2038,9 @@ class LightningManager {
 	private async onChannelManagerSpendableOutputs(
 		res: TChannelManagerSpendableOutputs,
 	): Promise<void> {
+		console.warn(
+			'onChannelManagerSpendableOutputs deprecated. You should only be seeing this if recently closed channel was opened prior to custom keys manager.',
+		);
 		const spendableOutputs = await this.getLdkSpendableOutputs();
 		res.outputsSerialized.forEach((o) => {
 			if (!spendableOutputs.includes(o)) {
@@ -2042,7 +2059,9 @@ class LightningManager {
 		);
 
 		const address = await this.getAddress();
-		const change_destination_script = this.getChangeDestinationScript(address);
+		const change_destination_script = this.getChangeDestinationScript(
+			address.address,
+		);
 		if (!change_destination_script) {
 			await ldk.writeToLogFile(
 				'error',
