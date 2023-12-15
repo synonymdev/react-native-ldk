@@ -132,6 +132,7 @@ enum class LdkFileNames(val fileName: String) {
     scorer("scorer.bin"),
     paymentsClaimed("payments_claimed.json"),
     paymentsSent("payments_sent.json"),
+    channelsOpenedWithCustomKeysManager("channels_opened_with_custom_keys_manager.json"),
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {

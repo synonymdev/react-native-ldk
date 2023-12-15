@@ -21,7 +21,7 @@ class CustomKeysManager {
         self.witnessProgram = witnessProgram
         self.witnessProgramVersion = witnessProgramVersion
         self.signerProvider = CustomSignerProvider()
-        self.signerProvider.myKeysManager = self
+        self.signerProvider.customKeysManager = self
     }
     
     // We drop all occurences of `SpendableOutputDescriptor::StaticOutput` (since they will be
@@ -48,15 +48,15 @@ class CustomKeysManager {
 }
 
 class CustomSignerProvider: SignerProvider {
-    weak var myKeysManager: CustomKeysManager?
+    weak var customKeysManager: CustomKeysManager?
  
     override func getDestinationScript() -> Bindings.Result_CVec_u8ZNoneZ {
-        let destinationScriptPublicKey = myKeysManager!.destinationScriptPublicKey
+        let destinationScriptPublicKey = customKeysManager!.destinationScriptPublicKey
         return Bindings.Result_CVec_u8ZNoneZ.initWithOk(o: destinationScriptPublicKey)
     }
     
     override func getShutdownScriptpubkey() -> Bindings.Result_ShutdownScriptNoneZ {
-        let res = ShutdownScript.newWitnessProgram(version: myKeysManager!.witnessProgramVersion, program: myKeysManager!.witnessProgram)
+        let res = ShutdownScript.newWitnessProgram(version: customKeysManager!.witnessProgramVersion, program: customKeysManager!.witnessProgram)
         if res.isOk() {
             return Bindings.Result_ShutdownScriptNoneZ.initWithOk(o: res.getValue()!)
         }
@@ -70,14 +70,14 @@ class CustomSignerProvider: SignerProvider {
     }
     
     override func deriveChannelSigner(channelValueSatoshis: UInt64, channelKeysId: [UInt8]) -> Bindings.WriteableEcdsaChannelSigner {
-        return myKeysManager!.inner.asSignerProvider().deriveChannelSigner(
+        return customKeysManager!.inner.asSignerProvider().deriveChannelSigner(
             channelValueSatoshis: channelValueSatoshis,
             channelKeysId: channelKeysId
         )
     }
     
     override func generateChannelKeysId(inbound: Bool, channelValueSatoshis: UInt64, userChannelId: [UInt8]) -> [UInt8] {
-        return myKeysManager!.inner.asSignerProvider().generateChannelKeysId(
+        return customKeysManager!.inner.asSignerProvider().generateChannelKeysId(
             inbound: inbound,
             channelValueSatoshis: channelValueSatoshis,
             userChannelId: userChannelId
@@ -85,6 +85,6 @@ class CustomSignerProvider: SignerProvider {
     }
     
     override func readChanSigner(reader: [UInt8]) -> Bindings.Result_WriteableEcdsaChannelSignerDecodeErrorZ {
-        return myKeysManager!.inner.asSignerProvider().readChanSigner(reader: reader)
+        return customKeysManager!.inner.asSignerProvider().readChanSigner(reader: reader)
     }
 }

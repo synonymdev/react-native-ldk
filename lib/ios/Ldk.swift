@@ -796,7 +796,7 @@ class Ldk: NSObject {
             ldkOutputs.append(TxOut(scriptPubkey: (d["script_pubkey"] as! String).hexaBytes, value: d["value"] as! UInt64))
         }
         
-        let res = keysManager.spendSpendableOutputs(
+        let res = keysManager.inner.spendSpendableOutputs(
             descriptors: ldkDescriptors,
             outputs: ldkOutputs,
             changeDestinationScript: String(changeDestinationScript).hexaBytes,
