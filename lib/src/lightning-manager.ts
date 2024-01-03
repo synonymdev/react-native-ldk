@@ -61,6 +61,7 @@ import {
 import {
 	appendPath,
 	findOutputsFromRawTxs,
+	isValidBech32mEncodedString,
 	parseData,
 	promiseTimeout,
 	sleep,
@@ -125,8 +126,6 @@ class LightningManager {
 	getAddress: TGetAddress = async (): Promise<IAddress> => ({
 		address: '',
 		publicKey: '',
-		witnessProgram: '',
-		witnessProgramVersion: 0,
 	});
 	getScriptPubKeyHistory: TGetScriptPubKeyHistory = async (): Promise<
 		TGetScriptPubKeyHistoryResponse[]
@@ -427,6 +426,14 @@ class LightningManager {
 		}
 
 		const closeAddress = await this.getAddress();
+		const witnessProgram = bitcoin.crypto
+			.hash160(Buffer.from(closeAddress.publicKey, 'hex'))
+			.toString('hex');
+		const witnessProgramVersion = isValidBech32mEncodedString(
+			closeAddress.address,
+		).isValid
+			? 1
+			: 0;
 
 		//All these calls don't need to be done in any particular sequence
 		let promises: Promise<Result<string>>[] = [
@@ -438,8 +445,8 @@ class LightningManager {
 			ldk.initKeysManager({
 				seed: this.account.seed,
 				channelCloseDestinationScriptPublicKey: closeAddress.publicKey,
-				channelCloseWitnessProgram: closeAddress.witnessProgram,
-				channelCloseWitnessProgramVersion: closeAddress.witnessProgramVersion,
+				channelCloseWitnessProgram: witnessProgram,
+				channelCloseWitnessProgramVersion: witnessProgramVersion,
 			}),
 			ldk.initNetworkGraph({
 				network,
