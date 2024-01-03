@@ -20,15 +20,12 @@ class CustomKeysManager(
     seed: ByteArray,
     startingTimeSecs: Long,
     startingTimeNanos: Int,
-    destinationScriptPublicKey: ByteArray,
-    witnessProgram: ByteArray,
-    witnessProgramVersion: Byte
+    val destinationScriptPublicKey: ByteArray,
+    val witnessProgram: ByteArray,
+    val witnessProgramVersion: Byte
 ) {
     val inner: KeysManager = KeysManager.of(seed, startingTimeSecs, startingTimeNanos)
-    val signerProvider: CustomSignerProvider = CustomSignerProvider()
-    val destinationScriptPublicKey: ByteArray = destinationScriptPublicKey
-    val witnessProgram: ByteArray = witnessProgram
-    val witnessProgramVersion: Byte = witnessProgramVersion
+    val signerProvider = CustomSignerProvider()
 
     init {
         signerProvider.customKeysManager = this
@@ -41,22 +38,19 @@ class CustomKeysManager(
         feerateSatPer1000Weight: Int,
         locktime: Option_u32Z
     ): Result_TransactionNoneZ {
-        //TODO filter out static outputs
         val onlyNonStatic: Array<SpendableOutputDescriptor> = descriptors.filter {
-            true //TODO
+            it as? SpendableOutputDescriptor.StaticOutput == null
         }.toTypedArray()
 
-        val res = inner.spend_spendable_outputs(
+        return inner.spend_spendable_outputs(
             onlyNonStatic,
             outputs,
             changeDestinationScript,
             feerateSatPer1000Weight,
             locktime
         )
-        return res
     }
 }
-
 
 class CustomSignerProvider : SignerProviderInterface {
     lateinit var customKeysManager: CustomKeysManager
@@ -82,17 +76,14 @@ class CustomSignerProvider : SignerProviderInterface {
         channel_value_satoshis: Long,
         channel_keys_id: ByteArray?
     ): WriteableEcdsaChannelSigner {
-        return customKeysManager.signerProvider.derive_channel_signer(
-            channel_value_satoshis,
-            channel_keys_id
-        )
+        return customKeysManager.inner.as_SignerProvider().derive_channel_signer(channel_value_satoshis, channel_keys_id)
     }
 
     override fun generate_channel_keys_id(p0: Boolean, p1: Long, p2: UInt128?): ByteArray {
-        return customKeysManager.signerProvider.generate_channel_keys_id(p0, p1, p2)
+        return customKeysManager.inner.as_SignerProvider().generate_channel_keys_id(p0, p1, p2)
     }
 
     override fun read_chan_signer(p0: ByteArray?): Result_WriteableEcdsaChannelSignerDecodeErrorZ {
-        return customKeysManager.signerProvider.read_chan_signer(p0!!)
+        return customKeysManager.inner.as_SignerProvider().read_chan_signer(p0!!)
     }
 }

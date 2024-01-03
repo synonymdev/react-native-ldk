@@ -153,7 +153,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private val channelManagerPersister: LdkChannelManagerPersister by lazy { LdkChannelManagerPersister() }
 
     //Config required to setup below objects
-    private var keysManager: KeysManager? = null
+    private var keysManager: CustomKeysManager? = null
     private var channelManager: ChannelManager? = null
     private var userConfig: UserConfig? = null
     private var networkGraph: NetworkGraph? = null
@@ -230,7 +230,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initKeysManager(seed: String, promise: Promise) {
+    fun initKeysManager(seed: String, destinationScriptPublicKey: String, witnessProgram: String, witnessProgramVersion: Double, promise: Promise) {
         if (keysManager !== null) {
             return handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
         }
@@ -243,7 +243,15 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.invalid_seed_hex)
         }
 
-        keysManager = KeysManager.of(seedBytes, seconds, nanoSeconds.toInt())
+        keysManager = CustomKeysManager(
+            seedBytes,
+            seconds,
+            nanoSeconds.toInt(),
+            destinationScriptPublicKey.hexa(),
+            witnessProgram.hexa(),
+            witnessProgramVersion.toInt().toByte()
+        )
+        //keysManager = KeysManager.of(seedBytes, seconds, nanoSeconds.toInt())
 
         handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
     }
@@ -439,9 +447,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     channelManagerSerialized,
                     channelMonitors.toTypedArray(),
                     userConfig!!,
-                    keysManager!!.as_EntropySource(),
-                    keysManager!!.as_NodeSigner(),
-                    keysManager!!.as_SignerProvider(),
+                    keysManager!!.inner.as_EntropySource(),
+                    keysManager!!.inner.as_NodeSigner(),
+                    SignerProvider.new_impl(keysManager!!.signerProvider),
                     feeEstimator.feeEstimator,
                     chainMonitor!!,
                     filter.filter,
@@ -461,9 +469,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     userConfig,
                     blockHash.hexa().reversedArray(),
                     blockHeight.toInt(),
-                    keysManager!!.as_EntropySource(),
-                    keysManager!!.as_NodeSigner(),
-                    keysManager!!.as_SignerProvider(),
+                    keysManager!!.inner.as_EntropySource(),
+                    keysManager!!.inner.as_NodeSigner(),
+                    SignerProvider.new_impl(keysManager!!.signerProvider),
                     feeEstimator.feeEstimator,
                     chainMonitor,
                     networkGraph!!,
@@ -826,7 +834,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val res = UtilMethods.create_invoice_from_channelmanager(
             channelManager,
-            keysManager!!.as_NodeSigner(),
+            keysManager!!.inner.as_NodeSigner(),
             logger.logger,
             ldkCurrency,
             if (amountSats == 0.0) Option_u64Z.none() else Option_u64Z.some((amountSats * 1000).toLong()),
@@ -1101,7 +1109,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun nodeSign(message: String, promise: Promise) {
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
 
-        val res = UtilMethods.sign(message.toByteArray(Charsets.UTF_8), keysManager!!._node_secret_key)
+        val res = UtilMethods.sign(message.toByteArray(Charsets.UTF_8), keysManager!!.inner._node_secret_key)
 
         if (!res.is_ok) {
             return handleReject(promise, LdkErrors.failed_signing_request)
@@ -1114,7 +1122,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun nodeStateDump(promise: Promise) {
         val logDump: MutableList<String> = mutableListOf()
 
-        keysManager?.as_NodeSigner()?.get_node_id(Recipient.LDKRecipient_Node)?.let { pubKeyRes ->
+        keysManager?.inner?.as_NodeSigner()
+            ?.get_node_id(Recipient.LDKRecipient_Node)?.let { pubKeyRes ->
             if (pubKeyRes.is_ok) {
                 logDump.add("NodeID: ${(pubKeyRes as Result_PublicKeyNoneZ_OK).res.hexEncodedString()}")
             }
