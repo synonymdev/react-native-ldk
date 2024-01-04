@@ -577,8 +577,6 @@ export type TLdkStart = {
 export interface IAddress {
 	address: string;
 	publicKey: string;
-	witnessProgram: string;
-	witnessProgramVersion: number;
 }
 
 export type TGetAddress = () => Promise<IAddress>;
