@@ -804,6 +804,10 @@ class LightningManager {
 							return;
 						}
 
+						if (!transactionData?.vout[index]) {
+							return;
+						}
+
 						const txs = await this.getScriptPubKeyHistory(
 							transactionData?.vout[index].hex,
 						);
