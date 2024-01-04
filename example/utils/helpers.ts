@@ -1,5 +1,9 @@
 import Keychain from 'react-native-keychain';
-import { TAccount, TAvailableNetworks } from '@synonymdev/react-native-ldk';
+import {
+	TAccount,
+	TAvailableNetworks,
+	IAddress,
+} from '@synonymdev/react-native-ldk';
 import { getItem, setItem } from '../ldk';
 import { EAccount } from './types';
 import { err, ok, Result } from './result';
@@ -184,7 +188,7 @@ export const getMnemonicPhraseFromSeed = (accountSeed: string): string => {
  * Returns a single test address used for channel closures.
  * @returns {Promise<string>}
  */
-export const getAddress = async (): Promise<string> => {
+export const getAddress = async (): Promise<IAddress> => {
 	const network = getNetwork(selectedNetwork);
 
 	const { seed: accountSeed } = await getAccount();
@@ -192,10 +196,17 @@ export const getAddress = async (): Promise<string> => {
 	const mnemonicSeed = await bip39.mnemonicToSeed(mnemonic);
 	const root = bip32.fromSeed(mnemonicSeed, network);
 	const keyPair = root.derivePath("m/84'/1'/0'/0/0");
-	return (
-		bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey, network }).address ??
-		''
-	);
+	const publicKey = keyPair.publicKey.toString('hex');
+	const address =
+		bitcoin.payments.p2wpkh({
+			pubkey: keyPair.publicKey,
+			network,
+		}).address ?? '';
+
+	return {
+		address,
+		publicKey,
+	};
 };
 
 export const ldkNetwork = (network: TAvailableNetworks): ENetworks => {

@@ -315,6 +315,13 @@ export type TDownloadScorer = {
 	skipHoursThreshold?: number;
 };
 
+export type TInitKeysManager = {
+	seed: string;
+	channelCloseDestinationScriptPublicKey: string;
+	channelCloseWitnessProgram: string;
+	channelCloseWitnessProgramVersion: number;
+};
+
 export type TInitNetworkGraphReq = {
 	network: ENetworks;
 	rapidGossipSyncUrl?: string;
@@ -567,7 +574,12 @@ export type TLdkStart = {
 	skipParamCheck?: boolean;
 };
 
-export type TGetAddress = () => Promise<string>;
+export interface IAddress {
+	address: string;
+	publicKey: string;
+}
+
+export type TGetAddress = () => Promise<IAddress>;
 
 export type TGetScriptPubKeyHistory = (
 	address: string,

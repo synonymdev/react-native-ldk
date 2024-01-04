@@ -195,6 +195,15 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 return handleEventError(event)
             }
             
+            if let channelId = spendableOutputs.getChannelId() {
+                // Ensure channel was NOT opened with custom destination script. For existing channels (prior custom keys manager) we have to still sweep the output back to onchain wallet.
+                // This check and channel_manager_spendable_outputs event can probably be removed in the future.
+                guard !channelWasOpenedWithNewCustomKeysManager(channelId: channelId) else {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping event channel_manager_spendable_outputs as channel (\(Data(channelId).hexEncodedString()) was opened with new custom keys manager")
+                    return
+                }
+            }
+            
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_spendable_outputs,
                 body: [
@@ -257,6 +266,20 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             //Save to disk for TX history
             persistPaymentClaimed(body)
             return
+        case .ChannelReady:
+            guard let readyChannel = event.getValueAsChannelReady() else {
+                return handleEventError(event)
+            }
+            
+            persistChannelOpenedWithNewCustomKeysManager(channelId: readyChannel.getChannelId())
+            return
+        case .ChannelPending:
+            guard let pendingChannel = event.getValueAsChannelPending() else {
+                return handleEventError(event)
+            }
+            
+            persistChannelOpenedWithNewCustomKeysManager(channelId: pendingChannel.getChannelId())
+            return
         case .BumpTransaction:
             guard let bumpTransaction = event.getValueAsBumpTransaction() else {
                 return handleEventError(event)
@@ -265,6 +288,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "TODO📣: BumpTransaction")
             
             return
+            
         case .ProbeFailed:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ProbeFailed")
             return
@@ -277,12 +301,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         case .HTLCIntercepted:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: HTLCIntercepted")
             return
-        case .ChannelPending:
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ChannelPending")
-            return
-        case .ChannelReady:
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ChannelReady")
-            return
+        
         case .HTLCHandlingFailed:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: HTLCHandlingFailed")
             return
@@ -298,10 +317,10 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             BackupClient.addToPersistQueue(.channelManager, channelManager.write()) {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persisted channel manager")
             }
-
+            
             try Data(channelManager.write()).write(to: managerStorage)
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")            
-                        
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")
+            
             LdkEventEmitter.shared.send(withEvent: .backup, body: "")
             
             return Result_NoneIOErrorZ.initWithOk()
@@ -331,10 +350,10 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         guard let scorerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.scorer.rawValue) else {
             return Result_NoneIOErrorZ.initWithErr(e: .Other)
         }
-
+        
         do {
             try Data(scorer.write()).write(to: scorerStorage)
-
+            
             return Result_NoneIOErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist scorer to disk Error \(error.localizedDescription).")
@@ -362,7 +381,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not read existing claimed payments")
                 }
             }
-                        
+            
             //Replace entry if payment hash exists (Confirmed payment replacing pending)
             var paymentReplaced = false
             for (index, existingPayment) in payments.enumerated() {
@@ -414,7 +433,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not read existing sent payments")
                 }
             }
-                        
+            
             //Replace entry if payment hash exists (Confirmed payment replacing pending)
             var paymentReplaced = false
             for (index, existingPayment) in payments.enumerated() {
@@ -444,5 +463,74 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error writing payment sent to file: \(error)")
         }
+    }
+    
+    
+    /// If a channel was opened with the new custom keys manager then spendable outputs from a channel close  will already be spendable by the on chain wallet and there is no need to sweep.
+    /// TODO remove all these checks at some point in the future once certain all old channels opened prior to this update have been long closed.
+    /// - Parameter channelId: channel ID
+    func persistChannelOpenedWithNewCustomKeysManager(channelId: [UInt8]) {
+        guard let channelIdStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channelsOpenedWithCustomKeysManager.rawValue) else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist ChannelOpenedWithNewCustomKeysManager")
+            return
+        }
+        
+        let id = Data(channelId).hexEncodedString()
+        var existingIds: [String] = []
+        do {
+            if FileManager.default.fileExists(atPath: channelIdStorage.path) {
+                let data = try Data(contentsOf: URL(fileURLWithPath: channelIdStorage.path), options: .mappedIfSafe)
+                
+                if let existingContent = try JSONSerialization.jsonObject(with: data, options: []) as? [String] {
+                    existingIds = existingContent
+                } else {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not read existing ChannelOpenedWithNewCustomKeysManager")
+                }
+            }
+            
+            
+            if !existingIds.contains(id) {
+                existingIds.append(id)
+                
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: existingIds, options: []) else {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not serialize sent payments")
+                    return
+                }
+                
+                guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+                    return
+                }
+                
+                try jsonString.write(to: channelIdStorage, atomically: true, encoding: .utf8)
+            }
+        } catch {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not read existing ChannelOpenedWithNewCustomKeysManager")
+        }
+    }
+    
+    func channelWasOpenedWithNewCustomKeysManager(channelId: [UInt8]) -> Bool {
+        guard let channelIdStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channelsOpenedWithCustomKeysManager.rawValue) else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist ChannelOpenedWithNewCustomKeysManager")
+            return false
+        }
+        
+        let id = Data(channelId).hexEncodedString()
+        var existingIds: [String] = []
+        
+        do {
+            if FileManager.default.fileExists(atPath: channelIdStorage.path) {
+                let data = try Data(contentsOf: URL(fileURLWithPath: channelIdStorage.path), options: .mappedIfSafe)
+                
+                if let existingContent = try JSONSerialization.jsonObject(with: data, options: []) as? [String] {
+                    existingIds = existingContent
+                } else {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not read existing ChannelOpenedWithNewCustomKeysManager")
+                }
+            }
+        } catch {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not read existing ChannelOpenedWithNewCustomKeysManager")
+        }
+        
+        return existingIds.contains(id)
     }
 }

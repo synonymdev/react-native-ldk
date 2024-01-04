@@ -16,6 +16,9 @@ RCT_EXTERN_METHOD(writeToLogFile:(NSString *)line
 RCT_EXTERN_METHOD(initChainMonitor:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initKeysManager:(NSString *)seed
+                  destinationScriptPublicKey:(NSString *)destinationScriptPublicKey
+                  witnessProgram:(NSString *)witnessProgram
+                  witnessProgramVersion:(NSInteger *)witnessProgramVersion                  
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(initUserConfig:(NSDictionary *)userConfig

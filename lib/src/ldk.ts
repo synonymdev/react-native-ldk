@@ -36,6 +36,7 @@ import {
 	TNodeSignReq,
 	TBackedUpFileList,
 	TDownloadScorer,
+	TInitKeysManager,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -85,11 +86,24 @@ class LDK {
 	 * Private key for node. Used to derive node public key. 32-byte entropy.
 	 * https://docs.rs/lightning/latest/lightning/chain/keysinterface/struct.KeysManager.html
 	 * @param seed
+	 * @param channelCloseDestinationScriptPublicKey
+	 * @param channelCloseWitnessProgram
+	 * @param channelCloseWitnessProgramVersion
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async initKeysManager(seed: string): Promise<Result<string>> {
+	async initKeysManager({
+		seed,
+		channelCloseDestinationScriptPublicKey,
+		channelCloseWitnessProgram,
+		channelCloseWitnessProgramVersion,
+	}: TInitKeysManager): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.initKeysManager(seed);
+			const res = await NativeLDK.initKeysManager(
+				seed,
+				channelCloseDestinationScriptPublicKey,
+				channelCloseWitnessProgram,
+				channelCloseWitnessProgramVersion,
+			);
 			this.writeDebugToLog('initKeysManager');
 			return ok(res);
 		} catch (e) {

@@ -367,12 +367,14 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
-						title={'Get Address Balance'}
+						title={'🤑Get Address Balance'}
 						onPress={async (): Promise<void> => {
 							setMessage('Getting Address Balance...');
-							const address = await getAddress();
+							const { address, publicKey } = await getAddress();
 							const balance = await getAddressBalance(address);
-							setMessage(`Balance: ${balance}`);
+							setMessage(
+								`address ${address}\npublicKey ${publicKey}\nBalance: ${balance}`,
+							);
 						}}
 					/>
 

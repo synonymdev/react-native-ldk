@@ -1,6 +1,7 @@
 import { ENetworks, TLdkStart } from './types';
 import { err, ok, Result } from './result';
 import * as bitcoin from 'bitcoinjs-lib';
+import { bech32m } from 'bech32';
 import networks from './networks';
 /**
  * This method runs a check on each parameter passed to the start method
@@ -177,7 +178,8 @@ export const startParamCheck = async ({
 				);
 			}
 
-			const address = await getAddress();
+			//TODO validate entire object
+			const address = (await getAddress()).address;
 			if (typeof address !== 'string') {
 				return err('getAddress is not returning the expected data.');
 			}
@@ -306,4 +308,27 @@ export const sleep = (ms = 1000): Promise<void> => {
 	return new Promise((resolve) => {
 		setTimeout(resolve, ms);
 	});
+};
+
+/**
+ * Returns if the provided string is a valid Bech32m encoded string (taproot/p2tr address) and if so, which network.
+ * @param {string} address
+ * @returns { isValid: boolean; network: ENetworks }
+ */
+export const isValidBech32mEncodedString = (
+	address: string,
+): { isValid: boolean; network: ENetworks } => {
+	try {
+		const decoded = bech32m.decode(address);
+		if (decoded.prefix === 'bc') {
+			return { isValid: true, network: ENetworks.mainnet };
+		} else if (decoded.prefix === 'tb') {
+			return { isValid: true, network: ENetworks.testnet };
+		} else if (decoded.prefix === 'bcrt') {
+			return { isValid: true, network: ENetworks.regtest };
+		}
+	} catch (error) {
+		return { isValid: false, network: ENetworks.mainnet };
+	}
+	return { isValid: false, network: ENetworks.mainnet };
 };

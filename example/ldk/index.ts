@@ -264,6 +264,9 @@ export const getTransactionData = async (
 export const getTransactionPosition = async ({
 	tx_hash,
 	height,
+}: {
+	tx_hash: string;
+	height: number;
 }): Promise<TTransactionPosition> => {
 	const response = await electrum.getTransactionMerkle({
 		tx_hash,
