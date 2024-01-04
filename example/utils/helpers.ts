@@ -197,10 +197,11 @@ export const getAddress = async (): Promise<IAddress> => {
 	const root = bip32.fromSeed(mnemonicSeed, network);
 	const keyPair = root.derivePath("m/84'/1'/0'/0/0");
 	const publicKey = keyPair.publicKey.toString('hex');
-	const address = bitcoin.payments.p2wpkh({
-		pubkey: keyPair.publicKey,
-		network,
-	}).address ?? '';
+	const address =
+		bitcoin.payments.p2wpkh({
+			pubkey: keyPair.publicKey,
+			network,
+		}).address ?? '';
 
 	return {
 		address,
