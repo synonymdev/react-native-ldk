@@ -25,7 +25,13 @@ class LdkPersister {
             val isNew = !file.exists()
 
             BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write()) {
-                file.writeBytes(data.write())
+                try {
+                    file.writeBytes(data.write())
+                } catch (e: Exception) {
+                    //If this fails we can't do much but LDK will retry on startup
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to locally persist channel (${id.to_channel_id().hexEncodedString()}) to disk")
+                    return@addToPersistQueue
+                }
 
                 //Update chainmonitor with successful persist
                 val res = LdkModule.chainMonitor?.channel_monitor_updated(id, update_id)

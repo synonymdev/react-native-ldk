@@ -25,7 +25,13 @@ class LdkPersister: Persist {
                         
             BackupClient.addToPersistQueue(.channelMonitor(id: channelIdHex), data.write()) {
                 //Callback for when the persist queue queue entry is processed
-                try! Data(data.write()).write(to: channelStoragePath)
+                do {
+                    try Data(data.write()).write(to: channelStoragePath)
+                } catch {
+                    //If this fails we can't do much but LDK will retry on startup
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to locally persist channel (\(channelIdHex)). \(error.localizedDescription)")
+                    return
+                }
                 
                 //Update chainmonitor with successful persist
                 let res = Ldk.chainMonitor?.channelMonitorUpdated(fundingTxo: channelId, completedUpdateId: updateId)
