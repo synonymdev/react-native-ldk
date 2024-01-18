@@ -1262,25 +1262,7 @@ class LightningManager {
 		}
 	};
 
-	/**
-	 * ldk.pay helper that subscribes to and returns pay event success/failures and times out after a specified period of time.
-	 * @param {string} paymentRequest
-	 * @param {number} [amountSats]
-	 * @param {number} [timeout]
-	 * @returns {Promise<Result<TChannelManagerPaymentSent>>}
-	 */
 	payWithTimeout = async ({
-		paymentRequest,
-		amountSats,
-		timeout = 20000,
-	}: TPaymentTimeoutReq): Promise<Result<TChannelManagerPaymentSent>> => {
-		return promiseTimeout(
-			timeout,
-			this.subscribeAndPay({ paymentRequest, amountSats, timeout }),
-		);
-	};
-
-	private subscribeAndPay = async ({
 		paymentRequest,
 		amountSats,
 		timeout = 20000,
