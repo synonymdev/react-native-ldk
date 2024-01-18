@@ -1962,7 +1962,7 @@ class LightningManager {
 		if (supports_zero_conf) {
 			if (isTrustedPeer) {
 				await ldk.writeToLogFile(
-					'error',
+					'info',
 					`Accepting zero conf channel from peer ${counterparty_node_id}`,
 				);
 
