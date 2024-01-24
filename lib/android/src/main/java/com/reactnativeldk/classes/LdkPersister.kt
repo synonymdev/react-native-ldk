@@ -32,7 +32,12 @@ class LdkPersister {
                 return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_Completed
             }
 
-            BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write()) {
+            BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write()) { error ->
+                if (error != null) {
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to persist channel (${id.to_channel_id().hexEncodedString()}) to remote backup: $error")
+                    return@addToPersistQueue
+                }
+
                 try {
                     file.writeBytes(data.write())
                 } catch (e: Exception) {

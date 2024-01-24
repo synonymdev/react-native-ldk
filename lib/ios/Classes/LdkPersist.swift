@@ -32,7 +32,6 @@ class LdkPersister: Persist {
                 return ChannelMonitorUpdateStatus.Completed
             }
                          
-            //TODO skip this and return ChannelMonitorUpdateStatus.Completed when saved locally if remote backups not setup
             BackupClient.addToPersistQueue(.channelMonitor(id: channelIdHex), data.write()) { error in
                 if let error {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed persist channel on remote server (\(channelIdHex)). \(error.localizedDescription)")

@@ -185,14 +185,16 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
 
     override fun persist_manager(channel_manager_bytes: ByteArray?) {
         if (channel_manager_bytes != null && LdkModule.accountStoragePath != "") {
-            BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MANAGER(), channel_manager_bytes) {
-                LdkEventEmitter.send(EventTypes.native_log, "Remote persisted channel manager to disk")
+            BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MANAGER(), channel_manager_bytes) { error ->
+                if (error != null) {
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to remotely persist channel manager to disk")
+                } else {
+                    LdkEventEmitter.send(EventTypes.native_log, "Remote persisted channel manager to disk")
+                }
             }
 
             File(LdkModule.accountStoragePath + "/" + LdkFileNames.channel_manager.fileName).writeBytes(channel_manager_bytes)
-
             LdkEventEmitter.send(EventTypes.native_log, "Locally persisted channel manager to disk")
-            LdkEventEmitter.send(EventTypes.backup, "")
         }
     }
 

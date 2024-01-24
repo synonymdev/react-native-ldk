@@ -73,6 +73,7 @@ enum LdkErrors: String {
     case backup_restore_failed_existing_files = "backup_restore_failed_existing_files"
     case backup_list_files_failed = "backup_list_files_failed"
     case backup_fetch_file_failed = "backup_fetch_file_failed"
+    case backup_file_failed = "backup_file_failed"
     case scorer_download_fail = "scorer_download_fail"
 }
 
@@ -1402,7 +1403,7 @@ class Ldk: NSObject {
             
         BackupClient.addToPersistQueue(.misc(fileName: String(fileName)), bytes) { error in
             if let error {
-                handleReject(reject, .backup_list_files_failed, error, error.localizedDescription)
+                handleReject(reject, .backup_file_failed, error, error.localizedDescription)
                 return
             }
             handleResolve(resolve, .backup_file_success)

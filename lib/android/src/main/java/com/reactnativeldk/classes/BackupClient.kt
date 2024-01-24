@@ -40,7 +40,7 @@ class CompleteBackup(
     val channelFiles: Map<String, ByteArray>
 )
 
-typealias BackupCompleteCallback = () -> Unit
+typealias BackupCompleteCallback = (Exception?) -> Unit
 
 class BackupQueueEntry(
     val uuid: UUID,
@@ -508,9 +508,9 @@ class BackupClient {
         }
 
         //Backup queue management
-        fun addToPersistQueue(label: BackupClient.Label, bytes: ByteArray, callback: (() -> Unit)? = null) {
+        fun addToPersistQueue(label: Label, bytes: ByteArray, callback: BackupCompleteCallback? = null) {
             if (BackupClient.skipRemoteBackup) {
-                callback?.invoke()
+                callback?.invoke(null)
                 LdkEventEmitter.send(
                     EventTypes.native_log,
                     "Skipping remote backup queue append for ${label.string}"
@@ -548,12 +548,13 @@ class BackupClient {
             Thread {
                 try {
                     persist(backupEntry!!.label, backupEntry.bytes, 10)
-                    backupEntry.callback?.invoke()
+                    backupEntry.callback?.invoke(null)
                 } catch (e: Exception) {
                     LdkEventEmitter.send(
                         EventTypes.native_log,
                         "Remote persist failed for ${label.string} with error ${e.message}"
                     )
+                    backupEntry?.callback?.invoke(e)
                 } finally {
                     backupQueueLock.lock()
                     try {
