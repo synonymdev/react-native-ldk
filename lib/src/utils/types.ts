@@ -556,8 +556,8 @@ export type TLdkStart = {
 	forceCloseOnStartup?: TForceCloseOnStartup;
 	userConfig?: TUserConfig;
 	trustedZeroConfPeers?: string[];
-	backupServerDetails?: TBackupServerDetails;
 	skipParamCheck?: boolean;
+	skipRemoteBackups?: boolean;
 };
 
 export interface IAddress {

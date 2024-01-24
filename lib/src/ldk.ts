@@ -1294,7 +1294,7 @@ class LDK {
 	/**
 	 * Runs a self check by creating random string, encrypting, backing up, fetching, decrypting and validating content.
 	 */
-	async backupSelfCheck(): Promise<Result<boolean>> {
+	async backupSelfCheck(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.backupSelfCheck();
 			return ok(res);

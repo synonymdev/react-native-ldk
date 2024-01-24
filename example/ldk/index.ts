@@ -109,6 +109,15 @@ export const setupLdk = async (
 			return err(storageRes.error);
 		}
 
+		const res = await ldk.backupSetup({
+			network: ldkNetwork(selectedNetwork),
+			seed: account.seed,
+			details: backupServerDetails!,
+		});
+		if (res.isErr()) {
+			return err(res.error);
+		}
+
 		const lmStart = await lm.start({
 			getBestBlock,
 			account,
@@ -140,7 +149,6 @@ export const setupLdk = async (
 				manually_accept_inbound_channels: true,
 			},
 			trustedZeroConfPeers: [peers.lnd.pubKey],
-			backupServerDetails,
 		});
 
 		if (lmStart.isErr()) {

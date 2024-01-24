@@ -146,8 +146,6 @@ class LightningManager {
 	private pendingStartPromises: Array<(result: Result<string>) => void> = [];
 	private previousAccountName: string = '';
 
-	private backupsServerSetup = false;
-
 	constructor() {
 		// Step 0: Subscribe to all events
 		ldk.onEvent(EEventTypes.native_log, (line) => {
@@ -291,8 +289,8 @@ class LightningManager {
 		forceCloseOnStartup,
 		userConfig = defaultUserConfig,
 		trustedZeroConfPeers = [],
-		backupServerDetails,
 		skipParamCheck = false,
+		skipRemoteBackups = false,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
 			return err(
@@ -456,15 +454,8 @@ class LightningManager {
 			);
 		}
 
-		if (backupServerDetails) {
-			promises.push(
-				ldk.backupSetup({
-					seed: account.seed,
-					network: this.network,
-					details: backupServerDetails,
-				}),
-			);
-			this.backupsServerSetup = true;
+		if (!skipRemoteBackups) {
+			promises.push(ldk.backupSelfCheck());
 		}
 
 		// Check for any errors before starting channel manager.
