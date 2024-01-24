@@ -1,7 +1,6 @@
 import ldk from './ldk';
 import { Err, err, ok, Result } from './utils/result';
 import {
-	DefaultLdkDataShape,
 	DefaultTransactionDataShape,
 	EEventTypes,
 	ELdkData,
@@ -41,7 +40,6 @@ import {
 	TLdkBroadcastedTransactions,
 	TChannelUpdate,
 	TPaymentReq,
-	TPaymentTimeoutReq,
 	TLdkPaymentIds,
 	TNetworkGraphUpdated,
 	TGetTransactionPosition,
@@ -111,11 +109,6 @@ class LightningManager {
 		name: '',
 		seed: '',
 	};
-	backupSubscriptions: {
-		[id: string]: (backup: Result<TAccountBackup>) => void;
-	} = {};
-	backupSubscriptionsId = 0;
-	backupSubscriptionsDebounceTimer: NodeJS.Timeout | undefined = undefined;
 	getTransactionData: TGetTransactionData =
 		async (): Promise<TTransactionData> => DefaultTransactionDataShape;
 	getTransactionPosition: TGetTransactionPosition =
@@ -171,9 +164,6 @@ class LightningManager {
 			EEventTypes.broadcast_transaction,
 			this.onBroadcastTransaction.bind(this),
 		);
-
-		ldk.onEvent(EEventTypes.backup, this.onLdkBackupEvent.bind(this));
-
 		//Channel manager handle events:
 		ldk.onEvent(
 			EEventTypes.channel_manager_funding_generation_ready,
@@ -938,10 +928,10 @@ class LightningManager {
 	getPeers = async (): Promise<TLdkPeers> => {
 		const res = await ldk.readFromFile({ fileName: ELdkFiles.peers });
 		if (res.isOk()) {
-			return parseData(res.value.content, DefaultLdkDataShape.peers);
+			return parseData(res.value.content, []);
 		}
 
-		return DefaultLdkDataShape.peers;
+		return [];
 	};
 
 	/**
@@ -1156,112 +1146,6 @@ class LightningManager {
 		}
 	};
 
-	/**
-	 * Used to back up the data that corresponds with the provided account.
-	 * @param {TAccount} account
-	 * @param {boolean} includeTransactionHistory
-	 * @returns {TAccountBackup} This object can be stringified and used to import/restore this LDK account via importAccount.
-	 */
-	backupAccount = async ({
-		account,
-		includeTransactionHistory = false,
-	}: {
-		account: TAccount;
-		includeTransactionHistory?: boolean;
-	}): Promise<Result<TAccountBackup>> => {
-		console.warn(
-			'backupAccount() is deprecated and will be removed in future versions. Use remote backup server instead.',
-		);
-		if (!this.baseStoragePath) {
-			return err(
-				'baseStoragePath required for wallet persistence. Call setBaseStoragePath(path) first.',
-			);
-		}
-
-		try {
-			if (!account || !this?.account) {
-				return err(
-					'No account provided. Please pass an account object containing the name & seed to the start method and try again.',
-				);
-			}
-			if (!account) {
-				account = this.account;
-			}
-			if (!account?.name || !account?.seed) {
-				return err(
-					'No account name or seed provided. Please pass an account object containing the name & seed to the start method and try again.',
-				);
-			}
-
-			const accountPath = appendPath(this.baseStoragePath, account.name);
-
-			//Get serialised channel manager
-			const channelManagerRes = await ldk.readFromFile({
-				fileName: ELdkFiles.channel_manager,
-				path: accountPath,
-				format: 'hex',
-			});
-			if (channelManagerRes.isErr()) {
-				return err(channelManagerRes.error);
-			}
-
-			//Get serialised channels
-			const listChannelsRes = await ldk.listChannelFiles();
-			if (listChannelsRes.isErr()) {
-				return err(listChannelsRes.error);
-			}
-
-			let channel_monitors: { [key: string]: string } = {};
-			for (let index = 0; index < listChannelsRes.value.length; index++) {
-				const fileName = listChannelsRes.value[index];
-
-				const serialisedChannelRes = await ldk.readFromFile({
-					fileName,
-					path: appendPath(accountPath, ELdkFiles.channels),
-					format: 'hex',
-				});
-				if (serialisedChannelRes.isErr()) {
-					return err(serialisedChannelRes.error);
-				}
-
-				channel_monitors[fileName.replace('.bin', '')] =
-					serialisedChannelRes.value.content;
-			}
-
-			const accountBackup: TAccountBackup = {
-				account,
-				data: {
-					channel_manager: channelManagerRes.value.content,
-					channel_monitors: channel_monitors,
-					peers: await this.getPeers(),
-					unconfirmed_transactions: await this.getLdkUnconfirmedTxs(),
-					broadcasted_transactions: await this.getLdkBroadcastedTxs(),
-					payment_ids: await this.getLdkPaymentIds(),
-					spendable_outputs: await this.getLdkSpendableOutputs(),
-					payments_claimed: [],
-					payments_sent: [],
-					bolt11_invoices: [],
-					timestamp: Date.now(),
-				},
-				package_version: require('../package.json').version,
-				network: this.network,
-			};
-
-			//Backups can become large, so we only include transaction history if requested.
-			if (includeTransactionHistory) {
-				accountBackup.data = {
-					...accountBackup.data,
-					payments_claimed: await this.getLdkPaymentsClaimed(),
-					payments_sent: await this.getLdkPaymentsSent(),
-					bolt11_invoices: await this.getBolt11Invoices(),
-				};
-			}
-			return ok(accountBackup);
-		} catch (e) {
-			return err(e);
-		}
-	};
-
 	payWithTimeout = async ({
 		paymentRequest,
 		amountSats,
@@ -1349,62 +1233,6 @@ class LightningManager {
 	};
 
 	/**
-	 * Subscribe to back up events and receive full backups to callback passed
-	 * @param callback
-	 * @returns {string}
-	 */
-	subscribeToBackups(
-		callback: (backup: Result<TAccountBackup>) => void,
-	): string {
-		console.warn(
-			'subscribeToBackups() is deprecated, use backup server instead.',
-		);
-		this.backupSubscriptionsId++;
-		const id = `${this.backupSubscriptionsId}`;
-		this.backupSubscriptions[id] = callback;
-		return id;
-	}
-
-	/**
-	 * Unsubscribe from backup events
-	 * @param id
-	 */
-	unsubscribeFromBackups(id: string): void {
-		console.warn(
-			'unsubscribeFromBackups() is deprecated, use backup server instead.',
-		);
-		if (this.backupSubscriptions[id]) {
-			delete this.backupSubscriptions[id];
-		}
-	}
-
-	/**
-	 * Handle native events triggering backups by debouncing and fetching data after
-	 * a timeout to avoid too many backup events being triggered right after each other.
-	 * @returns {Promise<void>}
-	 */
-	private async onLdkBackupEvent(): Promise<void> {
-		if (this.backupsServerSetup) {
-			return;
-		}
-		if (this.backupSubscriptionsDebounceTimer) {
-			clearTimeout(this.backupSubscriptionsDebounceTimer);
-		}
-
-		this.backupSubscriptionsDebounceTimer = setTimeout(async () => {
-			const backupRes = await this.backupAccount({ account: this.account });
-
-			//Process all subscriptions
-			Object.keys(this.backupSubscriptions).forEach((id) => {
-				const callback = this.backupSubscriptions[id];
-				if (callback) {
-					callback(backupRes);
-				}
-			});
-		}, 250);
-	}
-
-	/**
 	 * Returns change destination script for the provided address.
 	 * @param {string} address
 	 * @returns {string}
@@ -1478,12 +1306,9 @@ class LightningManager {
 				fileName: ELdkFiles.unconfirmed_transactions,
 			});
 			if (res.isOk()) {
-				return parseData(
-					res.value.content,
-					DefaultLdkDataShape.unconfirmed_transactions,
-				);
+				return parseData(res.value.content, []);
 			}
-			return DefaultLdkDataShape.unconfirmed_transactions;
+			return [];
 		};
 
 	private getLdkPaymentIds = async (): Promise<TLdkPaymentIds> => {
@@ -1491,10 +1316,7 @@ class LightningManager {
 			fileName: ELdkFiles.payment_ids,
 		});
 		if (res.isOk()) {
-			let parsed = parseData(
-				res.value.content,
-				DefaultLdkDataShape.payment_ids,
-			);
+			let parsed = parseData(res.value.content, []);
 
 			//Temp patch for wallets with incorrectly written payment ID file formats. Can be removed after a few releases.
 			if (parsed.length === 64 && res.value.content.length === 66) {
@@ -1503,7 +1325,7 @@ class LightningManager {
 
 			return parsed;
 		}
-		return DefaultLdkDataShape.payment_ids;
+		return [];
 	};
 
 	private removeLdkPaymentId = async (paymentId: string): Promise<void> => {
@@ -1543,9 +1365,9 @@ class LightningManager {
 			fileName: ELdkFiles.payments_claimed,
 		});
 		if (res.isOk()) {
-			return parseData(res.value.content, DefaultLdkDataShape.payments_claimed);
+			return parseData(res.value.content, []);
 		}
-		return DefaultLdkDataShape.payments_claimed;
+		return [];
 	};
 
 	/**
@@ -1557,9 +1379,9 @@ class LightningManager {
 			fileName: ELdkFiles.payments_sent,
 		});
 		if (res.isOk()) {
-			return parseData(res.value.content, DefaultLdkDataShape.payments_sent);
+			return parseData(res.value.content, []);
 		}
-		return DefaultLdkDataShape.payments_sent;
+		return [];
 	};
 
 	//TODO Remove any stale payments from storage if stuck for 60min. No payment claim should be stuck that long.
@@ -1573,14 +1395,11 @@ class LightningManager {
 			fileName: ELdkFiles.bolt11_invoices,
 		});
 		if (res.isOk()) {
-			let parsed = parseData(
-				res.value.content,
-				DefaultLdkDataShape.bolt11_invoices,
-			);
+			let parsed = parseData(res.value.content, []);
 
 			return parsed;
 		}
-		return DefaultLdkDataShape.bolt11_invoices;
+		return [];
 	};
 
 	appendBolt11Invoice = async (bolt11: string): Promise<void> => {
@@ -1637,12 +1456,9 @@ class LightningManager {
 			fileName: ELdkFiles.spendable_outputs,
 		});
 		if (res.isOk()) {
-			return parseData(
-				res.value.content,
-				DefaultLdkDataShape.spendable_outputs,
-			);
+			return parseData(res.value.content, []);
 		}
-		return DefaultLdkDataShape.spendable_outputs;
+		return [];
 	};
 
 	/**
@@ -1654,12 +1470,9 @@ class LightningManager {
 			fileName: ELdkFiles.broadcasted_transactions,
 		});
 		if (res.isOk()) {
-			return parseData(
-				res.value.content,
-				DefaultLdkDataShape.broadcasted_transactions,
-			);
+			return parseData(res.value.content, []);
 		}
-		return DefaultLdkDataShape.broadcasted_transactions;
+		return [];
 	}
 
 	async rebroadcastAllKnownTransactions(): Promise<any[]> {

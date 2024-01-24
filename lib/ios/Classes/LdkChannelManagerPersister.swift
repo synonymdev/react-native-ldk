@@ -320,9 +320,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             
             try Data(channelManager.write()).write(to: managerStorage)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")
-            
-            LdkEventEmitter.shared.send(withEvent: .backup, body: "")
-            
+                        
             return Result_NoneIOErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel manager to disk Error \(error.localizedDescription).")

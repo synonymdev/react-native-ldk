@@ -8,7 +8,6 @@ enum EventTypes: String, CaseIterable {
     case register_tx = "register_tx"
     case register_output = "register_output"
     case broadcast_transaction = "broadcast_transaction"
-    case backup = "backup"
     case channel_manager_funding_generation_ready = "channel_manager_funding_generation_ready"
     case channel_manager_payment_claimable = "channel_manager_payment_claimable"
     case channel_manager_payment_sent = "channel_manager_payment_sent"

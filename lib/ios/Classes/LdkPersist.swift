@@ -39,7 +39,6 @@ class LdkPersister: Persist {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to update chain monitor for channel (\(channelIdHex)) Error \(error.getValueType()).")
                 } else {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel \(channelIdHex). Update ID: \(updateId.hash())")
-                    LdkEventEmitter.shared.send(withEvent: .backup, body: "") //TODO remove after old backup is deprecated
                 }
             }
             
