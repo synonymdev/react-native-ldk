@@ -5,6 +5,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import { randomBytes } from 'react-native-randombytes';
 import { Platform } from 'react-native';
 import {
+	IAddress,
 	TAccount,
 	TAvailableNetworks,
 	THeader,
@@ -71,10 +72,13 @@ export default class TestProfile {
 			getScriptPubKeyHistory: this.getScriptPubKeyHistory,
 			getFees: () =>
 				Promise.resolve({
-					highPriority: 4,
-					normal: 3,
-					background: 2,
-					mempoolMinimum: 1,
+					onChainSweep: 4,
+					maxAllowedNonAnchorChannelRemoteFee: Math.max(25, 4 * 10),
+					minAllowedAnchorChannelRemoteFee: 1,
+					minAllowedNonAnchorChannelRemoteFee: Math.max(1 - 1, 0),
+					anchorChannelFee: 2,
+					nonAnchorChannelFee: 3,
+					channelCloseMinimum: 1,
 				}),
 			getTransactionData: this.getTransactionData,
 			getTransactionPosition: this.getTransactionPosition,
@@ -82,6 +86,12 @@ export default class TestProfile {
 			network: ldkNetwork(this.network),
 			// forceCloseOnStartup: { forceClose: true, broadcastLatestTx: false },
 			forceCloseOnStartup: undefined,
+			// trustedZeroConfPeers: [],
+			backupServerDetails: {
+				host: 'https://blocktank.synonym.to/staging-backups-ldk',
+				serverPubKey:
+					'02c03b8b8c1b5500b622646867d99bf91676fac0f38e2182c91a9ff0d053a21d6d',
+			},
 		};
 	};
 
@@ -104,7 +114,7 @@ export default class TestProfile {
 		return { name: this.name, seed: this.seed };
 	};
 
-	public getAddress = async (): Promise<string> => {
+	public getAddress = async (): Promise<IAddress> => {
 		const network = getNetwork(this.network);
 		const mnemonic = bip39.entropyToMnemonic(this.seed);
 		const mnemonicSeed = await bip39.mnemonicToSeed(mnemonic);
@@ -117,7 +127,10 @@ export default class TestProfile {
 		if (!address) {
 			throw new Error('Failed to generate address');
 		}
-		return address;
+		return {
+			address: address,
+			publicKey: keyPair.publicKey.toString('hex'),
+		};
 	};
 
 	public getScriptPubKeyHistory = async (

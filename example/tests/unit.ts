@@ -55,7 +55,11 @@ describe('Unit', function () {
 				hex: '000000205d1f3ece3bcb0a3530adaae2e4aa47f8aad434db95c6cb6d09d5ac99e3f6df4f0a19fe968830a06dcc49c9cca4acc532226e4c30b741802420e0fdd2b092eccdbf95cb64ffff7f2000000000',
 			}),
 			account,
-			getAddress: async () => 'bcrt1qtk89me2ae95dmlp3yfl4q9ynpux8mxjus4s872',
+			getAddress: async () => ({
+				address: 'bcrt1qtk89me2ae95dmlp3yfl4q9ynpux8mxjus4s872',
+				publicKey:
+					'0298720ece754e377af1b2716256e63c2e2427ff6ebdc66c2071c43ae80132ca32',
+			}),
 			getScriptPubKeyHistory: async () => [],
 			getFees: () => {
 				return Promise.resolve({

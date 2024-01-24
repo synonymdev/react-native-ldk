@@ -128,10 +128,13 @@ describe('Eclair', function () {
 			// network: ldkNetwork(selectedNetwork),
 			getFees: () => {
 				return Promise.resolve({
-					highPriority: 30,
-					normal: 20,
-					background: 10,
-					mempoolMinimum: 5,
+					onChainSweep: 30,
+					maxAllowedNonAnchorChannelRemoteFee: Math.max(25, 30 * 10),
+					minAllowedAnchorChannelRemoteFee: 5,
+					minAllowedNonAnchorChannelRemoteFee: Math.max(5 - 1, 0),
+					anchorChannelFee: 10,
+					nonAnchorChannelFee: 20,
+					channelCloseMinimum: 5,
 				});
 			},
 		});
