@@ -10,6 +10,7 @@ adb reverse tcp:9737 tcp:9737
 adb reverse tcp:18080 tcp:18080
 adb reverse tcp:28081 tcp:28081
 adb reverse tcp:60001 tcp:60001
+adb shell date `date +%m%d%H%M%G.%S`
 
 set +e
 yarn test:mocha:android
