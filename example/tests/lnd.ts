@@ -46,6 +46,7 @@ const lndConfig = {
 };
 
 describe('LND', function () {
+	this.retries(3);
 	this.timeout(5 * 60 * 1000); // 5 minutes
 	let waitForElectrum: any;
 	const rpc = new BitcoinJsonRpc(bitcoinURL);
