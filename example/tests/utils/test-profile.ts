@@ -87,10 +87,15 @@ export default class TestProfile {
 			// forceCloseOnStartup: { forceClose: true, broadcastLatestTx: false },
 			forceCloseOnStartup: undefined,
 			// trustedZeroConfPeers: [],
+			// backupServerDetails: {
+			// 	host: 'https://blocktank.synonym.to/staging-backups-ldk',
+			// 	serverPubKey:
+			// 		'02c03b8b8c1b5500b622646867d99bf91676fac0f38e2182c91a9ff0d053a21d6d',
+			// },
 			backupServerDetails: {
-				host: 'https://blocktank.synonym.to/staging-backups-ldk',
+				host: 'http://127.0.0.1:3003',
 				serverPubKey:
-					'02c03b8b8c1b5500b622646867d99bf91676fac0f38e2182c91a9ff0d053a21d6d',
+					'0319c4ff23820afec0c79ce3a42031d7fef1dff78b7bdd69b5560684f3e1827675',
 			},
 		};
 	};
