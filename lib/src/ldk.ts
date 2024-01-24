@@ -1314,6 +1314,24 @@ class LDK {
 			return err(e);
 		}
 	}
+
+	async backupFile(fileName: string, content: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.backupFile(fileName, content);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async fetchBackupFile(fileName: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.fetchBackupFile(fileName);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
 }
 
 export default new LDK();

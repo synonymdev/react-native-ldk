@@ -393,7 +393,7 @@ class BackupClient {
     
     static func retrieveCompleteBackup() throws -> CompleteBackup {
         let backedUpFilenames = try listFiles()
-        
+                
         var allFiles: [String: Data] = [:]
         var channelFiles: [String: Data] = [:]
 
@@ -586,9 +586,9 @@ class BackupClient {
 
 //Backup queue management
 extension BackupClient {
-    static func addToPersistQueue(_ label: Label, _ bytes: [UInt8], callback: (() -> Void)? = nil) {
+    static func addToPersistQueue(_ label: Label, _ bytes: [UInt8], callback: ((Error?) -> Void)? = nil) {
         guard !skipRemoteBackup else {
-            callback?()
+            callback?(nil)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping remote backup queue append for \(label.string)")
             return
         }
@@ -618,9 +618,10 @@ extension BackupClient {
         backupQueue.async {
             do {
                 try persist(label, bytes, retry: 10)
-                callback?()
+                callback?(nil)
             } catch {
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to persist channel manager backup. \(error.localizedDescription)")
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to persist remote backup \(label.string). \(error.localizedDescription)")
+                callback?(error)
             }
         }
     }

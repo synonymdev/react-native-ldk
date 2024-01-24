@@ -187,7 +187,13 @@ RCT_EXTERN_METHOD(backupSelfCheck:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(backupListFiles:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
-
+RCT_EXTERN_METHOD(backupFile:(NSString *)fileName
+                  content:(NSString *)content
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(fetchBackupFile:(NSString *)fileName
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 @end
 
 //MARK: Events

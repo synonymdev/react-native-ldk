@@ -16,7 +16,7 @@ const challenges = new Map(); // pubkey -> {challenge, expires}
 
 const signedMessagePrefix = 'react-native-ldk backup server auth:';
 
-let labels = [
+const ldkLabels = [
     'ping',
     'channel_manager',
     'channel_monitor',
@@ -29,6 +29,15 @@ let labels = [
     'payments_sent',
     'bolt11_invoices',
 ];
+const bitkitLabels = [
+    'bitkit_settings',
+    'bitkit_widgets',
+    'bitkit_metadata',
+    'bitkit_blocktank_orders',
+    'bitkit_slashtags_contacts',
+];
+const labels = [...ldkLabels, ...bitkitLabels];
+
 let networks = ['bitcoin', 'testnet', 'regtest', 'signet'];
 
 const version = 'v1';

@@ -72,6 +72,7 @@ enum LdkErrors: String {
     case backup_restore_failed = "backup_restore_failed"
     case backup_restore_failed_existing_files = "backup_restore_failed_existing_files"
     case backup_list_files_failed = "backup_list_files_failed"
+    case backup_fetch_file_failed = "backup_fetch_file_failed"
     case scorer_download_fail = "scorer_download_fail"
 }
 
@@ -101,6 +102,7 @@ enum LdkCallbackResponses: String {
     case backup_client_setup_success = "backup_client_setup_success"
     case backup_restore_success = "backup_restore_success"
     case backup_client_check_success = "backup_client_check_success"
+    case backup_file_success = "backup_file_success"
     case scorer_download_success = "scorer_download_success"
     case scorer_download_skip = "scorer_download_skip"
 }
@@ -1383,6 +1385,41 @@ class Ldk: NSObject {
             ])
         } catch {
             handleReject(reject, .backup_list_files_failed, error, error.localizedDescription)
+        }
+    }
+    
+    @objc
+    func backupFile(_ fileName: NSString, content: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard !BackupClient.requiresSetup else {
+            return handleReject(reject, .backup_setup_required)
+        }
+        
+        guard let data = String(content).data(using: .utf8) else {
+            return
+        }
+        
+        let bytes = [UInt8](data)
+            
+        BackupClient.addToPersistQueue(.misc(fileName: String(fileName)), bytes) { error in
+            if let error {
+                handleReject(reject, .backup_list_files_failed, error, error.localizedDescription)
+                return
+            }
+            handleResolve(resolve, .backup_file_success)
+        }
+    }
+    
+    @objc
+    func fetchBackupFile(_ fileName: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard !BackupClient.requiresSetup else {
+            return handleReject(reject, .backup_setup_required)
+        }
+            
+        do {
+            let data = try BackupClient.retrieve(.misc(fileName: String(fileName)))
+            resolve(String.init(data: data, encoding: .utf8))
+        } catch {
+            handleReject(reject, .backup_fetch_file_failed, error, error.localizedDescription)
         }
     }
 }

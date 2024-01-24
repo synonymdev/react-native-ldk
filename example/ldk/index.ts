@@ -149,6 +149,7 @@ export const setupLdk = async (
 				manually_accept_inbound_channels: true,
 			},
 			trustedZeroConfPeers: [peers.lnd.pubKey],
+			skipRemoteBackups: !backupServerDetails,
 		});
 
 		if (lmStart.isErr()) {

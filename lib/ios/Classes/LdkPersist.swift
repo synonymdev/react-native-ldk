@@ -22,8 +22,14 @@ class LdkPersister: Persist {
             }
             
             let isNew = !FileManager().fileExists(atPath: channelStoragePath.path)
-                        
-            BackupClient.addToPersistQueue(.channelMonitor(id: channelIdHex), data.write()) {
+                         
+            //TODO skip this and return ChannelMonitorUpdateStatus.Completed when saved locally if remote backups not setup
+            BackupClient.addToPersistQueue(.channelMonitor(id: channelIdHex), data.write()) { error in
+                if let error {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed persist channel on remote server (\(channelIdHex)). \(error.localizedDescription)")
+                    return
+                }
+                
                 //Callback for when the persist queue queue entry is processed
                 do {
                     try Data(data.write()).write(to: channelStoragePath)
@@ -32,7 +38,7 @@ class LdkPersister: Persist {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to locally persist channel (\(channelIdHex)). \(error.localizedDescription)")
                     return
                 }
-                
+                                
                 //Update chainmonitor with successful persist
                 let res = Ldk.chainMonitor?.channelMonitorUpdated(fundingTxo: channelId, completedUpdateId: updateId)
                 if let error = res?.getError() {

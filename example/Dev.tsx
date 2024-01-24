@@ -645,6 +645,46 @@ const Dev = (): ReactElement => {
 							setMessage(res.value);
 						}}
 					/>
+
+					<Button
+						title={'List backed up files'}
+						onPress={async (): Promise<void> => {
+							setMessage('Backing up...');
+							const res = await ldk.backupListFiles();
+							if (res.isErr()) {
+								setMessage(res.error.message);
+								return;
+							}
+
+							setMessage(JSON.stringify(res.value));
+						}}
+					/>
+
+					<Button
+						title={'Test file backup'}
+						onPress={async (): Promise<void> => {
+							setMessage('Backing up...');
+							const content = `look at me I'm a file ${Date().toString()}`;
+							const res = await ldk.backupFile('ping', content);
+							if (res.isErr()) {
+								setMessage(res.error.message);
+								return;
+							}
+
+							const res2 = await ldk.fetchBackupFile('ping');
+							if (res2.isErr()) {
+								setMessage(res2.error.message);
+								return;
+							}
+
+							if (res2.value !== content) {
+								setMessage('File backup failed');
+								return;
+							}
+
+							setMessage(`Retrieved remote content: "${res2.value}"`);
+						}}
+					/>
 				</View>
 			</ScrollView>
 
