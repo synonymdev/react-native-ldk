@@ -47,7 +47,7 @@ jobs:
           mkdir lnd
           mkdir clightning
           chmod 777 lnd clightning
-          docker-compose up -d
+          docker-compose up -d --quiet-pull
 
       - name: Wait for electrum server
         timeout-minutes: 2
