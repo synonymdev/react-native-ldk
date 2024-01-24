@@ -324,8 +324,6 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         } catch (e: Exception) {
             LdkEventEmitter.send(EventTypes.native_log, "Error could not read existing ChannelOpenedWithNewCustomKeysManager")
         }
-
-        println("**** existingIds: $existingIds")
     }
 
     private fun channelWasOpenedWithNewCustomKeysManager(channelId: ByteArray): Boolean {

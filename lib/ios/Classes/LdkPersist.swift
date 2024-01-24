@@ -22,6 +22,15 @@ class LdkPersister: Persist {
             }
             
             let isNew = !FileManager().fileExists(atPath: channelStoragePath.path)
+            
+            //If we're not remotely backing up no need to update status later
+            if BackupClient.skipRemoteBackup {
+                try Data(data.write()).write(to: channelStoragePath)
+                if isNew {
+                    LdkEventEmitter.shared.send(withEvent: .new_channel, body: body)
+                }
+                return ChannelMonitorUpdateStatus.Completed
+            }
                          
             //TODO skip this and return ChannelMonitorUpdateStatus.Completed when saved locally if remote backups not setup
             BackupClient.addToPersistQueue(.channelMonitor(id: channelIdHex), data.write()) { error in
@@ -45,14 +54,10 @@ class LdkPersister: Persist {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to update chain monitor for channel (\(channelIdHex)) Error \(error.getValueType()).")
                 } else {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel \(channelIdHex). Update ID: \(updateId.hash())")
+                    if isNew {
+                        LdkEventEmitter.shared.send(withEvent: .new_channel, body: body)
+                    }
                 }
-            }
-            
-            if isNew {
-                LdkEventEmitter.shared.send(
-                    withEvent: .new_channel,
-                    body: body
-                )
             }
             
             return ChannelMonitorUpdateStatus.InProgress
