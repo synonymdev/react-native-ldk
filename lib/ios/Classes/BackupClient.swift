@@ -145,6 +145,12 @@ class BackupClient {
             urlString = "\(urlString)&channelId=\(id)"
         }
         
+        //Only include files related to this library
+        if method == .list {
+            //TODO add this to android
+            urlString = "\(urlString)&fileGroup=ldk"
+        }
+        
         return URL(string: urlString)!
     }
     

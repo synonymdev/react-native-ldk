@@ -141,6 +141,10 @@ class BackupClient {
                 urlString += "&channelId=${label.channelId}"
             }
 
+            if (method == Method.LIST) {
+                urlString += "&fileGroup=ldk"
+            }
+
             return URL(urlString)
         }
 
