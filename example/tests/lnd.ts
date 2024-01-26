@@ -101,6 +101,19 @@ describe('LND', function () {
 			// seed: account.seed,
 		});
 		await profile.init();
+
+		// const res = await ldk.backupSetup({
+		// 	network: 'regtest',
+		// 	seed: profile.seed,
+		// 	details: {
+		// 		host: 'http://127.0.0.1:3003',
+		// 		serverPubKey:
+		// 			'0319c4ff23820afec0c79ce3a42031d7fef1dff78b7bdd69b5560684f3e1827675',
+		// 	},
+		// });
+		// if (res.isErr()) {
+		// 	throw res.error;
+		// }
 	});
 
 	afterEach(async function () {
