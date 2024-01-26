@@ -16,7 +16,7 @@ const challenges = new Map(); // pubkey -> {challenge, expires}
 
 const signedMessagePrefix = 'react-native-ldk backup server auth:';
 
-let labels = [
+const ldkLabels = [
     'ping',
     'channel_manager',
     'channel_monitor',
@@ -29,6 +29,15 @@ let labels = [
     'payments_sent',
     'bolt11_invoices',
 ];
+const bitkitLabels = [
+    'bitkit_settings',
+    'bitkit_widgets',
+    'bitkit_metadata',
+    'bitkit_blocktank_orders',
+    'bitkit_slashtags_contacts',
+];
+const labels = [...ldkLabels, ...bitkitLabels];
+
 let networks = ['bitcoin', 'testnet', 'regtest', 'signet'];
 
 const version = 'v1';
@@ -264,6 +273,7 @@ fastify.route({
             type: 'object',
             properties: {
                 network: { type: 'string', enum: networks },
+                fileGroup: { type: 'string', enum: ['all', 'bitkit', 'ldk'] },
             },
             required: ['network'],
         },
@@ -272,12 +282,22 @@ fastify.route({
     handler: async (request, reply) => {
         const {query, headers} = request;
 
-        const {network} = query;
+        const {network, fileGroup} = query;
         const bearerToken = headers.authorization;
         const {pubkey} = users.get(bearerToken);
 
-        const list = await storage.list({pubkey, network});
-        const channelMonitorList = await storage.list({pubkey, network, subdir: 'channel_monitors'});
+        let list = await storage.list({pubkey, network});
+        let channelMonitorList = await storage.list({pubkey, network, subdir: 'channel_monitors'});
+
+        //If not set then assume older version of the app
+        if (!fileGroup || fileGroup === 'ldk') {
+            list = list.filter(file => ldkLabels.includes(file.replace('.bin', '')));
+        } else if (fileGroup === 'bitkit') {
+            list = list.filter(file => bitkitLabels.includes(file.replace('.bin', '')));
+            channelMonitorList = [];
+        } else if (fileGroup === 'all') {
+            //Do nothing
+        }
 
         const allFiles = {
             list,

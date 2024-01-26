@@ -22,8 +22,22 @@ class LdkPersister: Persist {
             }
             
             let isNew = !FileManager().fileExists(atPath: channelStoragePath.path)
-                        
-            BackupClient.addToPersistQueue(.channelMonitor(id: channelIdHex), data.write()) {
+            
+            //If we're not remotely backing up no need to update status later
+            if BackupClient.skipRemoteBackup {
+                try Data(data.write()).write(to: channelStoragePath)
+                if isNew {
+                    LdkEventEmitter.shared.send(withEvent: .new_channel, body: body)
+                }
+                return ChannelMonitorUpdateStatus.Completed
+            }
+                         
+            BackupClient.addToPersistQueue(.channelMonitor(id: channelIdHex), data.write()) { error in
+                if let error {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed persist channel on remote server (\(channelIdHex)). \(error.localizedDescription)")
+                    return
+                }
+                
                 //Callback for when the persist queue queue entry is processed
                 do {
                     try Data(data.write()).write(to: channelStoragePath)
@@ -32,22 +46,17 @@ class LdkPersister: Persist {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to locally persist channel (\(channelIdHex)). \(error.localizedDescription)")
                     return
                 }
-                
+                                
                 //Update chainmonitor with successful persist
                 let res = Ldk.chainMonitor?.channelMonitorUpdated(fundingTxo: channelId, completedUpdateId: updateId)
                 if let error = res?.getError() {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to update chain monitor for channel (\(channelIdHex)) Error \(error.getValueType()).")
                 } else {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel \(channelIdHex). Update ID: \(updateId.hash())")
-                    LdkEventEmitter.shared.send(withEvent: .backup, body: "") //TODO remove after old backup is deprecated
+                    if isNew {
+                        LdkEventEmitter.shared.send(withEvent: .new_channel, body: body)
+                    }
                 }
-            }
-            
-            if isNew {
-                LdkEventEmitter.shared.send(
-                    withEvent: .new_channel,
-                    body: body
-                )
             }
             
             return ChannelMonitorUpdateStatus.InProgress

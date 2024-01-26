@@ -1294,7 +1294,7 @@ class LDK {
 	/**
 	 * Runs a self check by creating random string, encrypting, backing up, fetching, decrypting and validating content.
 	 */
-	async backupSelfCheck(): Promise<Result<boolean>> {
+	async backupSelfCheck(): Promise<Result<string>> {
 		try {
 			const res = await NativeLDK.backupSelfCheck();
 			return ok(res);
@@ -1309,6 +1309,24 @@ class LDK {
 	async backupListFiles(): Promise<Result<TBackedUpFileList>> {
 		try {
 			const res = await NativeLDK.backupListFiles();
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async backupFile(fileName: string, content: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.backupFile(fileName, content);
+			return ok(res);
+		} catch (e) {
+			return err(e);
+		}
+	}
+
+	async fetchBackupFile(fileName: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.fetchBackupFile(fileName);
 			return ok(res);
 		} catch (e) {
 			return err(e);

@@ -17,7 +17,6 @@ export enum EEventTypes {
 	register_tx = 'register_tx',
 	register_output = 'register_output',
 	broadcast_transaction = 'broadcast_transaction',
-	backup = 'backup',
 	channel_manager_funding_generation_ready = 'channel_manager_funding_generation_ready',
 	channel_manager_payment_claimable = 'channel_manager_payment_claimable',
 	channel_manager_payment_sent = 'channel_manager_payment_sent',
@@ -34,7 +33,6 @@ export enum EEventTypes {
 	new_channel = 'new_channel',
 	network_graph_updated = 'network_graph_updated',
 	channel_manager_restarted = 'channel_manager_restarted',
-	backup_failed = 'backup_failed',
 }
 
 //LDK event responses
@@ -493,6 +491,7 @@ export enum ELdkData {
 	bolt11_invoices = 'bolt11_invoices',
 }
 
+//Can be removed after importAccount is officially removed
 export type TLdkData = {
 	[ELdkData.channel_manager]: string;
 	[ELdkData.channel_monitors]: { [key: string]: string };
@@ -507,6 +506,7 @@ export type TLdkData = {
 	[ELdkData.bolt11_invoices]: TBolt11Invoices;
 };
 
+//Can be removed after importAccount is officially removed
 export type TAccountBackup = {
 	account: TAccount;
 	package_version: string;
@@ -530,20 +530,6 @@ export type TLdkPaymentIds = string[];
 export type TBolt11Invoices = string[];
 
 export type TLdkSpendableOutputs = string[];
-
-export const DefaultLdkDataShape: TLdkData = {
-	[ELdkData.channel_manager]: '',
-	[ELdkData.channel_monitors]: {},
-	[ELdkData.peers]: [],
-	[ELdkData.unconfirmed_transactions]: [],
-	[ELdkData.broadcasted_transactions]: [],
-	[ELdkData.payment_ids]: [],
-	[ELdkData.timestamp]: 0,
-	[ELdkData.spendable_outputs]: [],
-	[ELdkData.payments_claimed]: [],
-	[ELdkData.payments_sent]: [],
-	[ELdkData.bolt11_invoices]: [],
-};
 
 export type TAccount = {
 	name: string;
@@ -570,8 +556,8 @@ export type TLdkStart = {
 	forceCloseOnStartup?: TForceCloseOnStartup;
 	userConfig?: TUserConfig;
 	trustedZeroConfPeers?: string[];
-	backupServerDetails?: TBackupServerDetails;
 	skipParamCheck?: boolean;
+	skipRemoteBackups?: boolean;
 };
 
 export interface IAddress {

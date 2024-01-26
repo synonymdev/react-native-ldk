@@ -24,7 +24,20 @@ class LdkPersister {
 
             val isNew = !file.exists()
 
-            BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write()) {
+            if (BackupClient.skipRemoteBackup) {
+                file.writeBytes(data.write())
+                if (isNew) {
+                    LdkEventEmitter.send(EventTypes.new_channel, body)
+                }
+                return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_Completed
+            }
+
+            BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write()) { error ->
+                if (error != null) {
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to persist channel (${id.to_channel_id().hexEncodedString()}) to remote backup: $error")
+                    return@addToPersistQueue
+                }
+
                 try {
                     file.writeBytes(data.write())
                 } catch (e: Exception) {
@@ -33,18 +46,16 @@ class LdkPersister {
                     return@addToPersistQueue
                 }
 
-                //Update chainmonitor with successful persist
+                //Update chain monitor with successful persist
                 val res = LdkModule.chainMonitor?.channel_monitor_updated(id, update_id)
                 if (res == null || !res.is_ok) {
                     LdkEventEmitter.send(EventTypes.native_log, "Failed to update chain monitor with persisted channel (${id.to_channel_id().hexEncodedString()})")
                 } else {
                     LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${id.to_channel_id().hexEncodedString()}) to disk")
-                    LdkEventEmitter.send(EventTypes.backup, "")
+                    if (isNew) {
+                        LdkEventEmitter.send(EventTypes.new_channel, body)
+                    }
                 }
-            }
-
-            if (isNew) {
-                LdkEventEmitter.send(EventTypes.new_channel, body)
             }
 
             return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_InProgress

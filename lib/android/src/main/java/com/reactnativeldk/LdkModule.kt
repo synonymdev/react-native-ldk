@@ -33,7 +33,6 @@ enum class EventTypes {
     register_tx,
     register_output,
     broadcast_transaction,
-    backup,
     channel_manager_funding_generation_ready,
     channel_manager_payment_claimable,
     channel_manager_payment_sent,
@@ -94,6 +93,7 @@ enum class LdkErrors {
     backup_setup_failed,
     backup_restore_failed,
     backup_restore_failed_existing_files,
+    backup_file_failed,
     scorer_download_fail
 }
 
@@ -122,6 +122,7 @@ enum class LdkCallbackResponses {
     backup_client_setup_success,
     backup_restore_success,
     backup_client_check_success,
+    backup_file_success,
     scorer_download_success,
     scorer_download_skip
 }
@@ -1289,6 +1290,35 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             promise.resolve(map)
         } catch (e: Exception) {
             handleReject(promise, LdkErrors.backup_check_failed, Error(e))
+        }
+    }
+
+    @ReactMethod
+    fun backupFile(fileName: String, content: String, promise: Promise) {
+        if (BackupClient.requiresSetup) {
+            return handleReject(promise, LdkErrors.backup_setup_required)
+        }
+
+        BackupClient.addToPersistQueue(BackupClient.Label.MISC(fileName), content.toByteArray(Charsets.UTF_8)) { error ->
+            if (error != null) {
+                handleReject(promise, LdkErrors.backup_file_failed, Error(error))
+            } else {
+                handleResolve(promise, LdkCallbackResponses.backup_file_success)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun fetchBackupFile(fileName: String, promise: Promise) {
+        if (BackupClient.requiresSetup) {
+            return handleReject(promise, LdkErrors.backup_setup_required)
+        }
+
+        try {
+            val bytes = BackupClient.retrieve(BackupClient.Label.MISC(fileName))
+            promise.resolve(bytes.toString(Charsets.UTF_8))
+        } catch (e: Exception) {
+            handleReject(promise, LdkErrors.backup_file_failed, Error(e))
         }
     }
 }

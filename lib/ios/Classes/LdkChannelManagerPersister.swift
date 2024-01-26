@@ -312,17 +312,19 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         guard let managerStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channel_manager.rawValue) else {
             return Result_NoneIOErrorZ.initWithErr(e: .Other)
         }
-        
+                
         do {
-            BackupClient.addToPersistQueue(.channelManager, channelManager.write()) {
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persisted channel manager")
+            BackupClient.addToPersistQueue(.channelManager, channelManager.write()) { error in
+                if let error {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to remote persist channel manager Error: \(error.localizedDescription)")
+                } else {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persisted channel manager")
+                }
             }
             
             try Data(channelManager.write()).write(to: managerStorage)
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel manager to disk")
-            
-            LdkEventEmitter.shared.send(withEvent: .backup, body: "")
-            
+                        
             return Result_NoneIOErrorZ.initWithOk()
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel manager to disk Error \(error.localizedDescription).")
