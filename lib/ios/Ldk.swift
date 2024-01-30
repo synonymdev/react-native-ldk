@@ -24,7 +24,7 @@ enum EventTypes: String, CaseIterable {
     case new_channel = "new_channel"
     case network_graph_updated = "network_graph_updated"
     case channel_manager_restarted = "channel_manager_restarted"
-    case backup_sync_persist_error = "backup_sync_persist_error"
+    case backup_state_update = "backup_state_update"
 }
 //*****************************************************************
 

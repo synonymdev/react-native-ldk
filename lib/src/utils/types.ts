@@ -33,6 +33,7 @@ export enum EEventTypes {
 	new_channel = 'new_channel',
 	network_graph_updated = 'network_graph_updated',
 	channel_manager_restarted = 'channel_manager_restarted',
+	backup_state_update = 'backup_state_update',
 }
 
 //LDK event responses
@@ -601,4 +602,15 @@ export type TBackedUpFileList = {
 export type TNodeSignReq = {
 	message: string;
 	messagePrefix?: string;
+};
+
+type TBackupFileState = {
+	lastQueued: number;
+	lastPersisted?: number;
+	lastFailed?: number;
+	lastErrorMessage?: string;
+};
+
+export type TBackupStateUpdate = {
+	[key: string]: TBackupFileState;
 };
