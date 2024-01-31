@@ -1,4 +1,6 @@
 package com.reactnativeldk.classes
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.WritableMap
 import com.reactnativeldk.EventTypes
 import com.reactnativeldk.LdkEventEmitter
 import com.reactnativeldk.hexEncodedString
@@ -10,6 +12,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.util.Date
 import java.util.Random
 import java.util.UUID
 import java.util.concurrent.locks.ReentrantLock
@@ -49,6 +52,42 @@ class BackupQueueEntry(
     val callback: BackupCompleteCallback? = null
 )
 
+data class BackupFileState(
+    var lastQueued: Date,
+    var lastPersisted: Date?,
+    var lastFailed: Date?,
+    var lastErrorMessage: String?
+) {
+    val encoded: WritableMap
+        get() {
+            val body = Arguments.createMap()
+            body.putInt("lastQueued", lastQueued.time.toInt())
+            if (lastPersisted != null) {
+                body.putInt("lastPersisted", lastPersisted!!.time.toInt())
+            } else {
+                body.putNull("lastPersisted")
+            }
+            if (lastFailed != null) {
+                body.putInt("lastFailed", lastFailed!!.time.toInt())
+            } else {
+                body.putNull("lastFailed")
+            }
+            if (lastErrorMessage != null) {
+                body.putString("lastErrorMessage", lastErrorMessage)
+            } else {
+                body.putNull("lastErrorMessage")
+            }
+
+            return body
+        }
+}
+
+sealed class BackupStateUpdateType {
+    object Queued : BackupStateUpdateType()
+    object Success : BackupStateUpdateType()
+    data class Fail(val e: Exception) : BackupStateUpdateType()
+}
+
 class BackupClient {
     sealed class Label(val string: String, channelId: String = "") {
         data class PING(val customName: String = "") : Label("ping")
@@ -64,6 +103,14 @@ class BackupClient {
                 is CHANNEL_MONITOR -> "$string-$channelId"
                 is MISC -> "$string-$customName"
                 else -> string
+            }
+
+        val backupStateKey: String?
+            get() = when (this) {
+                is CHANNEL_MANAGER -> "$string"
+                is CHANNEL_MONITOR -> "${string}_${channelId}"
+                is MISC -> "$string"
+                else -> null
             }
     }
 
@@ -104,6 +151,8 @@ class BackupClient {
 
         val requiresSetup: Boolean
             get() = server == null
+
+        private var backupState: HashMap<String, BackupFileState> = HashMap()
 
         fun setup(secretKey: ByteArray, pubKey: ByteArray, network: String, server: String, serverPubKey: String) {
             this.secretKey = secretKey
@@ -194,7 +243,7 @@ class BackupClient {
         }
 
         @Throws(BackupError::class)
-        private fun persist(label: Label, bytes: ByteArray, retry: Int) {
+        private fun persist(label: Label, bytes: ByteArray, retry: Int, onTryFail: ((Exception) -> Unit)) {
             var attempts = 0
             var persistError: Exception? = null
 
@@ -209,6 +258,7 @@ class BackupClient {
                     return
                 } catch (error: Exception) {
                     persistError = error
+                    onTryFail(error)
                     attempts += 1
                     LdkEventEmitter.send(
                         EventTypes.native_log,
@@ -263,11 +313,6 @@ class BackupClient {
                     EventTypes.native_log,
                     "Remote persist failed for ${label.string} with response code ${urlConnection.responseCode}"
                 )
-                LdkEventEmitter.send(
-                    EventTypes.backup_sync_persist_error,
-                    "Response: ${urlConnection.responseMessage}"
-                )
-
                 throw InvalidServerResponse(urlConnection.responseCode)
             }
 
@@ -511,6 +556,50 @@ class BackupClient {
             return bearer
         }
 
+        private val backupStateLock = ReentrantLock()
+        private fun updateBackupState(label: Label, type: BackupStateUpdateType) {
+            if (label.backupStateKey == null) {
+                return
+            }
+
+            backupStateLock.lock()
+            backupState[label.backupStateKey!!] = backupState[label.backupStateKey!!] ?: BackupFileState(
+                Date(),
+                null,
+                null,
+                null
+            )
+
+            when (type) {
+                is BackupStateUpdateType.Queued -> {
+                    backupState[label.backupStateKey!!]!!.lastQueued = Date()
+                    backupState[label.backupStateKey!!]!!.lastFailed = null
+                    backupState[label.backupStateKey!!]!!.lastErrorMessage = null
+                }
+                is BackupStateUpdateType.Success -> {
+                    backupState[label.backupStateKey!!]!!.lastPersisted = Date()
+                    backupState[label.backupStateKey!!]!!.lastFailed = null
+                    backupState[label.backupStateKey!!]!!.lastErrorMessage = null
+                }
+                is BackupStateUpdateType.Fail -> {
+                    backupState[label.backupStateKey!!]!!.lastFailed = Date()
+                    backupState[label.backupStateKey!!]!!.lastErrorMessage = type.e.message
+                }
+            }
+
+            val body = Arguments.createMap()
+            backupState.forEach { (key, state) ->
+                body.putMap(key, state.encoded)
+            }
+
+            LdkEventEmitter.send(
+                EventTypes.backup_state_update,
+                body
+            )
+
+            backupStateLock.unlock()
+        }
+
         //Backup queue management
         fun addToPersistQueue(label: Label, bytes: ByteArray, callback: BackupCompleteCallback? = null) {
             if (BackupClient.skipRemoteBackup) {
@@ -524,6 +613,8 @@ class BackupClient {
 
             persistQueues[label.queueId] = persistQueues[label.queueId] ?: ArrayList()
             persistQueues[label.queueId]!!.add(BackupQueueEntry(UUID.randomUUID(), label, bytes, callback))
+
+            updateBackupState(label, BackupStateUpdateType.Queued)
 
             processPersistNextInQueue(label)
         }
@@ -551,13 +642,18 @@ class BackupClient {
 
             Thread {
                 try {
-                    persist(backupEntry!!.label, backupEntry.bytes, 10)
+                    persist(backupEntry!!.label, backupEntry.bytes, 10) {
+                        updateBackupState(label, BackupStateUpdateType.Fail(it))
+                    }
+
+                    updateBackupState(label, BackupStateUpdateType.Success)
                     backupEntry.callback?.invoke(null)
                 } catch (e: Exception) {
                     LdkEventEmitter.send(
                         EventTypes.native_log,
                         "Remote persist failed for ${label.string} with error ${e.message}"
                     )
+                    updateBackupState(label, BackupStateUpdateType.Fail(e))
                     backupEntry?.callback?.invoke(e)
                 } finally {
                     backupQueueLock.lock()

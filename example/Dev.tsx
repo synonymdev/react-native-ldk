@@ -158,7 +158,7 @@ const Dev = (): ReactElement => {
 							backupMessage += `Last Error Message: ${lastErrorMessage} ❗\n`;
 						}
 
-						backupMessage += '\n\n';
+						backupMessage += '\n';
 					});
 					setBackupState(backupMessage);
 				},

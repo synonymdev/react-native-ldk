@@ -48,7 +48,7 @@ enum class EventTypes {
     new_channel,
     network_graph_updated,
     channel_manager_restarted,
-    backup_sync_persist_error
+    backup_state_update
 }
 //*****************************************************************
 

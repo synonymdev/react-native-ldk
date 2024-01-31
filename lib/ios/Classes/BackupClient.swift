@@ -642,9 +642,11 @@ extension BackupClient {
             case .queued:
                 backupState[key]!.lastQueued = Date()
                 backupState[key]!.lastFailed = nil
+                backupState[key]!.lastErrorMessage = nil
             case .success:
                 backupState[key]!.lastPersisted = Date()
                 backupState[key]!.lastFailed = nil
+                backupState[key]!.lastErrorMessage = nil
             case .fail(let error):
                 backupState[key]!.lastFailed = Date()
                 backupState[key]!.lastErrorMessage = error.localizedDescription
