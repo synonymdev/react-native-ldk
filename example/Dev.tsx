@@ -18,6 +18,7 @@ import ldk from '@synonymdev/react-native-ldk/dist/ldk';
 import lm, {
 	EEventTypes,
 	ENetworks,
+	TBackupStateUpdate,
 	TChannelManagerClaim,
 	TChannelManagerPaymentPathFailed,
 	TChannelManagerPaymentPathSuccessful,
@@ -32,9 +33,11 @@ let paymentSubscription: EmitterSubscription | undefined;
 let onChannelSubscription: EmitterSubscription | undefined;
 let paymentFailedSubscription: EmitterSubscription | undefined;
 let paymentPathSuccess: EmitterSubscription | undefined;
+let backupStateUpdate: EmitterSubscription | undefined;
 
 const Dev = (): ReactElement => {
 	const [message, setMessage] = useState('...');
+	const [backupState, setBackupState] = useState('');
 	const [nodeStarted, setNodeStarted] = useState(false);
 	const [showLogs, setShowLogs] = useState(false);
 	const [logContent, setLogContent] = useState('');
@@ -131,6 +134,37 @@ const Dev = (): ReactElement => {
 			);
 		}
 
+		if (!backupStateUpdate) {
+			// @ts-ignore
+			backupStateUpdate = ldk.onEvent(
+				EEventTypes.backup_state_update,
+				(res: TBackupStateUpdate) => {
+					const formatTime = (time: number | undefined): string | null =>
+						time ? new Date(time).toLocaleTimeString() : null;
+
+					let backupMessage = '';
+					const keys = Object.keys(res).sort();
+					keys.forEach((key) => {
+						backupMessage += `${key}:\n`;
+						const { lastQueued, lastPersisted, lastFailed, lastErrorMessage } =
+							res[key];
+						backupMessage += `Last Queued: ${formatTime(lastQueued)}\n`;
+						backupMessage += `Last Persisted: ${
+							formatTime(lastPersisted) ?? '⏳'
+						}\n`;
+
+						if (lastFailed) {
+							backupMessage += `Last Failed: ${formatTime(lastFailed)} ❗\n`;
+							backupMessage += `Last Error Message: ${lastErrorMessage} ❗\n`;
+						}
+
+						backupMessage += '\n';
+					});
+					setBackupState(backupMessage);
+				},
+			);
+		}
+
 		return (): void => {
 			logSubscription && logSubscription.remove();
 			paymentSubscription && paymentSubscription.remove();
@@ -149,6 +183,13 @@ const Dev = (): ReactElement => {
 				<View style={styles.messageContainer}>
 					<Text style={styles.text}>{message}</Text>
 				</View>
+
+				{backupState ? (
+					<View style={styles.messageContainer}>
+						<Text style={styles.text}>{backupState}</Text>
+					</View>
+				) : null}
+
 				<View style={styles.container}>
 					<Button
 						title={'E2E test'}

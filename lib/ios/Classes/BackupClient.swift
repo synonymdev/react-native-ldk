@@ -58,6 +58,28 @@ struct ListFilesResponse: Codable {
     let channel_monitors: [String]
 }
 
+struct BackupFileState {
+    var lastQueued: Date
+    var lastPersisted: Date?
+    var lastFailed: Date?
+    var lastErrorMessage: String?
+    
+    var encoded: [String: Encodable] {
+        [
+            "lastQueued": (self.lastQueued.timeIntervalSince1970 * 1000).rounded(),
+            "lastPersisted": self.lastPersisted != nil ? (self.lastPersisted!.timeIntervalSince1970 * 1000).rounded() : nil,
+            "lastFailed": self.lastFailed != nil ? (self.lastFailed!.timeIntervalSince1970 * 1000).rounded() : nil,
+            "lastErrorMessage": self.lastErrorMessage
+        ]
+    }
+}
+
+enum BackupStateUpdateType {
+    case queued
+    case success
+    case fail(Error)
+}
+
 class BackupClient {
     enum Label {
         case ping
@@ -77,6 +99,19 @@ class BackupClient {
                 return fileName
                     .replacingOccurrences(of: ".json", with: "")
                     .replacingOccurrences(of: ".bin", with: "")
+            }
+        }
+        
+        var backupStateKey: String? {
+            switch self {
+            case .channelManager:
+                return self.string
+            case .channelMonitor(let id):
+                return "\(self.string)_\(id)"
+            case .misc(let fileName):
+                return self.string
+            default:
+                return nil //Don't worry about the backup state event of these files
             }
         }
     }
@@ -115,6 +150,8 @@ class BackupClient {
     static var requiresSetup: Bool {
         return server == nil
     }
+    
+    static var backupState: [String: BackupFileState] = [:]
          
     static func setup(secretKey: [UInt8], pubKey: [UInt8], network: String, server: String, serverPubKey: String) throws {
         guard getNetwork(network) != nil else {
@@ -197,7 +234,7 @@ class BackupClient {
         }
     }
     
-    fileprivate static func persist(_ label: Label, _ bytes: [UInt8], retry: Int) throws {
+    fileprivate static func persist(_ label: Label, _ bytes: [UInt8], retry: Int, onTryFail: (Error) -> Void) throws {
         var attempts: UInt32 = 0
         
         var persistError: Error?
@@ -208,6 +245,7 @@ class BackupClient {
                 return
             } catch {
                 persistError = error
+                onTryFail(error)
                 attempts += 1
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persist failed for \(label.string) (\(attempts) attempts)")
                 sleep(attempts) //Ease off with each attempt
@@ -285,7 +323,6 @@ class BackupClient {
         
         if let error = requestError {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persist failed for \(label.string). \(error.localizedDescription)")
-            LdkEventEmitter.shared.send(withEvent: .backup_sync_persist_error, body: error.localizedDescription)
             throw error
         }
         
@@ -592,6 +629,38 @@ class BackupClient {
 
 //Backup queue management
 extension BackupClient {
+    static func updateBackupState(_ label: Label, type: BackupStateUpdateType) {
+        guard let key = label.backupStateKey else {
+            return
+        }
+        
+        //All updates on main queue
+        DispatchQueue.main.async {
+            backupState[key] = backupState[key] ?? .init(lastQueued: Date())
+            
+            switch type {
+            case .queued:
+                backupState[key]!.lastQueued = Date()
+                backupState[key]!.lastFailed = nil
+                backupState[key]!.lastErrorMessage = nil
+            case .success:
+                backupState[key]!.lastPersisted = Date()
+                backupState[key]!.lastFailed = nil
+                backupState[key]!.lastErrorMessage = nil
+            case .fail(let error):
+                backupState[key]!.lastFailed = Date()
+                backupState[key]!.lastErrorMessage = error.localizedDescription
+            }
+            
+            var body: [String: [String: Encodable]] = [:]
+            backupState.keys.forEach { key in
+                body[key] = backupState[key]!.encoded
+            }
+            
+            LdkEventEmitter.shared.send(withEvent: .backup_state_update, body: body)
+        }
+    }
+    
     static func addToPersistQueue(_ label: Label, _ bytes: [UInt8], callback: ((Error?) -> Void)? = nil) {
         guard !skipRemoteBackup else {
             callback?(nil)
@@ -600,6 +669,8 @@ extension BackupClient {
         }
         
         var backupQueue: DispatchQueue?
+        
+        updateBackupState(label, type: .queued)
         
         switch label {
         case .channelManager:
@@ -623,10 +694,15 @@ extension BackupClient {
         
         backupQueue.async {
             do {
-                try persist(label, bytes, retry: 10)
+                try persist(label, bytes, retry: 10) { attemptError in
+                    //Soft fail, will keep retyring but UI can be updated in the meantime
+                    updateBackupState(label, type: .fail(attemptError))
+                }
+                updateBackupState(label, type: .success)
                 callback?(nil)
             } catch {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to persist remote backup \(label.string). \(error.localizedDescription)")
+                updateBackupState(label, type: .fail(error))
                 callback?(error)
             }
         }
