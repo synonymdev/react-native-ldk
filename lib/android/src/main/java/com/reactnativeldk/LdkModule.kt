@@ -1258,7 +1258,15 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
             val completeBackup = BackupClient.retrieveCompleteBackup()
             for (file in completeBackup.files) {
-                val newFile = File(accountStoragePath + "/" + file.key)
+                val key = file.key.replace(".bin", "")
+                var fileName = "$key.json"
+
+                val ldkFileName = LdkFileNames.values().firstOrNull { it.fileName.contains(key) }
+                if (ldkFileName != null) {
+                    fileName = ldkFileName.fileName
+                }
+
+                val newFile = File(accountStoragePath + "/" + fileName)
                 newFile.writeBytes(file.value)
             }
 

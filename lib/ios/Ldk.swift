@@ -108,7 +108,7 @@ enum LdkCallbackResponses: String {
     case scorer_download_skip = "scorer_download_skip"
 }
 
-enum LdkFileNames: String {
+enum LdkFileNames: String, CaseIterable {
     case network_graph = "network_graph.bin"
     case channel_manager = "channel_manager.bin"
     case scorer = "scorer.bin"
@@ -1338,7 +1338,7 @@ class Ldk: NSObject {
         guard let channelStoragePath = Ldk.channelStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
-        
+                
         do {
             if !overwrite {
                 let fileManager = FileManager.default
@@ -1358,7 +1358,15 @@ class Ldk: NSObject {
             let completeBackup = try BackupClient.retrieveCompleteBackup()
             
             for file in completeBackup.files {
-                try file.value.write(to: accountStoragePath.appendingPathComponent(file.key))
+                //Decide if .json or .bin by checking enum
+                let key = file.key.replacingOccurrences(of: ".bin", with: "")
+                var fileName = "\(key).json"
+                
+                if let ldkFileName = LdkFileNames.allCases.first(where: { $0.rawValue.contains(key) }) {
+                    fileName = ldkFileName.rawValue
+                }
+
+                try file.value.write(to: accountStoragePath.appendingPathComponent(fileName))
             }
             
             for channel in completeBackup.channelFiles {
