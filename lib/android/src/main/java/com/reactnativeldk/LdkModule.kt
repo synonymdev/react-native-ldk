@@ -128,12 +128,12 @@ enum class LdkCallbackResponses {
 }
 
 enum class LdkFileNames(val fileName: String) {
-    network_graph("network_graph.bin"),
-    channel_manager("channel_manager.bin"),
-    scorer("scorer.bin"),
-    paymentsClaimed("payments_claimed.json"),
-    paymentsSent("payments_sent.json"),
-    channelOpenedWithCustomKeysManager("channel_opened_with_custom_keys_manager.json"),
+    NetworkGraph("network_graph.bin"),
+    ChannelManager("channel_manager.bin"),
+    Scorer("scorer.bin"),
+    PaymentsClaimed("payments_claimed.json"),
+    PaymentsSent("payments_sent.json"),
+    ChannelOpenedWithCustomKeysManager("channel_opened_with_custom_keys_manager.json"),
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -270,7 +270,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun downloadScorer(scorerSyncUrl: String, skipHoursThreshold: Double, promise: Promise) {
-        val scorerFile = File(accountStoragePath + "/" + LdkFileNames.scorer.fileName)
+        val scorerFile = File(accountStoragePath + "/" + LdkFileNames.Scorer.fileName)
         //If old one is still recent, skip download. Else delete it.
         if (scorerFile.exists()) {
             val lastModifiedHours = (System.currentTimeMillis().toDouble() - scorerFile.lastModified().toDouble()) / 1000 / 60 / 60
@@ -283,7 +283,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         Thread(Runnable {
-            val destinationFile = accountStoragePath + "/" + LdkFileNames.scorer.fileName
+            val destinationFile = accountStoragePath + "/" + LdkFileNames.Scorer.fileName
 
             URL(scorerSyncUrl).downloadFile(destinationFile) { error ->
                 if (error != null) {
@@ -308,7 +308,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.already_init)
         }
 
-        val networkGraphFile = File(accountStoragePath + "/" + LdkFileNames.network_graph.fileName)
+        val networkGraphFile = File(accountStoragePath + "/" + LdkFileNames.NetworkGraph.fileName)
         if (networkGraphFile.exists()) {
             (NetworkGraph.read(networkGraphFile.readBytes(), logger.logger) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
                 networkGraph = res.res
@@ -404,7 +404,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val enableP2PGossip = rapidGossipSync == null
         
         var channelManagerSerialized: ByteArray? = null
-        val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.channel_manager.fileName)
+        val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.ChannelManager.fileName)
         if (channelManagerFile.exists()) {
            channelManagerSerialized = channelManagerFile.readBytes()
         }
@@ -508,7 +508,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         //*******************************
         if (accountStoragePath != "") {
             val wrongName = "channels_opened_with_custom_keys_manager.json"
-            val correctName = LdkFileNames.channelOpenedWithCustomKeysManager.fileName
+            val correctName = LdkFileNames.ChannelOpenedWithCustomKeysManager.fileName
             try {
                 if (File(accountStoragePath + "/" + wrongName).exists()) {
                     File(accountStoragePath + "/" + wrongName).renameTo(File(accountStoragePath + "/" + correctName))

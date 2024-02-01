@@ -40,7 +40,7 @@ fun String.hexa(): ByteArray {
 fun getProbabilisticScorer(path: String, networkGraph: NetworkGraph, logger: Logger): ProbabilisticScorer? {
     val params = ProbabilisticScoringDecayParameters.with_default()
 
-    val scorerFile = File(path + "/" + LdkFileNames.scorer.fileName)
+    val scorerFile = File(path + "/" + LdkFileNames.Scorer.fileName)
     if (scorerFile.exists()) {
         val read = ProbabilisticScorer.read(scorerFile.readBytes(), params, networkGraph, logger)
         if (read.is_ok) {

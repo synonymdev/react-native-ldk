@@ -112,9 +112,9 @@ enum LdkFileNames: String, CaseIterable {
     case network_graph = "network_graph.bin"
     case channel_manager = "channel_manager.bin"
     case scorer = "scorer.bin"
-    case paymentsClaimed = "payments_claimed.json"
-    case paymentsSent = "payments_sent.json"
-    case channelsOpenedWithCustomKeysManager = "channel_opened_with_custom_keys_manager.json"
+    case payments_claimed = "payments_claimed.json"
+    case payments_sent = "payments_sent.json"
+    case channel_opened_with_custom_keys_manager = "channel_opened_with_custom_keys_manager.json"
 }
 
 @objc(Ldk)
@@ -500,10 +500,10 @@ class Ldk: NSObject {
         //TODO temp update to make sure file that wasn't being backuped up now is at least once. Can be removed in a few updates.
         //*******************************
         Task {
-            if let channelsOpenedWithCustomKeysManagerFile = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channelsOpenedWithCustomKeysManager.rawValue) {
+            if let channelsOpenedWithCustomKeysManagerFile = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channel_opened_with_custom_keys_manager.rawValue) {
                 if FileManager.default.fileExists(atPath: channelsOpenedWithCustomKeysManagerFile.path) {
                     if let data = try? Data(contentsOf: URL(fileURLWithPath: channelsOpenedWithCustomKeysManagerFile.path), options: .mappedIfSafe) {
-                        BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.channelsOpenedWithCustomKeysManager.rawValue), [UInt8](data))
+                        BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.channel_opened_with_custom_keys_manager.rawValue), [UInt8](data))
                     }
                 }
             }
