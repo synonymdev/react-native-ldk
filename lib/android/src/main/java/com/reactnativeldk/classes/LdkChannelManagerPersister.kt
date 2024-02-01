@@ -253,6 +253,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             payments = payments.plus(payment.toHashMap())
         }
 
+        BackupClient.addToPersistQueue(BackupClient.Label.MISC(LdkFileNames.paymentsClaimed.fileName), JSONArray(payments).toString().toByteArray())
         File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsClaimed.fileName).writeText(JSONArray(payments).toString())
     }
 
@@ -296,6 +297,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             payments = payments.plus(payment)
         }
 
+        BackupClient.addToPersistQueue(BackupClient.Label.MISC(LdkFileNames.paymentsSent.fileName), JSONArray(payments).toString().toByteArray())
         File(LdkModule.accountStoragePath + "/" + LdkFileNames.paymentsSent.fileName).writeText(JSONArray(payments).toString())
     }
 
@@ -310,8 +312,8 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         val id = channelId.hexEncodedString()
         val existingIds = ArrayList<String>()
         try {
-            if (File(LdkModule.accountStoragePath + "/" + LdkFileNames.channelsOpenedWithCustomKeysManager.fileName).exists()) {
-                val data = File(LdkModule.accountStoragePath + "/" + LdkFileNames.channelsOpenedWithCustomKeysManager.fileName).readBytes()
+            if (File(LdkModule.accountStoragePath + "/" + LdkFileNames.channelOpenedWithCustomKeysManager.fileName).exists()) {
+                val data = File(LdkModule.accountStoragePath + "/" + LdkFileNames.channelOpenedWithCustomKeysManager.fileName).readBytes()
                 val existingIdsArray = JSONArray(String(data))
                 for (i in 0 until existingIdsArray.length()) {
                     existingIds.add(existingIdsArray.getString(i))
@@ -321,7 +323,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             if (!existingIds.contains(id)) {
                 existingIds.add(id)
 
-                File(LdkModule.accountStoragePath + "/" + LdkFileNames.channelsOpenedWithCustomKeysManager.fileName).writeText(JSONArray(existingIds).toString())
+                File(LdkModule.accountStoragePath + "/" + LdkFileNames.channelOpenedWithCustomKeysManager.fileName).writeText(JSONArray(existingIds).toString())
+
+                BackupClient.addToPersistQueue(BackupClient.Label.MISC(LdkFileNames.channelOpenedWithCustomKeysManager.fileName), JSONArray(existingIds).toString().toByteArray())
             }
         } catch (e: Exception) {
             LdkEventEmitter.send(EventTypes.native_log, "Error could not read existing ChannelOpenedWithNewCustomKeysManager")
@@ -337,8 +341,8 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         val id = channelId.hexEncodedString()
         val existingIds = ArrayList<String>()
         try {
-            if (File(LdkModule.accountStoragePath + "/" + LdkFileNames.channelsOpenedWithCustomKeysManager.fileName).exists()) {
-                val data = File(LdkModule.accountStoragePath + "/" + LdkFileNames.channelsOpenedWithCustomKeysManager.fileName).readBytes()
+            if (File(LdkModule.accountStoragePath + "/" + LdkFileNames.channelOpenedWithCustomKeysManager.fileName).exists()) {
+                val data = File(LdkModule.accountStoragePath + "/" + LdkFileNames.channelOpenedWithCustomKeysManager.fileName).readBytes()
                 val existingIdsArray = JSONArray(String(data))
                 for (i in 0 until existingIdsArray.length()) {
                     existingIds.add(existingIdsArray.getString(i))

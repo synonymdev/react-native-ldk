@@ -496,6 +496,19 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
+        
+        //TODO temp update to make sure file that wasn't being backuped up now is at least once. Can be removed in a few updates.
+        //*******************************
+        Task {
+            if let channelsOpenedWithCustomKeysManagerFile = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channelsOpenedWithCustomKeysManager.rawValue) {
+                if FileManager.default.fileExists(atPath: channelsOpenedWithCustomKeysManagerFile.path) {
+                    if let data = try? Data(contentsOf: URL(fileURLWithPath: channelsOpenedWithCustomKeysManagerFile.path), options: .mappedIfSafe) {
+                        BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.channelsOpenedWithCustomKeysManager.rawValue), [UInt8](data))
+                    }
+                }
+            }
+        }
+        //*******************************
            
         return handleResolve(resolve, .channel_manager_init_success)
     }

@@ -28,6 +28,7 @@ const ldkLabels = [
     'payments_claimed',
     'payments_sent',
     'bolt11_invoices',
+    'channel_opened_with_custom_keys_manager'
 ];
 const bitkitLabels = [
     'bitkit_settings',

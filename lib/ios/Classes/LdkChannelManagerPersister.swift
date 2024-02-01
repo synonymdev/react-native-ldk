@@ -410,6 +410,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             }
             
             try jsonString.write(to: claimedPaymentsStorage, atomically: true, encoding: .utf8)
+            
+            BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.paymentsClaimed.rawValue), [UInt8](jsonData))
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error writing payment claimed to file: \(error)")
         }
@@ -462,6 +464,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             }
             
             try jsonString.write(to: sentPaymentsStorage, atomically: true, encoding: .utf8)
+            
+            BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.paymentsSent.rawValue), [UInt8](jsonData))
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error writing payment sent to file: \(error)")
         }
@@ -504,6 +508,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 }
                 
                 try jsonString.write(to: channelIdStorage, atomically: true, encoding: .utf8)
+                
+                BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.channelsOpenedWithCustomKeysManager.rawValue), [UInt8](jsonData))
             }
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not read existing ChannelOpenedWithNewCustomKeysManager")

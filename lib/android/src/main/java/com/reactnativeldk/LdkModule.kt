@@ -133,7 +133,7 @@ enum class LdkFileNames(val fileName: String) {
     scorer("scorer.bin"),
     paymentsClaimed("payments_claimed.json"),
     paymentsSent("payments_sent.json"),
-    channelsOpenedWithCustomKeysManager("channels_opened_with_custom_keys_manager.json"),
+    channelOpenedWithCustomKeysManager("channel_opened_with_custom_keys_manager.json"),
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -502,6 +502,23 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         currentBlockchainHeight = blockHeight
 
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
+
+        //TODO remove after a few updates
+        //Temp function as original file was named incorrectly and doesn't match ios or backup server
+        //*******************************
+        if (accountStoragePath != "") {
+            val wrongName = "channels_opened_with_custom_keys_manager.json"
+            val correctName = LdkFileNames.channelOpenedWithCustomKeysManager.fileName
+            try {
+                if (File(accountStoragePath + "/" + wrongName).exists()) {
+                    File(accountStoragePath + "/" + wrongName).renameTo(File(accountStoragePath + "/" + correctName))
+                    BackupClient.addToPersistQueue(BackupClient.Label.MISC(correctName), File(accountStoragePath + "/" + correctName).readBytes())
+                }
+            } catch (e: Exception) {
+                LdkEventEmitter.send(EventTypes.native_log, "Error could not rename channel list file")
+            }
+        }
+        //*******************************
     }
     @ReactMethod
     fun restart(promise: Promise) {
