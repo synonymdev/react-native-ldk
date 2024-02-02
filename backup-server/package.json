@@ -1,6 +1,6 @@
 {
   "name": "backup-server",
-  "version": "1.0.0",
+  "version": "0.0.129",
   "description": "",
   "main": "index.js",
   "engines": {
