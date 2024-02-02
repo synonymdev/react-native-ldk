@@ -366,7 +366,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     /// Saves claiming/claimed payment to disk. If payment hash exists already then the payment values are merged into the existing entry as an update
     /// - Parameter payment: payment obj
     private func persistPaymentClaimed(_ payment: [String: Any]) {
-        guard let claimedPaymentsStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.paymentsClaimed.rawValue) else {
+        guard let claimedPaymentsStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.payments_claimed.rawValue) else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist claimed payment to disk (No set storage)")
             return
         }
@@ -410,6 +410,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             }
             
             try jsonString.write(to: claimedPaymentsStorage, atomically: true, encoding: .utf8)
+            
+            BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.payments_claimed.rawValue), [UInt8](jsonData))
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error writing payment claimed to file: \(error)")
         }
@@ -418,7 +420,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     /// Saves sending/sent payment to disk. If payment ID exists already then the payment values are merged into the existing entry as an update
     /// - Parameter payment: payment obj
     func persistPaymentSent(_ payment: [String: Any]) {
-        guard let sentPaymentsStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.paymentsSent.rawValue) else {
+        guard let sentPaymentsStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.payments_sent.rawValue) else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist sent payment to disk (No set storage)")
             return
         }
@@ -462,6 +464,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             }
             
             try jsonString.write(to: sentPaymentsStorage, atomically: true, encoding: .utf8)
+            
+            BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.payments_sent.rawValue), [UInt8](jsonData))
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error writing payment sent to file: \(error)")
         }
@@ -472,7 +476,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     /// TODO remove all these checks at some point in the future once certain all old channels opened prior to this update have been long closed.
     /// - Parameter channelId: channel ID
     func persistChannelOpenedWithNewCustomKeysManager(channelId: [UInt8]) {
-        guard let channelIdStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channelsOpenedWithCustomKeysManager.rawValue) else {
+        guard let channelIdStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channel_opened_with_custom_keys_manager.rawValue) else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist ChannelOpenedWithNewCustomKeysManager")
             return
         }
@@ -504,6 +508,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 }
                 
                 try jsonString.write(to: channelIdStorage, atomically: true, encoding: .utf8)
+                
+                BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.channel_opened_with_custom_keys_manager.rawValue), [UInt8](jsonData))
             }
         } catch {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error could not read existing ChannelOpenedWithNewCustomKeysManager")
@@ -511,7 +517,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     }
     
     func channelWasOpenedWithNewCustomKeysManager(channelId: [UInt8]) -> Bool {
-        guard let channelIdStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channelsOpenedWithCustomKeysManager.rawValue) else {
+        guard let channelIdStorage = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channel_opened_with_custom_keys_manager.rawValue) else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist ChannelOpenedWithNewCustomKeysManager")
             return false
         }

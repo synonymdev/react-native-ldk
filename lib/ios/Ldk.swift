@@ -108,13 +108,13 @@ enum LdkCallbackResponses: String {
     case scorer_download_skip = "scorer_download_skip"
 }
 
-enum LdkFileNames: String {
+enum LdkFileNames: String, CaseIterable {
     case network_graph = "network_graph.bin"
     case channel_manager = "channel_manager.bin"
     case scorer = "scorer.bin"
-    case paymentsClaimed = "payments_claimed.json"
-    case paymentsSent = "payments_sent.json"
-    case channelsOpenedWithCustomKeysManager = "channel_opened_with_custom_keys_manager.json"
+    case payments_claimed = "payments_claimed.json"
+    case payments_sent = "payments_sent.json"
+    case channel_opened_with_custom_keys_manager = "channel_opened_with_custom_keys_manager.json"
 }
 
 @objc(Ldk)
@@ -496,6 +496,19 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
+        
+        //TODO temp update to make sure file that wasn't being backuped up now is at least once. Can be removed in a few updates.
+        //*******************************
+        Task {
+            if let channelsOpenedWithCustomKeysManagerFile = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channel_opened_with_custom_keys_manager.rawValue) {
+                if FileManager.default.fileExists(atPath: channelsOpenedWithCustomKeysManagerFile.path) {
+                    if let data = try? Data(contentsOf: URL(fileURLWithPath: channelsOpenedWithCustomKeysManagerFile.path), options: .mappedIfSafe) {
+                        BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.channel_opened_with_custom_keys_manager.rawValue), [UInt8](data))
+                    }
+                }
+            }
+        }
+        //*******************************
            
         return handleResolve(resolve, .channel_manager_init_success)
     }
@@ -1325,7 +1338,7 @@ class Ldk: NSObject {
         guard let channelStoragePath = Ldk.channelStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
-        
+                
         do {
             if !overwrite {
                 let fileManager = FileManager.default
@@ -1345,7 +1358,15 @@ class Ldk: NSObject {
             let completeBackup = try BackupClient.retrieveCompleteBackup()
             
             for file in completeBackup.files {
-                try file.value.write(to: accountStoragePath.appendingPathComponent(file.key))
+                //Decide if .json or .bin by checking enum
+                let key = file.key.replacingOccurrences(of: ".bin", with: "")
+                var fileName = "\(key).json"
+                
+                if let ldkFileName = LdkFileNames.allCases.first(where: { $0.rawValue.contains(key) }) {
+                    fileName = ldkFileName.rawValue
+                }
+
+                try file.value.write(to: accountStoragePath.appendingPathComponent(fileName))
             }
             
             for channel in completeBackup.channelFiles {

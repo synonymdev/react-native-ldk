@@ -128,12 +128,12 @@ enum class LdkCallbackResponses {
 }
 
 enum class LdkFileNames(val fileName: String) {
-    network_graph("network_graph.bin"),
-    channel_manager("channel_manager.bin"),
-    scorer("scorer.bin"),
-    paymentsClaimed("payments_claimed.json"),
-    paymentsSent("payments_sent.json"),
-    channelsOpenedWithCustomKeysManager("channels_opened_with_custom_keys_manager.json"),
+    NetworkGraph("network_graph.bin"),
+    ChannelManager("channel_manager.bin"),
+    Scorer("scorer.bin"),
+    PaymentsClaimed("payments_claimed.json"),
+    PaymentsSent("payments_sent.json"),
+    ChannelOpenedWithCustomKeysManager("channel_opened_with_custom_keys_manager.json"),
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -270,7 +270,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun downloadScorer(scorerSyncUrl: String, skipHoursThreshold: Double, promise: Promise) {
-        val scorerFile = File(accountStoragePath + "/" + LdkFileNames.scorer.fileName)
+        val scorerFile = File(accountStoragePath + "/" + LdkFileNames.Scorer.fileName)
         //If old one is still recent, skip download. Else delete it.
         if (scorerFile.exists()) {
             val lastModifiedHours = (System.currentTimeMillis().toDouble() - scorerFile.lastModified().toDouble()) / 1000 / 60 / 60
@@ -283,7 +283,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         Thread(Runnable {
-            val destinationFile = accountStoragePath + "/" + LdkFileNames.scorer.fileName
+            val destinationFile = accountStoragePath + "/" + LdkFileNames.Scorer.fileName
 
             URL(scorerSyncUrl).downloadFile(destinationFile) { error ->
                 if (error != null) {
@@ -308,7 +308,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.already_init)
         }
 
-        val networkGraphFile = File(accountStoragePath + "/" + LdkFileNames.network_graph.fileName)
+        val networkGraphFile = File(accountStoragePath + "/" + LdkFileNames.NetworkGraph.fileName)
         if (networkGraphFile.exists()) {
             (NetworkGraph.read(networkGraphFile.readBytes(), logger.logger) as? Result_NetworkGraphDecodeErrorZ.Result_NetworkGraphDecodeErrorZ_OK)?.let { res ->
                 networkGraph = res.res
@@ -404,7 +404,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val enableP2PGossip = rapidGossipSync == null
         
         var channelManagerSerialized: ByteArray? = null
-        val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.channel_manager.fileName)
+        val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.ChannelManager.fileName)
         if (channelManagerFile.exists()) {
            channelManagerSerialized = channelManagerFile.readBytes()
         }
@@ -502,6 +502,23 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         currentBlockchainHeight = blockHeight
 
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
+
+        //TODO remove after a few updates
+        //Temp function as original file was named incorrectly and doesn't match ios or backup server
+        //*******************************
+        if (accountStoragePath != "") {
+            val wrongName = "channels_opened_with_custom_keys_manager.json"
+            val correctName = LdkFileNames.ChannelOpenedWithCustomKeysManager.fileName
+            try {
+                if (File(accountStoragePath + "/" + wrongName).exists()) {
+                    File(accountStoragePath + "/" + wrongName).renameTo(File(accountStoragePath + "/" + correctName))
+                    BackupClient.addToPersistQueue(BackupClient.Label.MISC(correctName), File(accountStoragePath + "/" + correctName).readBytes())
+                }
+            } catch (e: Exception) {
+                LdkEventEmitter.send(EventTypes.native_log, "Error could not rename channel list file")
+            }
+        }
+        //*******************************
     }
     @ReactMethod
     fun restart(promise: Promise) {
@@ -1241,7 +1258,15 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
             val completeBackup = BackupClient.retrieveCompleteBackup()
             for (file in completeBackup.files) {
-                val newFile = File(accountStoragePath + "/" + file.key)
+                val key = file.key.replace(".bin", "")
+                var fileName = "$key.json"
+
+                val ldkFileName = LdkFileNames.values().firstOrNull { it.fileName.contains(key) }
+                if (ldkFileName != null) {
+                    fileName = ldkFileName.fileName
+                }
+
+                val newFile = File(accountStoragePath + "/" + fileName)
                 newFile.writeBytes(file.value)
             }
 
