@@ -36,6 +36,7 @@ const bitkitLabels = [
     'bitkit_metadata',
     'bitkit_blocktank_orders',
     'bitkit_slashtags_contacts',
+    'bitkit_lightning_activity',
 ];
 const labels = [...ldkLabels, ...bitkitLabels];
 

@@ -44,3 +44,8 @@ Retieving or querying a backup requires a bearer token first done by a fairly st
 6. On success server returns bearer token with 5min expiry. A long expiry isn't needed as token is only used briefly to perform a restore.
 7. Client uses bearer token to pull list of backed up files.
 8. Client iterates through list and downloads each file and persists to disk.
+
+### Docker build
+```
+docker buildx build . --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v8 -t synonymsoft/ldk-backup-server:$(npm pkg get version| sed 's/"//g') -t synonymsoft/ldk-backup-server:latest --push
+```
