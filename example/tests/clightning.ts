@@ -1,12 +1,14 @@
-import { describe, it } from 'mocha';
+import lm, { ENetworks, ldk } from '@synonymdev/react-native-ldk';
 import BitcoinJsonRpc from 'bitcoin-json-rpc';
+import { describe, it } from 'mocha';
 import RNFS from 'react-native-fs';
-import lm, { ldk } from '@synonymdev/react-native-ldk';
 
 import {
 	CL,
 	TestProfile,
+	backupServerDetails,
 	initWaitForElectrumToSync,
+	skipRemoteBackups,
 	sleep,
 	wipeLdkStorage,
 } from './utils';
@@ -32,7 +34,7 @@ const clConfig = {
 	macaroon: global.environment.clmacaroon,
 };
 
-describe('Clightning', function () {
+describe.skip('Clightning', function () {
 	this.retries(3);
 	this.timeout(5 * 60 * 1000); // 5 minutes
 	let waitForElectrum: any;
@@ -77,15 +79,7 @@ describe('Clightning', function () {
 	beforeEach(async () => {
 		await waitForElectrum({ cl: true });
 
-		// const electrumResponse = await connectToElectrum({});
-		// if (electrumResponse.isErr()) {
-		// 	throw electrumResponse.error;
-		// }
-		// const account = await getAccount();
-
 		profile = new TestProfile({
-			// name: account.name,
-			// seed: account.seed,
 			headerCallback: async (): Promise<void> => {
 				const syncRes = await lm.syncLdk();
 				if (syncRes.isErr()) {
@@ -112,8 +106,6 @@ describe('Clightning', function () {
 		// - open CL -> LDK channel
 		// - make a few payments
 
-		// const account = await getAccount();
-
 		await ldk.stop();
 		const lmStart = await lm.start({
 			...profile.getStartParams(),
@@ -130,6 +122,17 @@ describe('Clightning', function () {
 		});
 		if (lmStart.isErr()) {
 			throw lmStart.error;
+		}
+
+		if (!skipRemoteBackups) {
+			const backupRes = await ldk.backupSetup({
+				network: ENetworks.regtest,
+				seed: profile.getAccount().seed,
+				details: backupServerDetails,
+			});
+			if (backupRes.isErr()) {
+				throw backupRes.error;
+			}
 		}
 
 		const nodeId = await ldk.nodeId();

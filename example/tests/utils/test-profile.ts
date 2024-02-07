@@ -1,9 +1,3 @@
-import ElectrumClient from 'electrum-client';
-import * as bip39 from 'bip39';
-import * as bip32 from 'bip32';
-import * as bitcoin from 'bitcoinjs-lib';
-import { randomBytes } from 'react-native-randombytes';
-import { Platform } from 'react-native';
 import {
 	IAddress,
 	TAccount,
@@ -13,7 +7,14 @@ import {
 	TTransactionData,
 	TTransactionPosition,
 } from '@synonymdev/react-native-ldk';
+import * as bip32 from 'bip32';
+import * as bip39 from 'bip39';
+import * as bitcoin from 'bitcoinjs-lib';
+import ElectrumClient from 'electrum-client';
+import { Platform } from 'react-native';
+import { randomBytes } from 'react-native-randombytes';
 
+import { skipRemoteBackups } from '.';
 import {
 	getAddressFromScriptPubKey,
 	getNetwork,
@@ -28,6 +29,7 @@ type TElectrumHeader = {
 
 export default class TestProfile {
 	name: string;
+	enableBackups: boolean;
 	electrum: ElectrumClient;
 	seed: string;
 	network: TAvailableNetworks;
@@ -39,6 +41,7 @@ export default class TestProfile {
 		this.seed = opts?.seed ?? randomBytes(32).toString('hex');
 		this.network = opts?.network ?? 'bitcoinRegtest';
 		this.headerCallback = opts?.headerCallback;
+		this.enableBackups = opts?.enableBackups ?? false;
 		this.electrum = new ElectrumClient(
 			global.net,
 			global.tls,
@@ -86,8 +89,8 @@ export default class TestProfile {
 			network: ldkNetwork(this.network),
 			// forceCloseOnStartup: { forceClose: true, broadcastLatestTx: false },
 			forceCloseOnStartup: undefined,
-			skipRemoteBackups: true,
 			// trustedZeroConfPeers: [],
+			skipRemoteBackups,
 		};
 	};
 

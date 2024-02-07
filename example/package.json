@@ -72,7 +72,7 @@
     "bitcoin-json-rpc": "^1.3.2",
     "chai-as-promised": "^7.1.1",
     "concurrently": "^8.2.0",
-    "detox": "20.7.0",
+    "detox": "20.17.0",
     "electrum-client": "github:BlueWallet/rn-electrum-client#47acb51149e97fab249c3f8a314f708dbee4fb6e",
     "eslint": "8.27.0",
     "eslint-config-prettier": "^8.5.0",

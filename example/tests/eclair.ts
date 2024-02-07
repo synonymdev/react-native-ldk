@@ -1,29 +1,17 @@
-import { describe, it } from 'mocha';
+import lm, { ENetworks, ldk } from '@synonymdev/react-native-ldk';
 import BitcoinJsonRpc from 'bitcoin-json-rpc';
+import { describe, it } from 'mocha';
 import RNFS from 'react-native-fs';
-import lm, { ldk } from '@synonymdev/react-native-ldk';
 
 import {
 	Eclair,
 	TestProfile,
+	backupServerDetails,
 	initWaitForElectrumToSync,
+	skipRemoteBackups,
 	sleep,
 	wipeLdkStorage,
 } from './utils';
-
-// import {
-// 	broadcastTransaction,
-// 	getBestBlock,
-// 	getTransactionData,
-// 	getTransactionPosition,
-// } from '../ldk';
-// import {
-// 	connectToElectrum,
-// 	getScriptPubKeyHistory,
-// 	subscribeToHeader,
-// } from '../electrum';r
-// import { getAccount, getAddress, ldkNetwork } from '../utils/helpers';
-// import { selectedNetwork } from '../utils/constants';
 
 const bitcoinURL = 'http://polaruser:polarpass@localhost:9091';
 const eclairConfig = {
@@ -112,21 +100,9 @@ describe('Eclair', function () {
 		// - open Eclair -> LDK channel
 		// - make a few payments
 
-		// const account = await getAccount();
-
 		await ldk.stop();
 		const lmStart = await lm.start({
 			...profile.getStartParams(),
-			// getBestBlock: getBestBlock,
-			// account: account,
-			// getAddress: getAddress,
-			// getScriptPubKeyHistory: getScriptPubKeyHistory,
-			// getFees: () =>
-			// 	Promise.resolve({ highPriority: 10, normal: 5, background: 1 }),
-			// getTransactionData: getTransactionData,
-			// getTransactionPosition: getTransactionPosition,
-			// broadcastTransaction: broadcastTransaction,
-			// network: ldkNetwork(selectedNetwork),
 			getFees: () => {
 				return Promise.resolve({
 					onChainSweep: 30,
@@ -141,6 +117,17 @@ describe('Eclair', function () {
 		});
 		if (lmStart.isErr()) {
 			throw lmStart.error;
+		}
+
+		if (!skipRemoteBackups) {
+			const backupRes = await ldk.backupSetup({
+				network: ENetworks.regtest,
+				seed: profile.getAccount().seed,
+				details: backupServerDetails,
+			});
+			if (backupRes.isErr()) {
+				throw backupRes.error;
+			}
 		}
 
 		const nodeId = await ldk.nodeId();

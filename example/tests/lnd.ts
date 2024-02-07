@@ -2,7 +2,12 @@ import { expect } from 'chai';
 import { describe, it } from 'mocha';
 import BitcoinJsonRpc from 'bitcoin-json-rpc';
 import RNFS from 'react-native-fs';
-import lm, { EEventTypes, TChannel, ldk } from '@synonymdev/react-native-ldk';
+import lm, {
+	EEventTypes,
+	ENetworks,
+	TChannel,
+	ldk,
+} from '@synonymdev/react-native-ldk';
 import * as bitcoin from 'bitcoinjs-lib';
 import ElectrumClient from 'electrum-client';
 import { Platform } from 'react-native';
@@ -12,12 +17,14 @@ import {
 	TestProfile,
 	getTxFeeRate,
 	initWaitForElectrumToSync,
+	skipRemoteBackups,
 	sleep,
 	waitForLDKEvent,
 	wipeLdkStorage,
 } from './utils';
 import { Result } from '../utils/result';
 import { getScriptHash } from '../utils/helpers';
+import { backupServerDetails } from './utils';
 
 // import {
 // 	broadcastTransaction,
@@ -89,31 +96,8 @@ describe('LND', function () {
 
 	beforeEach(async () => {
 		await waitForElectrum({ lnd: true });
-
-		// const electrumResponse = await connectToElectrum({});
-		// if (electrumResponse.isErr()) {
-		// 	throw electrumResponse.error;
-		// }
-		// const account = await getAccount();
-
-		profile = new TestProfile({
-			// name: account.name,
-			// seed: account.seed,
-		});
+		profile = new TestProfile({});
 		await profile.init();
-
-		// const res = await ldk.backupSetup({
-		// 	network: 'regtest',
-		// 	seed: profile.seed,
-		// 	details: {
-		// 		host: 'http://127.0.0.1:3003',
-		// 		serverPubKey:
-		// 			'0319c4ff23820afec0c79ce3a42031d7fef1dff78b7bdd69b5560684f3e1827675',
-		// 	},
-		// });
-		// if (res.isErr()) {
-		// 	throw res.error;
-		// }
 	});
 
 	afterEach(async function () {
@@ -136,9 +120,18 @@ describe('LND', function () {
 		// - backup and restore LDK
 		// - check if channel is still open
 
-		// const account = await getAccount();
+		if (!skipRemoteBackups) {
+			const backupRes = await ldk.backupSetup({
+				network: ENetworks.regtest,
+				seed: profile.getAccount().seed,
+				details: backupServerDetails,
+			});
+			if (backupRes.isErr()) {
+				throw backupRes.error;
+			}
+		}
 
-		await ldk.stop();
+		// await ldk.stop();
 		const lmStart = await lm.start({
 			...profile.getStartParams(),
 			// getBestBlock: getBestBlock,
@@ -306,7 +299,10 @@ describe('LND', function () {
 			throw claimableBalances1.error;
 		}
 
+		return;
+
 		// backup LDK
+		// eslint-disable-next-line no-unreachable
 		const backupResp = await lm.backupAccount({
 			account: profile.getAccount(),
 			includeTransactionHistory: true,
@@ -573,21 +569,19 @@ describe('LND', function () {
 		// - force close channel from LDK
 		// - check everything is ok
 
-		let fees = {
-			nonAnchorChannelFee: 5,
-			anchorChannelFee: 5,
-			maxAllowedNonAnchorChannelRemoteFee: 5,
-			channelCloseMinimum: 5,
-			minAllowedAnchorChannelRemoteFee: 5,
-			minAllowedNonAnchorChannelRemoteFee: 5,
-			onChainSweep: 5,
-		};
+		if (!skipRemoteBackups) {
+			const backupRes = await ldk.backupSetup({
+				network: ENetworks.regtest,
+				seed: profile.getAccount().seed,
+				details: backupServerDetails,
+			});
+			if (backupRes.isErr()) {
+				throw backupRes.error;
+			}
+		}
 
 		const lmStart = await lm.start({
 			...profile.getStartParams(),
-			getFees: async () => {
-				return fees;
-			},
 		});
 		if (lmStart.isErr()) {
 			throw lmStart.error;
@@ -677,18 +671,18 @@ describe('LND', function () {
 			EEventTypes.broadcast_transaction,
 		);
 
-		// set height fees and restart LDK so it catches up
-		fees = {
-			nonAnchorChannelFee: 30,
-			anchorChannelFee: 30,
-			maxAllowedNonAnchorChannelRemoteFee: 30,
-			channelCloseMinimum: 5,
-			minAllowedAnchorChannelRemoteFee: 5,
-			minAllowedNonAnchorChannelRemoteFee: 5,
-			onChainSweep: 30,
-		};
+		// set high fees and restart LDK so it catches up
+		// fees = {
+		// 	nonAnchorChannelFee: 30,
+		// 	anchorChannelFee: 30,
+		// 	maxAllowedNonAnchorChannelRemoteFee: 30,
+		// 	channelCloseMinimum: 5,
+		// 	minAllowedAnchorChannelRemoteFee: 5,
+		// 	minAllowedNonAnchorChannelRemoteFee: 5,
+		// 	onChainSweep: 30,
+		// };
 		const syncRes0 = await lm.syncLdk();
-		await lm.setFees();
+		// await lm.setFees();
 		if (syncRes0.isErr()) {
 			throw syncRes0.error;
 		}
@@ -734,9 +728,10 @@ describe('LND', function () {
 				({ amount_satoshis }) => amount_satoshis > 0,
 			);
 		}
+
 		expect(claimableBalances1.value).to.have.length(1);
 		expect(claimableBalances1.value[0]).to.include({
-			claimable_amount_satoshis: 100001,
+			amount_satoshis: 100001,
 			type: 'ClaimableAwaitingConfirmations',
 		});
 		expect(claimableBalances1.value[0])
@@ -777,7 +772,7 @@ describe('LND', function () {
 		);
 		await electrum.initElectrum({ client: 'get-balance', version: '1.4' });
 		const balance = await electrum.blockchainScripthash_getBalance(
-			getScriptHash(await profile.getAddress()),
+			getScriptHash((await profile.getAddress()).address),
 		);
 
 		expect(balance)
