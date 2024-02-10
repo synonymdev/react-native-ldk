@@ -124,7 +124,7 @@ class Tests extends Component {
 				// Adding an async hook before each test to allow the UI to update
 				beforeEach(function () {
 					// WFT it doesn't work ?
-					return new Promise((resolve) => setTimeout(resolve, 0));
+					return new Promise((resolve) => setTimeout(resolve, 10));
 				});
 				// global.fs = require("react-native-fs");
 				// global.path = require("path-browserify");

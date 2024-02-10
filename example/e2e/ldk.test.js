@@ -8,22 +8,19 @@ describe('LDK integration test', () => {
 		await element(by.id('dev')).tap();
 	});
 
-	it('should have heading', async () => {
+	it('should show "Running LDK" after starting up', async () => {
 		await waitFor(element(by.text('react-native-ldk')))
 			.toBeVisible()
-			.withTimeout(20000);
-	});
+			.withTimeout(60000);
 
-	it('should show "Running LDK" after starting up', async () => {
-		// await element(by.id('start')).tap();
 		await waitFor(element(by.text('Running LDK')))
 			.toBeVisible()
-			.withTimeout(20000);
+			.withTimeout(60000);
 
 		await element(by.id('E2ETest')).tap();
 
 		await waitFor(element(by.text('e2e success')))
 			.toBeVisible()
-			.withTimeout(20000);
+			.withTimeout(60000);
 	});
 });

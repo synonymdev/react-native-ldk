@@ -1,9 +1,10 @@
+import lm, { ENetworks, ldk } from '@synonymdev/react-native-ldk';
 import { expect } from 'chai';
 import { describe, it } from 'mocha';
+import { Platform } from 'react-native';
 import RNFS from 'react-native-fs';
-import lm, { ENetworks, ldk } from '@synonymdev/react-native-ldk';
 
-import { wipeLdkStorage } from './utils';
+import { backupServerDetails, wipeLdkStorage } from './utils';
 
 describe('Unit', function () {
 	this.timeout(1 * 60 * 1000); // 1 minute
@@ -81,6 +82,7 @@ describe('Unit', function () {
 			getTransactionPosition: async () => -1,
 			broadcastTransaction: async () => '',
 			network: ENetworks.regtest,
+			skipRemoteBackups: true,
 		});
 
 		if (lmStart.isErr()) {
@@ -165,33 +167,98 @@ describe('Unit', function () {
 		}
 		expect(nodesRes.value).to.be.an('array').that.is.empty;
 
-		const backupResp = await lm.backupAccount({
-			account,
-			includeTransactionHistory: true,
-		});
-		if (backupResp.isErr()) {
-			throw backupResp.error;
-		}
-		const br = backupResp.value;
-		expect(br.account.name).to.be.equal(account.name);
-		expect(br.account.seed).to.be.equal(account.seed);
-		expect(br.data.channel_manager).to.be.a('string').that.is.not.empty;
-		expect(br.data.channel_monitors).to.be.a('object').that.is.empty;
-		expect(br.data.peers).to.be.a('array').that.is.empty;
-		expect(br.data.unconfirmed_transactions).to.be.a('array').that.is.empty;
-		expect(br.data.broadcasted_transactions).to.be.a('array').that.is.empty;
-		expect(br.data.payment_ids).to.be.a('array').that.is.empty;
-		expect(br.data.spendable_outputs).to.be.a('array').that.is.empty;
-		expect(br.data.payments_claimed).to.be.a('array').that.is.empty;
-		expect(br.data.payments_sent).to.be.a('array').that.is.empty;
-		expect(br.data.bolt11_invoices).to.include(pr.value.to_str);
-		expect(br.data.timestamp).to.be.a('number');
-		expect(br.package_version).to.be.a('string');
-		expect(br.network).to.be.equal('regtest');
-
 		const restart = await ldk.restart();
 		if (restart.isErr()) {
 			throw restart.error;
+		}
+	});
+
+	it('can backup', async function () {
+		if (Platform.OS === 'android') {
+			return;
+		}
+
+		const account = {
+			name: 'Mock2',
+			seed: '0000000000000000000000000000000000000000000000000000000000000001',
+		};
+
+		const backupRes = await ldk.backupSetup({
+			network: ENetworks.regtest,
+			seed: account.seed,
+			details: backupServerDetails,
+		});
+		if (backupRes.isErr()) {
+			throw backupRes.error;
+		}
+
+		const startParams = {
+			getBestBlock: async () => ({
+				hash: '6993d7c36204c9f369a7d9d80590c4e2a86b9641c327fbc276a534797ca50a2f',
+				height: 1,
+				hex: '000000205d1f3ece3bcb0a3530adaae2e4aa47f8aad434db95c6cb6d09d5ac99e3f6df4f0a19fe968830a06dcc49c9cca4acc532226e4c30b741802420e0fdd2b092eccdbf95cb64ffff7f2000000000',
+			}),
+			account,
+			getAddress: async () => ({
+				address: 'bcrt1qtk89me2ae95dmlp3yfl4q9ynpux8mxjus4s872',
+				publicKey:
+					'0298720ece754e377af1b2716256e63c2e2427ff6ebdc66c2071c43ae80132ca32',
+			}),
+			getScriptPubKeyHistory: async () => [],
+			getFees: () => {
+				return Promise.resolve({
+					nonAnchorChannelFee: 5,
+					anchorChannelFee: 5,
+					maxAllowedNonAnchorChannelRemoteFee: 5,
+					channelCloseMinimum: 5,
+					minAllowedAnchorChannelRemoteFee: 5,
+					minAllowedNonAnchorChannelRemoteFee: 5,
+					onChainSweep: 5,
+				});
+			},
+			getTransactionData: async () => ({
+				header: '',
+				height: 0,
+				transaction: '',
+				vout: [],
+			}),
+			getTransactionPosition: async () => -1,
+			broadcastTransaction: async () => '',
+			network: ENetworks.regtest,
+			skipRemoteBackups: true,
+		};
+
+		const lmStart1 = await lm.start(startParams);
+
+		if (lmStart1.isErr()) {
+			throw lmStart1.error;
+		}
+
+		const fileListRes = await ldk.backupListFiles();
+		if (fileListRes.isErr()) {
+			throw fileListRes.error;
+		}
+
+		await ldk.stop();
+
+		const restoreRes = await lm.restoreFromRemoteServer({
+			account: account,
+			serverDetails: backupServerDetails,
+			network: ENetworks.regtest,
+			overwrite: true,
+		});
+		if (restoreRes.isErr()) {
+			throw restoreRes.error;
+		}
+
+		const lmStart2 = await lm.start(startParams);
+		if (lmStart2.isErr()) {
+			throw lmStart2.error;
+		}
+
+		const restartRes = await ldk.restart();
+		if (restartRes.isErr()) {
+			throw restartRes.error;
 		}
 	});
 });

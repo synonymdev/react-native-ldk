@@ -162,6 +162,7 @@ export const initWaitForElectrumToSync = async (
  */
 export const wipeLdkStorage = async (): Promise<void> => {
 	await ldk.stop();
+	await sleep(10);
 
 	if (lm.account.name === '') {
 		return;
@@ -190,7 +191,7 @@ export const wipeLdkStorage = async (): Promise<void> => {
 	}
 };
 
-export const getTxFeeRate = async (txid): Promise<number> => {
+export const getTxFeeRate = async (txid: string): Promise<number> => {
 	const electrum = new ElectrumClient(
 		global.net,
 		global.tls,
@@ -229,6 +230,7 @@ export const waitForLDKEvent = (
 			}
 			waiting = false;
 			subs.remove();
+			console.error(`WaitForLDKEvent ${event} timed out`);
 			reject(`WaitForLDKEvent ${event} timed out`);
 		}, timeout);
 
@@ -242,4 +244,11 @@ export const waitForLDKEvent = (
 			resolve(data);
 		});
 	});
+};
+
+export const skipRemoteBackups = false;
+export const backupServerDetails = {
+	host: 'http://127.0.0.1:3003',
+	serverPubKey:
+		'0319c4ff23820afec0c79ce3a42031d7fef1dff78b7bdd69b5560684f3e1827675',
 };

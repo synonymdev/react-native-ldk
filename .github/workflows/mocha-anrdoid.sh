@@ -1,5 +1,6 @@
 #!/bin/bash
 
+adb reverse tcp:3003 tcp:3003
 adb reverse tcp:8090 tcp:8090
 adb reverse tcp:9090 tcp:9090
 adb reverse tcp:9091 tcp:9091

@@ -193,7 +193,8 @@ services:
 
   ldk-backup-server:
     container_name: ldk-backup-server
-    image: synonymsoft/ldk-backup-server:1.0.0
+    # image: synonymsoft/ldk-backup-server:1.0.0
+    build: ../../backup-server/
     expose:
       - '3003'
     ports:

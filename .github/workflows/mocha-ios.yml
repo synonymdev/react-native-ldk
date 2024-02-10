@@ -41,6 +41,10 @@ jobs:
         uses: docker-practice/actions-setup-docker@1.0.12
         timeout-minutes: 30
 
+      - name: Install backup-server dependencies
+        working-directory: backup-server
+        run: npm i || npm i
+
       - name: Run regtest setup
         working-directory: example/docker
         run: |
