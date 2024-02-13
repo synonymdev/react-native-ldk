@@ -259,153 +259,156 @@ const Dev = (): ReactElement => {
 						}}
 					/>
 
-					<Button
-						title={'Add Peers'}
-						onPress={async (): Promise<void> => {
-							try {
-								const peersRes = await Promise.all(
-									Object.keys(peers).map(async (peer) => {
-										const addPeer = await lm.addPeer({
-											...peers[peer],
-											timeout: 5000,
-										});
-										if (addPeer.isErr()) {
-											setMessage(addPeer.error.message);
-											return;
-										}
-										return addPeer.value;
-									}),
-								);
-								setMessage(JSON.stringify(peersRes));
-							} catch (e) {
-								setMessage(e.toString());
-							}
-						}}
-					/>
-
-					<Button
-						title={'List peers'}
-						onPress={async (): Promise<void> => {
-							try {
-								const listPeers = await ldk.listPeers();
-								if (listPeers.isErr()) {
-									setMessage(listPeers.error.message);
-									return;
+					<View style={styles.buttonRow}>
+						<Button
+							title={'Add Peers'}
+							onPress={async (): Promise<void> => {
+								try {
+									const peersRes = await Promise.all(
+										Object.keys(peers).map(async (peer) => {
+											const addPeer = await lm.addPeer({
+												...peers[peer],
+												timeout: 5000,
+											});
+											if (addPeer.isErr()) {
+												setMessage(addPeer.error.message);
+												return;
+											}
+											return addPeer.value;
+										}),
+									);
+									setMessage(JSON.stringify(peersRes));
+								} catch (e) {
+									setMessage(e.toString());
 								}
-								setMessage(JSON.stringify(listPeers.value));
-							} catch (e) {
-								setMessage(e.toString());
-							}
-						}}
-					/>
-
-					<Button
-						title={'List channels'}
-						onPress={async (): Promise<void> => {
-							try {
-								const listChannels = await ldk.listChannels();
-								if (listChannels.isErr()) {
-									setMessage(listChannels.error.message);
-									return;
-								}
-								if (listChannels.value.length < 1) {
-									setMessage('No channels detected.');
-									return;
-								}
-
-								let msg = '';
-								// Sort Channels
-								await Promise.all(
-									listChannels.value.map(async (channel) => {
-										const sorted = Object.keys(channel)
-											.sort()
-											.reduce((obj, key) => {
-												obj[key] = channel[key];
-												return obj;
-											}, {});
-										// Append channel info to msg.
-										await Promise.all(
-											Object.keys(sorted).map((key) => {
-												msg += `${key}: ${sorted[key]}\n`;
-											}),
-										);
-									}),
-								);
-
-								setMessage(msg);
-							} catch (e) {
-								setMessage(e.toString());
-							}
-						}}
-					/>
-
-					<Button
-						title={'Close channel'}
-						onPress={async (): Promise<void> => {
-							try {
-								const listChannels = await ldk.listChannels();
-								if (listChannels.isErr()) {
-									setMessage(listChannels.error.message);
-									return;
-								}
-								if (listChannels.value.length < 1) {
-									setMessage('No channels detected.');
-									return;
-								}
-
-								const { channel_id, counterparty_node_id } =
-									listChannels.value[0];
-
-								const close = async (force: boolean): Promise<void> => {
-									setMessage(`Closing ${channel_id}...`);
-
-									const res = await ldk.closeChannel({
-										channelId: channel_id,
-										counterPartyNodeId: counterparty_node_id,
-										force,
-									});
-									if (res.isErr()) {
-										setMessage(res.error.message);
+							}}
+						/>
+						<Button
+							title={'List peers'}
+							onPress={async (): Promise<void> => {
+								try {
+									const listPeers = await ldk.listPeers();
+									if (listPeers.isErr()) {
+										setMessage(listPeers.error.message);
 										return;
 									}
-									setMessage(res.value);
-								};
+									setMessage(JSON.stringify(listPeers.value));
+								} catch (e) {
+									setMessage(e.toString());
+								}
+							}}
+						/>
+					</View>
 
-								Alert.alert('Close channel', `Peer ${counterparty_node_id}`, [
-									{
-										text: 'Cancel',
-										onPress: () => console.log('Cancel Pressed'),
-										style: 'cancel',
-									},
-									{
-										text: 'Close channel',
-										onPress: async (): Promise<void> => close(false),
-									},
-									{
-										text: 'Force close',
-										onPress: async (): Promise<void> => close(true),
-									},
-								]);
-							} catch (e) {
-								setMessage(e.toString());
-							}
-						}}
-					/>
+					<View style={styles.buttonRow}>
+						<Button
+							title={'List channels'}
+							onPress={async (): Promise<void> => {
+								try {
+									const listChannels = await ldk.listChannels();
+									if (listChannels.isErr()) {
+										setMessage(listChannels.error.message);
+										return;
+									}
+									if (listChannels.value.length < 1) {
+										setMessage('No channels detected.');
+										return;
+									}
 
-					<Button
-						title={'List watch transactions'}
-						onPress={async (): Promise<void> => {
-							console.log(lm.watchTxs);
-							setMessage(`Watch TXs: ${JSON.stringify(lm.watchTxs)}`);
-						}}
-					/>
+									let msg = '';
+									// Sort Channels
+									await Promise.all(
+										listChannels.value.map(async (channel) => {
+											const sorted = Object.keys(channel)
+												.sort()
+												.reduce((obj, key) => {
+													obj[key] = channel[key];
+													return obj;
+												}, {});
+											// Append channel info to msg.
+											await Promise.all(
+												Object.keys(sorted).map((key) => {
+													msg += `${key}: ${sorted[key]}\n`;
+												}),
+											);
+										}),
+									);
 
-					<Button
-						title={'List watch outputs'}
-						onPress={async (): Promise<void> => {
-							setMessage(`Watch Outputs: ${JSON.stringify(lm.watchOutputs)}`);
-						}}
-					/>
+									setMessage(msg);
+								} catch (e) {
+									setMessage(e.toString());
+								}
+							}}
+						/>
+						<Button
+							title={'Close channel'}
+							onPress={async (): Promise<void> => {
+								try {
+									const listChannels = await ldk.listChannels();
+									if (listChannels.isErr()) {
+										setMessage(listChannels.error.message);
+										return;
+									}
+									if (listChannels.value.length < 1) {
+										setMessage('No channels detected.');
+										return;
+									}
+
+									const { channel_id, counterparty_node_id } =
+										listChannels.value[0];
+
+									const close = async (force: boolean): Promise<void> => {
+										setMessage(`Closing ${channel_id}...`);
+
+										const res = await ldk.closeChannel({
+											channelId: channel_id,
+											counterPartyNodeId: counterparty_node_id,
+											force,
+										});
+										if (res.isErr()) {
+											setMessage(res.error.message);
+											return;
+										}
+										setMessage(res.value);
+									};
+
+									Alert.alert('Close channel', `Peer ${counterparty_node_id}`, [
+										{
+											text: 'Cancel',
+											onPress: () => console.log('Cancel Pressed'),
+											style: 'cancel',
+										},
+										{
+											text: 'Close channel',
+											onPress: async (): Promise<void> => close(false),
+										},
+										{
+											text: 'Force close',
+											onPress: async (): Promise<void> => close(true),
+										},
+									]);
+								} catch (e) {
+									setMessage(e.toString());
+								}
+							}}
+						/>
+					</View>
+
+					<View style={styles.buttonRow}>
+						<Button
+							title={'List watch transactions'}
+							onPress={async (): Promise<void> => {
+								console.log(lm.watchTxs);
+								setMessage(`Watch TXs: ${JSON.stringify(lm.watchTxs)}`);
+							}}
+						/>
+						<Button
+							title={'List watch outputs'}
+							onPress={async (): Promise<void> => {
+								setMessage(`Watch Outputs: ${JSON.stringify(lm.watchOutputs)}`);
+							}}
+						/>
+					</View>
 
 					<Button
 						title={'🤑Get Address Balance'}
@@ -433,112 +436,115 @@ const Dev = (): ReactElement => {
 						}}
 					/>
 
-					<Button
-						title={'Get claimed payments'}
-						onPress={async (): Promise<void> => {
-							setMessage('Getting all claimed payments...');
-							const res = await lm.getLdkPaymentsClaimed();
-							setMessage(JSON.stringify(res));
-						}}
-					/>
-					<Button
-						title={'Get sent payments'}
-						onPress={async (): Promise<void> => {
-							setMessage('Getting all sent payments...');
-							const res = await lm.getLdkPaymentsSent();
-							setMessage(JSON.stringify(res));
-						}}
-					/>
+					<View style={styles.buttonRow}>
+						<Button
+							title={'Get claimed payments'}
+							onPress={async (): Promise<void> => {
+								setMessage('Getting all claimed payments...');
+								const res = await lm.getLdkPaymentsClaimed();
+								setMessage(JSON.stringify(res));
+							}}
+						/>
+						<Button
+							title={'Get sent payments'}
+							onPress={async (): Promise<void> => {
+								setMessage('Getting all sent payments...');
+								const res = await lm.getLdkPaymentsSent();
+								setMessage(JSON.stringify(res));
+							}}
+						/>
+					</View>
 
-					<Button
-						title={'Create invoice'}
-						onPress={async (): Promise<void> => {
-							const createInvoice = async (
-								amountSats?: number,
-							): Promise<void> => {
-								try {
-									const createPaymentRequest =
-										await lm.createAndStorePaymentRequest({
-											amountSats,
-											description: 'paymeplz 🤑',
-											expiryDeltaSeconds: 999999,
-										});
+					<View style={styles.buttonRow}>
+						<Button
+							title={'Create invoice'}
+							onPress={async (): Promise<void> => {
+								const createInvoice = async (
+									amountSats?: number,
+								): Promise<void> => {
+									try {
+										const createPaymentRequest =
+											await lm.createAndStorePaymentRequest({
+												amountSats,
+												description: 'paymeplz 🤑',
+												expiryDeltaSeconds: 999999,
+											});
 
-									if (createPaymentRequest.isErr()) {
-										setMessage(createPaymentRequest.error.message);
-										return;
+										if (createPaymentRequest.isErr()) {
+											setMessage(createPaymentRequest.error.message);
+											return;
+										}
+
+										const { to_str } = createPaymentRequest.value;
+										console.log(to_str);
+										Clipboard.setString(to_str);
+										setMessage(to_str);
+									} catch (e) {
+										setMessage(e.toString());
 									}
+								};
 
-									const { to_str } = createPaymentRequest.value;
-									console.log(to_str);
-									Clipboard.setString(to_str);
-									setMessage(to_str);
-								} catch (e) {
-									setMessage(e.toString());
-								}
-							};
-
-							const amountSats = 100;
-							Alert.alert('Create invoice', 'Specify amount?', [
-								{
-									text: 'Cancel',
-									onPress: () => console.log('Cancel Pressed'),
-									style: 'cancel',
-								},
-								{
-									text: `${amountSats} sats`,
-									onPress: async (): Promise<void> => createInvoice(amountSats),
-								},
-								{
-									text: "Don't specify",
-									onPress: async (): Promise<void> => createInvoice(),
-								},
-							]);
-						}}
-					/>
-
-					<Button
-						title={'Pay invoice'}
-						onPress={async (): Promise<void> => {
-							const paymentRequest = await Clipboard.getString();
-							const decode = await ldk.decode({ paymentRequest });
-							if (decode.isErr()) {
-								return setMessage(decode.error.message);
-							}
-
-							const { amount_satoshis, description } = decode.value;
-
-							const ownAmountSats = 1000;
-							Alert.alert(
-								amount_satoshis
-									? `Pay ${amount_satoshis ?? 0}`
-									: 'Zero sat invoice found',
-								description,
-								[
+								const amountSats = 100;
+								Alert.alert('Create invoice', 'Specify amount?', [
 									{
 										text: 'Cancel',
 										onPress: () => console.log('Cancel Pressed'),
 										style: 'cancel',
 									},
 									{
-										text: 'Pay',
-										onPress: async (): Promise<void> => {
-											const pay = await lm.payWithTimeout({
-												paymentRequest,
-												amountSats: amount_satoshis ? undefined : ownAmountSats,
-												timeout: 20000,
-											});
-											if (pay.isErr()) {
-												return setMessage(pay.error.message);
-											}
-
-											setMessage(pay.value.payment_id);
-										},
+										text: `${amountSats} sats`,
+										onPress: async (): Promise<void> => createInvoice(amountSats),
 									},
-								],
-							);
-						}}
-					/>
+									{
+										text: "Don't specify",
+										onPress: async (): Promise<void> => createInvoice(),
+									},
+								]);
+							}}
+						/>
+						<Button
+							title={'Pay invoice'}
+							onPress={async (): Promise<void> => {
+								const paymentRequest = await Clipboard.getString();
+								const decode = await ldk.decode({ paymentRequest });
+								if (decode.isErr()) {
+									return setMessage(decode.error.message);
+								}
+
+								const { amount_satoshis, description } = decode.value;
+
+								const ownAmountSats = 1000;
+								Alert.alert(
+									amount_satoshis
+										? `Pay ${amount_satoshis ?? 0}`
+										: 'Zero sat invoice found',
+									description,
+									[
+										{
+											text: 'Cancel',
+											onPress: () => console.log('Cancel Pressed'),
+											style: 'cancel',
+										},
+										{
+											text: 'Pay',
+											onPress: async (): Promise<void> => {
+												const pay = await lm.payWithTimeout({
+													paymentRequest,
+													amountSats: amount_satoshis ? undefined : ownAmountSats,
+													timeout: 20000,
+												});
+												if (pay.isErr()) {
+													return setMessage(pay.error.message);
+												}
+
+												setMessage(pay.value.payment_id);
+											},
+										},
+									],
+								);
+							}}
+						/>
+					</View>
 
 					<Button
 						title={'Get network graph nodes'}
@@ -772,6 +778,10 @@ const styles = StyleSheet.create({
 	modalText: {
 		color: 'green',
 		fontSize: 10,
+	},
+	buttonRow: {
+		flexDirection: 'row',
+		gap: 2.5,
 	},
 });
 
