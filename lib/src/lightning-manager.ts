@@ -69,6 +69,8 @@ import * as bitcoin from 'bitcoinjs-lib';
 import networks from './utils/networks';
 import { EmitterSubscription } from 'react-native';
 
+const MAX_PENDING_PAY_AGE = 1000 * 60 * 60; // 1 hour
+
 //TODO startup steps
 // Step 0: Listen for events ✅
 // Step 1: Initialize the FeeEstimator ✅
@@ -638,6 +640,8 @@ class LightningManager {
 				e: unconfirmedTxsRes,
 			});
 		}
+
+		await this.removeExpiredAndUnclaimedInvoices();
 
 		this.isSyncing = false;
 
@@ -1955,6 +1959,54 @@ class LightningManager {
 		await this.setFees();
 		await this.addPeers();
 		await this.syncLdk();
+	}
+
+	/**
+	 * Called with each sync to remove expired and unclaimed invoices.
+	 * An invoice is expired if there is no payments claimed (received) for it
+	 * after MAX_PENDING_PAY_AGE.
+	 */
+	private async removeExpiredAndUnclaimedInvoices(): Promise<void> {
+		const invoices = await this.getBolt11Invoices();
+		const claimedPayments = await this.getLdkPaymentsClaimed();
+		const expiredAndUnclaimedInvoices: TBolt11Invoices = [];
+
+		for (let index = 0; index < invoices.length; index++) {
+			const paymentRequest = invoices[index];
+			const invoiceRes = await ldk.decode({ paymentRequest });
+			if (invoiceRes.isOk()) {
+				const invoice = invoiceRes.value;
+				const invoiceAge = Date.now() - invoice.timestamp * 1000;
+				const isOld = invoiceAge > MAX_PENDING_PAY_AGE;
+				if (isOld) {
+					const payment = claimedPayments.find(
+						(it) => it.payment_hash === invoice.payment_hash,
+					);
+					const isClaimed = payment?.state === 'successful';
+					if (!isClaimed) {
+						expiredAndUnclaimedInvoices.push(paymentRequest);
+					}
+				}
+			}
+		}
+
+		if (expiredAndUnclaimedInvoices.length === 0) {
+			return;
+		}
+
+		const filteredInvoices = invoices.filter(
+			(it) => !expiredAndUnclaimedInvoices.includes(it),
+		);
+
+		await ldk.writeToLogFile(
+			'info',
+			`Removing ${expiredAndUnclaimedInvoices.length} expired and unclaimed invoices.`,
+		);
+		await ldk.writeToFile({
+			fileName: ELdkFiles.bolt11_invoices,
+			content: JSON.stringify(filteredInvoices),
+			remotePersist: false,
+		});
 	}
 }
 
