@@ -2,6 +2,7 @@ import { LogBox } from 'react-native';
 
 const ENABLE_LOGBOX = true;
 const ENABLE_LDK_LOGS = true;
+const ENABLE_TX_LOGS = true;
 
 if (__DEV__) {
 	const ignoredLogs: string[] = [];
@@ -15,6 +16,10 @@ if (__DEV__) {
 
 	if (!ENABLE_LDK_LOGS) {
 		ignoredLogs.push('LDK:', 'react-native-ldk:', 'DEBUG (JS)', 'ERROR (JS)');
+	}
+
+	if (!ENABLE_TX_LOGS) {
+		ignoredLogs.push('INFO (JS)', 'broadcastTransaction');
 	}
 
 	const withoutIgnored = (
