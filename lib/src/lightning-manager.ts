@@ -641,7 +641,10 @@ class LightningManager {
 			});
 		}
 
+		// Awaiting because sync is often followed by reading from the files
+		// that might be overwritten by the cleanups below.
 		await this.removeExpiredAndUnclaimedInvoices();
+		await this.removeStalePaymentClaims();
 
 		this.isSyncing = false;
 
@@ -1379,8 +1382,6 @@ class LightningManager {
 		return [];
 	};
 
-	//TODO Remove any stale payments from storage if stuck for 60min. No payment claim should be stuck that long.
-
 	/**
 	 * Returns the previously created bolt11 invoices.
 	 * @returns {@link TBolt11Invoices}
@@ -2006,6 +2007,38 @@ class LightningManager {
 			fileName: ELdkFiles.bolt11_invoices,
 			content: JSON.stringify(filteredInvoices),
 			remotePersist: false,
+		});
+	}
+
+	private async removeStalePaymentClaims(): Promise<void> {
+		const claims = await this.getLdkPaymentsClaimed();
+		const staleClaims: TChannelManagerClaim[] = [];
+
+		for (let index = 0; index < claims.length; index++) {
+			const payment = claims[index];
+			const isPending = payment.state === 'pending';
+			const age = Date.now() - payment.unix_timestamp * 1000;
+			const isStale = age > MAX_PENDING_PAY_AGE;
+			if (isPending && isStale) {
+				staleClaims.push(payment);
+			}
+		}
+
+		if (staleClaims.length === 0) {
+			return;
+		}
+
+		const filteredClaims = claims.filter((it) => !staleClaims.includes(it));
+
+		await ldk.writeToLogFile(
+			'info',
+			`Removing ${staleClaims.length} stale payment claims.`,
+		);
+
+		await ldk.writeToFile({
+			fileName: ELdkFiles.payments_claimed,
+			content: JSON.stringify(filteredClaims),
+			remotePersist: true,
 		});
 	}
 }
