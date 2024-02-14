@@ -493,7 +493,8 @@ const Dev = (): ReactElement => {
 									},
 									{
 										text: `${amountSats} sats`,
-										onPress: async (): Promise<void> => createInvoice(amountSats),
+										onPress: async (): Promise<void> =>
+											createInvoice(amountSats),
 									},
 									{
 										text: "Don't specify",
@@ -530,7 +531,9 @@ const Dev = (): ReactElement => {
 											onPress: async (): Promise<void> => {
 												const pay = await lm.payWithTimeout({
 													paymentRequest,
-													amountSats: amount_satoshis ? undefined : ownAmountSats,
+													amountSats: amount_satoshis
+														? undefined
+														: ownAmountSats,
 													timeout: 20000,
 												});
 												if (pay.isErr()) {
