@@ -488,6 +488,8 @@ class LightningManager {
 
 		//Can continue in the background
 		this.syncLdk().catch(console.error);
+		this.removeExpiredAndUnclaimedInvoices().catch(console.error);
+		this.removeStalePaymentClaims().catch(console.error);
 
 		//Writes node state to log files
 		ldk.nodeStateDump().catch(console.error);
@@ -640,11 +642,6 @@ class LightningManager {
 				e: unconfirmedTxsRes,
 			});
 		}
-
-		// Awaiting because sync is often followed by reading from the files
-		// that might be overwritten by the cleanups below.
-		await this.removeExpiredAndUnclaimedInvoices();
-		await this.removeStalePaymentClaims();
 
 		this.isSyncing = false;
 
