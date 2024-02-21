@@ -1,7 +1,7 @@
 {
   "name": "@synonymdev/react-native-ldk",
   "title": "React Native LDK",
-  "version": "0.0.129",
+  "version": "0.0.130",
   "description": "React Native wrapper for LDK",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

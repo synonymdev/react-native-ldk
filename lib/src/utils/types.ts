@@ -68,6 +68,7 @@ export type TChannelManagerClaim = {
 };
 
 export type TChannelManagerPaymentSent = {
+	bolt11_invoice?: string;
 	payment_id: string;
 	payment_preimage?: string;
 	payment_hash: string;

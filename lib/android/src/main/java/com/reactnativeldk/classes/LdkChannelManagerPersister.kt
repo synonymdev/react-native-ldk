@@ -74,7 +74,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             body.putHexString("payment_hash", (paymentPathSuccessful.payment_hash as Option_ThirtyTwoBytesZ.Some).some)
 
             val pathHops = Arguments.createArray()
-            println(paymentPathSuccessful.path)
+            event.path._hops.forEach { pathHops.pushMap(it.asJson) }
             body.putArray("path_hops", pathHops)
 
             return LdkEventEmitter.send(EventTypes.channel_manager_payment_path_successful, body)
