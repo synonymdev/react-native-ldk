@@ -375,7 +375,7 @@ PODS:
   - React-jsinspector (0.72.4)
   - React-logger (0.72.4):
     - glog
-  - react-native-ldk (0.0.130):
+  - react-native-ldk (0.0.132):
     - React
   - react-native-randombytes (3.6.1):
     - React-Core
@@ -723,7 +723,7 @@ SPEC CHECKSUMS:
   React-jsiexecutor: c7f826e40fa9cab5d37cab6130b1af237332b594
   React-jsinspector: aaed4cf551c4a1c98092436518c2d267b13a673f
   React-logger: da1ebe05ae06eb6db4b162202faeafac4b435e77
-  react-native-ldk: 70917f83fc99eab2fbd6df0edbd7ebd217bad7ea
+  react-native-ldk: 4bb809be74082223644931a3239323af56c7ee8f
   react-native-randombytes: 421f1c7d48c0af8dbcd471b0324393ebf8fe7846
   react-native-tcp-socket: c1b7297619616b4c9caae6889bcb0aba78086989
   React-NativeModulesApple: edb5ace14f73f4969df6e7b1f3e41bef0012740f
