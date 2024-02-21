@@ -792,6 +792,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             UtilMethods.pay_invoice(invoice, Retry.timeout(timeoutSeconds.toLong()), channelManager)
         if (res.is_ok) {
             channelManagerPersister.persistPaymentSent(hashMapOf(
+                "bolt11_invoice" to paymentRequest,
                 "payment_id" to (res as Result_ThirtyTwoBytesPaymentErrorZ.Result_ThirtyTwoBytesPaymentErrorZ_OK).res.hexEncodedString(),
                 "payment_hash" to invoice.payment_hash().hexEncodedString(),
                 "amount_sat" to if (isZeroValueInvoice) amountSats.toLong() else ((invoice.amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000),
@@ -859,7 +860,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             description,
             expiryDelta.toInt(),
             Option_u16Z.none()
-        );
+        )
 
         if (res.is_ok) {
             return promise.resolve((res as Result_Bolt11InvoiceSignOrCreationErrorZ_OK).res.asJson)
