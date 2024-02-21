@@ -9,7 +9,7 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.android.tools.build:gradle:3.2.1'
+    classpath 'com.android.tools.build:gradle:3.5.4'
     // noinspection DifferentKotlinGradleVersion
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
   }
@@ -63,7 +63,7 @@ repositories {
   } else {
     defaultDir = new File(
             projectDir,
-            '/../../../node_modules/react-native/android'
+            '/../../example/node_modules/react-native/android'
     )
   }
 
@@ -126,6 +126,6 @@ dependencies {
   // noinspection GradleDynamicVersion
   api 'com.facebook.react:react-native:+'
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-  // implementation files('ldk-java-javadoc.jar') //Used to get code completion in Kotlin but won't compile with it
+  // implementation files('libs/ldk-java-javadoc.jar') // Used to get code completion in Kotlin but won't compile with it
   compileOnly files('libs/LDK-release.aar')
 }
