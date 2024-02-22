@@ -5,6 +5,7 @@ import com.facebook.react.bridge.WritableMap
 import com.reactnativeldk.*
 import org.json.JSONArray
 import org.ldk.batteries.ChannelManagerConstructor
+import org.ldk.structs.ClosureReason
 import org.ldk.structs.Event
 import org.ldk.structs.Option_ThirtyTwoBytesZ
 import org.ldk.structs.Option_u64Z
@@ -17,7 +18,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             val body = Arguments.createMap()
             body.putHexString("temp_channel_id", fundingGenerationReady.temporary_channel_id)
             body.putHexString("output_script", fundingGenerationReady.output_script)
-            body.putString("user_channel_id", fundingGenerationReady.user_channel_id.toString())
+            body.putString("user_channel_id", fundingGenerationReady.user_channel_id.leBytes.hexEncodedString())
             body.putInt("value_satoshis", fundingGenerationReady.channel_value_satoshis.toInt())
             return LdkEventEmitter.send(EventTypes.channel_manager_funding_generation_ready, body)
         }
@@ -143,9 +144,23 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
 
         (event as? Event.ChannelClosed)?.let { channelClosed ->
             val body = Arguments.createMap()
-            body.putString("user_channel_id", channelClosed.user_channel_id.toString())
+            body.putString("user_channel_id", channelClosed.user_channel_id.leBytes.hexEncodedString())
             body.putHexString("channel_id", channelClosed.channel_id)
-            body.putHexString("reason", channelClosed.reason.write())
+            val reasonString = when (channelClosed.reason) {
+                is ClosureReason.CommitmentTxConfirmed -> "CommitmentTxConfirmed"
+                is ClosureReason.CooperativeClosure -> "CooperativeClosure"
+                is ClosureReason.CounterpartyCoopClosedUnfundedChannel -> "CounterpartyCoopClosedUnfundedChannel"
+                is ClosureReason.CounterpartyForceClosed -> "CounterpartyForceClosed"
+                is ClosureReason.DisconnectedPeer -> "DisconnectedPeer"
+                is ClosureReason.FundingBatchClosure -> "FundingBatchClosure"
+                is ClosureReason.FundingTimedOut -> "FundingTimedOut"
+                is ClosureReason.HolderForceClosed -> "HolderForceClosed"
+                is ClosureReason.OutdatedChannelManager -> "OutdatedChannelManager"
+                is ClosureReason.ProcessingError -> "ProcessingError"
+                else -> "Unknown"
+            }
+            body.putString("reason", reasonString)
+
             return LdkEventEmitter.send(EventTypes.channel_manager_channel_closed, body)
         }
 
