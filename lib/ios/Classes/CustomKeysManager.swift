@@ -30,12 +30,15 @@ class CustomKeysManager {
     func spendSpendableOutputs(descriptors: [SpendableOutputDescriptor], outputs: [Bindings.TxOut], changeDestinationScript: [UInt8], feerateSatPer1000Weight: UInt32, locktime: UInt32?) -> Result_TransactionNoneZ {
         let onlyNonStatic: [SpendableOutputDescriptor] = descriptors.filter { desc in
             if desc.getValueType() == .StaticOutput {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping static output: \(Data(desc.getValueAsStaticOutput()?.getOutput().getScriptPubkey() ?? []).hexEncodedString())")
                 return false
             }
             
             return true
         }
-                
+        
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Spending \(onlyNonStatic.count) non static outputs")
+        
         let res = self.inner.spendSpendableOutputs(
             descriptors: onlyNonStatic,
             outputs: outputs,

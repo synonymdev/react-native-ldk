@@ -114,7 +114,6 @@ enum LdkFileNames: String, CaseIterable {
     case scorer = "scorer.bin"
     case payments_claimed = "payments_claimed.json"
     case payments_sent = "payments_sent.json"
-    case channel_opened_with_custom_keys_manager = "channel_opened_with_custom_keys_manager.json"
 }
 
 @objc(Ldk)
@@ -496,19 +495,6 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
-        
-        //TODO temp update to make sure file that wasn't being backuped up now is at least once. Can be removed in a few updates.
-        //*******************************
-        Task {
-            if let channelsOpenedWithCustomKeysManagerFile = Ldk.accountStoragePath?.appendingPathComponent(LdkFileNames.channel_opened_with_custom_keys_manager.rawValue) {
-                if FileManager.default.fileExists(atPath: channelsOpenedWithCustomKeysManagerFile.path) {
-                    if let data = try? Data(contentsOf: URL(fileURLWithPath: channelsOpenedWithCustomKeysManagerFile.path), options: .mappedIfSafe) {
-                        BackupClient.addToPersistQueue(.misc(fileName: LdkFileNames.channel_opened_with_custom_keys_manager.rawValue), [UInt8](data))
-                    }
-                }
-            }
-        }
-        //*******************************
            
         return handleResolve(resolve, .channel_manager_init_success)
     }
@@ -811,7 +797,9 @@ class Ldk: NSObject {
             ldkOutputs.append(TxOut(scriptPubkey: (d["script_pubkey"] as! String).hexaBytes, value: d["value"] as! UInt64))
         }
         
-        let res = keysManager.inner.spendSpendableOutputs(
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Spending \(ldkOutputs.count) output/s")
+        
+        let res = keysManager.spendSpendableOutputs(
             descriptors: ldkDescriptors,
             outputs: ldkOutputs,
             changeDestinationScript: String(changeDestinationScript).hexaBytes,
