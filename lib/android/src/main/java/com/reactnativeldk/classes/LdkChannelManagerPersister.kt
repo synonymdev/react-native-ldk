@@ -128,10 +128,6 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         }
 
         (event as? Event.SpendableOutputs)?.let { spendableOutputs ->
-            if (channelWasOpenedWithNewCustomKeysManager((spendableOutputs.channel_id as Option_ThirtyTwoBytesZ.Some).some)) {
-                return
-            }
-
             val body = Arguments.createMap()
             val outputs = Arguments.createArray()
             spendableOutputs.outputs.iterator().forEach {

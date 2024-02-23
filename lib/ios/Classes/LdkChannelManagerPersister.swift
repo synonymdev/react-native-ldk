@@ -195,15 +195,6 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 return handleEventError(event)
             }
             
-            if let channelId = spendableOutputs.getChannelId() {
-                // Ensure channel was NOT opened with custom destination script. For existing channels (prior custom keys manager) we have to still sweep the output back to onchain wallet.
-                // This check and channel_manager_spendable_outputs event can probably be removed in the future.
-                guard !channelWasOpenedWithNewCustomKeysManager(channelId: channelId) else {
-                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping event channel_manager_spendable_outputs as channel (\(Data(channelId).hexEncodedString()) was opened with new custom keys manager")
-                    return
-                }
-            }
-            
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_spendable_outputs,
                 body: [
