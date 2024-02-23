@@ -133,7 +133,6 @@ enum class LdkFileNames(val fileName: String) {
     Scorer("scorer.bin"),
     PaymentsClaimed("payments_claimed.json"),
     PaymentsSent("payments_sent.json"),
-    ChannelOpenedWithCustomKeysManager("channel_opened_with_custom_keys_manager.json"),
 }
 
 class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -502,23 +501,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         currentBlockchainHeight = blockHeight
 
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
-
-        //TODO remove after a few updates
-        //Temp function as original file was named incorrectly and doesn't match ios or backup server
-        //*******************************
-        if (accountStoragePath != "") {
-            val wrongName = "channels_opened_with_custom_keys_manager.json"
-            val correctName = LdkFileNames.ChannelOpenedWithCustomKeysManager.fileName
-            try {
-                if (File(accountStoragePath + "/" + wrongName).exists()) {
-                    File(accountStoragePath + "/" + wrongName).renameTo(File(accountStoragePath + "/" + correctName))
-                    BackupClient.addToPersistQueue(BackupClient.Label.MISC(correctName), File(accountStoragePath + "/" + correctName).readBytes())
-                }
-            } catch (e: Exception) {
-                LdkEventEmitter.send(EventTypes.native_log, "Error could not rename channel list file")
-            }
-        }
-        //*******************************
     }
     @ReactMethod
     fun restart(promise: Promise) {
@@ -736,6 +718,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 TxOut((outputMap.get("value") as Double).toLong(), (outputMap.get("script_pubkey") as String).hexa())
             )
         }
+
+        LdkEventEmitter.send(EventTypes.native_log, "Spending ${ldkOutputs.count()} outputs")
 
         val res = keysManager!!.spend_spendable_outputs(
             ldkDescriptors.toTypedArray(),

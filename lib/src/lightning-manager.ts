@@ -1837,9 +1837,6 @@ class LightningManager {
 	private async onChannelManagerSpendableOutputs(
 		res: TChannelManagerSpendableOutputs,
 	): Promise<void> {
-		console.warn(
-			'onChannelManagerSpendableOutputs deprecated. You should only be seeing this if recently closed channel was opened prior to custom keys manager.',
-		);
 		const spendableOutputs = await this.getLdkSpendableOutputs();
 		res.outputsSerialized.forEach((o) => {
 			if (!spendableOutputs.includes(o)) {
