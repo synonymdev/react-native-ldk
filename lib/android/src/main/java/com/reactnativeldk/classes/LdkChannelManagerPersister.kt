@@ -129,10 +129,6 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         }
 
         (event as? Event.SpendableOutputs)?.let { spendableOutputs ->
-            if (channelWasOpenedWithNewCustomKeysManager((spendableOutputs.channel_id as Option_ThirtyTwoBytesZ.Some).some)) {
-                return
-            }
-
             val body = Arguments.createMap()
             val outputs = Arguments.createArray()
             spendableOutputs.outputs.iterator().forEach {
@@ -190,11 +186,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         }
 
         (event as? Event.ChannelReady)?.let { channelReady ->
-            persistChannelOpenedWithNewCustomKeysManager(channelReady.channel_id)
         }
 
         (event as? Event.ChannelPending)?.let { channelPending ->
-            persistChannelOpenedWithNewCustomKeysManager(channelPending.channel_id)
         }
     }
 
@@ -314,59 +308,5 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
 
         BackupClient.addToPersistQueue(BackupClient.Label.MISC(LdkFileNames.PaymentsSent.fileName), JSONArray(payments).toString().toByteArray())
         File(LdkModule.accountStoragePath + "/" + LdkFileNames.PaymentsSent.fileName).writeText(JSONArray(payments).toString())
-    }
-
-    // If a channel was opened with the new custom keys manager then spendable outputs from a channel close  will already be spendable by the on chain wallet and there is no need to sweep.
-    // TODO remove all these checks at some point in the future once certain all old channels opened prior to this update have been long closed.
-    private fun persistChannelOpenedWithNewCustomKeysManager(channelId: ByteArray) {
-        if (LdkModule.accountStoragePath == "") {
-            LdkEventEmitter.send(EventTypes.native_log, "Error. Failed to persist channel opened with new custom keys manager to disk (No set storage)")
-            return
-        }
-
-        val id = channelId.hexEncodedString()
-        val existingIds = ArrayList<String>()
-        try {
-            if (File(LdkModule.accountStoragePath + "/" + LdkFileNames.ChannelOpenedWithCustomKeysManager.fileName).exists()) {
-                val data = File(LdkModule.accountStoragePath + "/" + LdkFileNames.ChannelOpenedWithCustomKeysManager.fileName).readBytes()
-                val existingIdsArray = JSONArray(String(data))
-                for (i in 0 until existingIdsArray.length()) {
-                    existingIds.add(existingIdsArray.getString(i))
-                }
-            }
-
-            if (!existingIds.contains(id)) {
-                existingIds.add(id)
-
-                File(LdkModule.accountStoragePath + "/" + LdkFileNames.ChannelOpenedWithCustomKeysManager.fileName).writeText(JSONArray(existingIds).toString())
-
-                BackupClient.addToPersistQueue(BackupClient.Label.MISC(LdkFileNames.ChannelOpenedWithCustomKeysManager.fileName), JSONArray(existingIds).toString().toByteArray())
-            }
-        } catch (e: Exception) {
-            LdkEventEmitter.send(EventTypes.native_log, "Error could not read existing ChannelOpenedWithNewCustomKeysManager")
-        }
-    }
-
-    private fun channelWasOpenedWithNewCustomKeysManager(channelId: ByteArray): Boolean {
-        if (LdkModule.accountStoragePath == "") {
-            LdkEventEmitter.send(EventTypes.native_log, "Error. Failed to check if channel was opened with new custom keys manager (No set storage)")
-            return false
-        }
-
-        val id = channelId.hexEncodedString()
-        val existingIds = ArrayList<String>()
-        try {
-            if (File(LdkModule.accountStoragePath + "/" + LdkFileNames.ChannelOpenedWithCustomKeysManager.fileName).exists()) {
-                val data = File(LdkModule.accountStoragePath + "/" + LdkFileNames.ChannelOpenedWithCustomKeysManager.fileName).readBytes()
-                val existingIdsArray = JSONArray(String(data))
-                for (i in 0 until existingIdsArray.length()) {
-                    existingIds.add(existingIdsArray.getString(i))
-                }
-            }
-        } catch (e: Exception) {
-            LdkEventEmitter.send(EventTypes.native_log, "Error could not read existing ChannelOpenedWithNewCustomKeysManager")
-        }
-
-        return existingIds.contains(id)
     }
 }

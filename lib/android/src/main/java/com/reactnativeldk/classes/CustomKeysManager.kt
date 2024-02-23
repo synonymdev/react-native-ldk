@@ -1,5 +1,7 @@
 package com.reactnativeldk.classes
 
+import com.reactnativeldk.EventTypes
+import com.reactnativeldk.LdkEventEmitter
 import org.ldk.structs.KeysManager
 import org.ldk.structs.Option_u32Z
 import org.ldk.structs.Result_CVec_u8ZNoneZ
@@ -41,6 +43,8 @@ class CustomKeysManager(
         val onlyNonStatic: Array<SpendableOutputDescriptor> = descriptors.filter {
             it as? SpendableOutputDescriptor.StaticOutput == null
         }.toTypedArray()
+
+        LdkEventEmitter.send(EventTypes.native_log, "Spending ${onlyNonStatic.count()} non static outputs")
 
         return inner.spend_spendable_outputs(
             onlyNonStatic,
