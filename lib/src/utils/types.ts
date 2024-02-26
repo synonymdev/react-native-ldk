@@ -55,7 +55,7 @@ export type TChannelManagerFundingGenerationReady = {
 	value_satoshis: number;
 };
 
-type TPaymentState = 'pending' | 'failed' | 'successful';
+export type TPaymentState = 'pending' | 'failed' | 'successful';
 
 export type TChannelManagerClaim = {
 	payment_hash: string;
