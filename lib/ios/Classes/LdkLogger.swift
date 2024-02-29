@@ -27,7 +27,7 @@ fileprivate func levelString(_ level: Level) -> String {
     }
 }
 
-class LdkLogger: Logger {
+class LdkLogger: LightningDevKit.Bindings.Logger {
     var activeLevels: [String: Bool] = [:]
     
     override func log(record: Record) {
