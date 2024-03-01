@@ -14,18 +14,18 @@ import java.util.Date
 
 fun handleResolve(promise: Promise, res: LdkCallbackResponses) {
     if (res != LdkCallbackResponses.log_write_success) {
-        LdkEventEmitter.send(EventTypes.native_log, "Success: ${res}")
+        LdkEventEmitter.send(EventTypes.native_log, "Success: $res")
     }
-    promise.resolve(res.toString());
+    promise.resolve(res.name)
 }
 
 fun handleReject(promise: Promise, ldkError: LdkErrors, error: Error? = null) {
-    if (error !== null) {
-        LdkEventEmitter.send(EventTypes.native_log, "Error: ${ldkError}. Message: ${error.toString()}")
-        promise.reject(ldkError.toString(), error);
+    if (error != null) {
+        LdkEventEmitter.send(EventTypes.native_log, "Error: $ldkError. Message: ${error.message}")
+        promise.reject(ldkError.name, error)
     } else {
-        LdkEventEmitter.send(EventTypes.native_log, "Error: ${ldkError}")
-        promise.reject(ldkError.toString(), ldkError.toString())
+        LdkEventEmitter.send(EventTypes.native_log, "Error: $ldkError")
+        promise.reject(ldkError.name, ldkError.name)
     }
 }
 
@@ -383,9 +383,6 @@ fun ChannelConfig.mergeWithMap(map: ReadableMap?): ChannelConfig {
         return this
     }
 
-    try {
-        _forwarding_fee_base_msat = map.getInt("forwarding_fee_base_msat")
-    } catch (_: Exception) {}
     try {
         _forwarding_fee_base_msat = map.getInt("forwarding_fee_base_msat")
     } catch (_: Exception) {}

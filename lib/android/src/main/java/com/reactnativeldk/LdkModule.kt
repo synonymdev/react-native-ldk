@@ -1,5 +1,7 @@
 package com.reactnativeldk
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 import com.reactnativeldk.classes.*
@@ -111,6 +113,7 @@ enum class LdkCallbackResponses {
     add_peer_success,
     chain_sync_success,
     invoice_payment_success,
+    abandon_payment_success,
     tx_set_confirmed,
     tx_set_unconfirmed,
     process_pending_htlc_forwards_success,
@@ -141,9 +144,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         LdkEventEmitter.setContext(reactContext)
     }
 
-    override fun getName(): String {
-        return "Ldk"
-    }
+    override fun getName() = "Ldk"
 
     //Zero config objects lazy loaded into memory when required
     private val feeEstimator: LdkFeeEstimator by lazy { LdkFeeEstimator() }
@@ -183,7 +184,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         channelStoragePath = ""
     }
 
-    //Startup methods
+    //MARK: Startup methods
 
     @ReactMethod
     fun setAccountStoragePath(storagePath: String, promise: Promise) {
@@ -204,7 +205,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         LdkModule.accountStoragePath = accountStoragePath.absolutePath
         LdkModule.channelStoragePath = channelStoragePath.absolutePath
 
-        handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
+        handleResolve(promise, LdkCallbackResponses.storage_path_set)
     }
 
     @ReactMethod
@@ -212,8 +213,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val logFile = File(path)
 
         try {
-            if (!logFile.parentFile.exists()) {
-                logFile.parentFile.mkdirs()
+            if (logFile.parentFile?.exists() == false) {
+                logFile.parentFile?.mkdirs()
             }
         } catch (e: Exception) {
             return handleReject(promise, LdkErrors.create_storage_dir_fail, Error(e))
@@ -259,47 +260,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun initUserConfig(userConfig: ReadableMap, promise: Promise) {
-        if (this.userConfig !== null) {
+        if (this.userConfig != null) {
             return handleReject(promise, LdkErrors.already_init)
         }
 
         this.userConfig = UserConfig.with_default().mergeWithMap(userConfig)
 
         handleResolve(promise, LdkCallbackResponses.config_init_success)
-    }
-
-    @ReactMethod
-    fun downloadScorer(scorerSyncUrl: String, skipHoursThreshold: Double, promise: Promise) {
-        val scorerFile = File(accountStoragePath + "/" + LdkFileNames.Scorer.fileName)
-        //If old one is still recent, skip download. Else delete it.
-        if (scorerFile.exists()) {
-            val lastModifiedHours = (System.currentTimeMillis().toDouble() - scorerFile.lastModified().toDouble()) / 1000 / 60 / 60
-            if (lastModifiedHours < skipHoursThreshold) {
-                LdkEventEmitter.send(EventTypes.native_log, "Skipping scorer download. Last updated $lastModifiedHours hours ago.")
-                return handleResolve(promise, LdkCallbackResponses.scorer_download_skip)
-            }
-
-            scorerFile.delete()
-        }
-
-        Thread(Runnable {
-            val destinationFile = accountStoragePath + "/" + LdkFileNames.Scorer.fileName
-
-            URL(scorerSyncUrl).downloadFile(destinationFile) { error ->
-                if (error != null) {
-                    UiThreadUtil.runOnUiThread {
-                        handleReject(promise, LdkErrors.scorer_download_fail, Error(error))
-                    }
-                    return@downloadFile
-                }
-
-                UiThreadUtil.runOnUiThread {
-                    LdkEventEmitter.send(EventTypes.native_log, "Scorer downloaded successfully.")
-                    handleResolve(promise, LdkCallbackResponses.scorer_download_success)
-                }
-                return@downloadFile
-            }
-        }).start()
     }
 
     @ReactMethod
@@ -353,7 +320,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 LdkEventEmitter.send(EventTypes.native_log, "Rapid gossip sync fail. " + error.localizedMessage)
 
                 //Temp fix for when a RGS server is changed or reset
-                if (error.localizedMessage.contains("LightningError")) {
+                if (error.localizedMessage?.contains("LightningError") == true) {
                     if (networkGraphFile.exists()) {
                         networkGraphFile.delete()
                     }
@@ -383,26 +350,59 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
+    fun downloadScorer(scorerSyncUrl: String, skipHoursThreshold: Double, promise: Promise) {
+        val scorerFile = File(accountStoragePath + "/" + LdkFileNames.Scorer.fileName)
+        //If old one is still recent, skip download. Else delete it.
+        if (scorerFile.exists()) {
+            val lastModifiedHours = (System.currentTimeMillis().toDouble() - scorerFile.lastModified().toDouble()) / 1000 / 60 / 60
+            if (lastModifiedHours < skipHoursThreshold) {
+                LdkEventEmitter.send(EventTypes.native_log, "Skipping scorer download. Last updated $lastModifiedHours hours ago.")
+                return handleResolve(promise, LdkCallbackResponses.scorer_download_skip)
+            }
+
+            scorerFile.delete()
+        }
+
+        Thread {
+            val destinationFile = accountStoragePath + "/" + LdkFileNames.Scorer.fileName
+
+            URL(scorerSyncUrl).downloadFile(destinationFile) { error ->
+                if (error != null) {
+                    UiThreadUtil.runOnUiThread {
+                        handleReject(promise, LdkErrors.scorer_download_fail, Error(error))
+                    }
+                    return@downloadFile
+                }
+
+                UiThreadUtil.runOnUiThread {
+                    LdkEventEmitter.send(EventTypes.native_log, "Scorer downloaded successfully.")
+                    handleResolve(promise, LdkCallbackResponses.scorer_download_success)
+                }
+                return@downloadFile
+            }
+        }.start()
+    }
+
+    @ReactMethod
+    @RequiresApi(Build.VERSION_CODES.O)
     fun initChannelManager(network: String, blockHash: String, blockHeight: Double, promise: Promise) {
-        if (channelManager !== null) {
+        // Guards to ensure properly initialized so far
+        if (channelManager != null) {
             return handleReject(promise, LdkErrors.already_init)
         }
 
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
         userConfig ?: return handleReject(promise, LdkErrors.init_user_config)
         networkGraph ?: return handleReject(promise, LdkErrors.init_network_graph)
-        if (accountStoragePath == "") {
-            return handleReject(promise, LdkErrors.init_storage_path)
-        }
-        if (channelStoragePath == "") {
+
+        if (accountStoragePath == "" || channelStoragePath == "") {
             return handleReject(promise, LdkErrors.init_storage_path)
         }
 
         ldkNetwork = getNetwork(network).first
         ldkCurrency = getNetwork(network).second
 
-        val enableP2PGossip = rapidGossipSync == null
-
+        // Load channel manager from disk if it exists
         var channelManagerSerialized: ByteArray? = null
         val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.ChannelManager.fileName)
         if (channelManagerFile.exists()) {
@@ -433,24 +433,22 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         )
 
         try {
+            val entropySource = keysManager!!.inner.as_EntropySource()
+            val nodeSigner = keysManager!!.inner.as_NodeSigner()
+            val signerProvider = SignerProvider.new_impl(keysManager!!.signerProvider)
+
             if (channelManagerSerialized != null) {
-                //Restoring node
+                // Restoring node
                 LdkEventEmitter.send(EventTypes.native_log, "Restoring node from disk")
-                val channelMonitors: MutableList<ByteArray> = arrayListOf()
-                Files.walk(Paths.get(channelStoragePath))
-                    .filter { Files.isRegularFile(it) }
-                    .forEach {
-                        LdkEventEmitter.send(EventTypes.native_log, "Loading channel from file " + it.fileName)
-                        channelMonitors.add(it.toFile().readBytes())
-                    }
+                val channelMonitors = readChannelMonitorsFromStorage()
 
                 channelManagerConstructor = ChannelManagerConstructor(
                     channelManagerSerialized,
-                    channelMonitors.toTypedArray(),
+                    channelMonitors,
                     userConfig!!,
-                    keysManager!!.inner.as_EntropySource(),
-                    keysManager!!.inner.as_NodeSigner(),
-                    SignerProvider.new_impl(keysManager!!.signerProvider),
+                    entropySource,
+                    nodeSigner,
+                    signerProvider,
                     feeEstimator.feeEstimator,
                     chainMonitor!!,
                     filter.filter,
@@ -463,16 +461,16 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     logger.logger
                 )
             } else {
-                //New node
+                // New node
                 LdkEventEmitter.send(EventTypes.native_log, "Creating new channel manager")
                 channelManagerConstructor = ChannelManagerConstructor(
                     ldkNetwork,
                     userConfig,
                     blockHash.hexa().reversedArray(),
                     blockHeight.toInt(),
-                    keysManager!!.inner.as_EntropySource(),
-                    keysManager!!.inner.as_NodeSigner(),
-                    SignerProvider.new_impl(keysManager!!.signerProvider),
+                    entropySource,
+                    nodeSigner,
+                    signerProvider,
                     feeEstimator.feeEstimator,
                     chainMonitor,
                     networkGraph!!,
@@ -491,9 +489,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         LogFile.write("Node ID: ${channelManager!!._our_node_id.hexEncodedString()}")
 
+        val enableP2PGossip = rapidGossipSync == null
         channelManagerConstructor!!.chain_sync_completed(channelManagerPersister, enableP2PGossip)
-        peerManager = channelManagerConstructor!!.peer_manager
 
+        peerManager = channelManagerConstructor!!.peer_manager
         peerHandler = channelManagerConstructor!!.nio_peer_handler
 
         //Cached for restarts
@@ -503,7 +502,24 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
     }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun readChannelMonitorsFromStorage(): Array<ByteArray> {
+        val channelMonitors = mutableListOf<ByteArray>()
+        Files.walk(Paths.get(channelStoragePath))
+            .filter { Files.isRegularFile(it) }
+            .forEach {
+                LdkEventEmitter.send(
+                    EventTypes.native_log,
+                    "Loading channel from file " + it.fileName
+                )
+                channelMonitors.add(it.toFile().readBytes())
+            }
+        return channelMonitors.toTypedArray()
+    }
+
     @ReactMethod
+    @RequiresApi(Build.VERSION_CODES.O)
     fun restart(promise: Promise) {
         if (channelManagerConstructor == null) {
             return handleReject(promise, LdkErrors.init_channel_manager)
@@ -526,15 +542,15 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         LdkEventEmitter.send(EventTypes.native_log, "Starting LDK background tasks again")
 
         val initPromise = PromiseImpl(
-            { resolve ->
+            {
                 LdkEventEmitter.send(EventTypes.channel_manager_restarted, "")
                 LdkEventEmitter.send(EventTypes.native_log, "LDK restarted successfully")
                 handleResolve(promise, LdkCallbackResponses.ldk_restart)
-        },
+            },
             { reject ->
                 LdkEventEmitter.send(EventTypes.native_log, "Error restarting LDK. Error: $reject")
                 handleReject(promise, LdkErrors.unknown_error)
-        })
+            })
 
         initChannelManager(
             currentNetwork,
@@ -614,13 +630,12 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val confirmTxData: MutableList<TwoTuple_usizeTransactionZ> = ArrayList()
 
-        var msg = ""
         txData.toArrayList().iterator().forEach { tx ->
             val txMap = tx as HashMap<*, *>
             confirmTxData.add(
                 TwoTuple_usizeTransactionZ.of(
-                    (txMap.get("pos") as Double).toLong(),
-                    (txMap.get("transaction") as String).hexa()
+                    (txMap["pos"] as Double).toLong(),
+                    (txMap["transaction"] as String).hexa()
                 )
             )
         }
@@ -677,7 +692,12 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun closeChannel(channelId: String, counterpartyNodeId: String, force: Boolean, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
-        val res = if (force) channelManager!!.force_close_broadcasting_latest_txn(channelId.hexa(), counterpartyNodeId.hexa()) else channelManager!!.close_channel(channelId.hexa(), counterpartyNodeId.hexa())
+        val res =
+            if (force) channelManager!!.force_close_broadcasting_latest_txn(
+                channelId.hexa(),
+                counterpartyNodeId.hexa()
+            )
+            else channelManager!!.close_channel(channelId.hexa(), counterpartyNodeId.hexa())
         if (!res.is_ok) {
             return handleReject(promise, LdkErrors.channel_close_fail)
         }
@@ -716,7 +736,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         outputs.toArrayList().iterator().forEach { output ->
             val outputMap = output as HashMap<*, *>
             ldkOutputs.add(
-                TxOut((outputMap.get("value") as Double).toLong(), (outputMap.get("script_pubkey") as String).hexa())
+                TxOut((outputMap["value"] as Double).toLong(), (outputMap["script_pubkey"] as String).hexa())
             )
         }
 
@@ -818,7 +838,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 return handleReject(promise, LdkErrors.invoice_payment_fail_path_parameter_error, Error(paymentPartialFailure.toString()))
             }
 
-            return handleReject(promise, LdkErrors.invoice_payment_fail_sending, Error("PaymentError.Sending"))
+            return handleReject(promise, LdkErrors.invoice_payment_fail_sending, Error("PaymentError.Sending: ${sendingError.sending.name}"))
         }
 
         return handleReject(promise, LdkErrors.invoice_payment_fail_unknown)
@@ -829,6 +849,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
         channelManager!!.abandon_payment(paymentId.hexa())
+
+        handleResolve(promise, LdkCallbackResponses.abandon_payment_success)
     }
 
     @ReactMethod
@@ -925,6 +947,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
+    @RequiresApi(Build.VERSION_CODES.O)
     fun listChannelFiles(promise: Promise) {
         if (channelStoragePath == "") {
             return handleReject(promise, LdkErrors.init_storage_path)
@@ -1006,8 +1029,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val ignoredChannels = if (ignoreOpenChannels)
             channelManager.list_channels() else
             arrayOf<ChannelDetails>()
-
-
 
         promise.resolve(chainMonitor.getClaimableBalancesAsJson(ignoredChannels))
     }
@@ -1213,7 +1234,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         channelManagerConstructor?.net_graph?._last_rapid_gossip_sync_timestamp?.let { res ->
-            val syncTimestamp = if (res is Option_u32Z.Some) (res as Option_u32Z.Some).some.toLong() else 0
+            val syncTimestamp = if (res is Option_u32Z.Some) res.some.toLong() else 0
             if (syncTimestamp == 0L) {
                 logDump.add("Last rapid gossip sync time: NEVER")
             } else {
@@ -1248,7 +1269,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         promise.resolve(logString)
     }
 
-    //Backup methods
+    //MARK: Backup methods
     @ReactMethod
     fun backupSetup(seed: String, network: String, server: String, serverPubKey: String, promise: Promise) {
         val seedBytes = seed.hexa()
@@ -1407,6 +1428,6 @@ object LdkEventEmitter {
             return
         }
 
-        this.reactContext!!.getJSModule(RCTDeviceEventEmitter::class.java).emit(eventType.toString(), body)
+        this.reactContext!!.getJSModule(RCTDeviceEventEmitter::class.java).emit(eventType.name, body)
     }
 }
