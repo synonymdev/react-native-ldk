@@ -1,10 +1,13 @@
 package com.reactnativeldk.classes
+
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
+import com.reactnativeldk.UiThreadDebouncer
 import com.reactnativeldk.EventTypes
 import com.reactnativeldk.LdkEventEmitter
 import com.reactnativeldk.hexEncodedString
 import com.reactnativeldk.hexa
+import com.reactnativeldk.putDateOrNull
 import org.json.JSONObject
 import org.ldk.structs.Result_StrSecp256k1ErrorZ.Result_StrSecp256k1ErrorZ_OK
 import org.ldk.structs.UtilMethods
@@ -61,17 +64,9 @@ data class BackupFileState(
     val encoded: WritableMap
         get() {
             val body = Arguments.createMap()
-            body.putInt("lastQueued", lastQueued.time.toInt())
-            if (lastPersisted != null) {
-                body.putInt("lastPersisted", lastPersisted!!.time.toInt())
-            } else {
-                body.putNull("lastPersisted")
-            }
-            if (lastFailed != null) {
-                body.putInt("lastFailed", lastFailed!!.time.toInt())
-            } else {
-                body.putNull("lastFailed")
-            }
+            body.putDouble("lastQueued", lastQueued.time.toDouble())
+            body.putDateOrNull("lastPersisted", lastPersisted)
+            body.putDateOrNull("lastFailed", lastFailed)
             if (lastErrorMessage != null) {
                 body.putString("lastErrorMessage", lastErrorMessage)
             } else {
@@ -592,10 +587,9 @@ class BackupClient {
                 body.putMap(key, state.encoded)
             }
 
-            LdkEventEmitter.send(
-                EventTypes.backup_state_update,
-                body
-            )
+            UiThreadDebouncer.debounce(interval = 250, key = "backupStateUpdate") {
+                LdkEventEmitter.send(EventTypes.backup_state_update, body)
+            }
 
             backupStateLock.unlock()
         }

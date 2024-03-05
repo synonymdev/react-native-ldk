@@ -556,3 +556,23 @@ extension String {
             .reduce("") { $0 + String($1) }
     }
 }
+
+var lastPendingWorkItems: [String: DispatchWorkItem] = [:]
+
+func debounce(interval: TimeInterval, key: String, queue: DispatchQueue = .main, action: @escaping (() -> Void)) -> () -> Void {
+    var lastFireTime = DispatchTime.now()
+    
+    return {
+        lastPendingWorkItems.first { $0.key == key }?.value.cancel()
+
+        lastPendingWorkItems[key] = DispatchWorkItem {
+            let elapsed = DispatchTime.now().uptimeNanoseconds - lastFireTime.uptimeNanoseconds
+            if elapsed >= UInt64(interval * 1_000_000) {
+                action()
+                lastFireTime = DispatchTime.now()
+            }
+        }
+
+        queue.asyncAfter(deadline: .now() + interval, execute: lastPendingWorkItems[key]!)
+    }
+}

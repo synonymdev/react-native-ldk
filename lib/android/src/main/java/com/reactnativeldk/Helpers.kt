@@ -1,4 +1,6 @@
 package com.reactnativeldk
+import android.os.Handler
+import android.os.Looper
 import com.facebook.react.bridge.*
 import org.json.JSONObject
 import org.ldk.enums.Currency
@@ -8,6 +10,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
 import java.nio.channels.Channels
+import java.util.Date
 
 fun handleResolve(promise: Promise, res: LdkCallbackResponses) {
     if (res != LdkCallbackResponses.log_write_success) {
@@ -201,6 +204,22 @@ fun WritableMap.putHexString(key: String, bytes: ByteArray?) {
         putString(key, bytes.hexEncodedString())
     } else {
         putString(key, null)
+    }
+}
+
+/**
+ * Adds a Date object into the map.
+ * If the date is not null, it is converted to a double representing the unix timestamp.
+ * If it's null, a null value is added to the map.
+ *
+ * @param key The key under which the date will be stored in the map.
+ * @param date The date to be stored in the map. Can be null.
+ */
+fun WritableMap.putDateOrNull(key: String, date: Date?) {
+    if (date != null) {
+        putDouble(key, date.time.toDouble())
+    } else {
+        putNull(key)
     }
 }
 
@@ -502,4 +521,24 @@ fun mergeObj(obj1: JSONObject, obj2: HashMap<String, Any>): HashMap<String, Any>
     }
 
     return newObj
+}
+
+object UiThreadDebouncer {
+    private val pending = hashMapOf<String, Runnable>()
+    private val handler = Handler(Looper.getMainLooper())
+
+    /**
+     * Used to debounce an [action] function call to be executed after a delay on the main thread
+     *
+     * @param interval The delay in milliseconds after which the action will be executed. Default value is 250ms.
+     * @param key The unique identifier for the action to be debounced. If an action with the same key is already pending, it will be cancelled.
+     * @param action The function to be executed after the interval.
+     */
+    fun debounce(interval: Long = 250, key: String, action: () -> Unit) {
+        pending[key]?.let { handler.removeCallbacks(it) }
+        val runnable = Runnable(action)
+        pending[key] = runnable
+
+        handler.postDelayed(runnable, interval)
+    }
 }
