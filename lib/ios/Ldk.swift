@@ -855,6 +855,7 @@ class Ldk: NSObject {
         if res.isOk() {
             channelManagerPersister.persistPaymentSent([
                 "bolt11_invoice": String(paymentRequest),
+                "description": invoice.intoSignedRaw().rawInvoice().description()?.intoInner() ?? "",
                 "payment_id": Data(res.getValue() ?? []).hexEncodedString(),
                 "payment_hash": Data(invoice.paymentHash() ?? []).hexEncodedString(),
                 "amount_sat": isZeroValueInvoice ? amountSats : (invoice.amountMilliSatoshis() ?? 0) / 1000,

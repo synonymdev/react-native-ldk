@@ -231,7 +231,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun initKeysManager(seed: String, destinationScriptPublicKey: String, witnessProgram: String, witnessProgramVersion: Double, promise: Promise) {
-        if (keysManager !== null) {
+        if (keysManager != null) {
             return handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
         }
 
@@ -303,7 +303,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun initNetworkGraph(network: String, rapidGossipSyncUrl: String, skipHoursThreshold: Double, promise: Promise) {
-        if (networkGraph !== null) {
+        if (networkGraph != null) {
             return handleReject(promise, LdkErrors.already_init)
         }
 
@@ -315,7 +315,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         if (networkGraph == null) {
-            val ldkNetwork = getNetwork(network);
+            val ldkNetwork = getNetwork(network)
             networkGraph = NetworkGraph.of(ldkNetwork.first, logger.logger)
 
             LdkEventEmitter.send(EventTypes.native_log, "Failed to load cached network graph from disk. Will sync from scratch.")
@@ -401,7 +401,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         ldkCurrency = getNetwork(network).second
 
         val enableP2PGossip = rapidGossipSync == null
-        
+
         var channelManagerSerialized: ByteArray? = null
         val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.ChannelManager.fileName)
         if (channelManagerFile.exists()) {
@@ -414,7 +414,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             networkGraph!!,
             logger.logger
         ) ?: return handleReject(promise, LdkErrors.init_scorer_failed)
-        
+
         val scorer = MultiThreadedLockableScore.of(probabilisticScorer.as_Score())
 
         val scoringParams = ProbabilisticScoringDecayParameters.with_default()
@@ -777,6 +777,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         if (res.is_ok) {
             channelManagerPersister.persistPaymentSent(hashMapOf(
                 "bolt11_invoice" to paymentRequest,
+                "description" to (invoice.into_signed_raw().raw_invoice().description()?.into_inner() ?: ""),
                 "payment_id" to (res as Result_ThirtyTwoBytesPaymentErrorZ.Result_ThirtyTwoBytesPaymentErrorZ_OK).res.hexEncodedString(),
                 "payment_hash" to invoice.payment_hash().hexEncodedString(),
                 "amount_sat" to if (isZeroValueInvoice) amountSats.toLong() else ((invoice.amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000),
@@ -927,7 +928,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         if (channelStoragePath == "") {
             return handleReject(promise, LdkErrors.init_storage_path)
         }
-        
+
         val list = Arguments.createArray()
         Files.walk(Paths.get(channelStoragePath))
             .filter { Files.isRegularFile(it) }
