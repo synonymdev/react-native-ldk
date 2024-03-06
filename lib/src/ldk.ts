@@ -37,6 +37,7 @@ import {
 	TBackedUpFileList,
 	TDownloadScorer,
 	TInitKeysManager,
+	TSpendRecoveredForceCloseOutputsReq,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -1205,6 +1206,25 @@ class LDK {
 			return ok(res);
 		} catch (e) {
 			this.writeErrorToLog('reconstructAndSpendOutputs', e);
+			return err(e);
+		}
+	}
+
+	async spendRecoveredForceCloseOutputs({
+		transaction,
+		confirmationHeight,
+		changeDestinationScript,
+	}: TSpendRecoveredForceCloseOutputsReq): Promise<Result<string[]>> {
+		try {
+			const res = await NativeLDK.spendRecoveredForceCloseOutputs(
+				transaction,
+				confirmationHeight,
+				changeDestinationScript,
+			);
+			this.writeDebugToLog('spendRecoveredForceCloseOutputs', res);
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('spendRecoveredForceCloseOutputs', e);
 			return err(e);
 		}
 	}
