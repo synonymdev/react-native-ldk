@@ -14,6 +14,7 @@ import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
 import org.ldk.structs.Result_Bolt11InvoiceParseOrSemanticErrorZ.Result_Bolt11InvoiceParseOrSemanticErrorZ_OK
 import org.ldk.structs.Result_Bolt11InvoiceSignOrCreationErrorZ.Result_Bolt11InvoiceSignOrCreationErrorZ_OK
+import org.ldk.structs.Result_C2Tuple_ThirtyTwoBytesChannelMonitorZDecodeErrorZ.Result_C2Tuple_ThirtyTwoBytesChannelMonitorZDecodeErrorZ_OK
 import org.ldk.structs.Result_PublicKeyNoneZ.Result_PublicKeyNoneZ_OK
 import org.ldk.structs.Result_StrSecp256k1ErrorZ.Result_StrSecp256k1ErrorZ_OK
 import org.ldk.util.UInt128
@@ -1107,6 +1108,66 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         promise.resolve((res as Result_TransactionNoneZ.Result_TransactionNoneZ_OK).res.hexEncodedString())
+    }
+
+    @ReactMethod
+    fun spendRecoveredForceCloseOutputs(transaction: String, confirmationHeight: Double, changeDestinationScript: String, promise: Promise) {
+        if (channelStoragePath == "") {
+            return handleReject(promise, LdkErrors.init_storage_path)
+        }
+
+        if (channelManager == null) {
+            return handleReject(promise, LdkErrors.init_channel_manager)
+        }
+
+        if (keysManager == null) {
+            return handleReject(promise, LdkErrors.init_keys_manager)
+        }
+
+        val openChannelIds = channelManager!!.list_channels().map { it._channel_id.hexEncodedString() }
+
+        //Get list of files in this path
+        val channelFiles = File(channelStoragePath).listFiles()
+
+        val txs = Arguments.createArray()
+
+        for (channelFile in channelFiles) {
+            val channelId = channelFile.nameWithoutExtension
+
+            //Ignore open channels
+            if (openChannelIds.contains(channelId)) {
+                continue
+            }
+
+            LdkEventEmitter.send(EventTypes.native_log, "Loading channel from file to attempt sweep " + channelId)
+
+            //byte[] ser, EntropySource arg_a, SignerProvider arg_b)
+            val channelMonitor = UtilMethods.C2Tuple_ThirtyTwoBytesChannelMonitorZ_read(channelFile.readBytes(), keysManager!!.inner.as_EntropySource(), SignerProvider.new_impl(keysManager!!.signerProvider))
+
+            if (channelMonitor.is_ok) {
+                val monitor = (channelMonitor as Result_C2Tuple_ThirtyTwoBytesChannelMonitorZDecodeErrorZ_OK).res._b
+
+                val descriptors = monitor.get_spendable_outputs(transaction.hexa(), confirmationHeight.toInt())
+                if (descriptors.isEmpty()) {
+                    LdkEventEmitter.send(EventTypes.native_log, "No spendable outputs found for channel $channelId")
+                    continue
+                }
+
+                val res = keysManager!!.spend_spendable_outputs(
+                    descriptors,
+                    emptyArray(),
+                    changeDestinationScript.hexa(),
+                    feeEstimator.onChainSweep,
+                    Option_u32Z.none()
+                )
+
+                if (res.is_ok) {
+                    txs.pushHexString((res as Result_TransactionNoneZ.Result_TransactionNoneZ_OK).res)
+                }
+            }
+        }
+
+        promise.resolve(txs)
     }
 
     @ReactMethod
