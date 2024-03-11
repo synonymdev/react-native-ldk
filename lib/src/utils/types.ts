@@ -592,6 +592,12 @@ export type TReconstructAndSpendOutputsReq = {
 	changeDestinationScript: string;
 };
 
+export type TSpendRecoveredForceCloseOutputsReq = {
+	transaction: string;
+	confirmationHeight: number;
+	changeDestinationScript: string;
+};
+
 export type TBackupServerDetails = {
 	host: string;
 	serverPubKey: string;

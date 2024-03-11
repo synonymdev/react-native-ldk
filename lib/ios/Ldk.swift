@@ -427,7 +427,7 @@ class Ldk: NSObject {
         )
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Enabled P2P gossip: \(enableP2PGossip)")
-
+        
         //        print("\(String(cString: strerror(22)))")
         
         let scoreParams = ProbabilisticScoringFeeParameters.initWithDefault()
@@ -495,7 +495,7 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
-           
+                
         return handleResolve(resolve, .channel_manager_init_success)
     }
     
@@ -538,7 +538,7 @@ class Ldk: NSObject {
         channelManager = nil
         peerManager = nil
         peerHandler = nil
-                
+        
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting LDK background tasks again")
         initChannelManager(currentNetwork, blockHash: currentBlockchainTipHash, blockHeight: currentBlockchainHeight) { success in
             //Notify JS that a sync is required
@@ -1183,6 +1183,7 @@ class Ldk: NSObject {
         
         let output = TxOut(scriptPubkey: String(outputScriptPubKey).hexaBytes, value: UInt64(outputValue))
         let outpoint = OutPoint(txidArg: String(outpointTxId).hexaBytes.reversed(), indexArg: UInt16(outpointIndex))
+        
         let descriptor = SpendableOutputDescriptor.initWithStaticOutput(outpoint: outpoint, output: output)
         
         let res = keysManager.spendSpendableOutputs(
@@ -1198,6 +1199,69 @@ class Ldk: NSObject {
         }
         
         return resolve(Data(res.getValue()!).hexEncodedString())
+    }
+    
+    @objc
+    func spendRecoveredForceCloseOutputs(_ transaction: NSString, confirmationHeight: NSInteger, changeDestinationScript: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        //TODO check which ones are not open channels and try spend them again
+        guard let channelStoragePath = Ldk.channelStoragePath, let keysManager, let channelManager else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        let openChannelIds = channelManager.listChannels().map { Data($0.getChannelId() ?? []).hexEncodedString() }.filter { $0 != "" }
+                
+        let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
+
+        var txs: [String] = []
+        
+        for channelFile in channelFiles {
+            let channelId = channelFile.lastPathComponent.replacingOccurrences(of: ".bin", with: "")
+            
+            //Ignore open channels
+            guard !openChannelIds.contains(channelId) else {
+                continue
+            }
+            
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel from file to attempt sweep \(channelId)")
+            
+            let channelMonitorResult = Bindings.readThirtyTwoBytesChannelMonitor(
+                ser: [UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)),
+                argA: keysManager.inner.asEntropySource(),
+                argB: keysManager.signerProvider
+            )
+            
+            guard let (_, channelMonitor) = channelMonitorResult.getValue() else {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel error. No channel value.")
+                continue
+            }
+            
+            let descriptors = channelMonitor.getSpendableOutputs(
+                tx: String(transaction).hexaBytes,
+                confirmationHeight: UInt32(confirmationHeight)
+            )
+            
+            guard descriptors.count > 0 else {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "No spendable outputs found in \(channelId)")
+                continue
+            }
+                        
+            let res = keysManager.spendSpendableOutputs(
+                descriptors: descriptors,
+                outputs: [],
+                changeDestinationScript: String(changeDestinationScript).hexaBytes,
+                feerateSatPer1000Weight: feeEstimator.getEstSatPer1000Weight(confirmationTarget: .OnChainSweep),
+                locktime: nil
+            )
+            
+            guard res.isOk() else {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to spend output from closed channel: \(channelId).")
+                continue
+            }
+                        
+            txs.append(Data(res.getValue()!).hexEncodedString())
+        }
+        
+        resolve(txs)
     }
     
     @objc
@@ -1244,7 +1308,7 @@ class Ldk: NSObject {
         
         if let syncTimestamp = channelManagerConstructor?.netGraph?.getLastRapidGossipSyncTimestamp() {
             let date = Date(timeIntervalSince1970: TimeInterval(syncTimestamp))
-
+            
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
             
@@ -1286,7 +1350,7 @@ class Ldk: NSObject {
         guard seedBytes.count == 32 else {
             return handleReject(reject, .invalid_seed_hex)
         }
-
+        
         let seconds = UInt64(NSDate().timeIntervalSince1970)
         let nanoSeconds = UInt32.init(truncating: NSNumber(value: seconds * 1000 * 1000))
         let keysManager = KeysManager(
@@ -1328,7 +1392,7 @@ class Ldk: NSObject {
         guard let channelStoragePath = Ldk.channelStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
-                
+        
         do {
             if !overwrite {
                 let fileManager = FileManager.default
@@ -1355,7 +1419,7 @@ class Ldk: NSObject {
                 if let ldkFileName = LdkFileNames.allCases.first(where: { $0.rawValue.contains(key) }) {
                     fileName = ldkFileName.rawValue
                 }
-
+                
                 try file.value.write(to: accountStoragePath.appendingPathComponent(fileName))
             }
             
@@ -1411,7 +1475,7 @@ class Ldk: NSObject {
         }
         
         let bytes = [UInt8](data)
-            
+        
         BackupClient.addToPersistQueue(.misc(fileName: String(fileName)), bytes) { error in
             if let error {
                 handleReject(reject, .backup_file_failed, error, error.localizedDescription)
@@ -1426,7 +1490,7 @@ class Ldk: NSObject {
         guard !BackupClient.requiresSetup else {
             return handleReject(reject, .backup_setup_required)
         }
-            
+        
         do {
             let data = try BackupClient.retrieve(.misc(fileName: String(fileName)))
             resolve(String.init(data: data, encoding: .utf8))

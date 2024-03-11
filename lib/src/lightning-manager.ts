@@ -1526,6 +1526,50 @@ class LightningManager {
 		return results;
 	}
 
+	async recoverOutputsFromForceClose(): Promise<Result<string>> {
+		const address = await this.getAddress();
+		const changeDestinationScript = this.getChangeDestinationScript(
+			address.address,
+		);
+		if (!changeDestinationScript) {
+			await ldk.writeToLogFile(
+				'error',
+				'Unable to retrieve change_destination_script.',
+			);
+			return err('Unable to retrieve change_destination_script.');
+		}
+
+		const txs = await this.getLdkBroadcastedTxs();
+		if (!txs.length) {
+			return ok('No outputs to reconstruct as no cached transactions found.');
+		}
+
+		let txsToBroadcast = 0;
+		for (const hexTx of txs) {
+			const tx = bitcoin.Transaction.fromHex(hexTx);
+			const txData = await this.getTransactionData(tx.getId());
+
+			const txsRes = await ldk.spendRecoveredForceCloseOutputs({
+				transaction: hexTx,
+				confirmationHeight: txData?.height ?? 0,
+				changeDestinationScript,
+			});
+
+			if (txsRes.isErr()) {
+				await ldk.writeToLogFile('error', txsRes.error.message);
+				console.error(txsRes.error.message);
+				continue;
+			}
+
+			for (const createdTx of txsRes.value) {
+				txsToBroadcast++;
+				await this.broadcastTransaction(createdTx);
+			}
+		}
+
+		return ok(`Attempting to reconstruct ${txsToBroadcast} transactions.`);
+	}
+
 	/**
 	 * Attempts to recover outputs from stored spendable outputs.
 	 * Also attempts to recreate outputs that were not previously stored but failed to be spent.
