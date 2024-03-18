@@ -5,7 +5,7 @@ const baseCommand =
 	'rn-nodeify --install buffer,stream,assert,events,crypto,vm,process --hack';
 
 function postInstallMac() {
-	exec(`${baseCommand} && cd ios && pod install && cd ..`);
+	exec(`${baseCommand} && cd ios && NO_FLIPPER=1 pod install && cd ..`);
 }
 function postInstallLinWin() {
 	exec(baseCommand);
