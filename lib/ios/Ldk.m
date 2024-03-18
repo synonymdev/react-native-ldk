@@ -48,7 +48,6 @@ RCT_EXTERN_METHOD(updateFees:(NSInteger *)anchorChannelFee
                   nonAnchorChannelFee:(NSInteger *)nonAnchorChannelFee
                   channelCloseMinimum:(NSInteger *)channelCloseMinimum
                   minAllowedAnchorChannelRemoteFee:(NSInteger *)minAllowedAnchorChannelRemoteFee
-                  maxAllowedNonAnchorChannelRemoteFee:(NSInteger *)maxAllowedNonAnchorChannelRemoteFee
                   onChainSweep:(NSInteger *)onChainSweep
                   minAllowedNonAnchorChannelRemoteFee:(NSInteger *)minAllowedNonAnchorChannelRemoteFee
                   resolve:(RCTPromiseResolveBlock)resolve

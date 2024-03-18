@@ -238,7 +238,6 @@ export type TFeeUpdateReq = {
 	nonAnchorChannelFee: number;
 	channelCloseMinimum: number;
 	minAllowedAnchorChannelRemoteFee: number;
-	maxAllowedNonAnchorChannelRemoteFee: number;
 	onChainSweep: number;
 	minAllowedNonAnchorChannelRemoteFee: number;
 };

@@ -13,16 +13,14 @@ class LdkFeeEstimator: FeeEstimator {
     private var nonAnchorChannelFee: UInt32 = 0
     private var channelCloseMinimum: UInt32 = 0
     private var minAllowedAnchorChannelRemoteFee: UInt32 = 0
-    private var maxAllowedNonAnchorChannelRemoteFee: UInt32 = 0
     private var onChainSweep: UInt32 = 0
     private var minAllowedNonAnchorChannelRemoteFee: UInt32 = 0
     
-    func update(anchorChannelFee: UInt32, nonAnchorChannelFee: UInt32, channelCloseMinimum: UInt32, minAllowedAnchorChannelRemoteFee: UInt32, maxAllowedNonAnchorChannelRemoteFee: UInt32, onChainSweep: UInt32, minAllowedNonAnchorChannelRemoteFee: UInt32) {
+    func update(anchorChannelFee: UInt32, nonAnchorChannelFee: UInt32, channelCloseMinimum: UInt32, minAllowedAnchorChannelRemoteFee: UInt32, onChainSweep: UInt32, minAllowedNonAnchorChannelRemoteFee: UInt32) {
         self.anchorChannelFee = anchorChannelFee
         self.nonAnchorChannelFee = nonAnchorChannelFee
         self.channelCloseMinimum = channelCloseMinimum
         self.minAllowedAnchorChannelRemoteFee = minAllowedAnchorChannelRemoteFee
-        self.maxAllowedNonAnchorChannelRemoteFee = maxAllowedNonAnchorChannelRemoteFee
         self.onChainSweep = onChainSweep
         self.minAllowedNonAnchorChannelRemoteFee = minAllowedNonAnchorChannelRemoteFee
 
@@ -41,8 +39,6 @@ class LdkFeeEstimator: FeeEstimator {
             return channelCloseMinimum
         case .MinAllowedAnchorChannelRemoteFee:
             return minAllowedAnchorChannelRemoteFee
-        case .MaxAllowedNonAnchorChannelRemoteFee:
-            return maxAllowedNonAnchorChannelRemoteFee
         case .OnChainSweep:
             return onChainSweep
         case .MinAllowedNonAnchorChannelRemoteFee:

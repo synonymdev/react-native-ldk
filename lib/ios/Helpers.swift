@@ -76,12 +76,11 @@ extension Bolt11Invoice {
         //Break down to get the decription. Will crash if all on a single line.
         let signedRawInvoice = intoSignedRaw()
         let rawInvoice = signedRawInvoice.rawInvoice()
-        let description = rawInvoice.description()
-        let descriptionString = description?.intoInner() ?? ""
+        let description = rawInvoice.description()?.intoInner().getA() ?? ""
         
         return [
             "amount_satoshis": amountMilliSatoshis() != nil ? amountMilliSatoshis()! / 1000 : nil,
-            "description": descriptionString,
+            "description": description,
             "check_signature": checkSignature().isOk(),
             "is_expired": isExpired(),
             "duration_since_epoch": durationSinceEpoch(),
@@ -462,47 +461,6 @@ extension ChainMonitor {
         }
         
         return result
-    }
-}
-
-func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.PaymentSendFailure) {
-    switch error.getValueType() {
-    case .AllFailedResendSafe:
-        //            let errorMessage = ""
-        //            error.getValueAsAllFailedRetrySafe()?.forEach({ apiError in
-        //                apiError.getValueType() //TODO iterate through all
-        //            })
-        
-        return handleReject(reject, .invoice_payment_fail_resend_safe, nil, error.getValueAsAllFailedResendSafe().map { $0.description } )
-    case .ParameterError:
-        guard let parameterError = error.getValueAsParameterError() else {
-            return handleReject(reject, .invoice_payment_fail_parameter_error)
-        }
-        
-        let parameterErrorType = parameterError.getValueType()
-        
-        switch parameterErrorType {
-        case .APIMisuseError:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "parameterError.getValueType().debugDescription")
-        case .FeeRateTooHigh:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsFeeRateTooHigh()?.getErr())
-        case .InvalidRoute:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsInvalidRoute()?.getErr())
-        case .ChannelUnavailable:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsChannelUnavailable()?.getErr())
-        case .IncompatibleShutdownScript:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "IncompatibleShutdownScript")
-        case .MonitorUpdateInProgress:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "MonitorUpdateInProgress")
-        @unknown default:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, error.getValueAsParameterError().debugDescription)
-        }
-    case .PartialFailure:
-        return handleReject(reject, .invoice_payment_fail_partial, nil, error.getValueAsPartialFailure().debugDescription)
-    case .PathParameterError:
-        return handleReject(reject, .invoice_payment_fail_path_parameter_error, nil, error.getValueAsPartialFailure().debugDescription)
-    default:
-        return handleReject(reject, .invoice_payment_fail_sending)
     }
 }
 
