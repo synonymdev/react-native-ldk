@@ -1,5 +1,10 @@
 import { TAvailableNetworks } from '@synonymdev/react-native-ldk';
 
+export type TWallet = {
+	name: string;
+	mnemonic: string;
+};
+
 export enum EAccount {
 	name = 'wallet0',
 	currentAccountKey = 'currentAccount',
