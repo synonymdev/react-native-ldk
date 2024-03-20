@@ -72,7 +72,7 @@ val Bolt11Invoice.asJson: WritableMap
         val rawInvoice = signedInv.raw_invoice()
 
         if (amount_milli_satoshis() is Option_u64Z.Some) result.putInt("amount_satoshis", ((amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000)) else  result.putNull("amount_satoshis")
-        result.putString("description", rawInvoice.description()?.into_inner())
+        result.putString("description", rawInvoice.description()?.to_str())
         result.putBoolean("check_signature",  signedInv.check_signature())
         result.putBoolean("is_expired",  is_expired)
         result.putInt("duration_since_epoch",  duration_since_epoch().toInt())
