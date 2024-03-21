@@ -845,7 +845,6 @@ class Ldk: NSObject {
             return handleReject(reject, .invoice_payment_fail_must_not_specify_amount)
         }
                 
-        
         let paymentId = invoice.paymentHash()!
         let (paymentHash, recipientOnion, routeParameters) = isZeroValueInvoice ? Bindings.paymentParametersFromZeroAmountInvoice(invoice: invoice, amountMsat: UInt64(amountSats)).getValue()! : Bindings.paymentParametersFromInvoice(invoice: invoice).getValue()!
         
@@ -853,7 +852,7 @@ class Ldk: NSObject {
         
         channelManagerPersister.persistPaymentSent([
             "bolt11_invoice": String(paymentRequest),
-            "description": invoice.intoSignedRaw().rawInvoice().description()?.intoInner() ?? "",
+            "description": invoice.intoSignedRaw().rawInvoice().description()?.intoInner().getA() ?? "",
             "payment_id": paymentId,
             "payment_hash": Data(invoice.paymentHash() ?? []).hexEncodedString(),
             "amount_sat": isZeroValueInvoice ? amountSats : (invoice.amountMilliSatoshis() ?? 0) / 1000,
@@ -877,7 +876,6 @@ class Ldk: NSObject {
         case .RouteNotFound:
             return handleReject(reject, .invoice_payment_fail_route_not_found)
         @unknown default:
-            
             return handleReject(reject, .invoice_payment_fail_unknown)
         }
     }
