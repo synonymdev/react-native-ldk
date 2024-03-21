@@ -9,6 +9,7 @@ import org.ldk.batteries.NioPeerHandler
 import org.ldk.enums.Currency
 import org.ldk.enums.Network
 import org.ldk.enums.Recipient
+import org.ldk.enums.RetryableSendFailure
 import org.ldk.impl.bindings.LDKPaymentSendFailure.DuplicatePayment
 import org.ldk.impl.bindings.get_ldk_c_bindings_version
 import org.ldk.impl.bindings.get_ldk_version
@@ -76,11 +77,9 @@ enum class LdkErrors {
     invoice_payment_fail_must_specify_amount,
     invoice_payment_fail_must_not_specify_amount,
     invoice_payment_fail_invoice,
-    invoice_payment_fail_sending,
-    invoice_payment_fail_resend_safe,
-    invoice_payment_fail_parameter_error,
-    invoice_payment_fail_partial,
-    invoice_payment_fail_path_parameter_error,
+    invoice_payment_fail_duplicate_payment,
+    invoice_payment_fail_payment_expired,
+    invoice_payment_fail_route_not_found,
     init_ldk_currency,
     invoice_create_failed,
     init_scorer_failed,
@@ -808,10 +807,21 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val error = res as? Result_NoneRetryableSendFailureZ_Err
             ?: return handleReject(promise, LdkErrors.invoice_payment_fail_unknown)
 
-//        val sendingError = error.err as? PaymentSendFailure.DuplicatePayment
-        //TODO try cast to get error types
+        when (error.err) {
+            RetryableSendFailure.LDKRetryableSendFailure_DuplicatePayment -> {
+                handleReject(promise, LdkErrors.invoice_payment_fail_duplicate_payment)
+            }
 
-        return handleReject(promise, LdkErrors.invoice_payment_fail_unknown)
+            RetryableSendFailure.LDKRetryableSendFailure_PaymentExpired -> {
+                handleReject(promise, LdkErrors.invoice_payment_fail_payment_expired)
+            }
+
+            RetryableSendFailure.LDKRetryableSendFailure_RouteNotFound -> {
+                handleReject(promise, LdkErrors.invoice_payment_fail_route_not_found)
+            }
+
+            else -> handleReject(promise, LdkErrors.invoice_payment_fail_unknown)
+        }
     }
 
     @ReactMethod
