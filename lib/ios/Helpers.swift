@@ -188,6 +188,17 @@ extension LightningDevKit.RouteHop {
     }
 }
 
+extension ChannelMonitor {
+    func asJson(channelId: String) -> [String: Any?] {
+        return [
+            "channel_id": channelId,
+            "funding_txo": Data(getFundingTxo().1).hexEncodedString(),
+            "counterparty_node_id": Data(getCounterpartyNodeId() ?? []).hexEncodedString(),
+            "claimable_balances": getClaimableBalances().map({ $0.asJson })
+        ]
+    }
+}
+
 extension Data {
     struct HexEncodingOptions: OptionSet {
         let rawValue: Int
@@ -402,63 +413,63 @@ extension UserConfig {
     }
 }
 
+extension Balance {
+    var asJson: [String: Any] {
+        switch getValueType() {
+        case .ClaimableAwaitingConfirmations:
+            let b = getValueAsClaimableAwaitingConfirmations()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "confirmation_height": b.getConfirmationHeight(),
+                "type": "ClaimableAwaitingConfirmations"
+            ] as [String : Any]
+        case .ClaimableOnChannelClose:
+            let b = getValueAsClaimableOnChannelClose()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "type": "ClaimableOnChannelClose",
+            ] as [String : Any]
+        case .ContentiousClaimable:
+            let b = getValueAsContentiousClaimable()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "timeout_height": b.getTimeoutHeight(),
+                "type": "ContentiousClaimable"
+            ] as [String : Any]
+        case .CounterpartyRevokedOutputClaimable:
+            let b = getValueAsCounterpartyRevokedOutputClaimable()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "type": "CounterpartyRevokedOutputClaimable"
+            ] as [String : Any]
+        case .MaybePreimageClaimableHTLC:
+            let b = getValueAsMaybePreimageClaimableHtlc()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "expiry_height": b.getExpiryHeight(),
+                "type": "MaybePreimageClaimableHTLC"
+            ] as [String : Any]
+        case .MaybeTimeoutClaimableHTLC:
+            let b = getValueAsMaybeTimeoutClaimableHtlc()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "claimable_height": b.getClaimableHeight(),
+                "type": "MaybeTimeoutClaimableHTLC"
+            ] as [String : Any]
+        default:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances() \(getValueType())")
+            return ["amount_satoshis": 0, "type": "Unknown"] as [String : Any]
+        }
+    }
+}
+
 extension ChainMonitor {
     func getClaimableBalancesAsJson(ignoredChannels: [Bindings.ChannelDetails]) -> [[String: Any]] {
         var result: [[String: Any]] = []
 
         let claimableBalances = self.getClaimableBalances(ignoredChannels: ignoredChannels)
         for balance in claimableBalances {
-            switch balance.getValueType() {
-            case .ClaimableAwaitingConfirmations:
-                let b = balance.getValueAsClaimableAwaitingConfirmations()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "confirmation_height": b.getConfirmationHeight(),
-                    "type": "ClaimableAwaitingConfirmations"
-                ] as [String : Any])
-                break
-            case .ClaimableOnChannelClose:
-                let b = balance.getValueAsClaimableOnChannelClose()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "type": "ClaimableOnChannelClose",
-                ] as [String : Any])
-                break
-            case .ContentiousClaimable:
-                let b = balance.getValueAsContentiousClaimable()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "timeout_height": b.getTimeoutHeight(),
-                    "type": "ContentiousClaimable"
-                ] as [String : Any])
-                break
-            case .CounterpartyRevokedOutputClaimable:
-                let b = balance.getValueAsCounterpartyRevokedOutputClaimable()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "type": "CounterpartyRevokedOutputClaimable"
-                ] as [String : Any])
-                break
-            case .MaybePreimageClaimableHTLC:
-                let b = balance.getValueAsMaybePreimageClaimableHtlc()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "expiry_height": b.getExpiryHeight(),
-                    "type": "MaybePreimageClaimableHTLC"
-                ] as [String : Any])
-                break
-            case .MaybeTimeoutClaimableHTLC:
-                let b = balance.getValueAsMaybeTimeoutClaimableHtlc()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "claimable_height": b.getClaimableHeight(),
-                    "type": "MaybeTimeoutClaimableHTLC"
-                ] as [String : Any])
-                break
-            default:
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances() \(balance.getValueType())")
-                result.append(["amount_satoshis": 0, "type": "Unknown"] as [String : Any])
-            }
+            result.append(balance.asJson)
         }
         
         return result
