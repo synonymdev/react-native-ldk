@@ -5,8 +5,9 @@ import {
 	IAddress,
 } from '@synonymdev/react-native-ldk';
 import { getItem, setItem } from '../ldk';
-import { EAccount } from './types';
+import { EAccount, TWallet } from './types';
 import { err, ok, Result } from './result';
+// @ts-ignore
 import { randomBytes } from 'react-native-randombytes';
 import * as bitcoin from 'bitcoinjs-lib';
 import { selectedNetwork } from './constants';
@@ -21,16 +22,16 @@ import networks from '@synonymdev/react-native-ldk/dist/utils/networks';
  * @param {string} [key]
  * @param {string} seed
  */
-export const setAccount = async ({
+export const setWallet = async ({
 	name = EAccount.name,
-	seed = randomSeed(),
-}: TAccount): Promise<boolean> => {
+	mnemonic = createMnemonic(),
+}: TWallet): Promise<boolean> => {
 	try {
-		const account: TAccount = {
+		const wallet = {
 			name,
-			seed,
+			mnemonic,
 		};
-		await Keychain.setGenericPassword(name, JSON.stringify(account), {
+		await Keychain.setGenericPassword(name, JSON.stringify(wallet), {
 			service: name,
 		});
 		await setItem(EAccount.currentAccountKey, name);
@@ -45,28 +46,35 @@ export const setAccount = async ({
  * @param {string} [accountName]
  * @returns {Promise<string>}
  */
-export const getAccount = async (accountName?: string): Promise<TAccount> => {
+export const getWallet = async (accountName?: string): Promise<TWallet> => {
 	if (!accountName) {
 		accountName = await getCurrentAccountName();
 	}
-	const defaultAccount: TAccount = {
+	const defaultWallet: TWallet = {
 		name: EAccount.name,
-		seed: randomSeed(),
+		mnemonic: createMnemonic(),
 	};
 	try {
 		let result = await Keychain.getGenericPassword({ service: accountName });
 		if (result && result?.password) {
-			// Return existing account.
-			return JSON.parse(result?.password);
+			return JSON.parse(result.password);
 		} else {
 			// Setup default account.
-			await setAccount(defaultAccount);
-			return defaultAccount;
+			await setWallet({ name: accountName, mnemonic: defaultWallet.mnemonic });
+			return defaultWallet;
 		}
 	} catch (e) {
 		console.log(e);
-		return defaultAccount;
+		return defaultWallet;
 	}
+};
+
+export const getAccount = async (accountName?: string): Promise<TAccount> => {
+	const wallet = await getWallet(accountName);
+	return {
+		name: wallet.name,
+		seed: await getLdkSeed(wallet.mnemonic),
+	};
 };
 
 /**
@@ -98,11 +106,13 @@ export const createNewAccount = async (): Promise<Result<TAccount>> => {
 			}
 		}
 		const name = `wallet${num}`;
+		const mnemonic = createMnemonic();
+
 		const account: TAccount = {
 			name,
-			seed: randomSeed(),
+			seed: await getLdkSeed(mnemonic),
 		};
-		await setAccount(account);
+		await setWallet({ name, mnemonic });
 		return ok(account);
 	} catch (e) {
 		console.log(e);
@@ -110,8 +120,18 @@ export const createNewAccount = async (): Promise<Result<TAccount>> => {
 	}
 };
 
-export const randomSeed = (): string => {
-	return randomBytes(32).toString('hex');
+export const createMnemonic = (): string => {
+	return bip39.entropyToMnemonic(randomBytes(32));
+};
+
+/**
+ * Returns seed derived from mnemonic that is compatible with LDK-Node.
+ * @returns {Promise<string>}
+ */
+export const getLdkSeed = async (mnumonic: string): Promise<string> => {
+	const mnemonicSeed = await bip39.mnemonicToSeed(mnumonic);
+	const root = bip32.fromSeed(mnemonicSeed, getNetwork(selectedNetwork));
+	return root.privateKey!.toString('hex');
 };
 
 /**
@@ -191,8 +211,7 @@ export const getMnemonicPhraseFromSeed = (accountSeed: string): string => {
 export const getAddress = async (): Promise<IAddress> => {
 	const network = getNetwork(selectedNetwork);
 
-	const { seed: accountSeed } = await getAccount();
-	const mnemonic = getMnemonicPhraseFromSeed(accountSeed);
+	const { mnemonic } = await getWallet();
 	const mnemonicSeed = await bip39.mnemonicToSeed(mnemonic);
 	const root = bip32.fromSeed(mnemonicSeed, network);
 	const keyPair = root.derivePath("m/84'/1'/0'/0/0");
