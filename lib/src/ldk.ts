@@ -339,7 +339,6 @@ class LDK {
 			nonAnchorChannelFee,
 			channelCloseMinimum,
 			minAllowedAnchorChannelRemoteFee,
-			maxAllowedNonAnchorChannelRemoteFee,
 			onChainSweep,
 			minAllowedNonAnchorChannelRemoteFee,
 		} = fees;
@@ -350,7 +349,6 @@ class LDK {
 				nonAnchorChannelFee * satsPerKw,
 				channelCloseMinimum * satsPerKw,
 				minAllowedAnchorChannelRemoteFee * satsPerKw,
-				maxAllowedNonAnchorChannelRemoteFee * satsPerKw,
 				onChainSweep * satsPerKw,
 				minAllowedNonAnchorChannelRemoteFee * satsPerKw,
 			);

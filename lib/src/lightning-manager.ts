@@ -129,7 +129,6 @@ class LightningManager {
 	getFees: TGetFees = async (): Promise<TFeeUpdateReq> => ({
 		nonAnchorChannelFee: 5,
 		anchorChannelFee: 5,
-		maxAllowedNonAnchorChannelRemoteFee: 5,
 		channelCloseMinimum: 5,
 		minAllowedAnchorChannelRemoteFee: 5,
 		minAllowedNonAnchorChannelRemoteFee: 5,

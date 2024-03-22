@@ -224,6 +224,8 @@ const validateAddress = ({
 export const extractPaymentRequest = (paymentRequest: string): string => {
 	let result = paymentRequest.replace('lightning:', '').toLowerCase();
 	result = result.replace('bitcoin:', '').toLowerCase();
+	result = result.replace(/[^\x00-\x7F]/g, ''); //Strip anything not utf8 to avoid LDK crashes
+
 	//TODO support bip21 and other common formats
 	return result;
 };

@@ -295,9 +295,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             }
 
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "TODO📣: BumpTransaction")
-
             return
-
         case .ProbeFailed:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ProbeFailed")
             return
@@ -313,6 +311,9 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
 
         case .HTLCHandlingFailed:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: HTLCHandlingFailed")
+            return
+        case .ConnectionNeeded:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ConnectionNeeded")
             return
         }
     }

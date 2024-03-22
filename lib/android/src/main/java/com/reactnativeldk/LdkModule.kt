@@ -9,12 +9,16 @@ import org.ldk.batteries.NioPeerHandler
 import org.ldk.enums.Currency
 import org.ldk.enums.Network
 import org.ldk.enums.Recipient
+import org.ldk.enums.RetryableSendFailure
+import org.ldk.impl.bindings.LDKPaymentSendFailure.DuplicatePayment
 import org.ldk.impl.bindings.get_ldk_c_bindings_version
 import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
 import org.ldk.structs.Result_Bolt11InvoiceParseOrSemanticErrorZ.Result_Bolt11InvoiceParseOrSemanticErrorZ_OK
 import org.ldk.structs.Result_Bolt11InvoiceSignOrCreationErrorZ.Result_Bolt11InvoiceSignOrCreationErrorZ_OK
 import org.ldk.structs.Result_C2Tuple_ThirtyTwoBytesChannelMonitorZDecodeErrorZ.Result_C2Tuple_ThirtyTwoBytesChannelMonitorZDecodeErrorZ_OK
+import org.ldk.structs.Result_C3Tuple_ThirtyTwoBytesRecipientOnionFieldsRouteParametersZNoneZ.Result_C3Tuple_ThirtyTwoBytesRecipientOnionFieldsRouteParametersZNoneZ_OK
+import org.ldk.structs.Result_NoneRetryableSendFailureZ.Result_NoneRetryableSendFailureZ_Err
 import org.ldk.structs.Result_PublicKeyNoneZ.Result_PublicKeyNoneZ_OK
 import org.ldk.structs.Result_StrSecp256k1ErrorZ.Result_StrSecp256k1ErrorZ_OK
 import org.ldk.util.UInt128
@@ -73,11 +77,9 @@ enum class LdkErrors {
     invoice_payment_fail_must_specify_amount,
     invoice_payment_fail_must_not_specify_amount,
     invoice_payment_fail_invoice,
-    invoice_payment_fail_sending,
-    invoice_payment_fail_resend_safe,
-    invoice_payment_fail_parameter_error,
-    invoice_payment_fail_partial,
-    invoice_payment_fail_path_parameter_error,
+    invoice_payment_fail_duplicate_payment,
+    invoice_payment_fail_payment_expired,
+    invoice_payment_fail_route_not_found,
     init_ldk_currency,
     invoice_create_failed,
     init_scorer_failed,
@@ -564,8 +566,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     //MARK: Update methods
 
     @ReactMethod
-    fun updateFees(anchorChannelFee: Double, nonAnchorChannelFee: Double, channelCloseMinimum: Double, minAllowedAnchorChannelRemoteFee: Double, maxAllowedNonAnchorChannelRemoteFee: Double, onChainSweep: Double, minAllowedNonAnchorChannelRemoteFee: Double, promise: Promise) {
-        feeEstimator.update(anchorChannelFee.toInt(), nonAnchorChannelFee.toInt(), channelCloseMinimum.toInt(), minAllowedAnchorChannelRemoteFee.toInt(), maxAllowedNonAnchorChannelRemoteFee.toInt(), onChainSweep.toInt(), minAllowedNonAnchorChannelRemoteFee.toInt())
+    fun updateFees(anchorChannelFee: Double, nonAnchorChannelFee: Double, channelCloseMinimum: Double, minAllowedAnchorChannelRemoteFee: Double, onChainSweep: Double, minAllowedNonAnchorChannelRemoteFee: Double, promise: Promise) {
+        feeEstimator.update(anchorChannelFee.toInt(), nonAnchorChannelFee.toInt(), channelCloseMinimum.toInt(), minAllowedAnchorChannelRemoteFee.toInt(), onChainSweep.toInt(), minAllowedNonAnchorChannelRemoteFee.toInt())
         handleResolve(promise, LdkCallbackResponses.fees_updated)
     }
 
@@ -772,14 +774,27 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.invoice_payment_fail_must_not_specify_amount)
         }
 
-        val res = if (isZeroValueInvoice)
-            UtilMethods.pay_zero_value_invoice(invoice, amountSats.toLong() * 1000, Retry.timeout(timeoutSeconds.toLong()), channelManager) else
-            UtilMethods.pay_invoice(invoice, Retry.timeout(timeoutSeconds.toLong()), channelManager)
+        val paymentId = invoice.payment_hash()
+        val detailsRes = if (isZeroValueInvoice)
+            UtilMethods.payment_parameters_from_zero_amount_invoice(invoice, amountSats.toLong()) else
+            UtilMethods.payment_parameters_from_invoice(invoice)
+
+        if (!detailsRes.is_ok) {
+            return handleReject(promise, LdkErrors.invoice_payment_fail_invoice)
+        }
+
+        val sendDetails = detailsRes as Result_C3Tuple_ThirtyTwoBytesRecipientOnionFieldsRouteParametersZNoneZ_OK
+        val paymentHash = sendDetails.res._a
+        val recipientOnion = sendDetails.res._b
+        val routeParams = sendDetails.res._c
+
+        val res = channelManager!!.send_payment(paymentHash, recipientOnion, paymentId, routeParams, Retry.timeout(timeoutSeconds.toLong()))
+
         if (res.is_ok) {
             channelManagerPersister.persistPaymentSent(hashMapOf(
                 "bolt11_invoice" to paymentRequest,
-                "description" to (invoice.into_signed_raw().raw_invoice().description()?.into_inner() ?: ""),
-                "payment_id" to (res as Result_ThirtyTwoBytesPaymentErrorZ.Result_ThirtyTwoBytesPaymentErrorZ_OK).res.hexEncodedString(),
+                "description" to (invoice.into_signed_raw().raw_invoice().description()?.to_str() ?: ""),
+                "payment_id" to paymentId.hexEncodedString(),
                 "payment_hash" to invoice.payment_hash().hexEncodedString(),
                 "amount_sat" to if (isZeroValueInvoice) amountSats.toLong() else ((invoice.amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000),
                 "unix_timestamp" to (System.currentTimeMillis() / 1000).toInt(),
@@ -789,39 +804,24 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
         }
 
-        val error = res as? Result_ThirtyTwoBytesPaymentErrorZ.Result_ThirtyTwoBytesPaymentErrorZ_Err
+        val error = res as? Result_NoneRetryableSendFailureZ_Err
+            ?: return handleReject(promise, LdkErrors.invoice_payment_fail_unknown)
 
-        val invoiceError = error?.err as? PaymentError.Invoice
-        if (invoiceError != null) {
-            return handleReject(promise, LdkErrors.invoice_payment_fail_invoice, Error(invoiceError.invoice))
+        when (error.err) {
+            RetryableSendFailure.LDKRetryableSendFailure_DuplicatePayment -> {
+                handleReject(promise, LdkErrors.invoice_payment_fail_duplicate_payment)
+            }
+
+            RetryableSendFailure.LDKRetryableSendFailure_PaymentExpired -> {
+                handleReject(promise, LdkErrors.invoice_payment_fail_payment_expired)
+            }
+
+            RetryableSendFailure.LDKRetryableSendFailure_RouteNotFound -> {
+                handleReject(promise, LdkErrors.invoice_payment_fail_route_not_found)
+            }
+
+            else -> handleReject(promise, LdkErrors.invoice_payment_fail_unknown)
         }
-
-        val sendingError = error?.err as? PaymentError.Sending
-        if (sendingError != null) {
-            val paymentAllFailedResendSafe = sendingError.sending as? PaymentSendFailure.AllFailedResendSafe
-            if (paymentAllFailedResendSafe != null) {
-                return handleReject(promise, LdkErrors.invoice_payment_fail_resend_safe, Error(paymentAllFailedResendSafe.all_failed_resend_safe.map { it.toString() }.toString()))
-            }
-
-            val paymentParameterError = sendingError.sending as? PaymentSendFailure.ParameterError
-            if (paymentParameterError != null) {
-                return handleReject(promise, LdkErrors.invoice_payment_fail_parameter_error, Error(paymentParameterError.parameter_error.toString()))
-            }
-
-            val paymentPartialFailure = sendingError.sending as? PaymentSendFailure.PartialFailure
-            if (paymentPartialFailure != null) {
-                return handleReject(promise, LdkErrors.invoice_payment_fail_partial, Error(paymentPartialFailure.toString()))
-            }
-
-            val paymentPathParameterError = sendingError.sending as? PaymentSendFailure.PathParameterError
-            if (paymentPathParameterError != null) {
-                return handleReject(promise, LdkErrors.invoice_payment_fail_path_parameter_error, Error(paymentPartialFailure.toString()))
-            }
-
-            return handleReject(promise, LdkErrors.invoice_payment_fail_sending, Error("PaymentError.Sending"))
-        }
-
-        return handleReject(promise, LdkErrors.invoice_payment_fail_unknown)
     }
 
     @ReactMethod
@@ -1090,7 +1090,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val output = TxOut(outputValue.toLong(), outputScriptPubKey.hexa())
         val outpoint = OutPoint.of(outpointTxId.hexa().reversedArray(), outpointIndex.toInt().toShort())
-        val descriptor = SpendableOutputDescriptor.static_output(outpoint, output)
+        val descriptor = SpendableOutputDescriptor.static_output(outpoint, output, byteArrayOf())
 
         val ldkDescriptors: MutableList<SpendableOutputDescriptor> = arrayListOf()
         ldkDescriptors.add(descriptor)
