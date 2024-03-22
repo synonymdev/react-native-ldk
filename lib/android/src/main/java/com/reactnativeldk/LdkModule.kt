@@ -793,7 +793,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         if (res.is_ok) {
             channelManagerPersister.persistPaymentSent(hashMapOf(
                 "bolt11_invoice" to paymentRequest,
-                "description" to (invoice.into_signed_raw().raw_invoice().description()?.into_inner() ?: ""),
+                "description" to (invoice.into_signed_raw().raw_invoice().description()?.to_str() ?: ""),
                 "payment_id" to paymentId.hexEncodedString(),
                 "payment_hash" to invoice.payment_hash().hexEncodedString(),
                 "amount_sat" to if (isZeroValueInvoice) amountSats.toLong() else ((invoice.amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000),
