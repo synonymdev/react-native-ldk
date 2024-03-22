@@ -941,6 +941,40 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
+    fun listChannelMonitors(ignoreOpenChannels: Boolean, promise: Promise) {
+        val channelManager = channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        val keysManager = keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
+        if (channelStoragePath == "") {
+            return handleReject(promise, LdkErrors.init_storage_path)
+        }
+
+        val ignoredChannels = if (ignoreOpenChannels)
+            channelManager.list_channels().map { it._channel_id.hexEncodedString() }.toTypedArray() else
+            arrayOf()
+
+        val channelFiles = File(channelStoragePath).listFiles()
+
+        val result = Arguments.createArray()
+        for (channelFile in channelFiles) {
+            val channelId = channelFile.nameWithoutExtension
+
+            //Ignore open channels
+            if (ignoredChannels.contains(channelId)) {
+                continue
+            }
+
+            val channelMonitor = UtilMethods.C2Tuple_ThirtyTwoBytesChannelMonitorZ_read(channelFile.readBytes(), keysManager!!.inner.as_EntropySource(), SignerProvider.new_impl(keysManager!!.signerProvider))
+
+            if (channelMonitor.is_ok) {
+                val channelMonitorResult = (channelMonitor as Result_C2Tuple_ThirtyTwoBytesChannelMonitorZDecodeErrorZ_OK)
+                result.pushMap(channelMonitorResult.res._b.asJson(channelMonitorResult.res._a.hexEncodedString()))
+            }
+        }
+
+        promise.resolve(result)
+    }
+
+    @ReactMethod
     fun networkGraphListNodeIds(promise: Promise) {
         val graph = networkGraph?.read_only() ?: return handleReject(promise, LdkErrors.init_network_graph)
 
@@ -1006,8 +1040,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         val ignoredChannels = if (ignoreOpenChannels)
             channelManager.list_channels() else
             arrayOf<ChannelDetails>()
-
-
 
         promise.resolve(chainMonitor.getClaimableBalancesAsJson(ignoredChannels))
     }

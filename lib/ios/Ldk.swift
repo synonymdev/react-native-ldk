@@ -1009,6 +1009,49 @@ class Ldk: NSObject {
     }
     
     @objc
+    func listChannelMonitors(_ ignoreOpenChannels: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        guard let keysManager else {
+            return handleReject(reject, .init_keys_manager)
+        }
+        
+        guard let channelStoragePath = Ldk.channelStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        let excludeChannelIds = ignoreOpenChannels ? channelManager.listChannels().map { Data($0.getChannelId() ?? []).hexEncodedString() }.filter { $0 != "" } : []
+
+        let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
+        
+        var result: [[String: Any?]] = []
+        for channelFile in channelFiles {
+            let channelId = channelFile.lastPathComponent.replacingOccurrences(of: ".bin", with: "")
+            
+            guard !excludeChannelIds.contains(channelId) else {
+                continue
+            }
+            
+            let channelMonitorResult = Bindings.readThirtyTwoBytesChannelMonitor(
+                ser: [UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)),
+                argA: keysManager.inner.asEntropySource(),
+                argB: keysManager.signerProvider
+            )
+            
+            guard let (channelId, channelMonitor) = channelMonitorResult.getValue() else {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel error. No channel value.")
+                continue
+            }
+            
+            result.append(channelMonitor.asJson(channelId: Data(channelId).hexEncodedString()))
+        }
+        
+        return resolve(result)
+    }
+    
+    @objc
     func networkGraphListNodeIds(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         guard let networkGraph = networkGraph?.readOnly() else {
             return handleReject(reject, .init_network_graph)
@@ -1197,7 +1240,7 @@ class Ldk: NSObject {
     
     @objc
     func spendRecoveredForceCloseOutputs(_ transaction: NSString, confirmationHeight: NSInteger, changeDestinationScript: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        //TODO check which ones are not open channels and try spend them again
+        
         guard let channelStoragePath = Ldk.channelStoragePath, let keysManager, let channelManager else {
             return handleReject(reject, .init_storage_path)
         }
