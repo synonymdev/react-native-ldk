@@ -1040,12 +1040,12 @@ class Ldk: NSObject {
                 argB: keysManager.signerProvider
             )
             
-            guard let (channelId, channelMonitor) = channelMonitorResult.getValue() else {
+            guard let (_, channelMonitor) = channelMonitorResult.getValue() else {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel error. No channel value.")
                 continue
             }
             
-            result.append(channelMonitor.asJson(channelId: Data(channelId).hexEncodedString()))
+            result.append(channelMonitor.asJson(channelId: channelId))
         }
         
         return resolve(result)

@@ -191,7 +191,8 @@ extension ChannelMonitor {
     func asJson(channelId: String) -> [String: Any?] {
         return [
             "channel_id": channelId,
-            "funding_txo": Data(getFundingTxo().1).hexEncodedString(),
+            "funding_txo_index": getFundingTxo().0.getIndex(),
+            "funding_txo_txid": Data(getFundingTxo().0.getTxid()?.reversed() ?? []).hexEncodedString(),
             "counterparty_node_id": Data(getCounterpartyNodeId() ?? []).hexEncodedString(),
             "claimable_balances": getClaimableBalances().map({ $0.asJson })
         ]
