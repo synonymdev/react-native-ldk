@@ -11,8 +11,7 @@ on:
 jobs:
   tests-android:
     name: Android Unit Tests
-    runs-on: macos-14 # m1 mac
-    # runs-on: ubuntu-latest # Uncomment to run locally via act
+    runs-on: macos-12
 
     steps:
       - uses: actions/checkout@v3
@@ -22,10 +21,6 @@ jobs:
         with:
           node-version: 18
 
-      # Uncomment to run workflow locally via act
-      # - name: Install yarn
-      #   run: npm install -g yarn
-
       - name: Install node_modules
         working-directory: example
         run: yarn install && yarn rn-setup
@@ -34,12 +29,11 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: '17'
-          architecture: x64
           distribution: 'zulu'
 
       - name: Use Android SDK
         uses: android-actions/setup-android@v2
 
       - name: Run Android unit tests
-        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon
         working-directory: lib/android
+        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon

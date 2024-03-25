@@ -16,7 +16,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.check
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
-import org.mockito.kotlin.isA
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -24,7 +23,6 @@ import org.mockito.kotlin.verify
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 private const val FS_ROOT = "build/test-files"
@@ -32,7 +30,10 @@ private const val FS_ROOT = "build/test-files"
 private val INVOICE_EXPIRED =
     "lnbcrt120n1pjlrxz9pp599l2jlsrt4qeczdyh90rzhfsfrkxhu6dged8yhfyhw0kt3sfzsyqdqdw4hxjaz5v4ehgcqzzsxqyz5vqsp54ehunpcenrejgq4tfwr8a4s5tlyrchhk27e70a0vagwr60n8mwhq9qyyssq5t6dqjwu4r6rnjfz7uk9mx0p2h2rxlr00fqyzjtudglay6lzfqp370ml6y8hnwfz8eamhdt4nu7s6jwy64gd9gtl9t8zz5l67cq6j6qqkgmr5v"
 
-@Config(shadows = [ShadowArguments::class], manifest = Config.NONE)
+@Config(
+    manifest = Config.NONE,
+    shadows = [ShadowArguments::class],
+)
 @RunWith(RobolectricTestRunner::class)
 class LdkModuleTest {
     private val eventEmitter = mock<RCTDeviceEventEmitter>()
@@ -56,12 +57,8 @@ class LdkModuleTest {
 
     @Before
     fun setUp() {
-        ldkModule = LdkModule(reactContext)
         _promise = mock<Promise>()
-        // TODO remove after PR gets merged and LDK is updated:
-        //  https://github.com/lightningdevkit/ldk-garbagecollected/issues/149
-        get_ldk_version() // ← HACK to force load LDK bindings
-        // TODO clear tests file storage (maybe?)
+        ldkModule = LdkModule(reactContext)
     }
 
     // MARK: Startup methods
@@ -188,7 +185,6 @@ class LdkModuleTest {
             4.0,
             5.0,
             5.0,
-            6.0,
             promise
         )
 
@@ -357,18 +353,14 @@ class LdkModuleTest {
     @Test
     fun test_pay_expiredInvoice() {
         // TODO: Add test for happy flow + other error cases
+        val promise = mock<Promise>()
         setupChannelManager()
 
-        ldkModule.pay(INVOICE_EXPIRED, 0.0, 2.5, _promise)
+        ldkModule.pay(INVOICE_EXPIRED, 0.0, 2.5, promise)
 
-        verify(_promise).reject(
-            eq(LdkErrors.invoice_payment_fail_sending.name),
-            check<Throwable> {
-                assertEquals(
-                    "PaymentError.Sending: LDKRetryableSendFailure_PaymentExpired",
-                    it.message
-                )
-            }
+        verify(promise).reject(
+            eq(LdkErrors.invoice_payment_fail_payment_expired.name),
+            eq(LdkErrors.invoice_payment_fail_payment_expired.name),
         )
     }
 
@@ -446,7 +438,6 @@ class LdkModuleTest {
     @Test
     fun test_nodeId() {
         val promise = mock<Promise>()
-
         setupChannelManager()
 
         ldkModule.nodeId(promise)
@@ -627,7 +618,12 @@ class LdkModuleTest {
         val promise = mock<Promise>()
         setupChannelManager()
 
-        ldkModule.spendRecoveredForceCloseOutputs("transaction", 1.0, "changeDestinationScript", promise)
+        ldkModule.spendRecoveredForceCloseOutputs(
+            "transaction",
+            1.0,
+            "changeDestinationScript",
+            promise
+        )
 
         verify(promise).resolve(check<ReadableArray> {
             assertTrue { it.size() == 0 }

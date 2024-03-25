@@ -1145,7 +1145,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val output = TxOut(outputValue.toLong(), outputScriptPubKey.hexa())
         val outpoint = OutPoint.of(outpointTxId.hexa().reversedArray(), outpointIndex.toInt().toShort())
-        val descriptor = SpendableOutputDescriptor.static_output(outpoint, output, byteArrayOf())
+        val descriptor = SpendableOutputDescriptor.static_output(outpoint, output, ByteArray(32))
 
         val ldkDescriptors: MutableList<SpendableOutputDescriptor> = arrayListOf()
         ldkDescriptors.add(descriptor)
