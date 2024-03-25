@@ -10,10 +10,10 @@ import org.ldk.structs.Result_ShutdownScriptNoneZ
 import org.ldk.structs.Result_TransactionNoneZ
 import org.ldk.structs.Result_WriteableEcdsaChannelSignerDecodeErrorZ
 import org.ldk.structs.ShutdownScript
-import org.ldk.structs.SignerProvider
 import org.ldk.structs.SignerProvider.SignerProviderInterface
 import org.ldk.structs.SpendableOutputDescriptor
 import org.ldk.structs.TxOut
+import org.ldk.structs.WitnessProgram
 import org.ldk.structs.WriteableEcdsaChannelSigner
 import org.ldk.util.UInt128
 import org.ldk.util.WitnessVersion
@@ -59,15 +59,13 @@ class CustomKeysManager(
 class CustomSignerProvider : SignerProviderInterface {
     lateinit var customKeysManager: CustomKeysManager
 
-    override fun get_destination_script(): Result_CVec_u8ZNoneZ {
+    override fun get_destination_script(p0: ByteArray?): Result_CVec_u8ZNoneZ {
         return Result_CVec_u8ZNoneZ.ok(customKeysManager.destinationScriptPublicKey)
     }
 
     override fun get_shutdown_scriptpubkey(): Result_ShutdownScriptNoneZ {
-        val res = ShutdownScript.new_witness_program(
-            WitnessVersion(customKeysManager.witnessProgramVersion),
-            customKeysManager.witnessProgram
-        )
+        val witness = WitnessProgram(customKeysManager.witnessProgram, WitnessVersion(customKeysManager.witnessProgramVersion))
+        val res = ShutdownScript.new_witness_program(witness)
 
         return if (res.is_ok) {
             Result_ShutdownScriptNoneZ.ok((res as Result_ShutdownScriptInvalidShutdownScriptZ.Result_ShutdownScriptInvalidShutdownScriptZ_OK).res)

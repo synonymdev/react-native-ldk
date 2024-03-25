@@ -588,6 +588,23 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
+						title={'List channel monitors'}
+						onPress={async (): Promise<void> => {
+							const monitorsRes = await ldk.listChannelMonitors(true);
+							if (monitorsRes.isErr()) {
+								return setMessage(monitorsRes.error.message);
+							}
+
+							let msg = `Channel Monitors (${monitorsRes.value.length}): \n`;
+							monitorsRes.value.forEach((monitor) => {
+								msg += `\n\n${JSON.stringify(monitor)}`;
+							});
+
+							setMessage(msg);
+						}}
+					/>
+
+					<Button
 						title={'Show version'}
 						onPress={async (): Promise<void> => {
 							const ldkVersion = await ldk.version();

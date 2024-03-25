@@ -76,12 +76,11 @@ extension Bolt11Invoice {
         //Break down to get the decription. Will crash if all on a single line.
         let signedRawInvoice = intoSignedRaw()
         let rawInvoice = signedRawInvoice.rawInvoice()
-        let description = rawInvoice.description()
-        let descriptionString = description?.intoInner() ?? ""
+        let description = rawInvoice.description()?.intoInner().getA() ?? ""
         
         return [
             "amount_satoshis": amountMilliSatoshis() != nil ? amountMilliSatoshis()! / 1000 : nil,
-            "description": descriptionString,
+            "description": description,
             "check_signature": checkSignature().isOk(),
             "is_expired": isExpired(),
             "duration_since_epoch": durationSinceEpoch(),
@@ -184,6 +183,17 @@ extension LightningDevKit.RouteHop {
             "fee_sat": getFeeMsat() / 1000,
             "short_channel_id": String(getShortChannelId()),
             "cltv_expiry_delta": getCltvExpiryDelta()
+        ]
+    }
+}
+
+extension ChannelMonitor {
+    func asJson(channelId: String) -> [String: Any?] {
+        return [
+            "channel_id": channelId,
+            "funding_txo": Data(getFundingTxo().1).hexEncodedString(),
+            "counterparty_node_id": Data(getCounterpartyNodeId() ?? []).hexEncodedString(),
+            "claimable_balances": getClaimableBalances().map({ $0.asJson })
         ]
     }
 }
@@ -402,107 +412,66 @@ extension UserConfig {
     }
 }
 
+extension Balance {
+    var asJson: [String: Any] {
+        switch getValueType() {
+        case .ClaimableAwaitingConfirmations:
+            let b = getValueAsClaimableAwaitingConfirmations()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "confirmation_height": b.getConfirmationHeight(),
+                "type": "ClaimableAwaitingConfirmations"
+            ] as [String : Any]
+        case .ClaimableOnChannelClose:
+            let b = getValueAsClaimableOnChannelClose()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "type": "ClaimableOnChannelClose",
+            ] as [String : Any]
+        case .ContentiousClaimable:
+            let b = getValueAsContentiousClaimable()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "timeout_height": b.getTimeoutHeight(),
+                "type": "ContentiousClaimable"
+            ] as [String : Any]
+        case .CounterpartyRevokedOutputClaimable:
+            let b = getValueAsCounterpartyRevokedOutputClaimable()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "type": "CounterpartyRevokedOutputClaimable"
+            ] as [String : Any]
+        case .MaybePreimageClaimableHTLC:
+            let b = getValueAsMaybePreimageClaimableHtlc()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "expiry_height": b.getExpiryHeight(),
+                "type": "MaybePreimageClaimableHTLC"
+            ] as [String : Any]
+        case .MaybeTimeoutClaimableHTLC:
+            let b = getValueAsMaybeTimeoutClaimableHtlc()!
+            return [
+                "amount_satoshis": b.getAmountSatoshis(),
+                "claimable_height": b.getClaimableHeight(),
+                "type": "MaybeTimeoutClaimableHTLC"
+            ] as [String : Any]
+        default:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances() \(getValueType())")
+            return ["amount_satoshis": 0, "type": "Unknown"] as [String : Any]
+        }
+    }
+}
+
 extension ChainMonitor {
     func getClaimableBalancesAsJson(ignoredChannels: [Bindings.ChannelDetails]) -> [[String: Any]] {
         var result: [[String: Any]] = []
 
         let claimableBalances = self.getClaimableBalances(ignoredChannels: ignoredChannels)
         for balance in claimableBalances {
-            switch balance.getValueType() {
-            case .ClaimableAwaitingConfirmations:
-                let b = balance.getValueAsClaimableAwaitingConfirmations()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "confirmation_height": b.getConfirmationHeight(),
-                    "type": "ClaimableAwaitingConfirmations"
-                ] as [String : Any])
-                break
-            case .ClaimableOnChannelClose:
-                let b = balance.getValueAsClaimableOnChannelClose()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "type": "ClaimableOnChannelClose",
-                ] as [String : Any])
-                break
-            case .ContentiousClaimable:
-                let b = balance.getValueAsContentiousClaimable()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "timeout_height": b.getTimeoutHeight(),
-                    "type": "ContentiousClaimable"
-                ] as [String : Any])
-                break
-            case .CounterpartyRevokedOutputClaimable:
-                let b = balance.getValueAsCounterpartyRevokedOutputClaimable()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "type": "CounterpartyRevokedOutputClaimable"
-                ] as [String : Any])
-                break
-            case .MaybePreimageClaimableHTLC:
-                let b = balance.getValueAsMaybePreimageClaimableHtlc()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "expiry_height": b.getExpiryHeight(),
-                    "type": "MaybePreimageClaimableHTLC"
-                ] as [String : Any])
-                break
-            case .MaybeTimeoutClaimableHTLC:
-                let b = balance.getValueAsMaybeTimeoutClaimableHtlc()!
-                result.append([
-                    "amount_satoshis": b.getAmountSatoshis(),
-                    "claimable_height": b.getClaimableHeight(),
-                    "type": "MaybeTimeoutClaimableHTLC"
-                ] as [String : Any])
-                break
-            default:
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unknown balance type type in claimableBalances() \(balance.getValueType())")
-                result.append(["amount_satoshis": 0, "type": "Unknown"] as [String : Any])
-            }
+            result.append(balance.asJson)
         }
         
         return result
-    }
-}
-
-func handlePaymentSendFailure(_ reject: RCTPromiseRejectBlock, error: Bindings.PaymentSendFailure) {
-    switch error.getValueType() {
-    case .AllFailedResendSafe:
-        //            let errorMessage = ""
-        //            error.getValueAsAllFailedRetrySafe()?.forEach({ apiError in
-        //                apiError.getValueType() //TODO iterate through all
-        //            })
-        
-        return handleReject(reject, .invoice_payment_fail_resend_safe, nil, error.getValueAsAllFailedResendSafe().map { $0.description } )
-    case .ParameterError:
-        guard let parameterError = error.getValueAsParameterError() else {
-            return handleReject(reject, .invoice_payment_fail_parameter_error)
-        }
-        
-        let parameterErrorType = parameterError.getValueType()
-        
-        switch parameterErrorType {
-        case .APIMisuseError:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "parameterError.getValueType().debugDescription")
-        case .FeeRateTooHigh:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsFeeRateTooHigh()?.getErr())
-        case .InvalidRoute:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsInvalidRoute()?.getErr())
-        case .ChannelUnavailable:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, parameterError.getValueAsChannelUnavailable()?.getErr())
-        case .IncompatibleShutdownScript:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "IncompatibleShutdownScript")
-        case .MonitorUpdateInProgress:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, "MonitorUpdateInProgress")
-        @unknown default:
-            return handleReject(reject, .invoice_payment_fail_parameter_error, nil, error.getValueAsParameterError().debugDescription)
-        }
-    case .PartialFailure:
-        return handleReject(reject, .invoice_payment_fail_partial, nil, error.getValueAsPartialFailure().debugDescription)
-    case .PathParameterError:
-        return handleReject(reject, .invoice_payment_fail_path_parameter_error, nil, error.getValueAsPartialFailure().debugDescription)
-    default:
-        return handleReject(reject, .invoice_payment_fail_sending)
     }
 }
 

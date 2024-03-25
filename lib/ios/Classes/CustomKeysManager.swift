@@ -53,13 +53,13 @@ class CustomKeysManager {
 class CustomSignerProvider: SignerProvider {
     weak var customKeysManager: CustomKeysManager?
  
-    override func getDestinationScript() -> Bindings.Result_CVec_u8ZNoneZ {
+    override func getDestinationScript(channelKeysId: [UInt8]) -> Bindings.Result_CVec_u8ZNoneZ {
         let destinationScriptPublicKey = customKeysManager!.destinationScriptPublicKey
         return Bindings.Result_CVec_u8ZNoneZ.initWithOk(o: destinationScriptPublicKey)
     }
     
     override func getShutdownScriptpubkey() -> Bindings.Result_ShutdownScriptNoneZ {
-        let res = ShutdownScript.newWitnessProgram(version: customKeysManager!.witnessProgramVersion, program: customKeysManager!.witnessProgram)
+        let res = ShutdownScript.newWitnessProgram(witnessProgram: .init(version: customKeysManager!.witnessProgramVersion, program: customKeysManager!.witnessProgram))
         if res.isOk() {
             return Bindings.Result_ShutdownScriptNoneZ.initWithOk(o: res.getValue()!)
         }

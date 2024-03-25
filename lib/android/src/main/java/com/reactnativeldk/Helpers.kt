@@ -72,7 +72,7 @@ val Bolt11Invoice.asJson: WritableMap
         val rawInvoice = signedInv.raw_invoice()
 
         if (amount_milli_satoshis() is Option_u64Z.Some) result.putInt("amount_satoshis", ((amount_milli_satoshis() as Option_u64Z.Some).some.toInt() / 1000)) else  result.putNull("amount_satoshis")
-        result.putString("description", rawInvoice.description()?.into_inner())
+        result.putString("description", rawInvoice.description()?.to_str())
         result.putBoolean("check_signature",  signedInv.check_signature())
         result.putBoolean("is_expired",  is_expired)
         result.putInt("duration_since_epoch",  duration_since_epoch().toInt())
@@ -198,6 +198,21 @@ val RouteHop.asJson: WritableMap
         hop.putInt("fee_sat", (_fee_msat / 1000).toInt())
         return hop
     }
+
+
+fun ChannelMonitor.asJson(channelId: String): WritableMap {
+    val result = Arguments.createMap()
+    result.putString("channel_id", channelId)
+    result.putHexString("funding_txo", _funding_txo._b)
+    result.putHexString("counterparty_node_id", _counterparty_node_id)
+
+    val balances = Arguments.createArray()
+    _claimable_balances.iterator().forEach { balance ->
+        balances.pushMap(balance.asJson)
+    }
+    result.putArray("claimable_balances", balances)
+    return result
+}
 
 fun WritableMap.putHexString(key: String, bytes: ByteArray?) {
     if (bytes != null) {
@@ -434,55 +449,59 @@ fun UserConfig.mergeWithMap(map: ReadableMap): UserConfig {
     return this
 }
 
-fun ChainMonitor.getClaimableBalancesAsJson(ignoredChannels: Array<ChannelDetails>): WritableArray {
-    val result = Arguments.createArray()
-
-    get_claimable_balances(ignoredChannels).iterator().forEach { balance ->
+val Balance.asJson: WritableMap
+    get() {
         val map = Arguments.createMap()
         //Defaults if all castings for balance fail
         map.putInt("amount_satoshis", 0)
         map.putString("type", "Unknown")
 
-        (balance as? Balance.ClaimableAwaitingConfirmations)?.let { claimableAwaitingConfirmations ->
+        (this as? Balance.ClaimableAwaitingConfirmations)?.let { claimableAwaitingConfirmations ->
             map.putInt("amount_satoshis", claimableAwaitingConfirmations.amount_satoshis.toInt())
             map.putInt("confirmation_height", claimableAwaitingConfirmations.confirmation_height)
             map.putString("type", "ClaimableAwaitingConfirmations")
         }
 
-        (balance as? Balance.ClaimableOnChannelClose)?.let { claimableOnChannelClose ->
+        (this as? Balance.ClaimableOnChannelClose)?.let { claimableOnChannelClose ->
             map.putInt("amount_satoshis", claimableOnChannelClose.amount_satoshis.toInt())
             map.putString("type", "ClaimableOnChannelClose")
         }
 
-        (balance as? Balance.ContentiousClaimable)?.let { contentiousClaimable ->
+        (this as? Balance.ContentiousClaimable)?.let { contentiousClaimable ->
             map.putInt("amount_satoshis", contentiousClaimable.amount_satoshis.toInt())
             map.putInt("timeout_height", contentiousClaimable.timeout_height)
             map.putString("type", "ContentiousClaimable")
         }
 
-        (balance as? Balance.CounterpartyRevokedOutputClaimable)?.let { counterpartyRevokedOutputClaimable ->
+        (this as? Balance.CounterpartyRevokedOutputClaimable)?.let { counterpartyRevokedOutputClaimable ->
             map.putInt("amount_satoshis", counterpartyRevokedOutputClaimable.amount_satoshis.toInt())
             map.putString("type", "CounterpartyRevokedOutputClaimable")
         }
 
-        (balance as? Balance.MaybePreimageClaimableHTLC)?.let { maybePreimageClaimableHTLC ->
+        (this as? Balance.MaybePreimageClaimableHTLC)?.let { maybePreimageClaimableHTLC ->
             map.putInt("amount_satoshis", maybePreimageClaimableHTLC.amount_satoshis.toInt())
             map.putInt("expiry_height", maybePreimageClaimableHTLC.expiry_height)
             map.putString("type", "MaybePreimageClaimableHTLC")
         }
 
-        (balance as? Balance.MaybeTimeoutClaimableHTLC)?.let { maybeTimeoutClaimableHTLC ->
+        (this as? Balance.MaybeTimeoutClaimableHTLC)?.let { maybeTimeoutClaimableHTLC ->
             map.putInt("amount_satoshis", maybeTimeoutClaimableHTLC.amount_satoshis.toInt())
             map.putInt("claimable_height", maybeTimeoutClaimableHTLC.claimable_height)
             map.putString("type", "MaybeTimeoutClaimableHTLC")
         }
 
-        result.pushMap(map)
+        return map
+    }
+
+fun ChainMonitor.getClaimableBalancesAsJson(ignoredChannels: Array<ChannelDetails>): WritableArray {
+    val result = Arguments.createArray()
+
+    get_claimable_balances(ignoredChannels).iterator().forEach { balance ->
+        result.pushMap(balance.asJson)
     }
 
     return result
 }
-
 
 /// Helper for returning real network and currency as a tuple from a string
 fun getNetwork(chain: String): Pair<Network, Currency> {

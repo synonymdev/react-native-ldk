@@ -47,12 +47,9 @@ enum LdkErrors: String {
     case invoice_payment_fail_unknown = "invoice_payment_fail_unknown"
     case invoice_payment_fail_must_specify_amount = "invoice_payment_fail_must_specify_amount"
     case invoice_payment_fail_must_not_specify_amount = "invoice_payment_fail_must_not_specify_amount"
-    case invoice_payment_fail_invoice = "invoice_payment_fail_invoice"
-    case invoice_payment_fail_sending = "invoice_payment_fail_sending"
-    case invoice_payment_fail_resend_safe = "invoice_payment_fail_resend_safe"
-    case invoice_payment_fail_parameter_error = "invoice_payment_fail_parameter_error"
-    case invoice_payment_fail_partial = "invoice_payment_fail_partial"
-    case invoice_payment_fail_path_parameter_error = "invoice_payment_fail_path_parameter_error"
+    case invoice_payment_fail_duplicate_payment = "invoice_payment_fail_duplicate_payment"
+    case invoice_payment_fail_payment_expired = "invoice_payment_fail_payment_expired"
+    case invoice_payment_fail_route_not_found = "invoice_payment_fail_route_not_found"
     case init_ldk_currency = "init_ldk_currency"
     case invoice_create_failed = "invoice_create_failed"
     case claim_funds_failed = "claim_funds_failed"
@@ -460,7 +457,8 @@ class Ldk: NSObject {
                     channelMonitorsSerialized: channelMonitorsSerialized,
                     networkGraph: NetworkGraphArgument.instance(networkGraph),
                     filter: filter,
-                    params: params
+                    params: params,
+                    logger: logger
                 )
             } else {
                 //New node
@@ -578,13 +576,12 @@ class Ldk: NSObject {
     //MARK: Update methods
     
     @objc
-    func updateFees(_ anchorChannelFee: NSInteger, nonAnchorChannelFee: NSInteger, channelCloseMinimum: NSInteger, minAllowedAnchorChannelRemoteFee: NSInteger, maxAllowedNonAnchorChannelRemoteFee: NSInteger, onChainSweep: NSInteger, minAllowedNonAnchorChannelRemoteFee: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func updateFees(_ anchorChannelFee: NSInteger, nonAnchorChannelFee: NSInteger, channelCloseMinimum: NSInteger, minAllowedAnchorChannelRemoteFee: NSInteger, onChainSweep: NSInteger, minAllowedNonAnchorChannelRemoteFee: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         feeEstimator.update(
             anchorChannelFee: UInt32(anchorChannelFee),
             nonAnchorChannelFee: UInt32(nonAnchorChannelFee),
             channelCloseMinimum: UInt32(channelCloseMinimum),
             minAllowedAnchorChannelRemoteFee: UInt32(minAllowedAnchorChannelRemoteFee),
-            maxAllowedNonAnchorChannelRemoteFee: UInt32(maxAllowedNonAnchorChannelRemoteFee),
             onChainSweep: UInt32(onChainSweep),
             minAllowedNonAnchorChannelRemoteFee: UInt32(minAllowedNonAnchorChannelRemoteFee)
         )
@@ -847,42 +844,39 @@ class Ldk: NSObject {
         guard !(amountSats > 0 && !isZeroValueInvoice) else {
             return handleReject(reject, .invoice_payment_fail_must_not_specify_amount)
         }
+                
+        let paymentId = invoice.paymentHash()!
+        let (paymentHash, recipientOnion, routeParameters) = isZeroValueInvoice ? Bindings.paymentParametersFromZeroAmountInvoice(invoice: invoice, amountMsat: UInt64(amountSats)).getValue()! : Bindings.paymentParametersFromInvoice(invoice: invoice).getValue()!
         
-        let res = isZeroValueInvoice ?
-        Bindings.payZeroValueInvoice(invoice: invoice, amountMsats: UInt64(amountSats * 1000), retryStrategy: .initWithTimeout(a: UInt64(timeoutSeconds)), channelmanager: channelManager) :
-        Bindings.payInvoice(invoice: invoice, retryStrategy: .initWithTimeout(a: UInt64(timeoutSeconds)), channelmanager: channelManager)
+        let res = channelManager.sendPayment(paymentHash: paymentHash, recipientOnion: recipientOnion, paymentId: paymentId, routeParams: routeParameters, retryStrategy: .initWithTimeout(a: UInt64(timeoutSeconds)))
+        
+        channelManagerPersister.persistPaymentSent([
+            "bolt11_invoice": String(paymentRequest),
+            "description": invoice.intoSignedRaw().rawInvoice().description()?.intoInner().getA() ?? "",
+            "payment_id": paymentId,
+            "payment_hash": Data(invoice.paymentHash() ?? []).hexEncodedString(),
+            "amount_sat": isZeroValueInvoice ? amountSats : (invoice.amountMilliSatoshis() ?? 0) / 1000,
+            "unix_timestamp": Int(Date().timeIntervalSince1970),
+            "state": res.isOk() ? "pending" : "failed"
+        ])
         
         if res.isOk() {
-            channelManagerPersister.persistPaymentSent([
-                "bolt11_invoice": String(paymentRequest),
-                "description": invoice.intoSignedRaw().rawInvoice().description()?.intoInner() ?? "",
-                "payment_id": Data(res.getValue() ?? []).hexEncodedString(),
-                "payment_hash": Data(invoice.paymentHash() ?? []).hexEncodedString(),
-                "amount_sat": isZeroValueInvoice ? amountSats : (invoice.amountMilliSatoshis() ?? 0) / 1000,
-                "unix_timestamp": Int(Date().timeIntervalSince1970),
-                "state": "pending"
-            ])
-            return resolve(Data(res.getValue() ?? []).hexEncodedString())
+            return resolve(paymentId)
         }
-        
-        //MARK: add as failed payment
         
         guard let error = res.getError() else {
             return handleReject(reject, .invoice_payment_fail_unknown)
         }
         
-        switch error.getValueType() {
-        case .Invoice:
-            return handleReject(reject, .invoice_payment_fail_invoice, nil, error.getValueAsInvoice())
-        case .Sending:
-            //Multiple sending errors
-            guard let sendingError = error.getValueAsSending() else {
-                return handleReject(reject, .invoice_payment_fail_sending, "AsSending")
-            }
-            
-            return handleReject(reject, .invoice_payment_fail_sending)
-        default:
-            return handleReject(reject, .invoice_payment_fail_sending, nil, res.getError().debugDescription)
+        switch error {
+        case .DuplicatePayment:
+            return handleReject(reject, .invoice_payment_fail_duplicate_payment)
+        case .PaymentExpired:
+            return handleReject(reject, .invoice_payment_fail_payment_expired)
+        case .RouteNotFound:
+            return handleReject(reject, .invoice_payment_fail_route_not_found)
+        @unknown default:
+            return handleReject(reject, .invoice_payment_fail_unknown)
         }
     }
     
@@ -1012,6 +1006,49 @@ class Ldk: NSObject {
         }
         
         return resolve(try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil).map { $0.lastPathComponent })
+    }
+    
+    @objc
+    func listChannelMonitors(_ ignoreOpenChannels: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        guard let keysManager else {
+            return handleReject(reject, .init_keys_manager)
+        }
+        
+        guard let channelStoragePath = Ldk.channelStoragePath else {
+            return handleReject(reject, .init_storage_path)
+        }
+        
+        let excludeChannelIds = ignoreOpenChannels ? channelManager.listChannels().map { Data($0.getChannelId() ?? []).hexEncodedString() }.filter { $0 != "" } : []
+
+        let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
+        
+        var result: [[String: Any?]] = []
+        for channelFile in channelFiles {
+            let channelId = channelFile.lastPathComponent.replacingOccurrences(of: ".bin", with: "")
+            
+            guard !excludeChannelIds.contains(channelId) else {
+                continue
+            }
+            
+            let channelMonitorResult = Bindings.readThirtyTwoBytesChannelMonitor(
+                ser: [UInt8](try! Data(contentsOf: channelFile.standardizedFileURL)),
+                argA: keysManager.inner.asEntropySource(),
+                argB: keysManager.signerProvider
+            )
+            
+            guard let (channelId, channelMonitor) = channelMonitorResult.getValue() else {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Loading channel error. No channel value.")
+                continue
+            }
+            
+            result.append(channelMonitor.asJson(channelId: Data(channelId).hexEncodedString()))
+        }
+        
+        return resolve(result)
     }
     
     @objc
@@ -1184,7 +1221,7 @@ class Ldk: NSObject {
         let output = TxOut(scriptPubkey: String(outputScriptPubKey).hexaBytes, value: UInt64(outputValue))
         let outpoint = OutPoint(txidArg: String(outpointTxId).hexaBytes.reversed(), indexArg: UInt16(outpointIndex))
         
-        let descriptor = SpendableOutputDescriptor.initWithStaticOutput(outpoint: outpoint, output: output)
+        let descriptor = SpendableOutputDescriptor.initWithStaticOutput(outpoint: outpoint, output: output, channelKeysId: [])
         
         let res = keysManager.spendSpendableOutputs(
             descriptors: [descriptor],
@@ -1203,7 +1240,7 @@ class Ldk: NSObject {
     
     @objc
     func spendRecoveredForceCloseOutputs(_ transaction: NSString, confirmationHeight: NSInteger, changeDestinationScript: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        //TODO check which ones are not open channels and try spend them again
+        
         guard let channelStoragePath = Ldk.channelStoragePath, let keysManager, let channelManager else {
             return handleReject(reject, .init_storage_path)
         }

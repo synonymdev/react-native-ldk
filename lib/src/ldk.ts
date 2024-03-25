@@ -38,6 +38,7 @@ import {
 	TDownloadScorer,
 	TInitKeysManager,
 	TSpendRecoveredForceCloseOutputsReq,
+	TChannelMonitor,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -339,7 +340,6 @@ class LDK {
 			nonAnchorChannelFee,
 			channelCloseMinimum,
 			minAllowedAnchorChannelRemoteFee,
-			maxAllowedNonAnchorChannelRemoteFee,
 			onChainSweep,
 			minAllowedNonAnchorChannelRemoteFee,
 		} = fees;
@@ -350,7 +350,6 @@ class LDK {
 				nonAnchorChannelFee * satsPerKw,
 				channelCloseMinimum * satsPerKw,
 				minAllowedAnchorChannelRemoteFee * satsPerKw,
-				maxAllowedNonAnchorChannelRemoteFee * satsPerKw,
 				onChainSweep * satsPerKw,
 				minAllowedNonAnchorChannelRemoteFee * satsPerKw,
 			);
@@ -953,6 +952,24 @@ class LDK {
 			return ok(res);
 		} catch (e) {
 			this.writeErrorToLog('listChannelFiles', e);
+			return err(e);
+		}
+	}
+
+	/**
+	 * Lists all channel monitors from storage
+	 * @param ignoreOpenChannels
+	 * @returns {Promise<Ok<Ok<string[]> | Err<string[]>> | Err<unknown>>}
+	 */
+	async listChannelMonitors(
+		ignoreOpenChannels: boolean,
+	): Promise<Result<TChannelMonitor[]>> {
+		try {
+			const res = await NativeLDK.listChannelMonitors(ignoreOpenChannels);
+			this.writeDebugToLog('listChannelMonitors', `Monitors: ${res.length}`);
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('listChannelMonitors', e);
 			return err(e);
 		}
 	}

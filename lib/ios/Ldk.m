@@ -48,7 +48,6 @@ RCT_EXTERN_METHOD(updateFees:(NSInteger *)anchorChannelFee
                   nonAnchorChannelFee:(NSInteger *)nonAnchorChannelFee
                   channelCloseMinimum:(NSInteger *)channelCloseMinimum
                   minAllowedAnchorChannelRemoteFee:(NSInteger *)minAllowedAnchorChannelRemoteFee
-                  maxAllowedNonAnchorChannelRemoteFee:(NSInteger *)maxAllowedNonAnchorChannelRemoteFee
                   onChainSweep:(NSInteger *)onChainSweep
                   minAllowedNonAnchorChannelRemoteFee:(NSInteger *)minAllowedNonAnchorChannelRemoteFee
                   resolve:(RCTPromiseResolveBlock)resolve
@@ -108,6 +107,9 @@ RCT_EXTERN_METHOD(listChannels:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(listUsableChannels:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(listChannelFiles:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(listChannelMonitors:(BOOL *)ignoreOpenChannels
+                  resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(networkGraphListNodeIds:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)

@@ -9,16 +9,14 @@ class LdkFeeEstimator {
     var nonAnchorChannelFee: Int = 0
     var channelCloseMinimum: Int = 0
     var minAllowedAnchorChannelRemoteFee: Int = 0
-    var maxAllowedNonAnchorChannelRemoteFee: Int = 0
     var onChainSweep: Int = 0
     var minAllowedNonAnchorChannelRemoteFee: Int = 0
 
-    fun update(anchorChannelFee: Int, nonAnchorChannelFee: Int, channelCloseMinimum: Int, minAllowedAnchorChannelRemoteFee: Int, maxAllowedNonAnchorChannelRemoteFee: Int, onChainSweep: Int, minAllowedNonAnchorChannelRemoteFee: Int) {
+    fun update(anchorChannelFee: Int, nonAnchorChannelFee: Int, channelCloseMinimum: Int, minAllowedAnchorChannelRemoteFee: Int, onChainSweep: Int, minAllowedNonAnchorChannelRemoteFee: Int) {
         this.anchorChannelFee = anchorChannelFee
         this.nonAnchorChannelFee = nonAnchorChannelFee
         this.channelCloseMinimum = channelCloseMinimum
         this.minAllowedAnchorChannelRemoteFee = minAllowedAnchorChannelRemoteFee
-        this.maxAllowedNonAnchorChannelRemoteFee = maxAllowedNonAnchorChannelRemoteFee
         this.onChainSweep = onChainSweep
         this.minAllowedNonAnchorChannelRemoteFee = minAllowedNonAnchorChannelRemoteFee
 
@@ -31,7 +29,6 @@ class LdkFeeEstimator {
             ConfirmationTarget.LDKConfirmationTarget_NonAnchorChannelFee -> nonAnchorChannelFee
             ConfirmationTarget.LDKConfirmationTarget_ChannelCloseMinimum -> channelCloseMinimum
             ConfirmationTarget.LDKConfirmationTarget_MinAllowedAnchorChannelRemoteFee -> minAllowedAnchorChannelRemoteFee
-            ConfirmationTarget.LDKConfirmationTarget_MaxAllowedNonAnchorChannelRemoteFee -> maxAllowedNonAnchorChannelRemoteFee
             ConfirmationTarget.LDKConfirmationTarget_OnChainSweep -> onChainSweep
             ConfirmationTarget.LDKConfirmationTarget_MinAllowedNonAnchorChannelRemoteFee -> minAllowedNonAnchorChannelRemoteFee
             else -> {

@@ -164,6 +164,13 @@ export type TChannel = {
 	confirmations: number;
 };
 
+export type TChannelMonitor = {
+	channel_id: string;
+	funding_txo: string;
+	counterparty_node_id: string;
+	claimable_balances: [TClaimableBalance];
+};
+
 export type TNetworkGraphChannelInfo = {
 	shortChannelId: string;
 	capacity_sats?: number;
@@ -238,7 +245,6 @@ export type TFeeUpdateReq = {
 	nonAnchorChannelFee: number;
 	channelCloseMinimum: number;
 	minAllowedAnchorChannelRemoteFee: number;
-	maxAllowedNonAnchorChannelRemoteFee: number;
 	onChainSweep: number;
 	minAllowedNonAnchorChannelRemoteFee: number;
 };
