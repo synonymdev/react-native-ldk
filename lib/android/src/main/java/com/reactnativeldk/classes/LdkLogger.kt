@@ -23,8 +23,8 @@ private fun levelString(level: Int): String {
 }
 
 class LdkLogger {
-    var activeLevels = HashMap<String, Boolean>()
-    var logger = Logger.new_impl{ record: Record ->
+    private var activeLevels = HashMap<String, Boolean>()
+    var logger: Logger = Logger.new_impl { record: Record ->
         val level = levelString(record._level.ordinal)
 
         if (activeLevels[level] == true) {
@@ -35,8 +35,8 @@ class LdkLogger {
     }
 
     fun setLevel(level: String, active: Boolean) {
-        activeLevels[level] = active;
-        LdkEventEmitter.send(EventTypes.native_log, "Log level ${level} set to ${active}")
+        activeLevels[level] = active
+        LdkEventEmitter.send(EventTypes.native_log, "Log level $level set to $active")
     }
 }
 
