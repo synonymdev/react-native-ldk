@@ -166,7 +166,8 @@ export type TChannel = {
 
 export type TChannelMonitor = {
 	channel_id: string;
-	funding_txo: string;
+	funding_txo_index: number;
+	funding_txo_txid: string;
 	counterparty_node_id: string;
 	claimable_balances: [TClaimableBalance];
 };

@@ -967,7 +967,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
             if (channelMonitor.is_ok) {
                 val channelMonitorResult = (channelMonitor as Result_C2Tuple_ThirtyTwoBytesChannelMonitorZDecodeErrorZ_OK)
-                result.pushMap(channelMonitorResult.res._b.asJson(channelMonitorResult.res._a.hexEncodedString()))
+                result.pushMap(channelMonitorResult.res._b.asJson(channelId))
             }
         }
 

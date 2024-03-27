@@ -203,7 +203,8 @@ val RouteHop.asJson: WritableMap
 fun ChannelMonitor.asJson(channelId: String): WritableMap {
     val result = Arguments.createMap()
     result.putString("channel_id", channelId)
-    result.putHexString("funding_txo", _funding_txo._b)
+    result.putInt("funding_txo_index", _funding_txo._a._index.toInt())
+    result.putHexString("funding_txo_txid", _funding_txo._a.to_channel_id().reversedArray())
     result.putHexString("counterparty_node_id", _counterparty_node_id)
 
     val balances = Arguments.createArray()
