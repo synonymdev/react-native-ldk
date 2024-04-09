@@ -846,7 +846,7 @@ class Ldk: NSObject {
         }
                 
         let paymentId = invoice.paymentHash()!
-        let (paymentHash, recipientOnion, routeParameters) = isZeroValueInvoice ? Bindings.paymentParametersFromZeroAmountInvoice(invoice: invoice, amountMsat: UInt64(amountSats)).getValue()! : Bindings.paymentParametersFromInvoice(invoice: invoice).getValue()!
+        let (paymentHash, recipientOnion, routeParameters) = isZeroValueInvoice ? Bindings.paymentParametersFromZeroAmountInvoice(invoice: invoice, amountMsat: UInt64(amountSats*1000)).getValue()! : Bindings.paymentParametersFromInvoice(invoice: invoice).getValue()!
         
         let res = channelManager.sendPayment(paymentHash: paymentHash, recipientOnion: recipientOnion, paymentId: paymentId, routeParams: routeParameters, retryStrategy: .initWithTimeout(a: UInt64(timeoutSeconds)))
         

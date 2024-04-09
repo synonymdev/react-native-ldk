@@ -776,7 +776,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         val paymentId = invoice.payment_hash()
         val detailsRes = if (isZeroValueInvoice)
-            UtilMethods.payment_parameters_from_zero_amount_invoice(invoice, amountSats.toLong()) else
+            UtilMethods.payment_parameters_from_zero_amount_invoice(invoice, amountSats.toLong() * 1000) else
             UtilMethods.payment_parameters_from_invoice(invoice)
 
         if (!detailsRes.is_ok) {
