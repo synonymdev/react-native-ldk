@@ -1195,6 +1195,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
                 if (res.is_ok) {
                     txs.pushHexString((res as Result_TransactionNoneZ.Result_TransactionNoneZ_OK).res)
+                } else {
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to spend outputs for channel $channelId")
                 }
             }
         }
@@ -1440,5 +1442,9 @@ object LdkEventEmitter {
         }
 
         this.reactContext!!.getJSModule(RCTDeviceEventEmitter::class.java).emit(eventType.toString(), body)
+
+        if (eventType == EventTypes.native_log) {
+            LogFile.write("DEBUG (KOTLIN): $body")
+        }
     }
 }
