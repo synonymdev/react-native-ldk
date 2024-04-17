@@ -1550,6 +1550,10 @@ class LdkEventEmitter: RCTEventEmitter {
     public func send(withEvent eventType: EventTypes, body: Any) {
         //TODO convert all bytes to hex here
         sendEvent(withName: eventType.rawValue, body: body)
+        
+        if eventType == .native_log {
+            Logfile.log.write("DEBUG (SWIFT): \(body)")
+        }
     }
     
     override func supportedEvents() -> [String] {
