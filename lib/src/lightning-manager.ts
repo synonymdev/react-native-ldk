@@ -55,6 +55,8 @@ import {
 	TCreatePaymentReq,
 	TBackupServerDetails,
 	IAddress,
+	TLspLogPayload,
+	TLspLogEvent,
 } from './utils/types';
 import {
 	appendPath,
@@ -136,6 +138,7 @@ class LightningManager {
 	});
 	trustedZeroConfPeers: string[] = [];
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
+	lspLogEvent: TLspLogEvent | undefined;
 	pathFailedSubscription: EmitterSubscription | undefined;
 	paymentFailedSubscription: EmitterSubscription | undefined;
 	paymentSentSubscription: EmitterSubscription | undefined;
@@ -225,6 +228,7 @@ class LightningManager {
 			EEventTypes.channel_manager_restarted,
 			this.onChannelManagerRestarted.bind(this),
 		);
+		ldk.onEvent(EEventTypes.lsp_log, this.onLspLogEvent.bind(this));
 	}
 
 	/**
@@ -293,6 +297,7 @@ class LightningManager {
 		trustedZeroConfPeers = [],
 		skipParamCheck = false,
 		skipRemoteBackups = false,
+		lspLogEvent,
 	}: TLdkStart): Promise<Result<string>> {
 		if (!account) {
 			return err(
@@ -367,6 +372,7 @@ class LightningManager {
 		this.watchOutputs = [];
 		this.confirmedWatchOutputs = await this.getConfirmedWatchOutputs();
 		this.trustedZeroConfPeers = trustedZeroConfPeers;
+		this.lspLogEvent = lspLogEvent;
 
 		if (!this.baseStoragePath) {
 			return this.handleStartError(
@@ -2049,6 +2055,18 @@ class LightningManager {
 		await this.setFees();
 		await this.addPeers();
 		await this.syncLdk();
+	}
+
+	private async onLspLogEvent(payload: any): Promise<void> {
+		if (!this.lspLogEvent) {
+			return;
+		}
+		const nodeIdRes = await ldk.nodeId();
+
+		await this.lspLogEvent({
+			body: JSON.stringify(payload),
+			nodeId: nodeIdRes.isOk() ? nodeIdRes.value : '',
+		});
 	}
 
 	/**

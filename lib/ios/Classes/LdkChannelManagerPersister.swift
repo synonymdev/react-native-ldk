@@ -241,6 +241,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "reason": reasonString
                 ]
             )
+            
             return
         case .DiscardFunding:
             guard let discardFunding = event.getValueAsDiscardFunding() else {
@@ -293,8 +294,21 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             guard let bumpTransaction = event.getValueAsBumpTransaction() else {
                 return handleEventError(event)
             }
+            
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "BumpTransaction request")
 
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "TODO📣: BumpTransaction")
+            if let channelClose = bumpTransaction.getValueAsChannelClose() {
+                let body: [String: Encodable] = [
+                    "commitment_tx": Data(channelClose.getCommitmentTx()).hexEncodedString(),
+                    "commitment_tx_fee": channelClose.getCommitmentTxFeeSatoshis(),
+                    "pending_htlcs_count": channelClose.getPendingHtlcs().count
+                ]
+                
+                LdkEventEmitter.shared.send(withEvent: .lsp_log, body: body)
+                return
+            }
+            
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "BumpTransaction event not handled")
             return
         case .ProbeFailed:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ProbeFailed")
@@ -308,7 +322,6 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
         case .HTLCIntercepted:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: HTLCIntercepted")
             return
-
         case .HTLCHandlingFailed:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: HTLCHandlingFailed")
             return

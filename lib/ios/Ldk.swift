@@ -25,6 +25,7 @@ enum EventTypes: String, CaseIterable {
     case network_graph_updated = "network_graph_updated"
     case channel_manager_restarted = "channel_manager_restarted"
     case backup_state_update = "backup_state_update"
+    case lsp_log = "lsp_log"
 }
 //*****************************************************************
 
@@ -493,7 +494,7 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
-                
+        
         return handleResolve(resolve, .channel_manager_init_success)
     }
     
