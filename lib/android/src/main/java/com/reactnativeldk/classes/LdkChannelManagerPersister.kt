@@ -5,8 +5,10 @@ import com.facebook.react.bridge.WritableMap
 import com.reactnativeldk.*
 import org.json.JSONArray
 import org.ldk.batteries.ChannelManagerConstructor
+import org.ldk.structs.BumpTransactionEvent
 import org.ldk.structs.ClosureReason
 import org.ldk.structs.Event
+import org.ldk.structs.Event.BumpTransaction
 import org.ldk.structs.Option_ThirtyTwoBytesZ
 import org.ldk.structs.Option_u64Z
 import org.ldk.structs.PaymentPurpose
@@ -189,6 +191,18 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         }
 
         (event as? Event.ChannelPending)?.let { channelPending ->
+        }
+
+        (event as? Event.BumpTransaction)?.let { bumpTransaction ->
+            LdkEventEmitter.send(EventTypes.native_log, "BumpTransaction request")
+
+            (bumpTransaction.bump_transaction as? BumpTransactionEvent.ChannelClose)?.let { channelClose ->
+                val body = Arguments.createMap()
+                body.putString("commitment_tx", channelClose.commitment_tx.hexEncodedString())
+                body.putInt("commitment_tx_fee", channelClose.commitment_tx_fee_satoshis.toInt())
+                body.putInt("pending_htlcs_count", channelClose.pending_htlcs.size)
+                return LdkEventEmitter.send(EventTypes.lsp_log, body)
+            }
         }
     }
 

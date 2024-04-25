@@ -53,7 +53,8 @@ enum class EventTypes {
     new_channel,
     network_graph_updated,
     channel_manager_restarted,
-    backup_state_update
+    backup_state_update,
+    lsp_log
 }
 //*****************************************************************
 

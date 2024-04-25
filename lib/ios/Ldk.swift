@@ -190,7 +190,6 @@ class Ldk: NSObject {
         }
         
         Logfile.log.setFilePath(logFile)
-        print("log file: \(path)")
         return handleResolve(resolve, .log_path_updated)
     }
     
@@ -495,22 +494,6 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
-                
-        
-        
-        
-        
-        ///TODO DELETE
-        let body: [String: Encodable] = [
-            "commitment_txid": "Data(channelClose.getCommitmentTx()).hexEncodedString()",
-            "commitment_tx_fee": "channelClose.getCommitmentTxFeeSatoshis()",
-            "pending_htlcs_count": 69
-        ]
-        
-        LdkEventEmitter.shared.send(withEvent: .lsp_log, body: body)
-        ///
-        
-        
         
         return handleResolve(resolve, .channel_manager_init_success)
     }

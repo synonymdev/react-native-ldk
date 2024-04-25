@@ -299,7 +299,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
 
             if let channelClose = bumpTransaction.getValueAsChannelClose() {
                 let body: [String: Encodable] = [
-                    "commitment_txid": Data(channelClose.getCommitmentTx()).hexEncodedString(),
+                    "commitment_tx": Data(channelClose.getCommitmentTx()).hexEncodedString(),
                     "commitment_tx_fee": channelClose.getCommitmentTxFeeSatoshis(),
                     "pending_htlcs_count": channelClose.getPendingHtlcs().count
                 ]
