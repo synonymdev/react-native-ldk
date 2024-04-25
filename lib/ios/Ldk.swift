@@ -25,6 +25,7 @@ enum EventTypes: String, CaseIterable {
     case network_graph_updated = "network_graph_updated"
     case channel_manager_restarted = "channel_manager_restarted"
     case backup_state_update = "backup_state_update"
+    case lsp_log = "lsp_log"
 }
 //*****************************************************************
 
@@ -189,6 +190,7 @@ class Ldk: NSObject {
         }
         
         Logfile.log.setFilePath(logFile)
+        print("log file: \(path)")
         return handleResolve(resolve, .log_path_updated)
     }
     
@@ -494,6 +496,22 @@ class Ldk: NSObject {
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
                 
+        
+        
+        
+        
+        ///TODO DELETE
+        let body: [String: Encodable] = [
+            "commitment_txid": "Data(channelClose.getCommitmentTx()).hexEncodedString()",
+            "commitment_tx_fee": "channelClose.getCommitmentTxFeeSatoshis()",
+            "pending_htlcs_count": 69
+        ]
+        
+        LdkEventEmitter.shared.send(withEvent: .lsp_log, body: body)
+        ///
+        
+        
+        
         return handleResolve(resolve, .channel_manager_init_success)
     }
     

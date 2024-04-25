@@ -152,6 +152,9 @@ export const setupLdk = async (
 			},
 			trustedZeroConfPeers: [peers.lnd.pubKey],
 			skipRemoteBackups: !backupServerDetails,
+			lspLogEvent: async (payload) => {
+				console.log('Log event for LSP:', JSON.stringify(payload));
+			},
 		});
 
 		if (lmStart.isErr()) {

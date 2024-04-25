@@ -34,6 +34,7 @@ export enum EEventTypes {
 	network_graph_updated = 'network_graph_updated',
 	channel_manager_restarted = 'channel_manager_restarted',
 	backup_state_update = 'backup_state_update',
+	lsp_log = 'lsp_log',
 }
 
 //LDK event responses
@@ -569,6 +570,7 @@ export type TLdkStart = {
 	trustedZeroConfPeers?: string[];
 	skipParamCheck?: boolean;
 	skipRemoteBackups?: boolean;
+	lspLogEvent?: TLspLogEvent;
 };
 
 export interface IAddress {
@@ -585,6 +587,9 @@ export type TGetScriptPubKeyHistory = (
 export type TGetScriptPubKeyHistoryResponse = { height: number; txid: string };
 
 export type TBroadcastTransaction = (rawTx: string) => Promise<any>;
+
+export type TLspLogPayload = { nodeId: string; body: string };
+export type TLspLogEvent = (payload: TLspLogPayload) => Promise<void>;
 
 export type TGetFees = () => Promise<TFeeUpdateReq>;
 
