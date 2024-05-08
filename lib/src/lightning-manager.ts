@@ -1815,12 +1815,39 @@ class LightningManager {
 		); //TODO
 	}
 
-	private onChannelManagerPaymentClaimable(res: TChannelManagerClaim): void {
+	private async onChannelManagerPaymentClaimable(
+		res: TChannelManagerClaim,
+	): Promise<void> {
+		const claimedPayments = await this.getLdkPaymentsClaimed();
+
+		const existingClaimedPayment = claimedPayments.find(
+			(p) => p.payment_hash === res.payment_hash,
+		);
+
+		console.error(
+			`Existing claimed payments: ${JSON.stringify(existingClaimedPayment)}`,
+		);
+
+		if (
+			existingClaimedPayment &&
+			existingClaimedPayment.state === 'successful'
+		) {
+			ldk
+				.writeToLogFile(
+					'error',
+					`Failing payment as it was already claimed: ${res.payment_hash}`,
+				)
+				.catch(console.error);
+
+			await ldk.failHtlcBackwards(res.payment_hash);
+			return;
+		}
+
 		if (res.spontaneous_payment_preimage) {
 			//https://docs.rs/lightning/latest/lightning/util/events/enum.PaymentPurpose.html#variant.SpontaneousPayment
-			ldk.claimFunds(res.spontaneous_payment_preimage).catch(console.error);
+			await ldk.claimFunds(res.spontaneous_payment_preimage);
 		} else {
-			ldk.claimFunds(res.payment_preimage).catch(console.error);
+			await ldk.claimFunds(res.payment_preimage);
 		}
 	}
 

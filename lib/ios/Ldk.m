@@ -147,6 +147,9 @@ RCT_EXTERN_METHOD(processPendingHtlcForwards:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(claimFunds:(NSString *)paymentPreimage
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(failHtlcBackwards:(NSString *)paymentHash
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 
 //MARK: Misc methods
 RCT_EXTERN_METHOD(writeToFile:(NSString *)fileName

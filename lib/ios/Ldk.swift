@@ -285,6 +285,9 @@ class Ldk: NSObject {
         
         let networkGraphStoragePath = accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL
         
+        print("rapidGossipSyncUrl: \(rapidGossipSyncUrl)")
+        print("accountStoragePath: \(accountStoragePath)")
+        
         do {
             let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: networkGraphStoragePath)), arg: logger)
             if read.isOk() {
@@ -304,9 +307,6 @@ class Ldk: NSObject {
         guard rapidGossipSyncUrl != "" else {
             return handleResolve(resolve, .network_graph_init_success)
         }
-        
-        print("rapidGossipSyncUrl: \(rapidGossipSyncUrl)")
-        print("accountStoragePath: \(accountStoragePath)")
         
         //Download url passed, enable rapid gossip sync
         do {
@@ -949,6 +949,19 @@ class Ldk: NSObject {
         }
         
         channelManager.claimFunds(paymentPreimage: String(paymentPreimage).hexaBytes)
+        
+        return handleResolve(resolve, .claim_funds_success)
+    }
+    
+    @objc
+    func failHtlcBackwards(_ paymentHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rejecting payment with failHtlcBackwards")
+        
+        channelManager.failHtlcBackwards(paymentHash: String(paymentHash).hexaBytes)
         
         return handleResolve(resolve, .claim_funds_success)
     }
