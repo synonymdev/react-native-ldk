@@ -73,7 +73,7 @@ services:
 
   lnd:
     container_name: lnd
-    image: polarlightning/lnd:0.16.4-beta
+    image: polarlightning/lnd:0.17.4-beta
     restart: unless-stopped
     depends_on:
       - bitcoind
