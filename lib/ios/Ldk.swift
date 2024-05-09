@@ -92,6 +92,7 @@ enum LdkCallbackResponses: String {
     case tx_set_unconfirmed = "tx_set_unconfirmed"
     case process_pending_htlc_forwards_success = "process_pending_htlc_forwards_success"
     case claim_funds_success = "claim_funds_success"
+    case fail_htlc_backwards_success = "fail_htlc_backwards_success"
     case ldk_stop = "ldk_stop"
     case ldk_restart = "ldk_restart"
     case accept_channel_success = "accept_channel_success"
@@ -285,6 +286,9 @@ class Ldk: NSObject {
         
         let networkGraphStoragePath = accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL
         
+        print("rapidGossipSyncUrl: \(rapidGossipSyncUrl)")
+        print("accountStoragePath: \(accountStoragePath)")
+        
         do {
             let read = NetworkGraph.read(ser: [UInt8](try Data(contentsOf: networkGraphStoragePath)), arg: logger)
             if read.isOk() {
@@ -304,9 +308,6 @@ class Ldk: NSObject {
         guard rapidGossipSyncUrl != "" else {
             return handleResolve(resolve, .network_graph_init_success)
         }
-        
-        print("rapidGossipSyncUrl: \(rapidGossipSyncUrl)")
-        print("accountStoragePath: \(accountStoragePath)")
         
         //Download url passed, enable rapid gossip sync
         do {
@@ -951,6 +952,19 @@ class Ldk: NSObject {
         channelManager.claimFunds(paymentPreimage: String(paymentPreimage).hexaBytes)
         
         return handleResolve(resolve, .claim_funds_success)
+    }
+    
+    @objc
+    func failHtlcBackwards(_ paymentHash: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Rejecting payment with failHtlcBackwards")
+        
+        channelManager.failHtlcBackwards(paymentHash: String(paymentHash).hexaBytes)
+        
+        return handleResolve(resolve, .fail_htlc_backwards_success)
     }
     
     //MARK: Fetch methods

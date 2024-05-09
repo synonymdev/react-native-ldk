@@ -412,6 +412,11 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             for (index, existingPayment) in payments.enumerated() {
                 if let existingPaymentHash = existingPayment["payment_hash"] as? String, let newPaymentHash = payment["payment_hash"] as? String {
                     if existingPaymentHash == newPaymentHash {
+                        //Don't replace a successful payment. If a 2nd wallet tries to pay an invoice the first successful one should not be overwritten.
+                        if existingPayment["state"] as? String == "successful" {
+                            return
+                        }
+                        
                         payments[index] = mergeObj(payments[index], payment) //Merges update into orginal entry
                         paymentReplaced = true
                     }

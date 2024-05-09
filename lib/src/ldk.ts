@@ -630,6 +630,22 @@ class LDK {
 	}
 
 	/**
+	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/struct.ChannelManager.html#method.fail_htlc_backwards
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 * @param paymentHash
+	 */
+	async failHtlcBackwards(paymentHash: string): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.failHtlcBackwards(paymentHash);
+			this.writeDebugToLog('failHtlcBackwards');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('failHtlcBackwards', e);
+			return err(e);
+		}
+	}
+
+	/**
 	 * Pays a bolt11 payment request and returns paymentId
 	 * @param paymentRequest
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
