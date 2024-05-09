@@ -254,6 +254,11 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
                     val existingPayment = existingPayments.getJSONObject(i)
                     //Replace entry if payment hash exists (Confirmed payment replacing pending)
                     if (existingPayment.getString("payment_hash") == payment.getString("payment_hash")) {
+                        //Don't replace a successful payment. If a 2nd wallet tries to pay an invoice the first successful one should not be overwritten.
+                        if (existingPayment.getString("state") == "successful") {
+                            return
+                        }
+
                         payments[i] = mergeObj(existingPayment, payment.toHashMap())
                         paymentReplaced = true
                         continue

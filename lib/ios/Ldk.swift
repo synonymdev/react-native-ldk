@@ -92,6 +92,7 @@ enum LdkCallbackResponses: String {
     case tx_set_unconfirmed = "tx_set_unconfirmed"
     case process_pending_htlc_forwards_success = "process_pending_htlc_forwards_success"
     case claim_funds_success = "claim_funds_success"
+    case fail_htlc_backwards_success = "fail_htlc_backwards_success"
     case ldk_stop = "ldk_stop"
     case ldk_restart = "ldk_restart"
     case accept_channel_success = "accept_channel_success"
@@ -963,7 +964,7 @@ class Ldk: NSObject {
         
         channelManager.failHtlcBackwards(paymentHash: String(paymentHash).hexaBytes)
         
-        return handleResolve(resolve, .claim_funds_success)
+        return handleResolve(resolve, .fail_htlc_backwards_success)
     }
     
     //MARK: Fetch methods

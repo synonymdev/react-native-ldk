@@ -118,6 +118,7 @@ enum class LdkCallbackResponses {
     tx_set_unconfirmed,
     process_pending_htlc_forwards_success,
     claim_funds_success,
+    fail_htlc_backwards_success,
     ldk_stop,
     ldk_restart,
     accept_channel_success,
@@ -506,6 +507,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         handleResolve(promise, LdkCallbackResponses.channel_manager_init_success)
     }
+
     @ReactMethod
     fun restart(promise: Promise) {
         if (channelManagerConstructor == null) {
@@ -873,6 +875,15 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         channelManager!!.claim_funds(paymentPreimage.hexa())
 
         return handleResolve(promise, LdkCallbackResponses.claim_funds_success)
+    }
+
+    @ReactMethod
+    fun failHtlcBackwards(paymentHash: String, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        channelManager!!.fail_htlc_backwards(paymentHash.hexa())
+
+        return handleResolve(promise, LdkCallbackResponses.fail_htlc_backwards_success)
     }
 
     //MARK: Fetch methods
