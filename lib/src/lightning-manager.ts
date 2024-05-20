@@ -144,7 +144,6 @@ class LightningManager {
 	paymentSentSubscription: EmitterSubscription | undefined;
 
 	private isSyncing: boolean = false;
-	private forceSync: boolean = false;
 	private pendingSyncPromises: Array<(result: Result<string>) => void> = [];
 
 	private isStarting: boolean = false;
@@ -561,11 +560,7 @@ class LightningManager {
 			return this.handleSyncError(err('No getBestBlock method provided.'));
 		}
 
-		if (force && this.isSyncing && !this.forceSync) {
-			// If syncing is already underway and force is true, set forceSync to true.
-			this.forceSync = true;
-		}
-		if (this.isSyncing) {
+		if (this.isSyncing && !force) {
 			// If isSyncing, push to pendingSyncPromises to resolve when the current sync completes.
 			return new Promise<Result<string>>((resolve) => {
 				this.pendingSyncPromises.push(resolve);
@@ -573,21 +568,19 @@ class LightningManager {
 		}
 		this.isSyncing = true;
 
-		const bestBlock = await promiseTimeout<THeader>(
-			timeout,
-			this.getBestBlock(),
-		);
-		if (!bestBlock?.height) {
-			return this.retrySyncOrReturnError({
+		try {
+			const bestBlock = await promiseTimeout<THeader>(
 				timeout,
-				retryAttempts,
-				e: err('Unable to get best block in syncLdk method.'),
-			});
-		}
-		const height = bestBlock.height;
+				this.getBestBlock(),
+			);
+			if (!bestBlock?.height) {
+				return this.retrySyncOrReturnError({
+					timeout,
+					retryAttempts,
+					e: err('Unable to get best block in syncLdk method.'),
+				});
+			}
 
-		// Don't update unnecessarily
-		if (this.currentBlock.hash !== bestBlock?.hash) {
 			const syncToTip = await promiseTimeout<Result<string>>(
 				timeout,
 				ldk.syncToTip(bestBlock),
@@ -599,67 +592,54 @@ class LightningManager {
 					e: syncToTip,
 				});
 			}
-
-			this.currentBlock = bestBlock;
-		}
-
-		let channels: TChannel[] = [];
-		if (this.watchTxs.length > 0) {
-			// Get fresh array of channels.
-			const listChannelsResponse = await promiseTimeout<Result<TChannel[]>>(
-				timeout,
-				ldk.listChannels(),
-			);
-			if (listChannelsResponse.isOk()) {
-				channels = listChannelsResponse.value;
+			if (this.currentBlock.hash !== bestBlock?.hash) {
+				this.currentBlock = bestBlock;
 			}
-		}
 
-		// Iterate over watch transactions/outputs and set whether they are confirmed or unconfirmed.
-		const watchTxsRes = await promiseTimeout<Result<string>>(
-			timeout,
-			this.checkWatchTxs(this.watchTxs, channels, bestBlock),
-		);
-		if (watchTxsRes.isErr()) {
-			return this.retrySyncOrReturnError({
-				timeout,
-				retryAttempts,
-				e: watchTxsRes,
-			});
-		}
-		const watchOutputsRes = await promiseTimeout<Result<string>>(
-			timeout,
-			this.checkWatchOutputs(this.watchOutputs),
-		);
-		if (watchOutputsRes.isErr()) {
-			return this.retrySyncOrReturnError({
-				timeout,
-				retryAttempts,
-				e: watchOutputsRes,
-			});
-		}
-		const unconfirmedTxsRes = await promiseTimeout<Result<string>>(
-			timeout,
-			this.checkUnconfirmedTransactions(),
-		);
-		if (unconfirmedTxsRes.isErr()) {
-			return this.retrySyncOrReturnError({
-				timeout,
-				retryAttempts,
-				e: unconfirmedTxsRes,
-			});
-		}
+			let channels: TChannel[] = [];
+			if (this.watchTxs.length > 0) {
+				// Get fresh array of channels.
+				const listChannelsResponse = await promiseTimeout<Result<TChannel[]>>(
+					timeout,
+					ldk.listChannels(),
+				);
+				if (listChannelsResponse.isOk()) {
+					channels = listChannelsResponse.value;
+				}
+			}
 
-		this.isSyncing = false;
-
-		// Handle force sync if needed.
-		if (this.forceSync) {
-			return this.handleForceSync({ timeout, retryAttempts });
+			// Iterate over watch transactions/outputs and set whether they are confirmed or unconfirmed.
+			const promises = [
+				promiseTimeout<Result<string>>(
+					timeout,
+					this.checkWatchTxs(this.watchTxs, channels, bestBlock),
+				),
+				promiseTimeout<Result<string>>(
+					timeout,
+					this.checkWatchOutputs(this.watchOutputs),
+				),
+				promiseTimeout<Result<string>>(
+					timeout,
+					this.checkUnconfirmedTransactions(),
+				),
+			];
+			const results = await Promise.all(promises);
+			for (const result of results) {
+				if (result.isErr()) {
+					return this.retrySyncOrReturnError({
+						timeout,
+						retryAttempts,
+						e: result,
+					});
+				}
+			}
+		} finally {
+			this.isSyncing = false;
+			const result = ok(`Synced to block ${this.currentBlock.height}`);
+			this.resolveAllPendingSyncPromises(result);
+			ldk.nodeStateDump().catch(console.error);
+			return result;
 		}
-		const result = ok(`Synced to block ${height}`);
-		this.resolveAllPendingSyncPromises(result);
-		ldk.nodeStateDump().catch(console.error);
-		return result;
 	}
 
 	/**
@@ -676,27 +656,6 @@ class LightningManager {
 			}
 		}
 	}
-
-	/**
-	 * Sets forceSync to false and re-runs the sync method.
-	 * @private
-	 * @param {number} timeout
-	 * @param {number} retryAttempts
-	 * @returns {Promise<Result<string>>}
-	 */
-	private handleForceSync = async ({
-		timeout,
-		retryAttempts,
-	}: {
-		timeout: number;
-		retryAttempts: number;
-	}): Promise<Result<string>> => {
-		this.forceSync = false;
-		return this.syncLdk({
-			timeout,
-			retryAttempts,
-		});
-	};
 
 	/**
 	 * Attempts to retry the syncLdk method. Otherwise, the error gets passed to handleSyncError.
@@ -731,14 +690,13 @@ class LightningManager {
 	};
 
 	/**
-	 * Sets isSyncing & forceSync to false and returns error.
+	 * Sets isSyncing to false and returns error.
 	 * @private
 	 * @param {Err<string>} e
 	 * @returns {Promise<Result<string>>}
 	 */
 	private handleSyncError = (e: Err<string>): Result<string> => {
 		this.isSyncing = false;
-		this.forceSync = false;
 		this.resolveAllPendingSyncPromises(e);
 		return e;
 	};
