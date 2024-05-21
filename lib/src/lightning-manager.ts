@@ -70,6 +70,7 @@ import {
 import * as bitcoin from 'bitcoinjs-lib';
 import networks from './utils/networks';
 import { EmitterSubscription } from 'react-native';
+import decodeRawTx from '@synonymdev/raw-transaction-decoder';
 
 const MAX_PENDING_PAY_AGE = 1000 * 60 * 60; // 1 hour
 
@@ -125,6 +126,7 @@ class LightningManager {
 		address: '',
 		publicKey: '',
 	});
+	addresses: string[] = [];
 	getScriptPubKeyHistory: TGetScriptPubKeyHistory = async (): Promise<
 		TGetScriptPubKeyHistoryResponse[]
 	> => [];
@@ -360,7 +362,15 @@ class LightningManager {
 		this.getBestBlock = getBestBlock;
 		this.account = account;
 		this.network = network;
-		this.getAddress = getAddress;
+		this.addresses = await this.readAddressesFromFile();
+		this.getAddress = async () => {
+			const addressObj = await getAddress();
+			const address = addressObj?.address;
+			if (address) {
+				this.saveAddressToFile(address).then();
+			}
+			return addressObj;
+		};
 		this.getScriptPubKeyHistory = getScriptPubKeyHistory;
 		this.getFees = getFees;
 		this.broadcastTransaction = broadcastTransaction;
@@ -797,6 +807,39 @@ class LightningManager {
 		return ok('Watch transactions checked');
 	};
 
+	saveAddressToFile = async (address: string): Promise<Result<boolean>> => {
+		if (!address) {
+			return err('No address provided');
+		}
+		if (this.addresses.includes(address)) {
+			return ok(true);
+		}
+		this.addresses.push(address);
+		const accountPath = appendPath(this.baseStoragePath, this.account.name);
+		const writeRes = await ldk.writeToFile({
+			fileName: ELdkFiles.addresses,
+			path: accountPath,
+			content: JSON.stringify(this.addresses),
+			remotePersist: true,
+		});
+		if (writeRes.isErr()) {
+			return err(writeRes.error.message);
+		}
+		return ok(true);
+	};
+
+	readAddressesFromFile = async (): Promise<string[]> => {
+		const accountPath = appendPath(this.baseStoragePath, this.account.name);
+		const writeRes = await ldk.readFromFile({
+			fileName: ELdkFiles.addresses,
+			path: accountPath,
+		});
+		if (writeRes.isOk()) {
+			return parseData(writeRes.value.content, []);
+		}
+		return [];
+	};
+
 	/**
 	 * Saves confirmed watch outputs to storage.
 	 * @param {string} confirmedWatchOutput
@@ -871,25 +914,89 @@ class LightningManager {
 					transactionData?.vout[index].hex,
 				);
 
-				if (txs.length < 1) {
+				if (txs.length <= 1) {
 					continue;
 				}
 
-				// TODO: Implement index fix
-				const tx = txs[1];
-				if (!tx?.txid) {
+				// Used for older versions that have not previously tracked addresses.
+				const fallbackIndex = 1;
+				const fallbackTx = txs[fallbackIndex];
+				let useFallback = true;
+
+				const txsLength = txs.length - 1;
+				let transactionId: string | undefined;
+				let txData: TTransactionData | undefined;
+				let fallbackTxData: TTransactionData | undefined;
+				for (let i = txsLength; i >= 0; i--) {
+					await sleep(100);
+
+					const tx = txs[i];
+					if (!tx?.txid) {
+						continue;
+					}
+
+					const txDataRes = await this.getTransactionData(tx.txid);
+					if (!txDataRes || !txDataRes?.height || !txDataRes?.transaction) {
+						if (!txDataRes) {
+							console.error('No txDataRes');
+						}
+						continue;
+					}
+
+					if (i === fallbackIndex) {
+						// Set fallbackTxData data to prevent calling getTransactionData again.
+						fallbackTxData = txDataRes;
+					}
+
+					const decodedTxRes = decodeRawTx(txDataRes?.transaction);
+					if (decodedTxRes.isErr()) {
+						console.error(
+							'Error decoding transaction',
+							decodedTxRes.error.message,
+						);
+						continue;
+					}
+
+					const decodedTx = decodedTxRes.value;
+					const decodedOutputs = decodedTx?.outputs ?? [];
+					let decodedAddresses: string[] = [];
+					decodedOutputs.map((o) => {
+						if (o?.scriptPubKey?.addresses) {
+							decodedAddresses = decodedAddresses.concat(
+								o.scriptPubKey.addresses,
+							);
+						}
+					});
+
+					for (const address of decodedAddresses) {
+						if (this.addresses.includes(address)) {
+							transactionId = tx.txid;
+							txData = txDataRes;
+							useFallback = false;
+							break;
+						}
+					}
+					if (transactionId && txData) {
+						break;
+					}
+				}
+
+				if (useFallback) {
+					transactionId = fallbackTx?.txid;
+					if (!transactionId) {
+						continue;
+					}
+					txData =
+						fallbackTxData ?? (await this.getTransactionData(transactionId));
+				}
+
+				if (!transactionId || !txData?.height) {
+					// Transaction has either not entered the mempool yet or has zero confirmations. Try again later.
 					continue;
 				}
-				const txData = await this.getTransactionData(tx.txid);
-				if (!txData) {
-					//Watch Output was never confirmed so there's no need to unconfirm it.
-					continue;
-				}
-				if (!txData?.height) {
-					continue;
-				}
+
 				const pos = await this.getTransactionPosition({
-					tx_hash: tx.txid,
+					tx_hash: transactionId,
 					height: txData.height,
 				});
 				if (pos >= 0) {
@@ -901,7 +1008,7 @@ class LightningManager {
 					if (setTxConfirmedRes.isOk()) {
 						await this.saveUnconfirmedTx({
 							...txData,
-							txid: tx.txid,
+							txid: transactionId,
 							script_pubkey,
 						});
 						await this.saveConfirmedWatchOutput(script_pubkey);

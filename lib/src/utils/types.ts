@@ -486,6 +486,7 @@ export enum ELdkFiles {
 	payments_claimed = 'payments_claimed.json', // Written in swift/kotlin and read from JS
 	payments_sent = 'payments_sent.json', // Written in swift/kotlin and read from JS
 	bolt11_invoices = 'bolt11_invoices.json', // Saved/read from JS
+	addresses = 'addresses.json',
 	confirmed_watch_outputs = 'confirmed_watch_outputs.json',
 }
 
