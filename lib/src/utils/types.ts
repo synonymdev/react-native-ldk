@@ -481,6 +481,7 @@ export enum ELdkFiles {
 	peers = 'peers.json', //File saved from JS
 	unconfirmed_transactions = 'unconfirmed_transactions.json',
 	broadcasted_transactions = 'broadcasted_transactions.json',
+	confirmed_broadcasted_transactions = 'confirmed_broadcasted_transactions.json',
 	payment_ids = 'payment_ids.json',
 	spendable_outputs = 'spendable_outputs.json',
 	payments_claimed = 'payments_claimed.json', // Written in swift/kotlin and read from JS

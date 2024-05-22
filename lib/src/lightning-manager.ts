@@ -61,6 +61,7 @@ import {
 import {
 	appendPath,
 	findOutputsFromRawTxs,
+	getTxIdFromRawTx,
 	isValidBech32mEncodedString,
 	parseData,
 	promiseTimeout,
@@ -509,6 +510,8 @@ class LightningManager {
 
 		//Writes node state to log files
 		ldk.nodeStateDump().catch(console.error);
+
+		this.cleanupBroadcastedTxs().catch(console.error);
 
 		this.isStarting = false;
 		const result = ok('Node started');
@@ -1584,6 +1587,102 @@ class LightningManager {
 			return parseData(res.value.content, []);
 		}
 		return [];
+	}
+
+	async cleanupBroadcastedTxs(): Promise<void> {
+		const savedTxs = await this.getLdkBroadcastedTxs();
+		if (savedTxs.length === 0) {
+			await ldk.writeToLogFile(
+				'debug',
+				'No broadcasted transactions found to cleanup.',
+			);
+			return;
+		}
+
+		const txsToCleanup: string[] = [];
+		for (const rawTx of savedTxs) {
+			const txid = getTxIdFromRawTx(rawTx);
+			const txData = await this.getTransactionData(txid);
+			if (!txData) {
+				await ldk.writeToLogFile(
+					'error',
+					`No txData found for tx: ${txid}. Skip cleanup.`,
+				);
+				//TODO maybe try broadcast and depending on the error, remove it if invalid inputs or something we expect from an invalid tx.
+				continue;
+			}
+
+			if (!txData.height) {
+				await ldk.writeToLogFile(
+					'error',
+					`Tx: ${txid} has no height (not in block). Skipping cleanup.`,
+				);
+				continue;
+			}
+
+			const numberOfConfirmations =
+				this.currentBlock.height - txData.height + 1;
+			if (numberOfConfirmations >= 6) {
+				await ldk.writeToLogFile(
+					'debug',
+					`Cleaning up tx: ${txid} with ${numberOfConfirmations} confirmations.`,
+				);
+				txsToCleanup.push(rawTx);
+			} else {
+				await ldk.writeToLogFile(
+					'debug',
+					`Tx: ${txid} with ${numberOfConfirmations} confirmations. Skipping cleanup.`,
+				);
+			}
+		}
+
+		if (txsToCleanup.length === 0) {
+			await ldk.writeToLogFile(
+				'debug',
+				'No broadcasted transactions found to cleanup.',
+			);
+			return;
+		}
+
+		//Fetch again in case of another process writing to the file since last lookup.
+		const latestSavedTxs = await this.getLdkBroadcastedTxs();
+		const txsToKeep = latestSavedTxs.filter((tx) => !txsToCleanup.includes(tx));
+
+		const saveRes = await ldk.writeToFile({
+			fileName: ELdkFiles.broadcasted_transactions,
+			content: JSON.stringify(txsToKeep),
+			remotePersist: false,
+		});
+		if (saveRes.isErr()) {
+			await ldk.writeToLogFile(
+				'error',
+				`Failed saving cleaned up txs: ${saveRes.error}`,
+			);
+			return;
+		}
+
+		//Save the cleanup up txs just in case. They won't ever be loaded automatically.
+		let currentConfirmedRawTxs: string[] = [];
+		const currentConfirmedRawTxsRes = await ldk.readFromFile({
+			fileName: ELdkFiles.confirmed_broadcasted_transactions,
+		});
+		if (currentConfirmedRawTxsRes.isOk()) {
+			currentConfirmedRawTxs = parseData(
+				currentConfirmedRawTxsRes.value.content,
+				[],
+			);
+		}
+
+		await ldk.writeToFile({
+			fileName: ELdkFiles.confirmed_broadcasted_transactions,
+			content: JSON.stringify(currentConfirmedRawTxs.concat(txsToCleanup)),
+			remotePersist: false,
+		});
+
+		await ldk.writeToLogFile(
+			'info',
+			`Cleaned up ${txsToCleanup.length} broadcasted transactions.`,
+		);
 	}
 
 	async rebroadcastAllKnownTransactions(): Promise<any[]> {

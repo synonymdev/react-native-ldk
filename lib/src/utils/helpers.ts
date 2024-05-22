@@ -301,6 +301,11 @@ export const findOutputsFromRawTxs = (
 	return result;
 };
 
+export const getTxIdFromRawTx = (rawTx: string): string => {
+	const tx = bitcoin.Transaction.fromHex(rawTx);
+	return tx.getId();
+};
+
 /**
  * Pauses execution of a function.
  * @param {number} ms The time to wait in milliseconds.
