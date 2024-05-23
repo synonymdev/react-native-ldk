@@ -127,7 +127,7 @@ extension ChannelDetails {
             "confirmations_required": getConfirmationsRequired() as Any, // Optional number
             "short_channel_id": shortChannelId,
             "inbound_scid_alias": getInboundScidAlias() != nil ? String(getInboundScidAlias()!) : shortChannelId, //String
-            "inbound_payment_scid": getInboundPaymentScid() as Any, //Optional number,
+            "inbound_payment_scid": getInboundPaymentScid() != nil ? String(getInboundPaymentScid()!) : "", //String,
             "inbound_capacity_sat": getInboundCapacityMsat() / 1000,
             "outbound_capacity_sat": getOutboundCapacityMsat() / 1000,
             "channel_value_satoshis": getChannelValueSatoshis(),

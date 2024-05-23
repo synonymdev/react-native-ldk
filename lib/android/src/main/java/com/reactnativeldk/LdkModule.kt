@@ -1244,7 +1244,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             logDump.add("Open channel:")
 
             channel._funding_txo?._txid?.let { txId ->
-                logDump.add("Funding txid: ${txId.hexEncodedString()}")
+                logDump.add("Funding txid: ${txId.reversedArray().hexEncodedString()}")
             }
 
             logDump.add("Ready: ${if (channel._is_channel_ready) "YES" else "NO"}")
