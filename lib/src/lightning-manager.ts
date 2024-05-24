@@ -57,6 +57,7 @@ import {
 	IAddress,
 	TLspLogPayload,
 	TLspLogEvent,
+	TChannelMonitor,
 } from './utils/types';
 import {
 	appendPath,
@@ -1988,10 +1989,6 @@ class LightningManager {
 			(p) => p.payment_hash === res.payment_hash,
 		);
 
-		console.error(
-			`Existing claimed payments: ${JSON.stringify(existingClaimedPayment)}`,
-		);
-
 		if (
 			existingClaimedPayment &&
 			existingClaimedPayment.state === 'successful'
@@ -2248,14 +2245,23 @@ class LightningManager {
 		await this.syncLdk();
 	}
 
-	private async onLspLogEvent(payload: any): Promise<void> {
+	private async onLspLogEvent(payload: object): Promise<void> {
 		if (!this.lspLogEvent) {
 			return;
 		}
+		let body: { channelClose: object; channelFiles: TChannelMonitor[] } = {
+			channelClose: payload,
+			channelFiles: [],
+		};
 		const nodeIdRes = await ldk.nodeId();
 
+		const channelFiles = await ldk.listChannelMonitors(true);
+		if (channelFiles.isOk()) {
+			body.channelFiles = channelFiles.value;
+		}
+
 		await this.lspLogEvent({
-			body: JSON.stringify(payload),
+			body: JSON.stringify(body),
 			nodeId: nodeIdRes.isOk() ? nodeIdRes.value : '',
 		});
 	}
