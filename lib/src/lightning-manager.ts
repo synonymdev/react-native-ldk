@@ -1989,10 +1989,6 @@ class LightningManager {
 			(p) => p.payment_hash === res.payment_hash,
 		);
 
-		console.error(
-			`Existing claimed payments: ${JSON.stringify(existingClaimedPayment)}`,
-		);
-
 		if (
 			existingClaimedPayment &&
 			existingClaimedPayment.state === 'successful'
