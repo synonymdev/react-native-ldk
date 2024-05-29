@@ -268,10 +268,10 @@
   resolved "https://registry.yarnpkg.com/@react-native-community/eslint-plugin/-/eslint-plugin-1.2.0.tgz#7d6d789ae8edf73dc9bed1246cd48277edea8066"
   integrity sha512-o6aam+0Ug1xGK3ABYmBm0B1YuEKfM/5kaoZO0eHbZwSpw9UzDX4G5y4Nx/K20FHqUmJHkZmLvOUFYwN4N+HqKA==
 
-"@synonymdev/raw-transaction-decoder@1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@synonymdev/raw-transaction-decoder/-/raw-transaction-decoder-1.0.0.tgz#2090dd0979c0f35f126f9a2c7557a4bc8cda44eb"
-  integrity sha512-YCv96YA+OTFbb/3pUFEXavaivP1Ofwq7TJInsHlP7QrJlBBSqnT3aZXsRGC2dLm8PA8HR4Fnu5Kq0tCnJ7tEqA==
+"@synonymdev/raw-transaction-decoder@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@synonymdev/raw-transaction-decoder/-/raw-transaction-decoder-1.1.0.tgz#9777fd4e3b696974594338ad7271aa4fe2133d8a"
+  integrity sha512-X9v/HZ7b0MUKcvEOMtuqNRB7bzWzK/GkLeh/BsqPIDnjS3yoRF4jHiIGhW2WQunBR1PUPXo5qB8LoFFGqCpUoA==
   dependencies:
     bitcoinjs-lib "6.1.4"
 
