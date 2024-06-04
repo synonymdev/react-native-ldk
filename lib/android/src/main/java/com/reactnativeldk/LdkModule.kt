@@ -112,6 +112,8 @@ enum class LdkCallbackResponses {
     config_init_success,
     network_graph_init_success,
     add_peer_success,
+    peer_already_connected,
+    peer_currently_connecting,
     chain_sync_success,
     invoice_payment_success,
     tx_set_confirmed,
@@ -173,6 +175,11 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private var currentNetwork: String? = null
     private var currentBlockchainTipHash: String? = null
     private var currentBlockchainHeight: Double? = null
+
+    //List of peers that "should" remain connected. Stores address: String, port: Double, pubKey: String
+    private var addedPeers: MutableList<HashMap<String, Any>> = mutableListOf()
+    private var currentlyConnectingPeers: MutableList<String> = mutableListOf()
+    private var timerTaskScheduled: Boolean = false
 
     //Static to be accessed from other classes
     companion object {
@@ -500,6 +507,16 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         peerHandler = channelManagerConstructor!!.nio_peer_handler
 
+        //Start watching for dropped peers every 1 second
+        if (!timerTaskScheduled) {
+            Timer().schedule(object : TimerTask() {
+                override fun run() {
+                    handleDroppedPeers()
+                }
+            }, 1000, 1000)
+            timerTaskScheduled = true
+        }
+
         //Cached for restarts
         currentNetwork = network
         currentBlockchainTipHash = blockHash
@@ -599,17 +616,71 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         handleResolve(promise, LdkCallbackResponses.chain_sync_success)
     }
 
+    fun handleDroppedPeers() {
+        peerHandler ?: return LdkEventEmitter.send(EventTypes.native_log, "Handling dropped peers error. Peer handler not initialized.")
+
+        LdkEventEmitter.send(EventTypes.native_log, "Checking for dropped peers")
+
+        val currentlyConnected = peerManager!!._peer_node_ids
+
+        addedPeers.forEach { peer ->
+            val pubKey = peer["pubKey"] as String
+            val address = peer["address"] as String
+            val port = peer["port"] as Double
+
+            if (currentlyConnected.map { it._a.hexEncodedString() }.contains(pubKey)) {
+                return
+            }
+
+            if (currentlyConnectingPeers.contains(pubKey)) {
+                return
+            }
+
+            try {
+                currentlyConnectingPeers.add(pubKey)
+                peerHandler!!.connect(pubKey.hexa(), InetSocketAddress(address, port.toInt()), 10)
+                LdkEventEmitter.send(EventTypes.native_log, "Connection to peer $pubKey re-established by handleDroppedPeers().")
+            } catch (e: Exception) {
+                LdkEventEmitter.send(EventTypes.native_log, "Error connecting peer $pubKey. Error: $e")
+            } finally {
+                currentlyConnectingPeers.remove(pubKey)
+            }
+        }
+    }
+
     @ReactMethod
     fun addPeer(address: String, port: Double, pubKey: String, timeout: Double, promise: Promise) {
         peerHandler ?: return handleReject(promise, LdkErrors.init_peer_handler)
 
-        try {
-            peerHandler!!.connect(pubKey.hexa(), InetSocketAddress(address, port.toInt()), timeout.toInt())
-        } catch (e: Exception) {
-            return handleReject(promise, LdkErrors.add_peer_fail, Error(e))
+        //If peer is already connected don't add again
+        val currentList = peerManager!!._peer_node_ids
+        if (currentList.map { it._a.hexEncodedString() }.contains(pubKey)) {
+            return handleResolve(promise, LdkCallbackResponses.peer_already_connected)
         }
 
-        handleResolve(promise, LdkCallbackResponses.add_peer_success)
+        //If peer is being currently connected don't add again
+        if (currentlyConnectingPeers.contains(pubKey)) {
+            return handleResolve(promise, LdkCallbackResponses.peer_currently_connecting)
+        }
+        
+        try {
+            currentlyConnectingPeers.add(pubKey)
+            peerHandler!!.connect(pubKey.hexa(), InetSocketAddress(address, port.toInt()), timeout.toInt())
+
+            if (!addedPeers.map { it["pubKey"] as String }.contains(pubKey)) {
+                addedPeers.add(hashMapOf(
+                    "address" to address,
+                    "port" to port,
+                    "pubKey" to pubKey
+                ))
+            }
+
+            handleResolve(promise, LdkCallbackResponses.add_peer_success)
+        } catch (e: Exception) {
+            handleReject(promise, LdkErrors.add_peer_fail, Error(e))
+        } finally {
+            currentlyConnectingPeers.remove(pubKey)
+        }
     }
 
     @ReactMethod
