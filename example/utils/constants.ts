@@ -9,8 +9,8 @@ export const selectedNetwork: TAvailableNetworks = 'bitcoinRegtest';
 export const peers = {
 	lnd: {
 		pubKey:
-			'02709a23bb26d78cc2425aa8651a8ae18d05d852079bdae4151b9759d15ab98c12',
-		address: '192.168.0.100',
+			'0341e41583ad691951634e24dd20252d13feace9286a85d47f220dde74e7e09a15',
+		address: '192.168.0.106',
 		port: 9736,
 	},
 	clightning: {
@@ -33,9 +33,9 @@ export const customPeers = {
 	bitcoinTestnet: [],
 	bitcoinRegtest: [
 		{
-			host: '35.233.47.252',
+			host: '192.168.0.106',
 			ssl: 18484,
-			tcp: 18483,
+			tcp: 50001,
 			protocol: 'tcp',
 		},
 		// {
