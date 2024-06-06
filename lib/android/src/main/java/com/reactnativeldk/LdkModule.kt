@@ -513,7 +513,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 override fun run() {
                     handleDroppedPeers()
                 }
-            }, 1000, 1000)
+            }, 1000, 3000)
             timerTaskScheduled = true
         }
 
@@ -638,7 +638,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
             try {
                 currentlyConnectingPeers.add(pubKey)
-                peerHandler!!.connect(pubKey.hexa(), InetSocketAddress(address, port.toInt()), 10)
+                peerHandler!!.connect(pubKey.hexa(), InetSocketAddress(address, port.toInt()), 3000)
                 LdkEventEmitter.send(EventTypes.native_log, "Connection to peer $pubKey re-established by handleDroppedPeers().")
             } catch (e: Exception) {
                 LdkEventEmitter.send(EventTypes.native_log, "Error connecting peer $pubKey. Error: $e")
@@ -667,6 +667,13 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             currentlyConnectingPeers.add(pubKey)
             peerHandler!!.connect(pubKey.hexa(), InetSocketAddress(address, port.toInt()), timeout.toInt())
 
+            handleResolve(promise, LdkCallbackResponses.add_peer_success)
+        } catch (e: Exception) {
+            handleReject(promise, LdkErrors.add_peer_fail, Error(e))
+        } finally {
+            currentlyConnectingPeers.remove(pubKey)
+
+            //Should retry if success or fail
             if (!addedPeers.map { it["pubKey"] as String }.contains(pubKey)) {
                 addedPeers.add(hashMapOf(
                     "address" to address,
@@ -674,12 +681,6 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     "pubKey" to pubKey
                 ))
             }
-
-            handleResolve(promise, LdkCallbackResponses.add_peer_success)
-        } catch (e: Exception) {
-            handleReject(promise, LdkErrors.add_peer_fail, Error(e))
-        } finally {
-            currentlyConnectingPeers.remove(pubKey)
         }
     }
 
