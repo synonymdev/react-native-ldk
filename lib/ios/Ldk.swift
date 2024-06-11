@@ -86,6 +86,9 @@ enum LdkCallbackResponses: String {
     case config_init_success = "config_init_success"
     case network_graph_init_success = "network_graph_init_success"
     case add_peer_success = "add_peer_success"
+    case add_peer_skipped = "add_peer_skipped"
+    case peer_already_connected = "peer_already_connected"
+    case peer_currently_connecting = "peer_currently_connecting"
     case chain_sync_success = "chain_sync_success"
     case invoice_payment_success = "invoice_payment_success"
     case tx_set_confirmed = "tx_set_confirmed"
@@ -142,6 +145,12 @@ class Ldk: NSObject {
     var currentNetwork: NSString?
     var currentBlockchainTipHash: NSString?
     var currentBlockchainHeight: NSInteger?
+    
+    //Peer connection checks
+    var backgroundedAt: Date? = nil
+    var addedPeers: [(String, Int, String)] = []
+    var currentlyConnectingPeers: [String] = []
+    var droppedPeerTimer: Timer? = nil
     
     //Static to be accessed from other classes
     static var accountStoragePath: URL?
@@ -495,23 +504,43 @@ class Ldk: NSObject {
         currentBlockchainTipHash = blockHash
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
-        
+        startDroppedPeerTimer()
+                
         return handleResolve(resolve, .channel_manager_init_success)
     }
     
     func addForegroundObserver() {
         removeForegroundObserver()
+        backgroundedAt = nil
         NotificationCenter.default.addObserver(self, selector: #selector(restartOnForeground), name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onBackground), name: UIApplication.willResignActiveNotification, object: nil)
     }
     
     func removeForegroundObserver() {
         NotificationCenter.default.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIApplication.willResignActiveNotification, object: nil)
     }
     
     /// Used by event listener so responses are not handled
     @objc
     func restartOnForeground() {
+        let secondsSinceBackgrounded = Date().timeIntervalSince(backgroundedAt ?? .distantPast)
+        guard secondsSinceBackgrounded > 5 else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping restart. App was only backgrounded \(Int(secondsSinceBackgrounded))s ago")
+            return
+        }
+        
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restarting LDK on move to foreground. App was backgrounded \(Int(secondsSinceBackgrounded))s ago")
+        
+        backgroundedAt = nil
         restart { res in } reject: { code, message, error in }
+    }
+    
+    @objc
+    func onBackground() {
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "App moved to background")
+        
+        backgroundedAt = Date()
     }
     
     /// Restarts channel manager constructor to get a new TCP peer handler
@@ -559,6 +588,7 @@ class Ldk: NSObject {
             return handleResolve(resolve, .ldk_stop)
         }
         
+        stopStartDroppedPeerTimer()
         removeForegroundObserver() //LDK was intentionally stopped and we shouldn't attempt a restart
         cm.interrupt()
         channelManagerConstructor = nil
@@ -571,6 +601,7 @@ class Ldk: NSObject {
         peerHandler = nil
         ldkNetwork = nil
         ldkCurrency = nil
+        backgroundedAt = nil
         
         return handleResolve(resolve, .ldk_stop)
     }
@@ -617,16 +648,114 @@ class Ldk: NSObject {
         return handleResolve(resolve, .chain_sync_success)
     }
     
+    func startDroppedPeerTimer() {
+        guard droppedPeerTimer == nil else {
+            return
+        }
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting timer to check for dropped peers")
+
+            droppedPeerTimer = Timer.scheduledTimer(
+                timeInterval: 5.0,
+                target: self,
+                selector: #selector(handleDroppedPeers),
+                userInfo: nil,
+                repeats: true
+            )
+        }
+    }
+    
+    func stopStartDroppedPeerTimer() {
+        droppedPeerTimer?.invalidate()
+        droppedPeerTimer = nil
+    }
+    
+    @objc func handleDroppedPeers() {
+        guard backgroundedAt == nil else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "App was backgrounded, skipping handleDroppedPeers()")
+            return
+        }
+        
+        guard channelManagerConstructor != nil else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "channelManagerConstructor not intialized, skipping handleDroppedPeers()")
+            return
+        }
+        
+        guard let peerHandler else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "peerHandler not intialized, skipping handleDroppedPeers()")
+            return
+        }
+        
+        guard let peerManager else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "peerManager not intialized, skipping handleDroppedPeers()")
+            return
+        }
+        
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Checking for dropped peers")
+        
+        let currentList = peerManager.getPeerNodeIds().map { Data($0.0).hexEncodedString() }
+        
+        addedPeers.forEach { (address, port, pubKey) in
+            guard !currentList.contains(pubKey) else {
+                return
+            }
+            
+            currentlyConnectingPeers.append(String(pubKey))
+            let res = peerHandler.connect(address: String(address), port: UInt16(port), theirNodeId: String(pubKey).hexaBytes)
+            currentlyConnectingPeers.removeAll { $0 == String(pubKey) }
+            
+            if res {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Connection to peer \(pubKey) re-established by handleDroppedPeers().")
+            } else {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error connecting peer \(pubKey) from handleDroppedPeers().")
+            }
+        }
+    }
+    
     @objc
     func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, timeout: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         //timeout param not used. Only for android.
         
-        //Sync ChannelMonitors and ChannelManager to chain tip
+        guard backgroundedAt == nil else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "App was backgrounded, skipping addPeer()")
+            return handleResolve(resolve, .add_peer_skipped)
+        }
+        
         guard let peerHandler = peerHandler else {
             return handleReject(reject, .init_peer_handler)
         }
         
+        guard let peerManager = peerManager else {
+            return handleReject(reject, .init_peer_manager)
+        }
+        
+        //If peer is already connected don't add again
+        let currentList = peerManager.getPeerNodeIds().map { Data($0.0).hexEncodedString() }
+        guard !currentList.contains(String(pubKey)) else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping new peer connection, already connected to \(pubKey)")
+            return handleResolve(resolve, .peer_already_connected)
+        }
+        
+        guard !currentlyConnectingPeers.contains(String(pubKey)) else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping additional peer connection, already busy connecting to \(pubKey)")
+            return handleResolve(resolve, .peer_currently_connecting)
+        }
+        
+        //Add to retry list if peers are dropped
+        
+        currentlyConnectingPeers.append(String(pubKey))
         let res = peerHandler.connect(address: String(address), port: UInt16(port), theirNodeId: String(pubKey).hexaBytes)
+        currentlyConnectingPeers.removeAll { $0 == String(pubKey) }
+        
+        if !addedPeers.contains(where: { (_, _, pk) in
+            pk == String(pubKey)
+        }) {
+            addedPeers.append((String(address), Int(port), String(pubKey)))
+        }
+        
         if !res {
             return handleReject(reject, .add_peer_fail)
         }
@@ -846,7 +975,7 @@ class Ldk: NSObject {
         guard !(amountSats > 0 && !isZeroValueInvoice) else {
             return handleReject(reject, .invoice_payment_fail_must_not_specify_amount)
         }
-                
+        
         let paymentId = invoice.paymentHash()!
         let (paymentHash, recipientOnion, routeParameters) = isZeroValueInvoice ? Bindings.paymentParametersFromZeroAmountInvoice(invoice: invoice, amountMsat: UInt64(amountSats*1000)).getValue()! : Bindings.paymentParametersFromInvoice(invoice: invoice).getValue()!
         
@@ -1038,7 +1167,7 @@ class Ldk: NSObject {
         }
         
         let excludeChannelIds = ignoreOpenChannels ? channelManager.listChannels().map { Data($0.getChannelId() ?? []).hexEncodedString() }.filter { $0 != "" } : []
-
+        
         let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
         
         var result: [[String: Any?]] = []
@@ -1261,9 +1390,9 @@ class Ldk: NSObject {
         }
         
         let openChannelIds = channelManager.listChannels().map { Data($0.getChannelId() ?? []).hexEncodedString() }.filter { $0 != "" }
-                
+        
         let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
-
+        
         var txs: [String] = []
         
         for channelFile in channelFiles {
@@ -1296,7 +1425,7 @@ class Ldk: NSObject {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "No spendable outputs found in \(channelId)")
                 continue
             }
-                        
+            
             let res = keysManager.spendSpendableOutputs(
                 descriptors: descriptors,
                 outputs: [],
@@ -1309,7 +1438,7 @@ class Ldk: NSObject {
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to spend output from closed channel: \(channelId).")
                 continue
             }
-                        
+            
             txs.append(Data(res.getValue()!).hexEncodedString())
         }
         
