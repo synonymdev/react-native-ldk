@@ -641,7 +641,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 peerHandler!!.connect(pubKey.hexa(), InetSocketAddress(address, port.toInt()), 3000)
                 LdkEventEmitter.send(EventTypes.native_log, "Connection to peer $pubKey re-established by handleDroppedPeers().")
             } catch (e: Exception) {
-                LdkEventEmitter.send(EventTypes.native_log, "Error connecting peer $pubKey. Error: $e")
+                LdkEventEmitter.send(EventTypes.native_log, "Error connecting peer from handleDroppedPeers() $pubKey. Error: $e")
             } finally {
                 currentlyConnectingPeers.remove(pubKey)
             }
