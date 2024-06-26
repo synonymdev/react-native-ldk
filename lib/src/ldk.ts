@@ -95,6 +95,7 @@ class LDK {
 	 */
 	async initKeysManager({
 		seed,
+		address,
 		channelCloseDestinationScriptPublicKey,
 		channelCloseWitnessProgram,
 		channelCloseWitnessProgramVersion,
@@ -102,6 +103,7 @@ class LDK {
 		try {
 			const res = await NativeLDK.initKeysManager(
 				seed,
+				address,
 				channelCloseDestinationScriptPublicKey,
 				channelCloseWitnessProgram,
 				channelCloseWitnessProgramVersion,

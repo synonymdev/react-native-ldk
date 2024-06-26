@@ -22,6 +22,7 @@ class CustomKeysManager(
     seed: ByteArray,
     startingTimeSecs: Long,
     startingTimeNanos: Int,
+    val address: String,
     val destinationScriptPublicKey: ByteArray,
     val witnessProgram: ByteArray,
     val witnessProgramVersion: Byte
@@ -68,6 +69,7 @@ class CustomSignerProvider : SignerProviderInterface {
         val res = ShutdownScript.new_witness_program(witness)
 
         return if (res.is_ok) {
+            LdkEventEmitter.send(EventTypes.used_close_address, customKeysManager.address)
             Result_ShutdownScriptNoneZ.ok((res as Result_ShutdownScriptInvalidShutdownScriptZ.Result_ShutdownScriptInvalidShutdownScriptZ_OK).res)
         } else {
             Result_ShutdownScriptNoneZ.err()

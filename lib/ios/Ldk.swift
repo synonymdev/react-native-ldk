@@ -26,6 +26,7 @@ enum EventTypes: String, CaseIterable {
     case channel_manager_restarted = "channel_manager_restarted"
     case backup_state_update = "backup_state_update"
     case lsp_log = "lsp_log"
+    case used_close_address = "used_close_address"
 }
 //*****************************************************************
 
@@ -210,7 +211,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func initKeysManager(_ seed: NSString, destinationScriptPublicKey: NSString, witnessProgram: NSString, witnessProgramVersion: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func initKeysManager(_ seed: NSString, address: NSString, destinationScriptPublicKey: NSString, witnessProgram: NSString, witnessProgramVersion: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         if keysManager != nil {
             //If previously started with the same key (by backup client) return success.
             return handleResolve(resolve, .keys_manager_init_success)
@@ -228,6 +229,7 @@ class Ldk: NSObject {
             seed: String(seed).hexaBytes,
             startingTimeSecs: seconds,
             startingTimeNanos: nanoSeconds,
+            address: String(address),
             destinationScriptPublicKey: String(destinationScriptPublicKey).hexaBytes,
             witnessProgram: String(witnessProgram).hexaBytes,
             witnessProgramVersion: UInt8(witnessProgramVersion)
