@@ -663,7 +663,7 @@ class Ldk: NSObject {
             droppedPeerTimer = Timer.scheduledTimer(
                 timeInterval: 5.0,
                 target: self,
-                selector: #selector(handleDroppedPeers),
+                selector: #selector(self.handleDroppedPeers),
                 userInfo: nil,
                 repeats: true
             )
