@@ -54,7 +54,8 @@ enum class EventTypes {
     network_graph_updated,
     channel_manager_restarted,
     backup_state_update,
-    lsp_log
+    lsp_log,
+    used_close_address
 }
 //*****************************************************************
 
@@ -242,7 +243,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun initKeysManager(seed: String, destinationScriptPublicKey: String, witnessProgram: String, witnessProgramVersion: Double, promise: Promise) {
+    fun initKeysManager(seed: String, address: String, destinationScriptPublicKey: String, witnessProgram: String, witnessProgramVersion: Double, promise: Promise) {
         if (keysManager != null) {
             return handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
         }
@@ -259,11 +260,11 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             seedBytes,
             seconds,
             nanoSeconds.toInt(),
+            address,
             destinationScriptPublicKey.hexa(),
             witnessProgram.hexa(),
             witnessProgramVersion.toInt().toByte()
         )
-        //keysManager = KeysManager.of(seedBytes, seconds, nanoSeconds.toInt())
 
         handleResolve(promise, LdkCallbackResponses.keys_manager_init_success)
     }

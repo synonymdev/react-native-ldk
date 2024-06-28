@@ -35,6 +35,7 @@ export enum EEventTypes {
 	channel_manager_restarted = 'channel_manager_restarted',
 	backup_state_update = 'backup_state_update',
 	lsp_log = 'lsp_log',
+	used_close_address = 'used_close_address',
 }
 
 //LDK event responses
@@ -326,6 +327,7 @@ export type TDownloadScorer = {
 
 export type TInitKeysManager = {
 	seed: string;
+	address: string;
 	channelCloseDestinationScriptPublicKey: string;
 	channelCloseWitnessProgram: string;
 	channelCloseWitnessProgramVersion: number;

@@ -11,12 +11,14 @@ import LightningDevKit
 class CustomKeysManager {
     let inner: KeysManager
     let signerProvider: CustomSignerProvider
+    let address: String
     let destinationScriptPublicKey: [UInt8]
     let witnessProgram: [UInt8]
     let witnessProgramVersion: UInt8
     
-    init(seed: [UInt8], startingTimeSecs: UInt64, startingTimeNanos: UInt32, destinationScriptPublicKey: [UInt8], witnessProgram: [UInt8], witnessProgramVersion: UInt8) {
+    init(seed: [UInt8], startingTimeSecs: UInt64, startingTimeNanos: UInt32, address: String, destinationScriptPublicKey: [UInt8], witnessProgram: [UInt8], witnessProgramVersion: UInt8) {
         self.inner = KeysManager(seed: seed, startingTimeSecs: startingTimeSecs, startingTimeNanos: startingTimeNanos)
+        self.address = address
         self.destinationScriptPublicKey = destinationScriptPublicKey
         self.witnessProgram = witnessProgram
         self.witnessProgramVersion = witnessProgramVersion
@@ -61,6 +63,8 @@ class CustomSignerProvider: SignerProvider {
     override func getShutdownScriptpubkey() -> Bindings.Result_ShutdownScriptNoneZ {
         let res = ShutdownScript.newWitnessProgram(witnessProgram: .init(version: customKeysManager!.witnessProgramVersion, program: customKeysManager!.witnessProgram))
         if res.isOk() {
+            //To record which addresses should be watched for close channel funds
+            LdkEventEmitter.shared.send(withEvent: .used_close_address, body: customKeysManager!.address)
             return Bindings.Result_ShutdownScriptNoneZ.initWithOk(o: res.getValue()!)
         }
         

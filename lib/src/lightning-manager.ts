@@ -232,6 +232,9 @@ class LightningManager {
 			this.onChannelManagerRestarted.bind(this),
 		);
 		ldk.onEvent(EEventTypes.lsp_log, this.onLspLogEvent.bind(this));
+		ldk.onEvent(EEventTypes.used_close_address, (address: string) => {
+			this.saveAddressToFile(address).catch(console.error);
+		});
 	}
 
 	/**
@@ -364,14 +367,7 @@ class LightningManager {
 		this.account = account;
 		this.network = network;
 		this.addresses = await this.readAddressesFromFile();
-		this.getAddress = async () => {
-			const addressObj = await getAddress();
-			const address = addressObj?.address;
-			if (address) {
-				this.saveAddressToFile(address).then();
-			}
-			return addressObj;
-		};
+		this.getAddress = getAddress;
 		this.getScriptPubKeyHistory = getScriptPubKeyHistory;
 		this.getFees = getFees;
 		this.broadcastTransaction = broadcastTransaction;
@@ -452,6 +448,7 @@ class LightningManager {
 			// ldk.setLogLevel(ELdkLogLevels.trace, true),
 			ldk.initKeysManager({
 				seed: this.account.seed,
+				address: closeAddress.address,
 				channelCloseDestinationScriptPublicKey: closeAddress.publicKey,
 				channelCloseWitnessProgram: witnessProgram,
 				channelCloseWitnessProgramVersion: witnessProgramVersion,
@@ -513,6 +510,7 @@ class LightningManager {
 		ldk.nodeStateDump().catch(console.error);
 
 		this.cleanupBroadcastedTxs().catch(console.error);
+		this.resetAddressFileIfUnused().catch(console.error);
 
 		this.isStarting = false;
 		const result = ok('Node started');
@@ -767,6 +765,37 @@ class LightningManager {
 			}
 		}
 		return ok('Watch transactions checked');
+	};
+
+	/*
+	 * Previously we were writing all addresses to file even
+	 * if they may not have been used in a channel shutdown script or
+	 * force close sweeping. So reset the file if there is no evidence of prior channels.
+	 * */
+	resetAddressFileIfUnused = async (): Promise<void> => {
+		//If no channel files found and no addresses are being used, reset the address file.
+		const channelFilesRes = await ldk.listChannelFiles();
+		if (channelFilesRes.isErr()) {
+			return;
+		}
+
+		if (channelFilesRes.value.length > 0) {
+			return;
+		}
+
+		const accountPath = appendPath(this.baseStoragePath, this.account.name);
+		const writeRes = await ldk.writeToFile({
+			fileName: ELdkFiles.addresses,
+			path: accountPath,
+			content: JSON.stringify([]),
+			remotePersist: false,
+		});
+
+		this.addresses = [];
+
+		if (writeRes.isErr()) {
+			console.error(writeRes.error);
+		}
 	};
 
 	saveAddressToFile = async (address: string): Promise<Result<boolean>> => {
@@ -1822,6 +1851,7 @@ class LightningManager {
 					changeDestinationScript: changeDestinationScript,
 				};
 				const res = await ldk.reconstructAndSpendOutputs(req);
+				await this.saveAddressToFile(address.address);
 
 				if (res.isOk()) {
 					reconstructedTxs++;
@@ -2127,6 +2157,7 @@ class LightningManager {
 		res: TChannelManagerSpendableOutputs,
 	): Promise<void> {
 		const spendableOutputs = await this.getLdkSpendableOutputs();
+
 		res.outputsSerialized.forEach((o) => {
 			if (!spendableOutputs.includes(o)) {
 				spendableOutputs.push(o);
@@ -2171,6 +2202,9 @@ class LightningManager {
 			);
 			return;
 		}
+
+		//Address was used to sweep to so wallet needs to watch it
+		await this.saveAddressToFile(address.address);
 
 		await ldk.writeToLogFile(
 			'info',
