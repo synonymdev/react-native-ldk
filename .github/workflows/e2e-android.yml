@@ -10,80 +10,122 @@ on:
 
 jobs:
   e2e-android:
-    runs-on: macos-13
+    runs-on: ubuntu-latest
     timeout-minutes: 120
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-          cache: 'yarn' # cache packages, but not node_modules
-          cache-dependency-path: 'example/yarn.lock'
+      - name: Install pulseaudio
+        run: sudo apt-get install pulseaudio
 
-      - name: Cache lib node modules
-        uses: actions/cache@v3
-        id: lib-npmcache
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
         with:
-          path: lib/node_modules
-          key: node-modules-${{ hashFiles('**/yarn.lock') }}
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: yarn and gradle caches in /mnt
+        run: |
+          rm -rf ~/.yarn
+          rm -rf ~/.gradle
+          sudo mkdir -p /mnt/.yarn
+          sudo mkdir -p /mnt/.gradle
+          sudo chown -R runner /mnt/.yarn
+          sudo chown -R runner /mnt/.gradle
+          ln -s /mnt/.yarn /home/runner/
+          ln -s /mnt/.gradle /home/runner/
+
+      - name: Create artifacts directory on /mnt
+        run: |
+          sudo mkdir -p /mnt/artifacts
+          sudo chown -R runner /mnt/artifacts
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # cache: 'yarn' # cache packages, but not node_modules
+          # cache-dependency-path: 'example/yarn.lock'
+
+      - name: Use yarn caches
+        uses: actions/cache@v4
+        with:
+          path: ~/.yarn
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
 
       - name: Install lib dependencies
-        if: steps.lib-npmcache.outputs.cache-hit != 'true'
         working-directory: lib
-        run: yarn install
+        run: yarn || yarn
 
       - name: Build lib
         working-directory: lib
         run: yarn build
 
       - name: Use gradle caches
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # - name: Cache node modules
-      #   uses: actions/cache@v3
-      #   id: cache-nm
-      #   with:
-      #     path: node_modules
-      #     key: node-modules-${{ hashFiles('**/yarn.lock') }}
-
       - name: Install node_modules
         working-directory: example
-        run: yarn install && yarn rn-setup
+        run: (yarn || yarn) && yarn rn-setup
 
       - name: Use specific Java version for sdkmanager to work
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
 
       - name: Build
         working-directory: example
-        run: yarn e2e:build:android-release
+        run: yarn e2e:build:android-release || yarn e2e:build:android-release
+
+      - name: Show build outputs
+        working-directory: example
+        run: tree android/app/build/outputs/
+
+      - name: Kill java processes
+        run: pkill -9 -f java || true
 
       - name: run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 31
           avd-name: Pixel_API_31_AOSP
+          profile: 5.4in FWVGA # devices list: avdmanager list device
+          api-level: 31
+          force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none -partition-size 2047
           arch: x86_64
           disable-animations: true
           working-directory: example
-          script: yarn e2e:test:android-release || yarn e2e:test:android-release || yarn e2e:test:android-release
+          script: yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts || yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifactsyarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts || yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: e2e-test-videos
-          path: ./example/artifacts/
+          path: /mnt/artifacts
