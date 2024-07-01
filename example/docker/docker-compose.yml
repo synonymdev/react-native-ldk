@@ -2,7 +2,7 @@ version: '3'
 services:
   bitcoind:
     container_name: bitcoin
-    image: btcpayserver/bitcoin:25.0
+    image: btcpayserver/bitcoin:26.0
     restart: unless-stopped
     expose:
       - '18443'
@@ -37,7 +37,7 @@ services:
         zmqpubhashblock=tcp://0.0.0.0:28336
 
   bitcoinsetup:
-    image: btcpayserver/bitcoin:25.0
+    image: btcpayserver/bitcoin:26.0
     depends_on:
       - bitcoind
     restart: 'no'
@@ -54,7 +54,7 @@ services:
 
   electrs:
     container_name: electrum
-    image: getumbrel/electrs:v0.9.10
+    image: getumbrel/electrs:v0.10.2
     restart: unless-stopped
     depends_on:
       - bitcoind
@@ -73,7 +73,7 @@ services:
 
   lnd:
     container_name: lnd
-    image: polarlightning/lnd:0.17.4-beta
+    image: polarlightning/lnd:0.18.0-beta
     restart: unless-stopped
     depends_on:
       - bitcoind
@@ -107,7 +107,7 @@ services:
 
   clightning:
     container_name: clightning
-    image: polarlightning/clightning:23.05.2
+    image: polarlightning/clightning:24.05
     restart: unless-stopped
     depends_on:
       - bitcoind
@@ -143,7 +143,7 @@ services:
 
   eclair:
     container_name: eclair
-    image: polarlightning/eclair:0.9.0
+    image: polarlightning/eclair:0.10.0
     restart: unless-stopped
     depends_on:
       - bitcoind
@@ -175,7 +175,7 @@ services:
 
   nginx:
     container_name: nginx
-    image: nginx:1.25.1
+    image: nginx:1.27
     restart: unless-stopped
     depends_on:
       - bitcoinsetup
