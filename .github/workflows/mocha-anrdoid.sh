@@ -22,7 +22,10 @@ echo $EXIT_CODE;
 if [ $EXIT_CODE -ne 0 ]; then
     adb root
     sleep 10
-    adb pull /data/user/0/com.exmpl/files/ldk/ artifacts/
+    adb pull /data/user/0/com.exmpl/files/ldk/ /mnt/artifacts/
 fi
+
+sleep 10
+echo "Test finished"
 
 exit $EXIT_CODE

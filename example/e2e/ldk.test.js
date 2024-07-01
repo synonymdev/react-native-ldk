@@ -4,7 +4,7 @@ describe('LDK integration test', () => {
 	});
 
 	beforeEach(async () => {
-		await device.reloadReactNative();
+		// await device.reloadReactNative();
 		await element(by.id('dev')).tap();
 	});
 

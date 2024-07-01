@@ -2421,7 +2421,7 @@
     bitcoinjs-lib "6.1.4"
 
 "@synonymdev/react-native-ldk@../lib":
-  version "0.0.141"
+  version "0.0.145"
   dependencies:
     "@synonymdev/raw-transaction-decoder" "1.1.0"
     bech32 "^2.0.0"
@@ -4040,10 +4040,10 @@ detect-newline@^3.0.0:
   resolved "https://registry.npmjs.org/detect-newline/-/detect-newline-3.1.0.tgz"
   integrity sha512-TLz+x/vEXm/Y7P7wn1EJFNLxYpUD4TgMosxY6fAVJUnJMbupHBOncxyWUG9OpTaH9EBD7uFI5LfEgmMOc54DsA==
 
-detox@20.17.0:
-  version "20.17.0"
-  resolved "https://registry.yarnpkg.com/detox/-/detox-20.17.0.tgz#836d2ebb193572e1f4a97e44af343891a5658f7b"
-  integrity sha512-IasYgexfkrCoZuJTaqqKHQ2yflK+tnqifzdLwrp4hdTWlXUlG9j/YcM1Dn3ThSs3b6VNMtbSe6xoPkKD0oNiIQ==
+detox@20.20.2:
+  version "20.20.2"
+  resolved "https://registry.yarnpkg.com/detox/-/detox-20.20.2.tgz#988619d99e08bd992931458e3db7af248254bf31"
+  integrity sha512-X0FWsj8Bry965fEy7N87bKecIIkcAg3AyaCDXFa0yO+kAIajFbSV7LMtNTQP/c1D0eD4+U5sn9zUJWWhQhucWg==
   dependencies:
     ajv "^8.6.3"
     bunyan "^1.8.12"
