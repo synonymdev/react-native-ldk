@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@bitcoinerlab/secp256k1": "1.0.5",
-    "@react-native-async-storage/async-storage": "1.19.4",
+    "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-clipboard/clipboard": "1.12.1",
     "@synonymdev/react-native-ldk": "../lib",
     "assert": "2.1.0",
