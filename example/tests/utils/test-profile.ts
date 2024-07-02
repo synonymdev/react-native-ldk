@@ -1,3 +1,4 @@
+import ecc from '@bitcoinerlab/secp256k1';
 import {
 	IAddress,
 	TAccount,
@@ -7,12 +8,14 @@ import {
 	TTransactionData,
 	TTransactionPosition,
 } from '@synonymdev/react-native-ldk';
-import * as bip32 from 'bip32';
+import { BIP32Factory } from 'bip32';
 import * as bip39 from 'bip39';
 import * as bitcoin from 'bitcoinjs-lib';
 import ElectrumClient from 'electrum-client';
 import { Platform } from 'react-native';
 import { randomBytes } from 'react-native-randombytes';
+
+const bip32 = BIP32Factory(ecc);
 
 import { skipRemoteBackups } from '.';
 import {
@@ -142,9 +145,8 @@ export default class TestProfile {
 		const reversedHash = Buffer.from(hash).reverse();
 		const scriptHash = reversedHash.toString('hex');
 
-		const history = await this.electrum.blockchainScripthash_getHistory(
-			scriptHash,
-		);
+		const history =
+			await this.electrum.blockchainScripthash_getHistory(scriptHash);
 
 		if (!history) {
 			return [];

@@ -1,21 +1,24 @@
-import Keychain from 'react-native-keychain';
+import ecc from '@bitcoinerlab/secp256k1';
 import {
+	IAddress,
 	TAccount,
 	TAvailableNetworks,
-	IAddress,
 } from '@synonymdev/react-native-ldk';
-import { getItem, setItem } from '../ldk';
-import { EAccount, TWallet } from './types';
-import { err, ok, Result } from './result';
+import networks from '@synonymdev/react-native-ldk/dist/utils/networks';
+import { ENetworks } from '@synonymdev/react-native-ldk/dist/utils/types';
+import { BIP32Factory } from 'bip32';
+import * as bip39 from 'bip39';
+import * as bitcoin from 'bitcoinjs-lib';
+import RNFS from 'react-native-fs';
+import Keychain from 'react-native-keychain';
 // @ts-ignore
 import { randomBytes } from 'react-native-randombytes';
-import * as bitcoin from 'bitcoinjs-lib';
+import { getItem, setItem } from '../ldk';
 import { selectedNetwork } from './constants';
-import RNFS from 'react-native-fs';
-import * as bip32 from 'bip32';
-import * as bip39 from 'bip39';
-import { ENetworks } from '@synonymdev/react-native-ldk/dist/utils/types';
-import networks from '@synonymdev/react-native-ldk/dist/utils/networks';
+import { Result, err, ok } from './result';
+import { EAccount, TWallet } from './types';
+
+const bip32 = BIP32Factory(ecc);
 
 /**
  * Use Keychain to save LDK name & seed.
