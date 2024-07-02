@@ -1,5 +1,6 @@
 #!/bin/bash
 
+adb root
 adb reverse tcp:3003 tcp:3003
 adb reverse tcp:8090 tcp:8090
 adb reverse tcp:9090 tcp:9090
@@ -20,7 +21,6 @@ set -e
 
 echo $EXIT_CODE;
 if [ $EXIT_CODE -ne 0 ]; then
-    adb root
     sleep 10
     adb pull /data/user/0/com.exmpl/files/ldk/ /mnt/artifacts/
 fi
