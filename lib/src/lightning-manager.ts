@@ -1953,7 +1953,7 @@ class LightningManager {
 		return await ldk.writeToFile({
 			fileName: ELdkFiles.peers,
 			content: JSON.stringify(peers),
-			remotePersist: false,
+			remotePersist: true,
 		});
 	};
 

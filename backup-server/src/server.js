@@ -30,6 +30,7 @@ const ldkLabels = [
     'bolt11_invoices',
     'channel_opened_with_custom_keys_manager',
     'confirmed_watch_outputs',
+    'addresses',
 ];
 const bitkitLabels = [
     'bitkit_settings',
