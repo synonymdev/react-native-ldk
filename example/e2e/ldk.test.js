@@ -1,6 +1,8 @@
 describe('LDK integration test', () => {
 	beforeAll(async () => {
-		await device.launchApp();
+		await device.launchApp({
+			launchArgs: { detoxEnableSynchronization: 0 },
+		});
 	});
 
 	beforeEach(async () => {
