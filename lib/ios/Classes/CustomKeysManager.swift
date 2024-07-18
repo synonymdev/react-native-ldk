@@ -41,7 +41,7 @@ class CustomKeysManager {
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Spending \(onlyNonStatic.count) non static outputs")
         
-        let res = self.inner.spendSpendableOutputs(
+        let res = self.inner.asOutputSpender().spendSpendableOutputs(
             descriptors: onlyNonStatic,
             outputs: outputs,
             changeDestinationScript: changeDestinationScript,

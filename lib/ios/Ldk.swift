@@ -507,7 +507,7 @@ class Ldk: NSObject {
         currentBlockchainHeight = blockHeight
         addForegroundObserver()
         startDroppedPeerTimer()
-                
+        
         return handleResolve(resolve, .channel_manager_init_success)
     }
     
@@ -659,7 +659,7 @@ class Ldk: NSObject {
             guard let self else { return }
             
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Starting timer to check for dropped peers")
-
+            
             droppedPeerTimer = Timer.scheduledTimer(
                 timeInterval: 5.0,
                 target: self,
@@ -698,7 +698,9 @@ class Ldk: NSObject {
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Checking for dropped peers")
         
-        let currentList = peerManager.getPeerNodeIds().map { Data($0.0).hexEncodedString() }
+        let currentList = peerManager
+            .listPeers()
+            .map { Data($0.getCounterpartyNodeId()).hexEncodedString() }
         
         addedPeers.forEach { (address, port, pubKey) in
             guard !currentList.contains(pubKey) else {
@@ -735,7 +737,10 @@ class Ldk: NSObject {
         }
         
         //If peer is already connected don't add again
-        let currentList = peerManager.getPeerNodeIds().map { Data($0.0).hexEncodedString() }
+        let currentList = peerManager
+            .listPeers()
+            .map { Data($0.getCounterpartyNodeId()).hexEncodedString() }
+        
         guard !currentList.contains(String(pubKey)) else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping new peer connection, already connected to \(pubKey)")
             return handleResolve(resolve, .peer_already_connected)
@@ -818,7 +823,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
         
-        let temporaryChannelId = String(temporaryChannelId).hexaBytes
+        let temporaryChannelId = Bindings.ChannelId.initWith(aArg: String(temporaryChannelId).hexaBytes)
         let counterpartyNodeId = String(counterPartyNodeId).hexaBytes
         
         var userChannelId = Data(count: 32)
@@ -860,7 +865,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_channel_manager)
         }
         
-        let channelId = String(channelId).hexaBytes
+        let channelId = Bindings.ChannelId.initWith(aArg: String(channelId).hexaBytes)
         let counterpartyNodeId = String(counterPartyNodeId).hexaBytes
         
         let res = force ?
@@ -1124,7 +1129,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_peer_manager)
         }
         
-        return resolve(peerManager.getPeerNodeIds().map { Data($0.0).hexEncodedString() })
+        return resolve(peerManager.listPeers().map { Data($0.getCounterpartyNodeId()).hexEncodedString() })
     }
     
     @objc
@@ -1168,7 +1173,10 @@ class Ldk: NSObject {
             return handleReject(reject, .init_storage_path)
         }
         
-        let excludeChannelIds = ignoreOpenChannels ? channelManager.listChannels().map { Data($0.getChannelId() ?? []).hexEncodedString() }.filter { $0 != "" } : []
+        let excludeChannelIds = ignoreOpenChannels ? channelManager
+            .listChannels()
+            .map { Data($0.getChannelId().getA() ?? []).hexEncodedString() }
+            .filter { $0 != "" } : []
         
         let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
         
@@ -1391,7 +1399,10 @@ class Ldk: NSObject {
             return handleReject(reject, .init_storage_path)
         }
         
-        let openChannelIds = channelManager.listChannels().map { Data($0.getChannelId() ?? []).hexEncodedString() }.filter { $0 != "" }
+        let openChannelIds = channelManager
+            .listChannels()
+            .map { Data($0.getChannelId().getA() ?? []).hexEncodedString() }
+            .filter { $0 != "" }
         
         let channelFiles = try! FileManager.default.contentsOfDirectory(at: channelStoragePath, includingPropertiesForKeys: nil)
         
@@ -1500,10 +1511,10 @@ class Ldk: NSObject {
             logDump.append("RGS last sync time unavailable.")
         }
         
-        if let peers = peerManager?.getPeerNodeIds()  {
+        if let peers = peerManager?.listPeers()  {
             if peers.count > 0 {
-                peers.forEach { (pubKey, address) in
-                    logDump.append("Connected peer: \(Data(pubKey).hexEncodedString())")
+                peers.forEach { (peer) in
+                    logDump.append("Connected peer: \(Data(peer.getCounterpartyNodeId()).hexEncodedString())")
                 }
             } else {
                 logDump.append("No connected peers")

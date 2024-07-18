@@ -29,7 +29,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_funding_generation_ready,
                 body: [
-                    "temp_channel_id": Data(fundingGeneration.getTemporaryChannelId()).hexEncodedString(),
+                    "temp_channel_id": Data(fundingGeneration.getTemporaryChannelId().getA() ?? []).hexEncodedString(),
                     "output_script": Data(fundingGeneration.getOutputScript()).hexEncodedString(),
                     "user_channel_id": Data(fundingGeneration.getUserChannelId()).hexEncodedString(),
                     "value_satoshis": fundingGeneration.getChannelValueSatoshis(),
@@ -41,8 +41,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 return handleEventError(event)
             }
 
-            let paymentPreimage = paymentClaimable.getPurpose().getValueAsInvoicePayment()?.getPaymentPreimage()
-            let paymentSecret = paymentClaimable.getPurpose().getValueAsInvoicePayment()?.getPaymentSecret()
+            let paymentPreimage = paymentClaimable.getPurpose().getValueAsBolt11InvoicePayment()?.getPaymentPreimage()
+            let paymentSecret = paymentClaimable.getPurpose().getValueAsBolt11InvoicePayment()?.getPaymentSecret()
             let spontaneousPayment = paymentClaimable.getPurpose().getValueAsSpontaneousPayment()
 
             let body: [String: Encodable] = [
@@ -93,7 +93,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_open_channel_request,
                 body: [
-                    "temp_channel_id": Data(openChannelRequest.getTemporaryChannelId()).hexEncodedString(),
+                    "temp_channel_id": Data(openChannelRequest.getTemporaryChannelId().getA() ?? []).hexEncodedString(),
                     "counterparty_node_id": Data(openChannelRequest.getCounterpartyNodeId()).hexEncodedString(),
                     "push_sat": openChannelRequest.getPushMsat() / 1000,
                     "funding_satoshis": openChannelRequest.getFundingSatoshis(),
@@ -211,8 +211,6 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             switch channelClosed.getReason().getValueType() {
             case .CommitmentTxConfirmed:
                 reasonString = "CommitmentTxConfirmed"
-            case .CooperativeClosure:
-                reasonString = "CooperativeClosure"
             case .CounterpartyCoopClosedUnfundedChannel:
                 reasonString = "CounterpartyCoopClosedUnfundedChannel"
             case .CounterpartyForceClosed:
@@ -229,7 +227,15 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 reasonString = "OutdatedChannelManager"
             case .ProcessingError:
                 reasonString = "ProcessingError"
-            default:
+            case .CounterpartyInitiatedCooperativeClosure:
+                reasonString = "CounterpartyInitiatedCooperativeClosure"
+            case .LegacyCooperativeClosure:
+                reasonString = "LegacyCooperativeClosure"
+            case .LocallyInitiatedCooperativeClosure:
+                reasonString = "LocallyInitiatedCooperativeClosure"
+            case .HTLCsTimedOut:
+                reasonString = "HTLCsTimedOut"
+            @unknown default:
                 reasonString = "Unknown"
             }
 
@@ -237,7 +243,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 withEvent: .channel_manager_channel_closed,
                 body: [
                     "user_channel_id": Data(channelClosed.getUserChannelId()).hexEncodedString(),
-                    "channel_id": Data(channelClosed.getChannelId()).hexEncodedString(),
+                    "channel_id": Data(channelClosed.getChannelId().getA() ?? []).hexEncodedString(),
                     "reason": reasonString
                 ]
             )
@@ -252,7 +258,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_discard_funding,
                 body: [
-                    "channel_id": Data(discardFunding.getChannelId()).hexEncodedString(),
+                    "channel_id": Data(discardFunding.getChannelId().getA() ?? []).hexEncodedString(),
                     "tx": Data(discardFunding.getTransaction()).hexEncodedString()
                 ]
             )
@@ -262,8 +268,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 return handleEventError(event)
             }
 
-            let paymentPreimage = paymentClaimed.getPurpose().getValueAsInvoicePayment()?.getPaymentPreimage()
-            let paymentSecret = paymentClaimed.getPurpose().getValueAsInvoicePayment()?.getPaymentSecret()
+            let paymentPreimage = paymentClaimed.getPurpose().getValueAsBolt11InvoicePayment()?.getPaymentPreimage()
+            let paymentSecret = paymentClaimed.getPurpose().getValueAsBolt11InvoicePayment()?.getPaymentSecret()
             let spontaneousPayment = paymentClaimed.getPurpose().getValueAsSpontaneousPayment()
 
             let body: [String: Encodable] = [

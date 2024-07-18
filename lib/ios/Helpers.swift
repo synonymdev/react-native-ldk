@@ -114,7 +114,7 @@ extension ChannelDetails {
         let shortChannelId = getShortChannelId() != nil ? String(getShortChannelId()!) : ""
         
         return [
-            "channel_id": Data(getChannelId() ?? []).hexEncodedString(),
+            "channel_id": Data(getChannelId().getA() ?? []).hexEncodedString(),
             "is_public": getIsPublic(),
             "is_usable": getIsUsable(),
             "is_channel_ready": getIsChannelReady(),
