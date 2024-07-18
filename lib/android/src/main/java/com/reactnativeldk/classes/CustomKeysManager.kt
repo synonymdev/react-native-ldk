@@ -47,7 +47,7 @@ class CustomKeysManager(
 
         LdkEventEmitter.send(EventTypes.native_log, "Spending ${onlyNonStatic.count()} non static outputs")
 
-        return inner.spend_spendable_outputs(
+        return inner.as_OutputSpender().spend_spendable_outputs(
             onlyNonStatic,
             outputs,
             changeDestinationScript,
