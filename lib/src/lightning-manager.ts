@@ -140,7 +140,6 @@ class LightningManager {
 		minAllowedNonAnchorChannelRemoteFee: 5,
 		onChainSweep: 5,
 	});
-	trustedZeroConfPeers: string[] = [];
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
 	lspLogEvent: TLspLogEvent | undefined;
 	pathFailedSubscription: EmitterSubscription | undefined;
@@ -300,7 +299,6 @@ class LightningManager {
 		scorerDownloadUrl = 'https://rapidsync.lightningdevkit.org/scoring/scorer.bin',
 		forceCloseOnStartup,
 		userConfig = defaultUserConfig,
-		trustedZeroConfPeers = [],
 		skipParamCheck = false,
 		skipRemoteBackups = false,
 		lspLogEvent,
@@ -378,7 +376,6 @@ class LightningManager {
 		this.watchTxs = [];
 		this.watchOutputs = [];
 		this.confirmedWatchOutputs = await this.getConfirmedWatchOutputs();
-		this.trustedZeroConfPeers = trustedZeroConfPeers;
 		this.lspLogEvent = lspLogEvent;
 
 		if (!this.baseStoragePath) {
@@ -548,6 +545,37 @@ class LightningManager {
 	async setFees(): Promise<Result<string>> {
 		const fees = await this.getFees();
 		return await ldk.updateFees(fees);
+	}
+
+	/**
+	 * Persists nodeIDs to disk that should be checked when accepting zero-conf channels.
+	 * @param {string[]} nodeIds
+	 * @param {boolean} [merge] If true, will merge provided nodeIds with existing nodeIds. Set false to overwrite entirely.
+	 * @returns {Promise<Result<boolean>>}
+	 */
+	async setTrustedZeroConfPeerNodeIds(
+		nodeIds: string[],
+		merge: boolean = true,
+	): Promise<Result<boolean>> {
+		let trustedNodeIds = nodeIds;
+		const accountPath = appendPath(this.baseStoragePath, this.account.name);
+		if (merge) {
+			const readRes = await ldk.readFromFile({
+				fileName: ELdkFiles.trusted_peer_node_ids,
+				path: accountPath,
+			});
+			if (readRes.isOk()) {
+				let currentIds = parseData(readRes.value.content, []);
+				trustedNodeIds = Array.from(new Set([...currentIds, ...nodeIds]));
+			}
+		}
+
+		return await ldk.writeToFile({
+			fileName: ELdkFiles.trusted_peer_node_ids,
+			path: accountPath,
+			content: JSON.stringify(trustedNodeIds),
+			remotePersist: false,
+		});
 	}
 
 	/**
@@ -2064,9 +2092,19 @@ class LightningManager {
 		} = req;
 
 		let trustedPeer0Conf = false;
-		const isTrustedPeer =
-			this.trustedZeroConfPeers.indexOf(counterparty_node_id) > -1;
 		if (supports_zero_conf) {
+			let trustedZeroConfPeers: string[] = [];
+			const readRes = await ldk.readFromFile({
+				fileName: ELdkFiles.trusted_peer_node_ids,
+				path: appendPath(this.baseStoragePath, this.account.name),
+			});
+			if (readRes.isOk()) {
+				trustedZeroConfPeers = parseData(readRes.value.content, []);
+			}
+
+			const isTrustedPeer =
+				trustedZeroConfPeers.indexOf(counterparty_node_id) > -1;
+
 			if (isTrustedPeer) {
 				await ldk.writeToLogFile(
 					'info',
