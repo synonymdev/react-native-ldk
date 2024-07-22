@@ -481,6 +481,7 @@ export enum ELdkFiles {
 	channel_manager = 'channel_manager.bin', //Serialised rust object
 	channels = 'channels', //Path containing multiple files of serialised channels
 	peers = 'peers.json', //File saved from JS
+	trusted_peer_node_ids = 'trusted_peer_node_ids.json', //File saved from JS
 	unconfirmed_transactions = 'unconfirmed_transactions.json',
 	broadcasted_transactions = 'broadcasted_transactions.json',
 	confirmed_broadcasted_transactions = 'confirmed_broadcasted_transactions.json',
@@ -571,7 +572,6 @@ export type TLdkStart = {
 	scorerDownloadUrl?: string;
 	forceCloseOnStartup?: TForceCloseOnStartup;
 	userConfig?: TUserConfig;
-	trustedZeroConfPeers?: string[];
 	skipParamCheck?: boolean;
 	skipRemoteBackups?: boolean;
 	lspLogEvent?: TLspLogEvent;

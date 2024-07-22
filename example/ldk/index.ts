@@ -150,7 +150,6 @@ export const setupLdk = async (
 				},
 				manually_accept_inbound_channels: true,
 			},
-			trustedZeroConfPeers: [peers.lnd.pubKey],
 			skipRemoteBackups: !backupServerDetails,
 			lspLogEvent: async (payload) => {
 				console.log('Log event for LSP:', JSON.stringify(payload));
@@ -182,6 +181,15 @@ export const setupLdk = async (
 			console.log('addPeer Responses:', JSON.stringify(peersRes));
 		} catch (e) {
 			return err(e.toString());
+		}
+
+		//Set trusted peers we should accept zero conf channels from
+		const trustedPeers = Object.values(peers).map((peer) => peer.pubKey);
+		const trustedPeersRes = await lm.setTrustedZeroConfPeerNodeIds(
+			trustedPeers,
+		);
+		if (trustedPeersRes.isErr()) {
+			return err(trustedPeersRes.error.message);
 		}
 
 		const nodeIdRes = await ldk.nodeId();
