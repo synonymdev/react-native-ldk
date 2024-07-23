@@ -104,9 +104,9 @@ jobs:
         working-directory: example
         run: yarn e2e:build:android-release || yarn e2e:build:android-release
 
-      - name: Show build outputs
-        working-directory: example
-        run: tree android/app/build/outputs/
+      # - name: Show build outputs
+      #   working-directory: example
+      #   run: tree android/app/build/outputs/
 
       - name: Kill java processes
         run: pkill -9 -f java || true

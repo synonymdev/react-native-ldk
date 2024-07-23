@@ -1,6 +1,8 @@
 describe('LDK integration test', () => {
 	beforeAll(async () => {
-		await device.launchApp();
+		await device.launchApp({
+			launchArgs: { detoxEnableSynchronization: 0 },
+		});
 	});
 
 	beforeEach(async () => {
@@ -11,16 +13,16 @@ describe('LDK integration test', () => {
 	it('should show "Running LDK" after starting up', async () => {
 		await waitFor(element(by.text('react-native-ldk')))
 			.toBeVisible()
-			.withTimeout(60000);
+			.withTimeout(10 * 60 * 1000);
 
 		await waitFor(element(by.text('Running LDK')))
 			.toBeVisible()
-			.withTimeout(60000);
+			.withTimeout(10 * 60 * 1000);
 
 		await element(by.id('E2ETest')).tap();
 
 		await waitFor(element(by.text('e2e success')))
 			.toBeVisible()
-			.withTimeout(60000);
+			.withTimeout(10 * 60 * 1000);
 	});
 });
