@@ -23,9 +23,9 @@ export default class ClightningRPC {
 		this.port = opts.port;
 
 		this.headers = {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'Content-type': 'application/json',
-			'Rune': this.rune,
+			Rune: this.rune,
 		};
 	}
 
@@ -57,7 +57,7 @@ export default class ClightningRPC {
 		this.destroyed = true;
 	}
 
-	async _post({ path, body }: {path: string; body?: object}): Promise<any> {
+	async _post({ path, body }: { path: string; body?: object }): Promise<any> {
 		const jsonBody = JSON.stringify(body || {});
 		return await this._request({ method: 'POST', path, body: jsonBody });
 	}
