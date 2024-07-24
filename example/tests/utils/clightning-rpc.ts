@@ -2,14 +2,14 @@ import queryString from 'query-string';
 
 export default class ClightningRPC {
 	destroyed: boolean = false;
-	macaroon: string;
+	rune: string;
 	host: string;
 	port: number;
 	headers: {};
 
 	constructor(opts: any = {}) {
-		if (!opts.macaroon) {
-			throw new Error('macaroon is required');
+		if (!opts.rune) {
+			throw new Error('rune is required');
 		}
 		if (!opts.host) {
 			throw new Error('host is required');
@@ -18,46 +18,47 @@ export default class ClightningRPC {
 			throw new Error('port is required');
 		}
 
-		this.macaroon = opts.macaroon;
+		this.rune = opts.rune;
 		this.host = opts.host;
 		this.port = opts.port;
 
 		this.headers = {
+			'Accept': 'application/json',
 			'Content-type': 'application/json',
-			macaroon: Buffer.from(this.macaroon, 'hex').toString('base64'),
+			'Rune': this.rune,
 		};
 	}
 
-	getInfo(): Promise<any> {
-		return this._get({ path: '/v1/getinfo' });
+	getInfo(body?: any): Promise<any> {
+		return this._post({ path: '/v1/getinfo', body });
 	}
 
-	pay(body): Promise<any> {
+	pay(body?: any): Promise<any> {
 		return this._post({ path: '/v1/pay', body });
 	}
 
-	genInvoice(body): Promise<any> {
+	genInvoice(body?: any): Promise<any> {
 		return this._post({ path: '/v1/invoice/genInvoice', body });
 	}
 
-	newAddr(): Promise<any> {
-		return this._get({ path: '/v1/newaddr' });
+	newAddr(body?: any): Promise<any> {
+		return this._post({ path: '/v1/newaddr', body });
 	}
 
-	listPeers(): Promise<any> {
-		return this._get({ path: '/v1/peer/listPeers' });
+	listPeers(body?: any): Promise<any> {
+		return this._post({ path: '/v1/listpeers', body });
 	}
 
-	openChannel(body): Promise<any> {
-		return this._post({ path: '/v1/channel/openChannel', body });
+	fundchannel(body?: any): Promise<any> {
+		return this._post({ path: '/v1/fundchannel', body });
 	}
 
 	destroy(): void {
 		this.destroyed = true;
 	}
 
-	async _post({ path, body }): Promise<any> {
-		const jsonBody = JSON.stringify(body);
+	async _post({ path, body }: {path: string; body?: object}): Promise<any> {
+		const jsonBody = JSON.stringify(body || {});
 		return await this._request({ method: 'POST', path, body: jsonBody });
 	}
 
@@ -72,7 +73,7 @@ export default class ClightningRPC {
 		return await this._request({ method: 'GET', path: pathWithParams });
 	}
 
-	async _request(opts): Promise<any> {
+	async _request(opts: any): Promise<any> {
 		const { path, body, method } = opts;
 		const fullPath = 'http://' + this.host + ':' + this.port + path;
 
