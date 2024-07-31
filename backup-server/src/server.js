@@ -34,6 +34,7 @@ const ldkLabels = [
 ];
 const bitkitLabels = [
     'bitkit_settings',
+    'bitkit_wallet',
     'bitkit_widgets',
     'bitkit_metadata',
     'bitkit_blocktank_orders',
