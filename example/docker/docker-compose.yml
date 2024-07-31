@@ -1,4 +1,3 @@
-version: '3'
 services:
   bitcoind:
     container_name: bitcoin
@@ -112,12 +111,10 @@ services:
     depends_on:
       - bitcoind
     expose:
-      - '18080' # REST
-      - '18081' # DOCPORT
+      - '18081' # REST
       - '9736' # P2P
       - '11001' # RPC
     ports:
-      - '18080:18080'
       - '18081:18081'
       - '9736:9736'
       - '11001:11001'
@@ -135,11 +132,12 @@ services:
       - '--dev-bitcoind-poll=2'
       - '--dev-fast-gossip'
       - '--grpc-port=11001'
+      - '--log-file=-' # log to stdo
       - '--bitcoin-rpcport=18443'
-      - '--plugin=/opt/c-lightning-rest/plugin.js'
-      - '--rest-port=18080'
-      - '--rest-protocol=http'
-      - '--rest-docport=18081'
+      - '--clnrest-port=18081'
+      - '--clnrest-protocol=http'
+      - '--clnrest-host=0.0.0.0'
+      - '--developer'
 
   eclair:
     container_name: eclair

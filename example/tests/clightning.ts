@@ -30,8 +30,8 @@ import {
 const bitcoinURL = 'http://polaruser:polarpass@localhost:9091';
 const clConfig = {
 	host: 'localhost',
-	port: 18080,
-	macaroon: global.environment.clmacaroon,
+	port: 18081,
+	rune: global.environment.lcrune,
 };
 
 describe.skip('Clightning', function () {
@@ -51,7 +51,7 @@ describe.skip('Clightning', function () {
 			balance = await rpc.getBalance();
 		}
 
-		const { address: lndAddress } = await cl.newAddr();
+		const { bech32: lndAddress } = await cl.newAddr();
 		await rpc.sendToAddress(lndAddress, '1');
 		await rpc.generateToAddress(1, await rpc.getNewAddress());
 
@@ -107,6 +107,18 @@ describe.skip('Clightning', function () {
 		// - make a few payments
 
 		await ldk.stop();
+
+		if (!skipRemoteBackups) {
+			const backupRes = await ldk.backupSetup({
+				network: ENetworks.regtest,
+				seed: profile.getAccount().seed,
+				details: backupServerDetails,
+			});
+			if (backupRes.isErr()) {
+				throw backupRes.error;
+			}
+		}
+
 		const lmStart = await lm.start({
 			...profile.getStartParams(),
 			// getBestBlock: getBestBlock,
@@ -122,17 +134,6 @@ describe.skip('Clightning', function () {
 		});
 		if (lmStart.isErr()) {
 			throw lmStart.error;
-		}
-
-		if (!skipRemoteBackups) {
-			const backupRes = await ldk.backupSetup({
-				network: ENetworks.regtest,
-				seed: profile.getAccount().seed,
-				details: backupServerDetails,
-			});
-			if (backupRes.isErr()) {
-				throw backupRes.error;
-			}
 		}
 
 		const nodeId = await ldk.nodeId();
@@ -155,8 +156,9 @@ describe.skip('Clightning', function () {
 		// wait for peer to be connected
 		let n = 0;
 		while (true) {
-			const peers = await cl.listPeers();
-			if (peers.some((p) => p.id === nodeId.value)) {
+			const { peers } = await cl.listPeers();
+			const peer = peers.find((p) => p.id === nodeId.value);
+			if (peer && peer.connected) {
 				break;
 			}
 			await sleep(1000);
@@ -166,10 +168,10 @@ describe.skip('Clightning', function () {
 		}
 
 		// open a channel
-		await cl.openChannel({
+		await cl.fundchannel({
 			id: nodeId.value,
-			satoshis: '100000',
-			// private: true,
+			amount: '100000',
+			announce: false,
 		});
 		await rpc.generateToAddress(10, await rpc.getNewAddress());
 		await waitForElectrum({ cl: true });

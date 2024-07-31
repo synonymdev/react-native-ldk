@@ -80,6 +80,10 @@ jobs:
         working-directory: lib
         run: yarn build
 
+      - name: Remove lib node_modules
+        working-directory: lib
+        run: rm -rf node_modules
+
       - name: Use gradle caches
         uses: actions/cache@v4
         with:

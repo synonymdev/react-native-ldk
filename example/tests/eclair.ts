@@ -37,9 +37,9 @@ describe('Eclair', function () {
 			balance = await rpc.getBalance();
 		}
 
-		// const ecAddress = await ec.getnewaddress();
-		// await rpc.sendToAddress(ecAddress, '1');
-		await rpc.generateToAddress(1, await rpc.getNewAddress());
+		const ecAddress = await ec.getnewaddress();
+		await rpc.sendToAddress(ecAddress, '1');
+		await rpc.generateToAddress(6, await rpc.getNewAddress());
 
 		const storageRes = await lm.setBaseStoragePath(
 			`${RNFS.DocumentDirectoryPath}/ldk/`,
@@ -101,23 +101,6 @@ describe('Eclair', function () {
 		// - make a few payments
 
 		await ldk.stop();
-		const lmStart = await lm.start({
-			...profile.getStartParams(),
-			getFees: () => {
-				return Promise.resolve({
-					onChainSweep: 30,
-					maxAllowedNonAnchorChannelRemoteFee: Math.max(25, 30 * 10),
-					minAllowedAnchorChannelRemoteFee: 5,
-					minAllowedNonAnchorChannelRemoteFee: Math.max(5 - 1, 0),
-					anchorChannelFee: 10,
-					nonAnchorChannelFee: 20,
-					channelCloseMinimum: 5,
-				});
-			},
-		});
-		if (lmStart.isErr()) {
-			throw lmStart.error;
-		}
 
 		if (!skipRemoteBackups) {
 			const backupRes = await ldk.backupSetup({
@@ -128,6 +111,13 @@ describe('Eclair', function () {
 			if (backupRes.isErr()) {
 				throw backupRes.error;
 			}
+		}
+
+		const lmStart = await lm.start({
+			...profile.getStartParams(),
+		});
+		if (lmStart.isErr()) {
+			throw lmStart.error;
 		}
 
 		const nodeId = await ldk.nodeId();
@@ -160,11 +150,18 @@ describe('Eclair', function () {
 		}
 
 		// open a channel
-		await ec.open({
+		const open = await ec.open({
 			nodeId: nodeId.value,
-			fundingSatoshis: 100000,
+			fundingSatoshis: 10000000,
+			fundingFeeBudgetSatoshis: 2000,
+			fundingFeerateSatByte: 1,
 			announceChannel: false,
+			// channelType: 'anchor_outputs_zero_fee_htlc_tx',
 		});
+
+		if (open.includes('error')) {
+			throw open;
+		}
 
 		await rpc.generateToAddress(10, await rpc.getNewAddress());
 		await waitForElectrum({ ec: true });
@@ -191,7 +188,7 @@ describe('Eclair', function () {
 			}
 		}
 
-		// CL -> LDK, 0 sats
+		// Eclair -> LDK, 0 sats
 		const inv1 = await lm.createAndStorePaymentRequest({
 			amountSats: 0,
 			description: 'trololo',
@@ -205,7 +202,7 @@ describe('Eclair', function () {
 			amountMsat: 10000 * 1000, // milli-sats
 		});
 
-		// CL -> LDK, 1000 sats
+		// Eclair -> LDK, 1000 sats
 		const inv2 = await lm.createAndStorePaymentRequest({
 			amountSats: 1000,
 			description: 'ololo',
@@ -218,7 +215,7 @@ describe('Eclair', function () {
 
 		// FIXME LDK -> ECLAIR doesn't work
 
-		// // LDK -> CL, 0 sats
+		// LDK -> Eclair, 0 sats
 		// const { serialized: invoice3 } = await ec.createinvoice({
 		// 	// amount: 0,
 		// 	// label: 'payment3' + new Date(),
@@ -233,7 +230,7 @@ describe('Eclair', function () {
 		// 	throw pay3.error;
 		// }
 
-		// LDK -> CL, 444 sats
+		// // LDK -> Eclair, 444 sats
 		// const { serialized: invoice4 } = await ec.createinvoice({
 		// 	amountMsat: 444000, // milisats
 		// 	// label: 'payment4' + new Date(),

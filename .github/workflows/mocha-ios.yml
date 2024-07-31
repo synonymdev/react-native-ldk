@@ -71,6 +71,10 @@ jobs:
         working-directory: lib
         run: yarn build
 
+      - name: Remove lib node_modules
+        working-directory: lib
+        run: rm -rf node_modules
+
       - name: Install Dependencies
         working-directory: example
         run: (yarn || yarn) && yarn rn-setup
