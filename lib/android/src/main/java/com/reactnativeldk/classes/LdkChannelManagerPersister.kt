@@ -18,7 +18,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
     override fun handle_event(event: Event) {
         (event as? Event.FundingGenerationReady)?.let { fundingGenerationReady ->
             val body = Arguments.createMap()
-            body.putHexString("temp_channel_id", fundingGenerationReady.temporary_channel_id)
+            body.putHexString("temp_channel_id", fundingGenerationReady.temporary_channel_id._a)
             body.putHexString("output_script", fundingGenerationReady.output_script)
             body.putString("user_channel_id", fundingGenerationReady.user_channel_id.leBytes.hexEncodedString())
             body.putInt("value_satoshis", fundingGenerationReady.channel_value_satoshis.toInt())
@@ -29,7 +29,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             val body = Arguments.createMap()
             body.putHexString("payment_hash", paymentClaimable.payment_hash)
             body.putInt("amount_sat", paymentClaimable.amount_msat.toInt() / 1000)
-            (paymentClaimable.purpose as? PaymentPurpose.InvoicePayment)?.let {
+            (paymentClaimable.purpose as? PaymentPurpose.Bolt11InvoicePayment)?.let {
                 body.putHexString("payment_preimage", (it.payment_preimage as Option_ThirtyTwoBytesZ.Some).some)
                 body.putHexString("payment_secret", it.payment_secret)
             }
@@ -60,7 +60,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         (event as? Event.OpenChannelRequest)?.let { openChannelRequest ->
             //Use if we ever manually accept inbound channels. Setting in initConfig.
             val body = Arguments.createMap()
-            body.putHexString("temp_channel_id", openChannelRequest.temporary_channel_id)
+            body.putHexString("temp_channel_id", openChannelRequest.temporary_channel_id._a)
             body.putHexString("counterparty_node_id", openChannelRequest.counterparty_node_id)
             body.putInt("push_sat", openChannelRequest.push_msat.toInt() / 1000)
             body.putInt("funding_satoshis", openChannelRequest.funding_satoshis.toInt())
@@ -143,10 +143,9 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         (event as? Event.ChannelClosed)?.let { channelClosed ->
             val body = Arguments.createMap()
             body.putString("user_channel_id", channelClosed.user_channel_id.leBytes.hexEncodedString())
-            body.putHexString("channel_id", channelClosed.channel_id)
+            body.putHexString("channel_id", channelClosed.channel_id._a)
             val reasonString = when (channelClosed.reason) {
                 is ClosureReason.CommitmentTxConfirmed -> "CommitmentTxConfirmed"
-                is ClosureReason.CooperativeClosure -> "CooperativeClosure"
                 is ClosureReason.CounterpartyCoopClosedUnfundedChannel -> "CounterpartyCoopClosedUnfundedChannel"
                 is ClosureReason.CounterpartyForceClosed -> "CounterpartyForceClosed"
                 is ClosureReason.DisconnectedPeer -> "DisconnectedPeer"
@@ -155,6 +154,10 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
                 is ClosureReason.HolderForceClosed -> "HolderForceClosed"
                 is ClosureReason.OutdatedChannelManager -> "OutdatedChannelManager"
                 is ClosureReason.ProcessingError -> "ProcessingError"
+                is ClosureReason.CounterpartyInitiatedCooperativeClosure -> "CounterpartyInitiatedCooperativeClosure"
+                is ClosureReason.LegacyCooperativeClosure -> "LegacyCooperativeClosure"
+                is ClosureReason.LocallyInitiatedCooperativeClosure -> "LocallyInitiatedCooperativeClosure"
+                is ClosureReason.HTLCsTimedOut -> "HTLCsTimedOut"
                 else -> "Unknown"
             }
             body.putString("reason", reasonString)
@@ -164,7 +167,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
 
         (event as? Event.DiscardFunding)?.let { discardFunding ->
             val body = Arguments.createMap()
-            body.putHexString("channel_id", discardFunding.channel_id)
+            body.putHexString("channel_id", discardFunding.channel_id._a)
             body.putHexString("tx", discardFunding.transaction)
             return LdkEventEmitter.send(EventTypes.channel_manager_discard_funding, body)
         }
@@ -173,7 +176,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             val body = Arguments.createMap()
             body.putHexString("payment_hash", paymentClaimed.payment_hash)
             body.putInt("amount_sat", paymentClaimed.amount_msat.toInt() / 1000)
-            (paymentClaimed.purpose as? PaymentPurpose.InvoicePayment)?.let {
+            (paymentClaimed.purpose as? PaymentPurpose.Bolt11InvoicePayment)?.let {
                 body.putHexString("payment_preimage", (it.payment_preimage as Option_ThirtyTwoBytesZ.Some).some)
                 body.putHexString("payment_secret", it.payment_secret)
             }

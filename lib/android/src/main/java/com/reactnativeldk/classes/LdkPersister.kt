@@ -8,17 +8,16 @@ import org.ldk.structs.Persist.PersistInterface
 import java.io.File
 
 class LdkPersister {
-    fun handleChannel(id: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
+    fun handleChannel(channelFundingOutpoint: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
+        val channelId = channelFundingOutpoint._txid.hexEncodedString()
         val body = Arguments.createMap()
-        body.putHexString("channel_id", id.to_channel_id())
+        body.putString("channel_id", channelId)
         body.putHexString("counterparty_node_id", data._counterparty_node_id)
 
         try {
             if (LdkModule.channelStoragePath == "") {
                 throw Exception("Channel storage path not set")
             }
-
-            val channelId = id.to_channel_id().hexEncodedString()
 
             val file = File(LdkModule.channelStoragePath + "/" + channelId  + ".bin")
 
@@ -34,7 +33,7 @@ class LdkPersister {
 
             BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write()) { error ->
                 if (error != null) {
-                    LdkEventEmitter.send(EventTypes.native_log, "Failed to persist channel (${id.to_channel_id().hexEncodedString()}) to remote backup: $error")
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to persist channel (${channelId}) to remote backup: $error")
                     return@addToPersistQueue
                 }
 
@@ -42,16 +41,16 @@ class LdkPersister {
                     file.writeBytes(data.write())
                 } catch (e: Exception) {
                     //If this fails we can't do much but LDK will retry on startup
-                    LdkEventEmitter.send(EventTypes.native_log, "Failed to locally persist channel (${id.to_channel_id().hexEncodedString()}) to disk")
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to locally persist channel (${channelId}) to disk")
                     return@addToPersistQueue
                 }
 
                 //Update chain monitor with successful persist
-                val res = LdkModule.chainMonitor?.channel_monitor_updated(id, update_id)
+                val res = LdkModule.chainMonitor?.channel_monitor_updated(channelFundingOutpoint, update_id)
                 if (res == null || !res.is_ok) {
-                    LdkEventEmitter.send(EventTypes.native_log, "Failed to update chain monitor with persisted channel (${id.to_channel_id().hexEncodedString()})")
+                    LdkEventEmitter.send(EventTypes.native_log, "Failed to update chain monitor with persisted channel (${channelId})")
                 } else {
-                    LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${id.to_channel_id().hexEncodedString()}) to disk")
+                    LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${channelId}) to disk")
                     if (isNew) {
                         LdkEventEmitter.send(EventTypes.new_channel, body)
                     }
@@ -65,12 +64,16 @@ class LdkPersister {
     }
 
     var persister = Persist.new_impl(object : PersistInterface {
-        override fun persist_new_channel(id: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
-            return handleChannel(id, data, update_id)
+        override fun persist_new_channel(channelFundingOutpoint: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
+            return handleChannel(channelFundingOutpoint, data, update_id)
         }
 
-        override fun update_persisted_channel(id: OutPoint, update: ChannelMonitorUpdate?, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
-            return handleChannel(id, data, update_id)
+        override fun update_persisted_channel(channelFundingOutpoint: OutPoint, update: ChannelMonitorUpdate?, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
+            return handleChannel(channelFundingOutpoint, data, update_id)
+        }
+
+        override fun archive_persisted_channel(p0: OutPoint?) {
+            TODO("Not yet implemented")
         }
     })
 }
