@@ -150,6 +150,7 @@ export type TChannel = {
 	balance_sat: number;
 	counterparty_node_id: string;
 	funding_txid?: string;
+	funding_output_index? : number;
 	channel_type?: string;
 	user_channel_id: string;
 	confirmations_required?: number;
