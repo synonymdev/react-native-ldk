@@ -1228,7 +1228,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
 
     @ReactMethod
-    fun spendRecoveredForceCloseOutputs(transaction: String, confirmationHeight: Double, changeDestinationScript: String, promise: Promise) {
+    fun spendRecoveredForceCloseOutputs(transaction: String, confirmationHeight: Double, changeDestinationScript: String, useInner: Boolean, promise: Promise) {
         if (channelStoragePath == "") {
             return handleReject(promise, LdkErrors.init_storage_path)
         }
@@ -1270,13 +1270,23 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                     continue
                 }
 
-                val res = keysManager!!.spend_spendable_outputs(
-                    descriptors,
-                    emptyArray(),
-                    changeDestinationScript.hexa(),
-                    feeEstimator.onChainSweep,
-                    Option_u32Z.none()
-                )
+                val res = if (useInner) {
+                    keysManager!!.inner.spend_spendable_outputs(
+                        descriptors,
+                        emptyArray(),
+                        changeDestinationScript.hexa(),
+                        feeEstimator.onChainSweep,
+                        Option_u32Z.none()
+                    )
+                } else {
+                    keysManager!!.spend_spendable_outputs(
+                        descriptors,
+                        emptyArray(),
+                        changeDestinationScript.hexa(),
+                        feeEstimator.onChainSweep,
+                        Option_u32Z.none()
+                    )
+                }
 
                 if (res.is_ok) {
                     txs.pushHexString((res as Result_TransactionNoneZ.Result_TransactionNoneZ_OK).res)
