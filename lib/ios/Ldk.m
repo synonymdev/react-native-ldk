@@ -176,6 +176,7 @@ RCT_EXTERN_METHOD(reconstructAndSpendOutputs:(NSString *)outputScriptPubKey
 RCT_EXTERN_METHOD(spendRecoveredForceCloseOutputs:(NSString *)transaction
                   confirmationHeight:(NSInteger *)confirmationHeight
                   changeDestinationScript:(NSString *)changeDestinationScript
+                  useInner:(BOOL *)useInner
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(nodeSign:(NSString *)message

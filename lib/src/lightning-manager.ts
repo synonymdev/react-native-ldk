@@ -1637,14 +1637,26 @@ class LightningManager {
 	 * Returns previously broadcasted transactions saved in storgare.
 	 * @returns {Promise<TLdkBroadcastedTransactions>}
 	 */
-	async getLdkBroadcastedTxs(): Promise<TLdkBroadcastedTransactions> {
+	async getLdkBroadcastedTxs(
+		includeConfirmed: boolean = false,
+	): Promise<TLdkBroadcastedTransactions> {
+		let txs: TLdkBroadcastedTransactions = [];
 		const res = await ldk.readFromFile({
 			fileName: ELdkFiles.broadcasted_transactions,
 		});
 		if (res.isOk()) {
-			return parseData(res.value.content, []);
+			txs = parseData(res.value.content, []);
 		}
-		return [];
+
+		if (includeConfirmed) {
+			const confirmedRes = await ldk.readFromFile({
+				fileName: ELdkFiles.confirmed_broadcasted_transactions,
+			});
+			if (confirmedRes.isOk()) {
+				txs = txs.concat(parseData(confirmedRes.value.content, []));
+			}
+		}
+		return txs;
 	}
 
 	async cleanupBroadcastedTxs(): Promise<void> {
@@ -1766,33 +1778,41 @@ class LightningManager {
 			return err('Unable to retrieve change_destination_script.');
 		}
 
-		const txs = await this.getLdkBroadcastedTxs();
+		const txs = await this.getLdkBroadcastedTxs(true);
 		if (!txs.length) {
 			return ok('No outputs to reconstruct as no cached transactions found.');
 		}
 
 		let txsToBroadcast = 0;
-		for (const hexTx of txs) {
-			const tx = bitcoin.Transaction.fromHex(hexTx);
-			const txData = await this.getTransactionData(tx.getId());
 
-			const txsRes = await ldk.spendRecoveredForceCloseOutputs({
-				transaction: hexTx,
-				confirmationHeight: txData?.height ?? 0,
-				changeDestinationScript,
-			});
+		const processTxs = async (useInner: boolean): Promise<void> => {
+			for (const hexTx of txs) {
+				const tx = bitcoin.Transaction.fromHex(hexTx);
+				const txData = await this.getTransactionData(tx.getId());
 
-			if (txsRes.isErr()) {
-				await ldk.writeToLogFile('error', txsRes.error.message);
-				console.error(txsRes.error.message);
-				continue;
+				const txsRes = await ldk.spendRecoveredForceCloseOutputs({
+					transaction: hexTx,
+					confirmationHeight: txData?.height ?? 0,
+					changeDestinationScript,
+					useInner,
+				});
+
+				if (txsRes.isErr()) {
+					await ldk.writeToLogFile('error', txsRes.error.message);
+					console.error(txsRes.error.message);
+					continue;
+				}
+
+				for (const createdTx of txsRes.value) {
+					txsToBroadcast++;
+					await this.broadcastTransaction(createdTx);
+				}
 			}
+		};
 
-			for (const createdTx of txsRes.value) {
-				txsToBroadcast++;
-				await this.broadcastTransaction(createdTx);
-			}
-		}
+		//Process first using the inner (ldk keychain) and then using the custom keychain
+		await processTxs(true);
+		await processTxs(false);
 
 		return ok(`Attempting to reconstruct ${txsToBroadcast} transactions.`);
 	}
