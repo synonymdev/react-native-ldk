@@ -1439,7 +1439,7 @@ class Ldk: NSObject {
                 continue
             }
             
-            let res = useInner ? keysManager.inner.spendSpendableOutputs(
+            let res = useInner ? keysManager.inner.asOutputSpender().spendSpendableOutputs(
                 descriptors: descriptors,
                 outputs: [],
                 changeDestinationScript: String(changeDestinationScript).hexaBytes,

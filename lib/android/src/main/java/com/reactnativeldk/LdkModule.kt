@@ -1272,7 +1272,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 }
 
                 val res = if (useInner) {
-                    keysManager!!.inner.spend_spendable_outputs(
+                    keysManager!!.inner.as_OutputSpender().spend_spendable_outputs(
                         descriptors,
                         emptyArray(),
                         changeDestinationScript.hexa(),
