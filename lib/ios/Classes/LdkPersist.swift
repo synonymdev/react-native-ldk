@@ -10,12 +10,12 @@ import LightningDevKit
 
 class LdkPersister: Persist {
     private func handleChannel(_ channelFundingOutpoint: Bindings.OutPoint, _ data: ChannelMonitor, _ updateId: Bindings.MonitorUpdateId) -> ChannelMonitorUpdateStatus {
-        guard let txId = channelFundingOutpoint.getTxid() else {
+        guard let channelId = data.channelId().getA() else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Missing channelFundingOutpoint.getTxid(). Cannot persist channel")
             return .UnrecoverableError
         }
         
-        let channelIdHex = Data(txId).hexEncodedString()
+        let channelIdHex = Data(channelId).hexEncodedString()
         let body = [
             "channel_id": channelIdHex,
             "counterparty_node_id": Data(data.getCounterpartyNodeId() ?? []).hexEncodedString()

@@ -9,7 +9,7 @@ import java.io.File
 
 class LdkPersister {
     fun handleChannel(channelFundingOutpoint: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
-        val channelId = channelFundingOutpoint._txid.hexEncodedString()
+        val channelId = data.channel_id()._a.hexEncodedString()
         val body = Arguments.createMap()
         body.putString("channel_id", channelId)
         body.putHexString("counterparty_node_id", data._counterparty_node_id)
