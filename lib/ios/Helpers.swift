@@ -122,6 +122,7 @@ extension ChannelDetails {
             "balance_sat": getBalanceMsat() / 1000,
             "counterparty_node_id": Data(getCounterparty().getNodeId()).hexEncodedString(),
             "funding_txid": Data(getFundingTxo()?.getTxid()?.reversed() ?? []).hexEncodedString(),
+            "funding_output_index": getFundingTxo()?.getIndex() as Any, // Optional number
             "channel_type": Data(getChannelType()?.write() ?? []).hexEncodedString(),
             "user_channel_id": Data(getUserChannelId()).hexEncodedString(), //String
             "confirmations_required": getConfirmationsRequired() as Any, // Optional number

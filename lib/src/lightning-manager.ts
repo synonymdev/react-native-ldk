@@ -140,7 +140,6 @@ class LightningManager {
 		minAllowedNonAnchorChannelRemoteFee: 5,
 		onChainSweep: 5,
 	});
-	trustedZeroConfPeers: string[] = [];
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
 	lspLogEvent: TLspLogEvent | undefined;
 	pathFailedSubscription: EmitterSubscription | undefined;
@@ -300,7 +299,6 @@ class LightningManager {
 		scorerDownloadUrl = 'https://rapidsync.lightningdevkit.org/scoring/scorer.bin',
 		forceCloseOnStartup,
 		userConfig = defaultUserConfig,
-		trustedZeroConfPeers = [],
 		skipParamCheck = false,
 		skipRemoteBackups = false,
 		lspLogEvent,
@@ -378,7 +376,6 @@ class LightningManager {
 		this.watchTxs = [];
 		this.watchOutputs = [];
 		this.confirmedWatchOutputs = await this.getConfirmedWatchOutputs();
-		this.trustedZeroConfPeers = trustedZeroConfPeers;
 		this.lspLogEvent = lspLogEvent;
 
 		if (!this.baseStoragePath) {
@@ -548,6 +545,37 @@ class LightningManager {
 	async setFees(): Promise<Result<string>> {
 		const fees = await this.getFees();
 		return await ldk.updateFees(fees);
+	}
+
+	/**
+	 * Persists nodeIDs to disk that should be checked when accepting zero-conf channels.
+	 * @param {string[]} nodeIds
+	 * @param {boolean} [merge] If true, will merge provided nodeIds with existing nodeIds. Set false to overwrite entirely.
+	 * @returns {Promise<Result<boolean>>}
+	 */
+	async setTrustedZeroConfPeerNodeIds(
+		nodeIds: string[],
+		merge: boolean = true,
+	): Promise<Result<boolean>> {
+		let trustedNodeIds = nodeIds;
+		const accountPath = appendPath(this.baseStoragePath, this.account.name);
+		if (merge) {
+			const readRes = await ldk.readFromFile({
+				fileName: ELdkFiles.trusted_peer_node_ids,
+				path: accountPath,
+			});
+			if (readRes.isOk()) {
+				let currentIds = parseData(readRes.value.content, []);
+				trustedNodeIds = Array.from(new Set([...currentIds, ...nodeIds]));
+			}
+		}
+
+		return await ldk.writeToFile({
+			fileName: ELdkFiles.trusted_peer_node_ids,
+			path: accountPath,
+			content: JSON.stringify(trustedNodeIds),
+			remotePersist: false,
+		});
 	}
 
 	/**
@@ -1609,14 +1637,26 @@ class LightningManager {
 	 * Returns previously broadcasted transactions saved in storgare.
 	 * @returns {Promise<TLdkBroadcastedTransactions>}
 	 */
-	async getLdkBroadcastedTxs(): Promise<TLdkBroadcastedTransactions> {
+	async getLdkBroadcastedTxs(
+		includeConfirmed: boolean = false,
+	): Promise<TLdkBroadcastedTransactions> {
+		let txs: TLdkBroadcastedTransactions = [];
 		const res = await ldk.readFromFile({
 			fileName: ELdkFiles.broadcasted_transactions,
 		});
 		if (res.isOk()) {
-			return parseData(res.value.content, []);
+			txs = parseData(res.value.content, []);
 		}
-		return [];
+
+		if (includeConfirmed) {
+			const confirmedRes = await ldk.readFromFile({
+				fileName: ELdkFiles.confirmed_broadcasted_transactions,
+			});
+			if (confirmedRes.isOk()) {
+				txs = txs.concat(parseData(confirmedRes.value.content, []));
+			}
+		}
+		return txs;
 	}
 
 	async cleanupBroadcastedTxs(): Promise<void> {
@@ -1738,33 +1778,41 @@ class LightningManager {
 			return err('Unable to retrieve change_destination_script.');
 		}
 
-		const txs = await this.getLdkBroadcastedTxs();
+		const txs = await this.getLdkBroadcastedTxs(true);
 		if (!txs.length) {
 			return ok('No outputs to reconstruct as no cached transactions found.');
 		}
 
 		let txsToBroadcast = 0;
-		for (const hexTx of txs) {
-			const tx = bitcoin.Transaction.fromHex(hexTx);
-			const txData = await this.getTransactionData(tx.getId());
 
-			const txsRes = await ldk.spendRecoveredForceCloseOutputs({
-				transaction: hexTx,
-				confirmationHeight: txData?.height ?? 0,
-				changeDestinationScript,
-			});
+		const processTxs = async (useInner: boolean): Promise<void> => {
+			for (const hexTx of txs) {
+				const tx = bitcoin.Transaction.fromHex(hexTx);
+				const txData = await this.getTransactionData(tx.getId());
 
-			if (txsRes.isErr()) {
-				await ldk.writeToLogFile('error', txsRes.error.message);
-				console.error(txsRes.error.message);
-				continue;
+				const txsRes = await ldk.spendRecoveredForceCloseOutputs({
+					transaction: hexTx,
+					confirmationHeight: txData?.height ?? 0,
+					changeDestinationScript,
+					useInner,
+				});
+
+				if (txsRes.isErr()) {
+					await ldk.writeToLogFile('error', txsRes.error.message);
+					console.error(txsRes.error.message);
+					continue;
+				}
+
+				for (const createdTx of txsRes.value) {
+					txsToBroadcast++;
+					await this.broadcastTransaction(createdTx);
+				}
 			}
+		};
 
-			for (const createdTx of txsRes.value) {
-				txsToBroadcast++;
-				await this.broadcastTransaction(createdTx);
-			}
-		}
+		//Process first using the inner (ldk keychain) and then using the custom keychain
+		await processTxs(true);
+		await processTxs(false);
 
 		return ok(`Attempting to reconstruct ${txsToBroadcast} transactions.`);
 	}
@@ -2064,9 +2112,19 @@ class LightningManager {
 		} = req;
 
 		let trustedPeer0Conf = false;
-		const isTrustedPeer =
-			this.trustedZeroConfPeers.indexOf(counterparty_node_id) > -1;
 		if (supports_zero_conf) {
+			let trustedZeroConfPeers: string[] = [];
+			const readRes = await ldk.readFromFile({
+				fileName: ELdkFiles.trusted_peer_node_ids,
+				path: appendPath(this.baseStoragePath, this.account.name),
+			});
+			if (readRes.isOk()) {
+				trustedZeroConfPeers = parseData(readRes.value.content, []);
+			}
+
+			const isTrustedPeer =
+				trustedZeroConfPeers.indexOf(counterparty_node_id) > -1;
+
 			if (isTrustedPeer) {
 				await ldk.writeToLogFile(
 					'info',

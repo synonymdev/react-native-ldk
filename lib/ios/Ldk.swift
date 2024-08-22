@@ -1393,7 +1393,7 @@ class Ldk: NSObject {
     }
     
     @objc
-    func spendRecoveredForceCloseOutputs(_ transaction: NSString, confirmationHeight: NSInteger, changeDestinationScript: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func spendRecoveredForceCloseOutputs(_ transaction: NSString, confirmationHeight: NSInteger, changeDestinationScript: NSString, useInner: Bool, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         
         guard let channelStoragePath = Ldk.channelStoragePath, let keysManager, let channelManager else {
             return handleReject(reject, .init_storage_path)
@@ -1439,7 +1439,14 @@ class Ldk: NSObject {
                 continue
             }
             
-            let res = keysManager.spendSpendableOutputs(
+            let res = useInner ? keysManager.inner.spendSpendableOutputs(
+                descriptors: descriptors,
+                outputs: [],
+                changeDestinationScript: String(changeDestinationScript).hexaBytes,
+                feerateSatPer1000Weight: feeEstimator.getEstSatPer1000Weight(confirmationTarget: .OnChainSweep),
+                locktime: nil)
+            :
+            keysManager.spendSpendableOutputs(
                 descriptors: descriptors,
                 outputs: [],
                 changeDestinationScript: String(changeDestinationScript).hexaBytes,

@@ -1249,12 +1249,14 @@ class LDK {
 		transaction,
 		confirmationHeight,
 		changeDestinationScript,
+		useInner,
 	}: TSpendRecoveredForceCloseOutputsReq): Promise<Result<string[]>> {
 		try {
 			const res = await NativeLDK.spendRecoveredForceCloseOutputs(
 				transaction,
 				confirmationHeight,
 				changeDestinationScript,
+				useInner,
 			);
 			this.writeDebugToLog('spendRecoveredForceCloseOutputs', res);
 			return ok(res);

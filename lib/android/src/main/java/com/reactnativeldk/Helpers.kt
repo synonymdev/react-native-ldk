@@ -123,6 +123,7 @@ val ChannelDetails.asJson: WritableMap
         result.putInt("balance_sat", (_balance_msat / 1000).toInt())
         result.putHexString("counterparty_node_id", _counterparty._node_id)
         result.putHexString("funding_txid", _funding_txo?._txid?.reversed()?.toByteArray())
+        _funding_txo?._index?.toInt()?.let { result.putInt("funding_output_index", it) }
         result.putHexString("channel_type", _channel_type?.write())
         result.putString("user_channel_id", _user_channel_id.leBytes.hexEncodedString())
         result.putInt("confirmations_required", (_confirmations_required as Option_u32Z.Some).some)
