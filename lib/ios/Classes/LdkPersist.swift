@@ -9,8 +9,13 @@ import Foundation
 import LightningDevKit
 
 class LdkPersister: Persist {
-    private func handleChannel(_ channelId: OutPoint, _ data: ChannelMonitor, _ updateId: Bindings.MonitorUpdateId) -> ChannelMonitorUpdateStatus {
-        let channelIdHex = Data(channelId.toChannelId()).hexEncodedString()
+    private func handleChannel(_ channelFundingOutpoint: Bindings.OutPoint, _ data: ChannelMonitor, _ updateId: Bindings.MonitorUpdateId) -> ChannelMonitorUpdateStatus {
+        guard let channelId = data.channelId().getA() else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Missing channelFundingOutpoint.getTxid(). Cannot persist channel")
+            return .UnrecoverableError
+        }
+        
+        let channelIdHex = Data(channelId).hexEncodedString()
         let body = [
             "channel_id": channelIdHex,
             "counterparty_node_id": Data(data.getCounterpartyNodeId() ?? []).hexEncodedString()
@@ -48,7 +53,7 @@ class LdkPersister: Persist {
                 }
                                 
                 //Update chainmonitor with successful persist
-                let res = Ldk.chainMonitor?.channelMonitorUpdated(fundingTxo: channelId, completedUpdateId: updateId)
+                let res = Ldk.chainMonitor?.channelMonitorUpdated(fundingTxo: channelFundingOutpoint, completedUpdateId: updateId)
                 if let error = res?.getError() {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to update chain monitor for channel (\(channelIdHex)) Error \(error.getValueType()).")
                 } else {
@@ -66,11 +71,11 @@ class LdkPersister: Persist {
         }
     }
     
-    override func persistNewChannel(channelId: Bindings.OutPoint, data: Bindings.ChannelMonitor, updateId: Bindings.MonitorUpdateId) -> Bindings.ChannelMonitorUpdateStatus {
-        return handleChannel(channelId, data, updateId)
+    override func persistNewChannel(channelFundingOutpoint: Bindings.OutPoint, data: Bindings.ChannelMonitor, updateId: Bindings.MonitorUpdateId) -> Bindings.ChannelMonitorUpdateStatus {
+        return handleChannel(channelFundingOutpoint, data, updateId)
     }
     
-    override func updatePersistedChannel(channelId: Bindings.OutPoint, update: Bindings.ChannelMonitorUpdate, data: Bindings.ChannelMonitor, updateId: Bindings.MonitorUpdateId) -> Bindings.ChannelMonitorUpdateStatus {
-        return handleChannel(channelId, data, updateId)
+    override func updatePersistedChannel(channelFundingOutpoint: Bindings.OutPoint, update: Bindings.ChannelMonitorUpdate, data: Bindings.ChannelMonitor, updateId: Bindings.MonitorUpdateId) -> Bindings.ChannelMonitorUpdateStatus {
+        return handleChannel(channelFundingOutpoint, data, updateId)
     }
 }

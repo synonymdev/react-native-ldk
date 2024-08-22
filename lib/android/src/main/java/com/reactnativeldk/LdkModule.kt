@@ -622,14 +622,14 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         LdkEventEmitter.send(EventTypes.native_log, "Checking for dropped peers")
 
-        val currentlyConnected = peerManager!!._peer_node_ids
+        val currentlyConnected = peerManager!!.list_peers().map { it._counterparty_node_id.hexEncodedString() }
 
         addedPeers.forEach { peer ->
             val pubKey = peer["pubKey"] as String
             val address = peer["address"] as String
             val port = peer["port"] as Double
 
-            if (currentlyConnected.map { it._a.hexEncodedString() }.contains(pubKey)) {
+            if (currentlyConnected.contains(pubKey)) {
                 return
             }
 
@@ -654,8 +654,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         peerHandler ?: return handleReject(promise, LdkErrors.init_peer_handler)
 
         //If peer is already connected don't add again
-        val currentList = peerManager!!._peer_node_ids
-        if (currentList.map { it._a.hexEncodedString() }.contains(pubKey)) {
+        val currentList = peerManager!!.list_peers().map { it._counterparty_node_id.hexEncodedString() }
+        if (currentList.contains(pubKey)) {
             return handleResolve(promise, LdkCallbackResponses.peer_already_connected)
         }
 
@@ -724,7 +724,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun acceptChannel(temporaryChannelId: String, counterPartyNodeId: String, trustedPeer0Conf: Boolean, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
-        val temporaryChannelId = temporaryChannelId.hexa()
+        val temporaryChannelId = ChannelId.of(temporaryChannelId.hexa())
         val counterPartyNodeId = counterPartyNodeId.hexa()
         val userChannelIdBytes = ByteArray(16)
         Random().nextBytes(userChannelIdBytes)
@@ -755,7 +755,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun closeChannel(channelId: String, counterpartyNodeId: String, force: Boolean, promise: Promise) {
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
-        val res = if (force) channelManager!!.force_close_broadcasting_latest_txn(channelId.hexa(), counterpartyNodeId.hexa()) else channelManager!!.close_channel(channelId.hexa(), counterpartyNodeId.hexa())
+        val channelIdObj = ChannelId.of(channelId.hexa())
+        val res = if (force) channelManager!!.force_close_broadcasting_latest_txn(channelIdObj, counterpartyNodeId.hexa()) else channelManager!!.close_channel(channelIdObj, counterpartyNodeId.hexa())
         if (!res.is_ok) {
             return handleReject(promise, LdkErrors.channel_close_fail)
         }
@@ -981,9 +982,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         peerManager ?: return handleReject(promise, LdkErrors.init_peer_manager)
 
         val res = Arguments.createArray()
-        val list = peerManager!!._peer_node_ids
+        val list = peerManager!!.list_peers()
         list.iterator().forEach {
-            res.pushString(it._a.hexEncodedString())
+            res.pushString(it._counterparty_node_id.hexEncodedString())
         }
 
         promise.resolve(res)
@@ -1034,7 +1035,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         val ignoredChannels = if (ignoreOpenChannels)
-            channelManager.list_channels().map { it._channel_id.hexEncodedString() }.toTypedArray() else
+            channelManager.list_channels().map { it._channel_id._a.hexEncodedString() }.toTypedArray() else
             arrayOf()
 
         val channelFiles = File(channelStoragePath).listFiles()
@@ -1241,7 +1242,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return handleReject(promise, LdkErrors.init_keys_manager)
         }
 
-        val openChannelIds = channelManager!!.list_channels().map { it._channel_id.hexEncodedString() }
+        val openChannelIds = channelManager!!.list_channels().map { it._channel_id._a.hexEncodedString() }
 
         //Get list of files in this path
         val channelFiles = File(channelStoragePath).listFiles()
@@ -1271,7 +1272,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 }
 
                 val res = if (useInner) {
-                    keysManager!!.inner.spend_spendable_outputs(
+                    keysManager!!.inner.as_OutputSpender().spend_spendable_outputs(
                         descriptors,
                         emptyArray(),
                         changeDestinationScript.hexa(),
@@ -1354,10 +1355,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             logDump.add("RGS last sync time unavailable.")
         }
 
-        peerManager?._peer_node_ids?.let { peers ->
+        peerManager?.list_peers()?.let { peers ->
             if (peers.isNotEmpty()) {
                 peers.forEach { peer ->
-                    logDump.add("Connected peer: ${peer._a.hexEncodedString()}")
+                    logDump.add("Connected peer: ${peer._counterparty_node_id.hexEncodedString()}")
                 }
             } else {
                 logDump.add("No connected peers")

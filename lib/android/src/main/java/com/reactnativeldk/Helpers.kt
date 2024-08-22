@@ -115,7 +115,7 @@ val ChannelDetails.asJson: WritableMap
     get() {
         val result = Arguments.createMap()
 
-        result.putHexString("channel_id", _channel_id)
+        result.putHexString("channel_id", _channel_id._a)
         result.putBoolean("is_public", _is_public)
         result.putBoolean("is_usable", _is_usable)
         result.putBoolean("is_channel_ready", _is_channel_ready)
@@ -205,7 +205,7 @@ fun ChannelMonitor.asJson(channelId: String): WritableMap {
     val result = Arguments.createMap()
     result.putString("channel_id", channelId)
     result.putInt("funding_txo_index", _funding_txo._a._index.toInt())
-    result.putHexString("funding_txo_txid", _funding_txo._a.to_channel_id().reversedArray())
+    result.putHexString("funding_txo_txid", _funding_txo._a._txid.reversedArray())
     result.putHexString("counterparty_node_id", _counterparty_node_id)
 
     val balances = Arguments.createArray()
