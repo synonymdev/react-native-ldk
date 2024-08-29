@@ -39,6 +39,7 @@ import {
 	TInitKeysManager,
 	TSpendRecoveredForceCloseOutputsReq,
 	TChannelMonitor,
+	TCreateChannelReq,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -476,6 +477,25 @@ class LDK {
 			return ok(res);
 		} catch (e) {
 			this.writeErrorToLog('closeChannel', e);
+			return err(e);
+		}
+	}
+
+	/**
+	 * Start create channel process and returns channel ID that can be used when funding the channel.
+	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/struct.ChannelManager.html#method.create_channel
+	 * @param counterPartyNodeId
+	 * @param channelValueSats
+	 * @param pushSats
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async createChannel({counterPartyNodeId, channelValueSats, pushSats}: TCreateChannelReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.createChannel(counterPartyNodeId, channelValueSats, pushSats);
+			this.writeDebugToLog('createChannel');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('createChannel', e);
 			return err(e);
 		}
 	}

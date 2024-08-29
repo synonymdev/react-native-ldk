@@ -58,6 +58,7 @@ import {
 	TLspLogPayload,
 	TLspLogEvent,
 	TChannelMonitor,
+	TCreateChannelReq,
 } from './utils/types';
 import {
 	appendPath,
@@ -170,10 +171,10 @@ class LightningManager {
 			this.onBroadcastTransaction.bind(this),
 		);
 		//Channel manager handle events:
-		ldk.onEvent(
-			EEventTypes.channel_manager_funding_generation_ready,
-			this.onChannelManagerFundingGenerationReady.bind(this),
-		);
+		// ldk.onEvent(
+		// 	EEventTypes.channel_manager_funding_generation_ready,
+		// 	this.onChannelManagerFundingGenerationReady.bind(this),
+		// );
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_claimable,
 			this.onChannelManagerPaymentClaimable.bind(this),
@@ -2050,13 +2051,13 @@ class LightningManager {
 	//LDK channel manager events
 	//All events and their values: https://docs.rs/lightning/latest/lightning/util/events/enum.Event.html
 	//Sample node for examples on how to handle events: https://github.com/lightningdevkit/ldk-sample/blob/c0a722430b8fbcb30310d64487a32aae839da3e8/src/main.rs#L600
-	private onChannelManagerFundingGenerationReady(
-		res: TChannelManagerFundingGenerationReady,
-	): void {
-		console.log(
-			`onChannelManagerFundingGenerationReady: ${JSON.stringify(res)}`,
-		); //TODO
-	}
+	// private onChannelManagerFundingGenerationReady(
+	// 	res: TChannelManagerFundingGenerationReady,
+	// ): void {
+	// 	console.log(
+	// 		`onChannelManagerFundingGenerationReady: ${JSON.stringify(res)}`,
+	// 	); //TODO
+	// }
 
 	private async onChannelManagerPaymentClaimable(
 		res: TChannelManagerClaim,
@@ -2437,6 +2438,39 @@ class LightningManager {
 			remotePersist: true,
 		});
 	}
+
+	/**
+	 * Creates a new channel with the provided peer and then listens for the channel manager funding generation ready event.
+	 * Once event is triggered, those details can be used to create the funding transaction.
+	 */
+	async createChannel(req: TCreateChannelReq): Promise<Result<TChannelManagerFundingGenerationReady>> {
+		const res = await ldk.createChannel(req);
+		if (res.isErr()) {
+			return err(res.error);
+		}
+	
+		return new Promise((resolve, reject) => {
+			// Channel funding ready event should be instant but if it fails and we don't get the event, we should reject.
+			const timeout = setTimeout(() => {
+				reject(err(new Error("Event not triggered within 5 seconds")));
+			}, 5000);
+	
+			// Listen for the event for the channel funding details
+			ldk.onEvent(EEventTypes.channel_manager_funding_generation_ready, (eventRes: TChannelManagerFundingGenerationReady) => {
+				clearTimeout(timeout);
+				resolve(ok(eventRes)); 
+			});
+
+			ldk.onEvent(EEventTypes.channel_manager_channel_closed, (eventRes: TChannelManagerChannelClosed) => {
+				if (eventRes.channel_id === res.value) {
+					clearTimeout(timeout);
+					reject(err("Channel closed before funding"));
+				}
+			});
+		});
+	}
+
+	//TODO: fund channel
 }
 
 export default new LightningManager();

@@ -281,6 +281,12 @@ export type TCloseChannelReq = {
 	force?: boolean;
 };
 
+export type TCreateChannelReq = {
+	counterPartyNodeId: string;
+	channelValueSats: number;
+	pushSats: number;
+};
+
 export type TAcceptChannelReq = {
 	temporaryChannelId: string;
 	counterPartyNodeId: string;
