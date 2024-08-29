@@ -59,6 +59,7 @@ enum LdkErrors: String {
     case channel_close_fail
     case channel_accept_fail
     case start_create_channel_fail
+    case fund_channel_fail
     case spend_outputs_fail
     case failed_signing_request
     case write_fail
@@ -104,6 +105,7 @@ enum LdkCallbackResponses: String {
     case accept_channel_success
     case close_channel_success
     case start_create_channel_success
+    case fund_channel_success
     case file_write_success
     case abandon_payment_success
     case backup_client_setup_success
@@ -933,6 +935,25 @@ class Ldk: NSObject {
         }
         
         handleReject(reject, .start_create_channel_fail)
+    }
+    
+    @objc
+    func fundChannel(_ temporaryChannelId: NSString, counterpartyNodeId: NSString, fundingTransaction: NSString, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let channelManager = channelManager else {
+            return handleReject(reject, .init_channel_manager)
+        }
+        
+        let res = channelManager.fundingTransactionGenerated(
+            temporaryChannelId: .initWith(aArg: String(temporaryChannelId).hexaBytes),
+            counterpartyNodeId: String(counterpartyNodeId).hexaBytes,
+            fundingTransaction: String(fundingTransaction).hexaBytes
+        )
+        
+        if res.isOk() {
+            return handleResolve(resolve, .fund_channel_success)
+        }
+        
+        handleReject(reject, .fund_channel_fail)
     }
     
     @objc

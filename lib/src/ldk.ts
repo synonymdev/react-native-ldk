@@ -40,6 +40,7 @@ import {
 	TSpendRecoveredForceCloseOutputsReq,
 	TChannelMonitor,
 	TCreateChannelReq,
+	TFundChannelReq,
 } from './utils/types';
 import { extractPaymentRequest } from './utils/helpers';
 
@@ -496,6 +497,25 @@ class LDK {
 			return ok(res);
 		} catch (e) {
 			this.writeErrorToLog('createChannel', e);
+			return err(e);
+		}
+	}
+
+	/**
+	 * Funds an already created channel with a signed transaction.
+	 * https://docs.rs/lightning/latest/lightning/ln/channelmanager/struct.ChannelManager.html#method.funding_transaction_generated
+	 * @param temporaryChannelId
+	 * @param counterPartyNodeId
+	 * @param fundingTransaction
+	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
+	 */
+	async fundChannel({temporaryChannelId, counterPartyNodeId, fundingTransaction}: TFundChannelReq): Promise<Result<string>> {
+		try {
+			const res = await NativeLDK.fundChannel(temporaryChannelId, counterPartyNodeId, fundingTransaction);
+			this.writeDebugToLog('fundChannel');
+			return ok(res);
+		} catch (e) {
+			this.writeErrorToLog('fundChannel', e);
 			return err(e);
 		}
 	}

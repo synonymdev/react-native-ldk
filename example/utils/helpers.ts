@@ -240,3 +240,18 @@ export const ldkNetwork = (network: TAvailableNetworks): ENetworks => {
 			return ENetworks.signet;
 	}
 };
+
+
+export const scriptToAddress = (outputScript: string): string => {
+	if (!outputScript.startsWith('0020')) {
+		throw new Error('Invalid output script, currently example app only supports P2WSH');
+	}
+
+	outputScript = outputScript.slice(4);
+
+	const scriptPubKey = Buffer.from(outputScript, 'hex');
+	const network = getNetwork(selectedNetwork);
+	const address = bitcoin.payments.p2wsh({ hash: scriptPubKey, network }).address;
+
+	return address ?? "";
+}

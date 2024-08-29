@@ -91,6 +91,11 @@ RCT_EXTERN_METHOD(createChannel:(NSString *)counterPartyNodeId
                   pushSats:(NSInteger *)pushSats
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(fundChannel:(NSString *)temporaryChannelId
+                  counterpartyNodeId:(NSString *)counterpartyNodeId
+                  fundingTransaction:(NSString *)fundingTransaction
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(forceCloseAllChannels:(BOOL *)broadcastLatestTx
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)

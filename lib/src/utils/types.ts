@@ -287,6 +287,12 @@ export type TCreateChannelReq = {
 	pushSats: number;
 };
 
+export type TFundChannelReq = {
+	temporaryChannelId: string;
+	counterPartyNodeId: string;
+	fundingTransaction: string;
+};
+
 export type TAcceptChannelReq = {
 	temporaryChannelId: string;
 	counterPartyNodeId: string;
