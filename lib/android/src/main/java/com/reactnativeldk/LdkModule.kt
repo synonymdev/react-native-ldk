@@ -813,6 +813,18 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return
         }
 
+        val error = res as Result_NoneAPIErrorZ.Result_NoneAPIErrorZ_Err
+
+        if (error.err is APIError.APIMisuseError) {
+            return handleReject(promise, LdkErrors.channel_accept_fail, Error((error.err as APIError.APIMisuseError).err))
+        }
+
+        if (error.err is APIError.ChannelUnavailable) {
+            return handleReject(promise, LdkErrors.channel_accept_fail, Error((error.err as APIError.ChannelUnavailable).err))
+        }
+
+        LdkEventEmitter.send(EventTypes.native_log, "Fund channel failed. ${error.err}")
+
         handleReject(promise, LdkErrors.fund_channel_fail)
     }
 

@@ -170,11 +170,6 @@ class LightningManager {
 			EEventTypes.broadcast_transaction,
 			this.onBroadcastTransaction.bind(this),
 		);
-		//Channel manager handle events:
-		// ldk.onEvent(
-		// 	EEventTypes.channel_manager_funding_generation_ready,
-		// 	this.onChannelManagerFundingGenerationReady.bind(this),
-		// );
 		ldk.onEvent(
 			EEventTypes.channel_manager_payment_claimable,
 			this.onChannelManagerPaymentClaimable.bind(this),
@@ -2469,8 +2464,6 @@ class LightningManager {
 			});
 		});
 	}
-
-	//TODO: fund channel
 }
 
 export default new LightningManager();

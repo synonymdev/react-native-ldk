@@ -20,7 +20,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             val body = Arguments.createMap()
             body.putHexString("temp_channel_id", fundingGenerationReady.temporary_channel_id._a)
             body.putHexString("output_script", fundingGenerationReady.output_script)
-            body.putString("user_channel_id", fundingGenerationReady.user_channel_id.leBytes.hexEncodedString())
+            body.putHexString("user_channel_id", fundingGenerationReady.user_channel_id.leBytes)
             body.putInt("value_satoshis", fundingGenerationReady.channel_value_satoshis.toInt())
             return LdkEventEmitter.send(EventTypes.channel_manager_funding_generation_ready, body)
         }
