@@ -917,16 +917,19 @@ class Ldk: NSObject {
         let channelValueSatoshis = UInt64(channelValueSats)
         let pushMsat = UInt64(pushSats) * 1000
 
-        guard let channelId = Bindings.ChannelId.initWithTemporaryFromEntropySource(entropySource: keysManager.inner.asEntropySource()).getA() else {
-            return handleReject(reject, .start_create_channel_fail)
+        var userChannelId = Data(count: 32)
+        userChannelId.withUnsafeMutableBytes { mutableBytes in
+            arc4random_buf(mutableBytes.baseAddress, 32)
         }
+        
+        let temporaryChannelId = Bindings.ChannelId.initWithTemporaryFromEntropySource(entropySource: keysManager.inner.asEntropySource())
         
         let res = channelManager.createChannel(
             theirNetworkKey: theirNetworkKey,
             channelValueSatoshis: channelValueSatoshis,
             pushMsat: pushMsat,
-            userChannelId: channelId,
-            temporaryChannelId: .initWithTemporaryFromEntropySource(entropySource: keysManager.inner.asEntropySource()),
+            userChannelId: [UInt8](userChannelId),
+            temporaryChannelId: temporaryChannelId,
             overrideConfig: .initWithDefault()
         )
         
