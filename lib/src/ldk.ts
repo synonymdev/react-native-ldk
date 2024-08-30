@@ -490,9 +490,17 @@ class LDK {
 	 * @param pushSats
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async createChannel({counterPartyNodeId, channelValueSats, pushSats}: TCreateChannelReq): Promise<Result<string>> {
+	async createChannel({
+		counterPartyNodeId,
+		channelValueSats,
+		pushSats,
+	}: TCreateChannelReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.createChannel(counterPartyNodeId, channelValueSats, pushSats);
+			const res = await NativeLDK.createChannel(
+				counterPartyNodeId,
+				channelValueSats,
+				pushSats,
+			);
 			this.writeDebugToLog('createChannel');
 			return ok(res);
 		} catch (e) {
@@ -509,9 +517,17 @@ class LDK {
 	 * @param fundingTransaction
 	 * @returns {Promise<Err<unknown> | Ok<Ok<string> | Err<string>>>}
 	 */
-	async fundChannel({temporaryChannelId, counterPartyNodeId, fundingTransaction}: TFundChannelReq): Promise<Result<string>> {
+	async fundChannel({
+		temporaryChannelId,
+		counterPartyNodeId,
+		fundingTransaction,
+	}: TFundChannelReq): Promise<Result<string>> {
 		try {
-			const res = await NativeLDK.fundChannel(temporaryChannelId, counterPartyNodeId, fundingTransaction);
+			const res = await NativeLDK.fundChannel(
+				temporaryChannelId,
+				counterPartyNodeId,
+				fundingTransaction,
+			);
 			this.writeDebugToLog('fundChannel');
 			return ok(res);
 		} catch (e) {

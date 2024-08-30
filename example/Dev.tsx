@@ -628,7 +628,7 @@ const Dev = (): ReactElement => {
 									`bitcoin-cli createrawtransaction '[{"txid":"<tx-id>","vout":<index>}]' '{"${address}":${btc}}'`,
 								);
 								console.log(
-									`bitcoin-cli signrawtransactionwithwallet "<raw-transaction-hex>"`,
+									'bitcoin-cli signrawtransactionwithwallet "<raw-transaction-hex>"',
 								);
 								console.log('********');
 

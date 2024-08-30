@@ -2438,30 +2438,38 @@ class LightningManager {
 	 * Creates a new channel with the provided peer and then listens for the channel manager funding generation ready event.
 	 * Once event is triggered, those details can be used to create the funding transaction.
 	 */
-	async createChannel(req: TCreateChannelReq): Promise<Result<TChannelManagerFundingGenerationReady>> {
+	async createChannel(
+		req: TCreateChannelReq,
+	): Promise<Result<TChannelManagerFundingGenerationReady>> {
 		const res = await ldk.createChannel(req);
 		if (res.isErr()) {
 			return err(res.error);
 		}
-	
+
 		return new Promise((resolve, reject) => {
 			// Channel funding ready event should be instant but if it fails and we don't get the event, we should reject.
 			const timeout = setTimeout(() => {
-				reject(err(new Error("Event not triggered within 5 seconds")));
+				reject(err(new Error('Event not triggered within 5 seconds')));
 			}, 5000);
-	
-			// Listen for the event for the channel funding details
-			ldk.onEvent(EEventTypes.channel_manager_funding_generation_ready, (eventRes: TChannelManagerFundingGenerationReady) => {
-				clearTimeout(timeout);
-				resolve(ok(eventRes)); 
-			});
 
-			ldk.onEvent(EEventTypes.channel_manager_channel_closed, (eventRes: TChannelManagerChannelClosed) => {
-				if (eventRes.channel_id === res.value) {
+			// Listen for the event for the channel funding details
+			ldk.onEvent(
+				EEventTypes.channel_manager_funding_generation_ready,
+				(eventRes: TChannelManagerFundingGenerationReady) => {
 					clearTimeout(timeout);
-					reject(err("Channel closed before funding"));
-				}
-			});
+					resolve(ok(eventRes));
+				},
+			);
+
+			ldk.onEvent(
+				EEventTypes.channel_manager_channel_closed,
+				(eventRes: TChannelManagerChannelClosed) => {
+					if (eventRes.channel_id === res.value) {
+						clearTimeout(timeout);
+						reject(err('Channel closed before funding'));
+					}
+				},
+			);
 		});
 	}
 }
