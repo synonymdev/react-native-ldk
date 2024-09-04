@@ -36,6 +36,10 @@ export default class EclairRPC {
 		return this._post({ path: '/peers' });
 	}
 
+	onchainbalance(): Promise<any> {
+		return this._post({ path: '/onchainbalance' });
+	}
+
 	open(body): Promise<any> {
 		console.info('openChannel', body);
 		return this._post({ path: '/open', body });
