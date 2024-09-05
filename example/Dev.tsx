@@ -25,7 +25,12 @@ import lm, {
 	TChannelUpdate,
 } from '@synonymdev/react-native-ldk';
 import { backupServerDetails, peers } from './utils/constants';
-import { createNewAccount, getAccount, getAddress } from './utils/helpers';
+import {
+	createNewAccount,
+	getAccount,
+	getAddress,
+	getAddressFromScriptPubKey,
+} from './utils/helpers';
 import RNFS from 'react-native-fs';
 
 let logSubscription: EmitterSubscription | undefined;
@@ -41,6 +46,7 @@ const Dev = (): ReactElement => {
 	const [nodeStarted, setNodeStarted] = useState(false);
 	const [showLogs, setShowLogs] = useState(false);
 	const [logContent, setLogContent] = useState('');
+	const [temporaryChannelId, setTemporaryChannelId] = useState(''); //For funding channels locally
 
 	useEffect(() => {
 		//Restarting LDK on each code update causes constant errors.
@@ -231,7 +237,6 @@ const Dev = (): ReactElement => {
 							}
 						}}
 					/>
-
 					<Button
 						title={'Get Node ID'}
 						onPress={async (): Promise<void> => {
@@ -246,7 +251,6 @@ const Dev = (): ReactElement => {
 							setMessage(`Node ID: ${nodeIdRes.value}`);
 						}}
 					/>
-
 					<Button
 						title={'Sync LDK'}
 						onPress={async (): Promise<void> => {
@@ -258,7 +262,6 @@ const Dev = (): ReactElement => {
 							setMessage(syncRes.value);
 						}}
 					/>
-
 					<View style={styles.buttonRow}>
 						<Button
 							title={'Add Peers'}
@@ -299,7 +302,6 @@ const Dev = (): ReactElement => {
 							}}
 						/>
 					</View>
-
 					<View style={styles.buttonRow}>
 						<Button
 							title={'List channels'}
@@ -393,7 +395,6 @@ const Dev = (): ReactElement => {
 							}}
 						/>
 					</View>
-
 					<View style={styles.buttonRow}>
 						<Button
 							title={'List watch transactions'}
@@ -409,7 +410,6 @@ const Dev = (): ReactElement => {
 							}}
 						/>
 					</View>
-
 					<Button
 						title={'🤑Get Address Balance'}
 						onPress={async (): Promise<void> => {
@@ -421,7 +421,6 @@ const Dev = (): ReactElement => {
 							);
 						}}
 					/>
-
 					<Button
 						title={'Recover all outputs attempt'}
 						onPress={async (): Promise<void> => {
@@ -435,7 +434,6 @@ const Dev = (): ReactElement => {
 							setMessage(res.value);
 						}}
 					/>
-
 					<View style={styles.buttonRow}>
 						<Button
 							title={'Get claimed payments'}
@@ -454,7 +452,6 @@ const Dev = (): ReactElement => {
 							}}
 						/>
 					</View>
-
 					<View style={styles.buttonRow}>
 						<Button
 							title={'Create invoice'}
@@ -548,7 +545,6 @@ const Dev = (): ReactElement => {
 							}}
 						/>
 					</View>
-
 					<Button
 						title={'Get network graph nodes'}
 						onPress={async (): Promise<void> => {
@@ -574,7 +570,6 @@ const Dev = (): ReactElement => {
 							setMessage(`${msg}`);
 						}}
 					/>
-
 					<Button
 						title={'Show claimable balances for closed/closing channels'}
 						onPress={async (): Promise<void> => {
@@ -586,7 +581,6 @@ const Dev = (): ReactElement => {
 							setMessage(JSON.stringify(balances.value));
 						}}
 					/>
-
 					<Button
 						title={'List channel monitors'}
 						onPress={async (): Promise<void> => {
@@ -605,6 +599,79 @@ const Dev = (): ReactElement => {
 					/>
 
 					<Button
+						title={'Start manual channel open ⛓️'}
+						onPress={async (): Promise<void> => {
+							try {
+								const res = await lm.createChannel({
+									counterPartyNodeId: peers.lnd.pubKey,
+									channelValueSats: 20000,
+									pushSats: 5000,
+								});
+								if (res.isErr()) {
+									setMessage(res.error.message);
+									return;
+								}
+
+								const { value_satoshis, output_script, temp_channel_id } =
+									res.value;
+
+								setTemporaryChannelId(temp_channel_id);
+
+								console.log(res.value);
+
+								const address = getAddressFromScriptPubKey(output_script);
+								const btc = value_satoshis / 100000000;
+
+								console.log('***BITCOIND CLI***');
+								console.log('bitcoin-cli listunspent');
+								console.log(
+									`bitcoin-cli createrawtransaction '[{"txid":"<tx-id>","vout":<index>}]' '{"${address}":${btc}}'`,
+								);
+								console.log(
+									'bitcoin-cli signrawtransactionwithwallet "<raw-transaction-hex>"',
+								);
+								console.log('********');
+
+								setMessage(
+									`Create tx with ${value_satoshis} for address ${address}. See logs for bitcoin-cli commands needed to create funding tx.`,
+								);
+							} catch (e) {
+								setMessage(JSON.stringify(e));
+							}
+						}}
+					/>
+
+					{temporaryChannelId ? (
+						<Button
+							title={'Fund channel (paste psbt)'}
+							onPress={async (): Promise<void> => {
+								try {
+									if (!temporaryChannelId) {
+										return setMessage('Create channel first');
+									}
+
+									const pastedSignedTx = await Clipboard.getString();
+
+									const res = await ldk.fundChannel({
+										temporaryChannelId,
+										counterPartyNodeId: peers.lnd.pubKey,
+										fundingTransaction: pastedSignedTx,
+									});
+									if (res.isErr()) {
+										setMessage(res.error.message);
+										return;
+									}
+
+									setMessage('Channel funded');
+									setTemporaryChannelId('');
+								} catch (e) {
+									setMessage(JSON.stringify(e));
+								}
+							}}
+						/>
+					) : null}
+
+					<Button
 						title={'Show version'}
 						onPress={async (): Promise<void> => {
 							const ldkVersion = await ldk.version();
@@ -615,7 +682,6 @@ const Dev = (): ReactElement => {
 							setMessage(ldkVersion.value.ldk);
 						}}
 					/>
-
 					<Button
 						title={'Show LDK logs'}
 						onPress={async (): Promise<void> => {
@@ -631,7 +697,6 @@ const Dev = (): ReactElement => {
 							}
 						}}
 					/>
-
 					<Button
 						title={'Restore backup from server'}
 						onPress={async (): Promise<void> => {
@@ -658,7 +723,6 @@ const Dev = (): ReactElement => {
 							setMessage('Successfully restored wallet');
 						}}
 					/>
-
 					<Button
 						title={'Backup self check'}
 						onPress={async (): Promise<void> => {
@@ -671,7 +735,6 @@ const Dev = (): ReactElement => {
 							setMessage('Backup server check passed ✅');
 						}}
 					/>
-
 					<Button
 						title={'Restart node'}
 						onPress={async (): Promise<void> => {
@@ -699,7 +762,6 @@ const Dev = (): ReactElement => {
 							setMessage(res.value);
 						}}
 					/>
-
 					<Button
 						title={'Node state'}
 						onPress={async (): Promise<void> => {
@@ -712,7 +774,6 @@ const Dev = (): ReactElement => {
 							setMessage(res.value);
 						}}
 					/>
-
 					<Button
 						title={'List backed up files'}
 						onPress={async (): Promise<void> => {
@@ -726,7 +787,6 @@ const Dev = (): ReactElement => {
 							setMessage(JSON.stringify(res.value));
 						}}
 					/>
-
 					<Button
 						title={'Test file backup'}
 						onPress={async (): Promise<void> => {

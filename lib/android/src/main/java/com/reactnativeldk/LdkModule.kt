@@ -86,6 +86,8 @@ enum class LdkErrors {
     invoice_create_failed,
     init_scorer_failed,
     channel_close_fail,
+    start_create_channel_fail,
+    fund_channel_fail,
     channel_accept_fail,
     spend_outputs_fail,
     failed_signing_request,
@@ -126,6 +128,8 @@ enum class LdkCallbackResponses {
     ldk_restart,
     accept_channel_success,
     close_channel_success,
+    start_create_channel_fail,
+    fund_channel_success,
     file_write_success,
     backup_client_setup_success,
     backup_restore_success,
@@ -762,6 +766,66 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         }
 
         handleResolve(promise, LdkCallbackResponses.close_channel_success)
+    }
+
+    @ReactMethod
+    fun createChannel(counterPartyNodeId: String, channelValueSats: Double, pushSats: Double, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
+
+        val theirNetworkKey = counterPartyNodeId.hexa()
+        val channelValueSatoshis = channelValueSats.toLong()
+        val pushMsat = pushSats.toLong() * 1000
+        val userChannelIdBytes = ByteArray(16)
+        Random().nextBytes(userChannelIdBytes)
+        val userChannelId = UInt128(userChannelIdBytes)
+
+        val tempChannelId = ChannelId.temporary_from_entropy_source(keysManager!!.inner.as_EntropySource())
+
+        val res = channelManager!!.create_channel(
+            theirNetworkKey,
+            channelValueSatoshis,
+            pushMsat,
+            userChannelId,
+            tempChannelId,
+            UserConfig.with_default()
+        )
+
+        if (!res.is_ok) {
+            return handleReject(promise, LdkErrors.start_create_channel_fail)
+        }
+
+        handleResolve(promise, LdkCallbackResponses.start_create_channel_fail)
+    }
+
+    @ReactMethod
+    fun fundChannel(temporaryChannelId: String, counterPartyNodeId: String, fundingTransaction: String, promise: Promise) {
+        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+
+        val res = channelManager!!.funding_transaction_generated(
+            ChannelId.of(temporaryChannelId.hexa()),
+            counterPartyNodeId.hexa(),
+            fundingTransaction.hexa()
+        )
+
+        if (res.is_ok) {
+            handleResolve(promise, LdkCallbackResponses.fund_channel_success)
+            return
+        }
+
+        val error = res as Result_NoneAPIErrorZ.Result_NoneAPIErrorZ_Err
+
+        if (error.err is APIError.APIMisuseError) {
+            return handleReject(promise, LdkErrors.channel_accept_fail, Error((error.err as APIError.APIMisuseError).err))
+        }
+
+        if (error.err is APIError.ChannelUnavailable) {
+            return handleReject(promise, LdkErrors.channel_accept_fail, Error((error.err as APIError.ChannelUnavailable).err))
+        }
+
+        LdkEventEmitter.send(EventTypes.native_log, "Fund channel failed. ${error.err}")
+
+        handleReject(promise, LdkErrors.fund_channel_fail)
     }
 
     @ReactMethod

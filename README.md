@@ -12,21 +12,21 @@ This library hopes to simplify the process of adding Lightning via LDK to any Re
 yarn add @synonymdev/react-native-ldk
 #or
 npm i -S @synonymdev/react-native-ldk
-````
+```
 
 ### iOS installation
 ```bash
 cd ios && pod install && cd ../
-````
+```
 
 ### Android installation
 1. Add the following line to `dependencies` in `/android/app/build.gradle`
-```
-dependencies {
-  ...
-  implementation files("../../node_modules/@synonymdev/react-native-ldk/android/libs/LDK-release.aar")
-}
-```
+    ```groovy
+    dependencies {
+      //...
+      implementation files("../../node_modules/@synonymdev/react-native-ldk/android/libs/LDK-release.aar") // <- this
+    }
+    ```
 2. Ensure `minSdkVersion` is set to at least `24` in `/android/build.gradle`
 
 ## Development
@@ -40,17 +40,30 @@ dependencies {
   5. In the popup that appears select `JavaDocs` and tap `OK` then `OK` again
 
 ## Running example app
+See also [`./example/README.md`](./example/README.md)
 ```bash
-
-#Build dist files
+# Build dist files
 git clone https://github.com/synonymdev/react-native-ldk.git
 cd react-native-ldk/lib/ && yarn install && yarn build && cd ../
 
 cd example/ && yarn install && yarn rn-setup
 
 yarn ios
-#or
+# or
 yarn android
+```
+
+### Update config to match your local setup
+In `constants.ts` update `peers.lnd` if you're using Polar locally.
+### Example for Android
+```ts
+//  export const peers = {
+// 	lnd: {
+    pubKey:
+      '_033f4d3032ce7f54224f4bd9747b50b7cd72074a859758e40e1ca46ffa79a34324_',
+    address: '10.0.2.2',
+    port: 9737,
+// },
 ```
 
 ## Notes

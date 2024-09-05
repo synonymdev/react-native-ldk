@@ -25,7 +25,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             guard let fundingGeneration = event.getValueAsFundingGenerationReady() else {
                 return handleEventError(event)
             }
-
+            
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_funding_generation_ready,
                 body: [
