@@ -39,6 +39,15 @@ cd ios && pod install && cd ../
   4. Tap the ➕ button and select the `./lib/android/libs/ldk-java-javadoc.jar` file
   5. In the popup that appears select `JavaDocs` and tap `OK` then `OK` again
 
+### Version Bump
+```sh
+# apply your changes
+cd example
+yarn reinstall # bump versions package.json & podfile
+cd ../
+# copy version from `./lib/package.json` to `backup-server/package.json`
+
+```
 ## Running example app
 See also [`./example/README.md`](./example/README.md)
 ```bash
