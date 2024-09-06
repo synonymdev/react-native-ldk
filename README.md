@@ -33,7 +33,7 @@ cd ios && pod install && cd ../
 ### Android
 - Open `lib/android` in Android Studio
 - To enable documentation for the LDK code, follow this guide: [How to attach JavaDoc to the library in Android Studio](https://medium.com/@mydogtom/tip-how-to-attach-javadoc-to-the-library-in-android-studio-5ff43c4303b3), ie.:
-  1. Switch to `Project` view in the Project browser tool windo
+  1. Switch to `Project` view in the Project browser tool window
   2. Expand `External Libraries`
   3. Right click on `Gradle: ./libs/LDK-release.aar` then `Library Properties…`
   4. Tap the ➕ button and select the `./lib/android/libs/ldk-java-javadoc.jar` file
