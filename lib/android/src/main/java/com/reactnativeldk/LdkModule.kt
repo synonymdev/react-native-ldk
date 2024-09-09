@@ -10,7 +10,6 @@ import org.ldk.enums.Currency
 import org.ldk.enums.Network
 import org.ldk.enums.Recipient
 import org.ldk.enums.RetryableSendFailure
-import org.ldk.impl.bindings.LDKPaymentSendFailure.DuplicatePayment
 import org.ldk.impl.bindings.get_ldk_c_bindings_version
 import org.ldk.impl.bindings.get_ldk_version
 import org.ldk.structs.*
@@ -29,6 +28,10 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 
 //MARK: ************Replicate in typescript and swift************
@@ -182,9 +185,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private var currentBlockchainHeight: Double? = null
 
     //List of peers that "should" remain connected. Stores address: String, port: Double, pubKey: String
-    private var addedPeers: MutableList<HashMap<String, Any>> = mutableListOf()
-    private var currentlyConnectingPeers: MutableList<String> = mutableListOf()
-    private var timerTaskScheduled: Boolean = false
+    private var addedPeers = ConcurrentLinkedQueue<Map<String, Any>>()
+    private var currentlyConnectingPeers = ConcurrentLinkedQueue<String>()
+    private var periodicDroppedPeersHandler: ScheduledFuture<*>? = null
 
     //Static to be accessed from other classes
     companion object {
@@ -512,14 +515,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         peerHandler = channelManagerConstructor!!.nio_peer_handler
 
-        //Start watching for dropped peers every 1 second
-        if (!timerTaskScheduled) {
-            Timer().schedule(object : TimerTask() {
-                override fun run() {
-                    handleDroppedPeers()
-                }
-            }, 1000, 3000)
-            timerTaskScheduled = true
+        //after 1s, Start watching for dropped peers every 3 seconds
+        if (periodicDroppedPeersHandler == null) {
+            periodicDroppedPeersHandler = ScheduledThreadPoolExecutor(1)
+                .scheduleWithFixedDelay(::handleDroppedPeers,1, 3, TimeUnit.SECONDS)
         }
 
         //Cached for restarts
@@ -621,7 +620,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         handleResolve(promise, LdkCallbackResponses.chain_sync_success)
     }
 
-    fun handleDroppedPeers() {
+    private fun handleDroppedPeers() {
         peerHandler ?: return LdkEventEmitter.send(EventTypes.native_log, "Handling dropped peers error. Peer handler not initialized.")
 
         LdkEventEmitter.send(EventTypes.native_log, "Checking for dropped peers")
@@ -679,7 +678,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             currentlyConnectingPeers.remove(pubKey)
 
             //Should retry if success or fail
-            if (!addedPeers.map { it["pubKey"] as String }.contains(pubKey)) {
+            if (addedPeers.none { it["pubKey"] as String == pubKey }) {
                 addedPeers.add(hashMapOf(
                     "address" to address,
                     "port" to port,
