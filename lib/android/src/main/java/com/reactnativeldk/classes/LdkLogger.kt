@@ -8,6 +8,7 @@ import org.ldk.structs.Record
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.TimeZone
 
 private fun levelString(level: Int): String {
     when (level) {
@@ -58,7 +59,8 @@ object LogFile {
         }
 
         val dateFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-        val line = "${dateFormatter.format(Date())} $str\n"
+        dateFormatter.timeZone = TimeZone.getTimeZone("UTC")
+        val line = "${dateFormatter.format(Date())} UTC $str\n"
 
         logFile!!.appendText(line)
     }
