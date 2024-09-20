@@ -8,7 +8,7 @@
 import Foundation
 import LightningDevKit
 
-fileprivate func levelString(_ level: Level) -> String {
+private func levelString(_ level: Level) -> String {
     switch level {
     case .Gossip:
         return "GOSSIP"
@@ -33,7 +33,7 @@ class LdkLogger: LightningDevKit.Bindings.Logger {
     override func log(record: Record) {
         let level = levelString(record.getLevel())
         
-        //Only when the JS code has set the log level to active
+        // Only when the JS code has set the log level to active
         if activeLevels[level] == true {
             let line = "\(level) (LDK): \(record.getArgs()) (\(record.getModulePath()) \(record.getLine()))"
             LdkEventEmitter.shared.send(withEvent: .ldk_log, body: line)
@@ -42,7 +42,7 @@ class LdkLogger: LightningDevKit.Bindings.Logger {
     }
     
     func setLevel(level: String, active: Bool) {
-        self.activeLevels[level] = active
+        activeLevels[level] = active
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Log level \(level) set to \(active)")
     }
 }
@@ -61,7 +61,8 @@ class Logfile: TextOutputStream {
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let line = "\(dateFormatter.string(from: Date())) \(str)\n"
+        dateFormatter.timeZone = TimeZone(abbreviation: "UTC")
+        let line = "\(dateFormatter.string(from: Date())) UTC \(str)\n"
         
         if let handle = try? FileHandle(forWritingTo: logfile) {
             handle.seekToEndOfFile()
@@ -71,6 +72,7 @@ class Logfile: TextOutputStream {
             try? line.data(using: .utf8)?.write(to: logfile)
         }
     }
+
     static var log = Logfile()
     private init() {}
 }
