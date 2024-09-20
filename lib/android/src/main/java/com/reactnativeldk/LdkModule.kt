@@ -17,6 +17,8 @@ import org.ldk.structs.Result_Bolt11InvoiceParseOrSemanticErrorZ.Result_Bolt11In
 import org.ldk.structs.Result_Bolt11InvoiceSignOrCreationErrorZ.Result_Bolt11InvoiceSignOrCreationErrorZ_OK
 import org.ldk.structs.Result_C2Tuple_ThirtyTwoBytesChannelMonitorZDecodeErrorZ.Result_C2Tuple_ThirtyTwoBytesChannelMonitorZDecodeErrorZ_OK
 import org.ldk.structs.Result_C3Tuple_ThirtyTwoBytesRecipientOnionFieldsRouteParametersZNoneZ.Result_C3Tuple_ThirtyTwoBytesRecipientOnionFieldsRouteParametersZNoneZ_OK
+import org.ldk.structs.Result_ChannelIdAPIErrorZ.Result_ChannelIdAPIErrorZ_OK
+import org.ldk.structs.Result_NoneAPIErrorZ.Result_NoneAPIErrorZ_OK
 import org.ldk.structs.Result_NoneRetryableSendFailureZ.Result_NoneRetryableSendFailureZ_Err
 import org.ldk.structs.Result_PublicKeyNoneZ.Result_PublicKeyNoneZ_OK
 import org.ldk.structs.Result_StrSecp256k1ErrorZ.Result_StrSecp256k1ErrorZ_OK
@@ -772,6 +774,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
 
+        println("Creating channel with counterPartyNodeId: $counterPartyNodeId, channelValueSats: $channelValueSats, pushSats: $pushSats")
+
         val theirNetworkKey = counterPartyNodeId.hexa()
         val channelValueSatoshis = channelValueSats.toLong()
         val pushMsat = pushSats.toLong() * 1000
@@ -790,11 +794,39 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             UserConfig.with_default()
         )
 
-        if (!res.is_ok) {
-            return handleReject(promise, LdkErrors.start_create_channel_fail)
+        if (res.is_ok) {
+            return promise.resolve((res as Result_ChannelIdAPIErrorZ_OK).res._a.hexEncodedString())
         }
 
-        handleResolve(promise, LdkCallbackResponses.start_create_channel_fail)
+        if ((res as Result_ChannelIdAPIErrorZ.Result_ChannelIdAPIErrorZ_Err).err is APIError.APIMisuseError) {
+            return handleReject(promise, LdkErrors.start_create_channel_fail, Error((res.err as APIError.APIMisuseError).err))
+        }
+
+        if (res.err is APIError.ChannelUnavailable) {
+            return handleReject(promise, LdkErrors.start_create_channel_fail, Error((res.err as APIError.ChannelUnavailable).err))
+        }
+
+        if (res.err is APIError.FeeRateTooHigh) {
+            return handleReject(promise, LdkErrors.start_create_channel_fail, Error((res.err as APIError.FeeRateTooHigh).err))
+        }
+
+        if (res.err is APIError.InvalidRoute) {
+            return handleReject(promise, LdkErrors.start_create_channel_fail, Error((res.err as APIError.InvalidRoute).err))
+        }
+
+        if (res.err is APIError.IncompatibleShutdownScript) {
+            return handleReject(promise, LdkErrors.start_create_channel_fail, Error("IncompatibleShutdownScript"))
+        }
+
+        if (res.err is APIError.MonitorUpdateInProgress) {
+            return handleReject(promise, LdkErrors.start_create_channel_fail, Error("MonitorUpdateInProgress"))
+        }
+
+        if (res.err is APIError.ChannelUnavailable) {
+            return handleReject(promise, LdkErrors.start_create_channel_fail, Error((res.err as APIError.ChannelUnavailable).err))
+        }
+
+        return handleReject(promise, LdkErrors.start_create_channel_fail)
     }
 
     @ReactMethod

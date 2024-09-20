@@ -2449,7 +2449,7 @@ class LightningManager {
 		return new Promise((resolve, reject) => {
 			// Channel funding ready event should be instant but if it fails and we don't get the event, we should reject.
 			const timeout = setTimeout(() => {
-				reject(err(new Error('Event not triggered within 5 seconds')));
+				resolve(err(new Error('Event not triggered within 5 seconds')));
 			}, 5000);
 
 			// Listen for the event for the channel funding details
@@ -2465,8 +2465,14 @@ class LightningManager {
 				EEventTypes.channel_manager_channel_closed,
 				(eventRes: TChannelManagerChannelClosed) => {
 					if (eventRes.channel_id === res.value) {
+
 						clearTimeout(timeout);
-						reject(err('Channel closed before funding'));
+						if (eventRes.peer_message) {
+							resolve(err(eventRes.peer_message));
+							return;
+						}
+
+						resolve(err(`Channel open failed: ${eventRes.reason}`));
 					}
 				},
 			);

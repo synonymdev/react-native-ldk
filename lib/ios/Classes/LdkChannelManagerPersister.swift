@@ -9,7 +9,7 @@ import Foundation
 import LightningDevKit
 
 class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
-    //Custom function to manage any unlikely missing info from the event object
+    // Custom function to manage any unlikely missing info from the event object
     func handleEventError(_ event: Event) {
         LdkEventEmitter.shared.send(
             withEvent: .native_log,
@@ -25,14 +25,14 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             guard let fundingGeneration = event.getValueAsFundingGenerationReady() else {
                 return handleEventError(event)
             }
-            
+
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_funding_generation_ready,
                 body: [
                     "temp_channel_id": Data(fundingGeneration.getTemporaryChannelId().getA() ?? []).hexEncodedString(),
                     "output_script": Data(fundingGeneration.getOutputScript()).hexEncodedString(),
                     "user_channel_id": Data(fundingGeneration.getUserChannelId()).hexEncodedString(),
-                    "value_satoshis": fundingGeneration.getChannelValueSatoshis(),
+                    "value_satoshis": fundingGeneration.getChannelValueSatoshis()
                 ]
             )
             return
@@ -60,7 +60,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 body: body
             )
 
-            //Save to disk for TX history
+            // Save to disk for TX history
             persistPaymentClaimed(body)
             return
         case .PaymentSent:
@@ -82,11 +82,11 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 body: body
             )
 
-            //Save to disk for tx history
+            // Save to disk for tx history
             persistPaymentSent(body)
             return
         case .OpenChannelRequest:
-            //Use if we ever manually accept inbound channels. Setting in initConfig.
+            // Use if we ever manually accept inbound channels. Setting in initConfig.
             guard let openChannelRequest = event.getValueAsOpenChannelRequest() else {
                 return handleEventError(event)
             }
@@ -100,7 +100,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "requires_zero_conf": openChannelRequest.getChannelType().requiresZeroConf(),
                     "supports_zero_conf": openChannelRequest.getChannelType().supportsZeroConf(),
                     "requires_anchors_zero_fee_htlc_tx": openChannelRequest.getChannelType().requiresAnchorsZeroFeeHtlcTx()
-                ] as [String : Any]
+                ] as [String: Any]
             )
             return
         case .PaymentPathSuccessful:
@@ -116,8 +116,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 body: [
                     "payment_id": paymentId,
                     "payment_hash": paymentHash,
-                    "path_hops": paymentPathSuccessful.getPath().getHops().map { $0.asJson },
-                ] as [String : Any]
+                    "path_hops": paymentPathSuccessful.getPath().getHops().map { $0.asJson }
+                ] as [String: Any]
             )
             return
         case .PaymentPathFailed:
@@ -136,7 +136,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "payment_failed_permanently": paymentPathFailed.getPaymentFailedPermanently(),
                     "short_channel_id": String(paymentPathFailed.getShortChannelId() ?? 0),
                     "path_hops": paymentPathFailed.getPath().getHops().map { $0.asJson }
-                ] as [String : Any]
+                ] as [String: Any]
             )
 
             persistPaymentSent(
@@ -144,7 +144,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "payment_id": paymentId,
                     "payment_hash": paymentHash,
                     "unix_timestamp": Int(Date().timeIntervalSince1970),
-                    "state":  paymentPathFailed.getPaymentFailedPermanently() ? "failed" : "pending"
+                    "state": paymentPathFailed.getPaymentFailedPermanently() ? "failed" : "pending"
                 ]
             )
             return
@@ -160,23 +160,23 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 withEvent: .channel_manager_payment_failed,
                 body: [
                     "payment_id": paymentId,
-                    "payment_hash": paymentHash,
+                    "payment_hash": paymentHash
                 ]
             )
 
-            //MARK: Mark as failed
+            // MARK: Mark as failed
 
             persistPaymentSent(
                 [
                     "payment_id": paymentId,
                     "payment_hash": paymentHash,
                     "unix_timestamp": Int(Date().timeIntervalSince1970),
-                    "state":  "failed"
+                    "state": "failed"
                 ]
             )
             return
         case .PaymentForwarded:
-            //Unused on mobile
+            // Unused on mobile
             return
         case .PendingHTLCsForwardable:
             guard let pendingHtlcsForwardable = event.getValueAsPendingHtlcsForwardable() else {
@@ -186,7 +186,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_pending_htlcs_forwardable,
                 body: [
-                    "time_forwardable": pendingHtlcsForwardable.getTimeForwardable(),
+                    "time_forwardable": pendingHtlcsForwardable.getTimeForwardable()
                 ]
             )
             return
@@ -198,7 +198,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_spendable_outputs,
                 body: [
-                    "outputsSerialized": spendableOutputs.getOutputs().map { Data($0.write()).hexEncodedString() },
+                    "outputsSerialized": spendableOutputs.getOutputs().map { Data($0.write()).hexEncodedString() }
                 ]
             )
             return
@@ -208,6 +208,8 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             }
 
             let reasonString: String
+            var peerMessage: String? = nil
+
             switch channelClosed.getReason().getValueType() {
             case .CommitmentTxConfirmed:
                 reasonString = "CommitmentTxConfirmed"
@@ -215,6 +217,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 reasonString = "CounterpartyCoopClosedUnfundedChannel"
             case .CounterpartyForceClosed:
                 reasonString = "CounterpartyForceClosed"
+                peerMessage = channelClosed.getReason().getValueAsCounterpartyForceClosed()?.getPeerMsg().getA()
             case .DisconnectedPeer:
                 reasonString = "DisconnectedPeer"
             case .FundingBatchClosure:
@@ -244,17 +247,18 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 body: [
                     "user_channel_id": Data(channelClosed.getUserChannelId()).hexEncodedString(),
                     "channel_id": Data(channelClosed.getChannelId().getA() ?? []).hexEncodedString(),
-                    "reason": reasonString
+                    "reason": reasonString,
+                    "peer_message": peerMessage
                 ]
             )
-            
+
             return
         case .DiscardFunding:
             guard let discardFunding = event.getValueAsDiscardFunding() else {
                 return handleEventError(event)
             }
 
-            //Wallet should probably "lock" the UTXOs spent in funding transactions until the funding transaction either confirms, or this event is generated.
+            // Wallet should probably "lock" the UTXOs spent in funding transactions until the funding transaction either confirms, or this event is generated.
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_discard_funding,
                 body: [
@@ -287,7 +291,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 body: body
             )
 
-            //Save to disk for TX history
+            // Save to disk for TX history
             persistPaymentClaimed(body)
             return
         case .ChannelReady:
@@ -300,7 +304,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
             guard let bumpTransaction = event.getValueAsBumpTransaction() else {
                 return handleEventError(event)
             }
-            
+
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "BumpTransaction request")
 
             if let channelClose = bumpTransaction.getValueAsChannelClose() {
@@ -309,11 +313,11 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "commitment_tx_fee": channelClose.getCommitmentTxFeeSatoshis(),
                     "pending_htlcs_count": channelClose.getPendingHtlcs().count
                 ]
-                
+
                 LdkEventEmitter.shared.send(withEvent: .lsp_log, body: body)
                 return
             }
-            
+
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "BumpTransaction event not handled")
             return
         case .ProbeFailed:
@@ -413,23 +417,23 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 }
             }
 
-            //Replace entry if payment hash exists (Confirmed payment replacing pending)
+            // Replace entry if payment hash exists (Confirmed payment replacing pending)
             var paymentReplaced = false
             for (index, existingPayment) in payments.enumerated() {
                 if let existingPaymentHash = existingPayment["payment_hash"] as? String, let newPaymentHash = payment["payment_hash"] as? String {
                     if existingPaymentHash == newPaymentHash {
-                        //Don't replace a successful payment. If a 2nd wallet tries to pay an invoice the first successful one should not be overwritten.
+                        // Don't replace a successful payment. If a 2nd wallet tries to pay an invoice the first successful one should not be overwritten.
                         if existingPayment["state"] as? String == "successful" {
                             return
                         }
-                        
-                        payments[index] = mergeObj(payments[index], payment) //Merges update into orginal entry
+
+                        payments[index] = mergeObj(payments[index], payment) // Merges update into orginal entry
                         paymentReplaced = true
                     }
                 }
             }
 
-            //No existing payment found, append as new payment
+            // No existing payment found, append as new payment
             if !paymentReplaced {
                 payments.append(payment)
             }
@@ -472,18 +476,18 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 }
             }
 
-            //Replace entry if payment hash exists (Confirmed payment replacing pending)
+            // Replace entry if payment hash exists (Confirmed payment replacing pending)
             var paymentReplaced = false
             for (index, existingPayment) in payments.enumerated() {
                 if let existingPaymentId = existingPayment["payment_id"] as? String, let newPaymentId = payment["payment_id"] as? String {
                     if existingPaymentId == newPaymentId {
-                        payments[index] = mergeObj(payments[index], payment) //Merges update into orginal entry
+                        payments[index] = mergeObj(payments[index], payment) // Merges update into orginal entry
                         paymentReplaced = true
                     }
                 }
             }
 
-            //No existing payment found, append as new payment
+            // No existing payment found, append as new payment
             if !paymentReplaced {
                 payments.append(payment)
             }

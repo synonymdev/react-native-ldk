@@ -937,6 +937,25 @@ class Ldk: NSObject {
             return resolve(Data(res.getValue()?.getA() ?? []).hexEncodedString())
         }
         
+        if let error = res.getError() {
+            switch error.getValueType() {
+            case .APIMisuseError:
+                return handleReject(reject, .start_create_channel_fail, nil, error.getValueAsApiMisuseError()?.getErr())
+            case .ChannelUnavailable:
+                return handleReject(reject, .start_create_channel_fail, nil, error.getValueAsChannelUnavailable()?.getErr())
+            case .FeeRateTooHigh:
+                return handleReject(reject, .start_create_channel_fail, nil, error.getValueAsFeeRateTooHigh()?.getErr())
+            case .InvalidRoute:
+                return handleReject(reject, .start_create_channel_fail, nil, error.getValueAsInvalidRoute()?.getErr())
+            case .IncompatibleShutdownScript:
+                return handleReject(reject, .start_create_channel_fail, nil, "IncompatibleShutdownScript")
+            case .MonitorUpdateInProgress:
+                return handleReject(reject, .start_create_channel_fail, nil, "MonitorUpdateInProgress")
+            @unknown default:
+                handleReject(reject, .start_create_channel_fail, "Unhandled error")
+            }
+        }
+        
         handleReject(reject, .start_create_channel_fail)
     }
     

@@ -134,6 +134,7 @@ export type TChannelManagerChannelClosed = {
 	user_channel_id: string;
 	channel_id: string;
 	reason: string;
+	peer_message?: string;
 };
 
 export type TChannelManagerDiscardFunding = {
