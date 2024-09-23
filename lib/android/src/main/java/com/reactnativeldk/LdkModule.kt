@@ -798,35 +798,17 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             return promise.resolve((res as Result_ChannelIdAPIErrorZ_OK).res._a.hexEncodedString())
         }
 
-        if ((res as Result_ChannelIdAPIErrorZ.Result_ChannelIdAPIErrorZ_Err).err is APIError.APIMisuseError) {
-            return handleReject(promise, LdkErrors.start_create_channel_fail, Error((res.err as APIError.APIMisuseError).err))
+        val failure = when(val error = (res as? Result_ChannelIdAPIErrorZ.Result_ChannelIdAPIErrorZ_Err)?.err) {
+            is APIError.APIMisuseError -> Error(error.err)
+            is APIError.ChannelUnavailable -> Error(error.err)
+            is APIError.FeeRateTooHigh -> Error(error.err)
+            is APIError.InvalidRoute -> Error(error.err)
+            is APIError.IncompatibleShutdownScript -> Error("IncompatibleShutdownScript")
+            is APIError.MonitorUpdateInProgress -> Error("MonitorUpdateInProgress")
+            else -> null
         }
 
-        if (res.err is APIError.ChannelUnavailable) {
-            return handleReject(promise, LdkErrors.start_create_channel_fail, Error((res.err as APIError.ChannelUnavailable).err))
-        }
-
-        if (res.err is APIError.FeeRateTooHigh) {
-            return handleReject(promise, LdkErrors.start_create_channel_fail, Error((res.err as APIError.FeeRateTooHigh).err))
-        }
-
-        if (res.err is APIError.InvalidRoute) {
-            return handleReject(promise, LdkErrors.start_create_channel_fail, Error((res.err as APIError.InvalidRoute).err))
-        }
-
-        if (res.err is APIError.IncompatibleShutdownScript) {
-            return handleReject(promise, LdkErrors.start_create_channel_fail, Error("IncompatibleShutdownScript"))
-        }
-
-        if (res.err is APIError.MonitorUpdateInProgress) {
-            return handleReject(promise, LdkErrors.start_create_channel_fail, Error("MonitorUpdateInProgress"))
-        }
-
-        if (res.err is APIError.ChannelUnavailable) {
-            return handleReject(promise, LdkErrors.start_create_channel_fail, Error((res.err as APIError.ChannelUnavailable).err))
-        }
-
-        return handleReject(promise, LdkErrors.start_create_channel_fail)
+        return handleReject(promise, LdkErrors.start_create_channel_fail, failure)
     }
 
     @ReactMethod
