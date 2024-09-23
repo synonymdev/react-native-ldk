@@ -532,6 +532,8 @@ class Ldk: NSObject {
     @objc
     func restartOnForeground() {
         let secondsSinceBackgrounded = Date().timeIntervalSince(backgroundedAt ?? .distantPast)
+        backgroundedAt = nil
+
         guard secondsSinceBackgrounded > 5 else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping restart. App was only backgrounded \(Int(secondsSinceBackgrounded))s ago")
             return
@@ -539,7 +541,6 @@ class Ldk: NSObject {
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restarting LDK on move to foreground. App was backgrounded \(Int(secondsSinceBackgrounded))s ago")
         
-        backgroundedAt = nil
         restart { _ in } reject: { _, _, _ in }
     }
     
@@ -728,6 +729,11 @@ class Ldk: NSObject {
     @objc
     func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, timeout: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         // timeout param not used. Only for android.
+        
+        if backgroundedAt != nil {
+            // Give it a second maybe it's just restarting
+            sleep(1)
+        }
         
         guard backgroundedAt == nil else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "App was backgrounded, skipping addPeer()")
