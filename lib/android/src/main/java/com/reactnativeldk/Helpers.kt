@@ -150,7 +150,7 @@ val ChannelDetails.asJson: WritableMap
         result.putInt("unspendable_punishment_reserve", (_unspendable_punishment_reserve as Option_u64Z.Some).some.toInt())
         result.putInt("config_forwarding_fee_base_msat", (_config?._forwarding_fee_base_msat ?: 0))
         result.putInt("config_forwarding_fee_proportional_millionths", (_config?._forwarding_fee_proportional_millionths ?: 0))
-        result.putInt("confirmations", (_confirmations_required as Option_u32Z.Some).some)
+        result.putInt("confirmations", (_confirmations as Option_u32Z.Some).some)
 
         return result
     }
