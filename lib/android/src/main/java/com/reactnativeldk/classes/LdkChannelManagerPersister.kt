@@ -162,6 +162,14 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             }
             body.putString("reason", reasonString)
 
+            if (channelClosed.reason is ClosureReason.CounterpartyForceClosed) {
+                (channelClosed.reason as ClosureReason.CounterpartyForceClosed).peer_msg?.let {
+                    body.putString("peer_message", it.to_str())
+                }
+            }
+
+            println("Channel closed: ${channelClosed.channel_id._a.hexEncodedString()}")
+
             return LdkEventEmitter.send(EventTypes.channel_manager_channel_closed, body)
         }
 

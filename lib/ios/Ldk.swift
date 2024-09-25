@@ -532,6 +532,8 @@ class Ldk: NSObject {
     @objc
     func restartOnForeground() {
         let secondsSinceBackgrounded = Date().timeIntervalSince(backgroundedAt ?? .distantPast)
+        backgroundedAt = nil
+
         guard secondsSinceBackgrounded > 5 else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Skipping restart. App was only backgrounded \(Int(secondsSinceBackgrounded))s ago")
             return
@@ -539,7 +541,6 @@ class Ldk: NSObject {
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restarting LDK on move to foreground. App was backgrounded \(Int(secondsSinceBackgrounded))s ago")
         
-        backgroundedAt = nil
         restart { _ in } reject: { _, _, _ in }
     }
     
@@ -728,6 +729,11 @@ class Ldk: NSObject {
     @objc
     func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, timeout: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         // timeout param not used. Only for android.
+        
+        if backgroundedAt != nil {
+            // Give it a second maybe it's just restarting
+            sleep(1)
+        }
         
         guard backgroundedAt == nil else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "App was backgrounded, skipping addPeer()")
@@ -935,6 +941,25 @@ class Ldk: NSObject {
         
         if res.isOk() {
             return resolve(Data(res.getValue()?.getA() ?? []).hexEncodedString())
+        }
+        
+        if let error = res.getError() {
+            switch error.getValueType() {
+            case .APIMisuseError:
+                return handleReject(reject, .start_create_channel_fail, nil, error.getValueAsApiMisuseError()?.getErr())
+            case .ChannelUnavailable:
+                return handleReject(reject, .start_create_channel_fail, nil, error.getValueAsChannelUnavailable()?.getErr())
+            case .FeeRateTooHigh:
+                return handleReject(reject, .start_create_channel_fail, nil, error.getValueAsFeeRateTooHigh()?.getErr())
+            case .InvalidRoute:
+                return handleReject(reject, .start_create_channel_fail, nil, error.getValueAsInvalidRoute()?.getErr())
+            case .IncompatibleShutdownScript:
+                return handleReject(reject, .start_create_channel_fail, nil, "IncompatibleShutdownScript")
+            case .MonitorUpdateInProgress:
+                return handleReject(reject, .start_create_channel_fail, nil, "MonitorUpdateInProgress")
+            @unknown default:
+                handleReject(reject, .start_create_channel_fail, "Unhandled error")
+            }
         }
         
         handleReject(reject, .start_create_channel_fail)
