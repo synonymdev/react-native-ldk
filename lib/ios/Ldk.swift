@@ -730,6 +730,11 @@ class Ldk: NSObject {
     func addPeer(_ address: NSString, port: NSInteger, pubKey: NSString, timeout: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         // timeout param not used. Only for android.
         
+        guard String(pubKey).hexaBytes.count == 33 && NodeId.read(ser: String(pubKey).hexaBytes).isOk() else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to add new peer. Invalid public key: \(pubKey)")
+            return handleReject(reject, .add_peer_fail, "Invalid peer public key")
+        }
+        
         if backgroundedAt != nil {
             // Give it a second maybe it's just restarting
             sleep(1)
