@@ -658,6 +658,11 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun addPeer(address: String, port: Double, pubKey: String, timeout: Double, promise: Promise) {
         peerHandler ?: return handleReject(promise, LdkErrors.init_peer_handler)
 
+        if (pubKey.hexa().count() != 33 || NodeId.read(pubKey.hexa()).is_ok.not()) {
+            LdkEventEmitter.send(EventTypes.native_log, "Failed to add new peer. Invalid pubKey: $pubKey")
+            return handleReject(promise, LdkErrors.add_peer_fail, Error("Invalid pubKey"))
+        }
+
         //If peer is already connected don't add again
         val currentList = peerManager!!.list_peers().map { it._counterparty_node_id.hexEncodedString() }
         if (currentList.contains(pubKey)) {
