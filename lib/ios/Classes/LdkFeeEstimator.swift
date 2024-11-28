@@ -15,21 +15,23 @@ class LdkFeeEstimator: FeeEstimator {
     private var minAllowedAnchorChannelRemoteFee: UInt32 = 0
     private var onChainSweep: UInt32 = 0
     private var minAllowedNonAnchorChannelRemoteFee: UInt32 = 0
-    
-    func update(anchorChannelFee: UInt32, nonAnchorChannelFee: UInt32, channelCloseMinimum: UInt32, minAllowedAnchorChannelRemoteFee: UInt32, onChainSweep: UInt32, minAllowedNonAnchorChannelRemoteFee: UInt32) {
+    private var outputSpendingFee: UInt32 = 0
+
+    func update(anchorChannelFee: UInt32, nonAnchorChannelFee: UInt32, channelCloseMinimum: UInt32, minAllowedAnchorChannelRemoteFee: UInt32, onChainSweep: UInt32, minAllowedNonAnchorChannelRemoteFee: UInt32, outputSpendingFee: UInt32) {
         self.anchorChannelFee = anchorChannelFee
         self.nonAnchorChannelFee = nonAnchorChannelFee
         self.channelCloseMinimum = channelCloseMinimum
         self.minAllowedAnchorChannelRemoteFee = minAllowedAnchorChannelRemoteFee
         self.onChainSweep = onChainSweep
         self.minAllowedNonAnchorChannelRemoteFee = minAllowedNonAnchorChannelRemoteFee
+        self.outputSpendingFee = outputSpendingFee
 
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Fee estimator updated")
     }
-    
+
     override func getEstSatPer1000Weight(confirmationTarget: Bindings.ConfirmationTarget) -> UInt32 {
         let target = confirmationTarget
-        
+
         switch target {
         case .AnchorChannelFee:
             return anchorChannelFee
@@ -43,9 +45,8 @@ class LdkFeeEstimator: FeeEstimator {
             return onChainSweep
         case .MinAllowedNonAnchorChannelRemoteFee:
             return minAllowedNonAnchorChannelRemoteFee
-        @unknown default:
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "ERROR: New ConfirmationTarget added. Update LdkFeeEstimator.")
-            return 0
+        case .OutputSpendingFee:
+            return outputSpendingFee
         }
     }
 }

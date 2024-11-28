@@ -592,8 +592,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     //MARK: Update methods
 
     @ReactMethod
-    fun updateFees(anchorChannelFee: Double, nonAnchorChannelFee: Double, channelCloseMinimum: Double, minAllowedAnchorChannelRemoteFee: Double, onChainSweep: Double, minAllowedNonAnchorChannelRemoteFee: Double, promise: Promise) {
-        feeEstimator.update(anchorChannelFee.toInt(), nonAnchorChannelFee.toInt(), channelCloseMinimum.toInt(), minAllowedAnchorChannelRemoteFee.toInt(), onChainSweep.toInt(), minAllowedNonAnchorChannelRemoteFee.toInt())
+    fun updateFees(anchorChannelFee: Double, nonAnchorChannelFee: Double, channelCloseMinimum: Double, minAllowedAnchorChannelRemoteFee: Double, onChainSweep: Double, minAllowedNonAnchorChannelRemoteFee: Double, outputSpendingFee: Double, promise: Promise) {
+        feeEstimator.update(anchorChannelFee.toInt(), nonAnchorChannelFee.toInt(), channelCloseMinimum.toInt(), minAllowedAnchorChannelRemoteFee.toInt(), onChainSweep.toInt(), minAllowedNonAnchorChannelRemoteFee.toInt(), outputSpendingFee.toInt())
         handleResolve(promise, LdkCallbackResponses.fees_updated)
     }
 
