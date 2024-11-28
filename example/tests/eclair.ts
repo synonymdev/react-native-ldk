@@ -112,6 +112,7 @@ describe('Eclair', function () {
 					anchorChannelFee: 10,
 					nonAnchorChannelFee: 20,
 					channelCloseMinimum: 5,
+					outputSpendingFee: 10,
 				});
 			},
 		});

@@ -82,6 +82,7 @@ export default class TestProfile {
 					anchorChannelFee: 2,
 					nonAnchorChannelFee: 3,
 					channelCloseMinimum: 1,
+					outputSpendingFee: 5,
 				}),
 			getTransactionData: this.getTransactionData,
 			getTransactionPosition: this.getTransactionPosition,

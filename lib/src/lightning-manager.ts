@@ -2466,7 +2466,6 @@ class LightningManager {
 				EEventTypes.channel_manager_channel_closed,
 				(eventRes: TChannelManagerChannelClosed) => {
 					if (eventRes.channel_id === res.value) {
-
 						clearTimeout(timeout);
 						if (eventRes.peer_message) {
 							resolve(err(eventRes.peer_message));
