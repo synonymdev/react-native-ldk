@@ -346,6 +346,7 @@ class LDK {
 			minAllowedAnchorChannelRemoteFee,
 			onChainSweep,
 			minAllowedNonAnchorChannelRemoteFee,
+			outputSpendingFee,
 		} = fees;
 		try {
 			const satsPerKw = 250;
@@ -356,6 +357,7 @@ class LDK {
 				minAllowedAnchorChannelRemoteFee * satsPerKw,
 				onChainSweep * satsPerKw,
 				minAllowedNonAnchorChannelRemoteFee * satsPerKw,
+				outputSpendingFee * satsPerKw,
 			);
 			this.writeDebugToLog('updateFees', fees);
 			return ok(res);
