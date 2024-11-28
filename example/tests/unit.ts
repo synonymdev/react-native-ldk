@@ -71,6 +71,7 @@ describe('Unit', function () {
 					minAllowedAnchorChannelRemoteFee: 5,
 					minAllowedNonAnchorChannelRemoteFee: 5,
 					onChainSweep: 5,
+					outputSpendingFee: 5,
 				});
 			},
 			getTransactionData: async () => ({
@@ -214,6 +215,7 @@ describe('Unit', function () {
 					minAllowedAnchorChannelRemoteFee: 5,
 					minAllowedNonAnchorChannelRemoteFee: 5,
 					onChainSweep: 5,
+					outputSpendingFee: 5,
 				});
 			},
 			getTransactionData: async () => ({

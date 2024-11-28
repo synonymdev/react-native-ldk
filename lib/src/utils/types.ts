@@ -252,6 +252,7 @@ export type TFeeUpdateReq = {
 	minAllowedAnchorChannelRemoteFee: number;
 	onChainSweep: number;
 	minAllowedNonAnchorChannelRemoteFee: number;
+	outputSpendingFee: number;
 };
 
 export type TPeer = {

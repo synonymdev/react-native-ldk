@@ -134,6 +134,7 @@ export const setupLdk = async (
 					maxAllowedNonAnchorChannelRemoteFee: 10,
 					onChainSweep: 10,
 					minAllowedNonAnchorChannelRemoteFee: 10,
+					outputSpendingFee: 10,
 				}),
 			getTransactionData,
 			getTransactionPosition,

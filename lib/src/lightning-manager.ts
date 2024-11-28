@@ -140,6 +140,7 @@ class LightningManager {
 		minAllowedAnchorChannelRemoteFee: 5,
 		minAllowedNonAnchorChannelRemoteFee: 5,
 		onChainSweep: 5,
+		outputSpendingFee: 5,
 	});
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
 	lspLogEvent: TLspLogEvent | undefined;
@@ -2465,7 +2466,6 @@ class LightningManager {
 				EEventTypes.channel_manager_channel_closed,
 				(eventRes: TChannelManagerChannelClosed) => {
 					if (eventRes.channel_id === res.value) {
-
 						clearTimeout(timeout);
 						if (eventRes.peer_message) {
 							resolve(err(eventRes.peer_message));

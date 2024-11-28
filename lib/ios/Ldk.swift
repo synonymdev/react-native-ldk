@@ -618,14 +618,15 @@ class Ldk: NSObject {
     // MARK: Update methods
     
     @objc
-    func updateFees(_ anchorChannelFee: NSInteger, nonAnchorChannelFee: NSInteger, channelCloseMinimum: NSInteger, minAllowedAnchorChannelRemoteFee: NSInteger, onChainSweep: NSInteger, minAllowedNonAnchorChannelRemoteFee: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func updateFees(_ anchorChannelFee: NSInteger, nonAnchorChannelFee: NSInteger, channelCloseMinimum: NSInteger, minAllowedAnchorChannelRemoteFee: NSInteger, onChainSweep: NSInteger, minAllowedNonAnchorChannelRemoteFee: NSInteger, outputSpendingFee: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         feeEstimator.update(
             anchorChannelFee: UInt32(anchorChannelFee),
             nonAnchorChannelFee: UInt32(nonAnchorChannelFee),
             channelCloseMinimum: UInt32(channelCloseMinimum),
             minAllowedAnchorChannelRemoteFee: UInt32(minAllowedAnchorChannelRemoteFee),
             onChainSweep: UInt32(onChainSweep),
-            minAllowedNonAnchorChannelRemoteFee: UInt32(minAllowedNonAnchorChannelRemoteFee)
+            minAllowedNonAnchorChannelRemoteFee: UInt32(minAllowedNonAnchorChannelRemoteFee),
+            outputSpendingFee: UInt32(outputSpendingFee)
         )
         return handleResolve(resolve, .fees_updated)
     }

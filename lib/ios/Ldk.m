@@ -51,6 +51,7 @@ RCT_EXTERN_METHOD(updateFees:(NSInteger *)anchorChannelFee
                   minAllowedAnchorChannelRemoteFee:(NSInteger *)minAllowedAnchorChannelRemoteFee
                   onChainSweep:(NSInteger *)onChainSweep
                   minAllowedNonAnchorChannelRemoteFee:(NSInteger *)minAllowedNonAnchorChannelRemoteFee
+                  outputSpendingFee:(NSInteger *)outputSpendingFee
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(setLogLevel:(NSString *)level
