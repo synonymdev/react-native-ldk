@@ -1324,43 +1324,55 @@ class LightningManager {
 		amountSats,
 		timeout = 20000,
 	}: TPaymentReq): Promise<Result<TChannelManagerPaymentSent>> => {
+		// Enable trace logging
+		await ldk.setLogLevel(ELdkLogLevels.trace, true);
+		await ldk.writeToLogFile('debug', `Trace logging enabled`);
+
 		return new Promise(async (resolve) => {
-			await ldk.writeToLogFile(
-				'debug',
-				`ldk.pay() called with hard timeout of ${timeout}ms`,
-			);
+			try {
+				await ldk.writeToLogFile(
+					'debug',
+					`ldk.pay() called with hard timeout of ${timeout}ms`,
+				);
 
-			if (timeout < 1000) {
-				return resolve(err('Timeout must be at least 1000ms.'));
+				if (timeout < 1000) {
+					return resolve(err('Timeout must be at least 1000ms.'));
+				}
+
+				this.subscribeToPaymentResponses(resolve);
+
+				let payResponse: Result<string> | undefined = await ldk.pay({
+					paymentRequest,
+					amountSats,
+					timeout,
+				});
+
+				await ldk.writeToLogFile(
+					'debug',
+					payResponse.isOk()
+						? `ldk.pay() success (pending callbacks) Payment ID: ${payResponse.value}`
+						: `ldk.pay() error ${payResponse.error.message}.`,
+				);
+
+				if (!payResponse) {
+					this.unsubscribeFromPaymentSubscriptions();
+					return resolve(err('Unable to pay the provided lightning invoice.'));
+				}
+
+				if (payResponse.isErr()) {
+					this.unsubscribeFromPaymentSubscriptions();
+					return resolve(err(payResponse.error.message));
+				}
+
+				//Save payment ids to file on payResponse success.
+				await this.appendLdkPaymentId(payResponse.value);
+			} finally {
+				// Disable trace logging after 10 seconds
+				setTimeout(async () => {
+					await ldk.setLogLevel(ELdkLogLevels.trace, false);
+					await ldk.writeToLogFile('debug', `Trace logging disabled`);
+				}, 10000);
 			}
-
-			this.subscribeToPaymentResponses(resolve);
-
-			let payResponse: Result<string> | undefined = await ldk.pay({
-				paymentRequest,
-				amountSats,
-				timeout,
-			});
-
-			await ldk.writeToLogFile(
-				'debug',
-				payResponse.isOk()
-					? `ldk.pay() success (pending callbacks) Payment ID: ${payResponse.value}`
-					: `ldk.pay() error ${payResponse.error.message}.`,
-			);
-
-			if (!payResponse) {
-				this.unsubscribeFromPaymentSubscriptions();
-				return resolve(err('Unable to pay the provided lightning invoice.'));
-			}
-
-			if (payResponse.isErr()) {
-				this.unsubscribeFromPaymentSubscriptions();
-				return resolve(err(payResponse.error.message));
-			}
-
-			//Save payment ids to file on payResponse success.
-			await this.appendLdkPaymentId(payResponse.value);
 		});
 	};
 
