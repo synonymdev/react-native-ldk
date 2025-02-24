@@ -33,6 +33,7 @@ export default {
 	appendLdkPaymentId: noop,
 	getLdkUnconfirmedTxs: noop,
 	getLdkSpendableOutputs: noop,
+	readAddressesFromFile: noop,
 	saveUnconfirmedTxs: noop,
 	saveBroadcastedTxs: noop,
 	saveLdkPeerData: noop,
