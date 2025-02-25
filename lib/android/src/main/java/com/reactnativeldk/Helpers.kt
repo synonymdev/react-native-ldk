@@ -530,8 +530,8 @@ fun currencyString(currency: Currency): String {
     }
 }
 
-fun mergeObj(obj1: JSONObject, obj2: HashMap<String, Any>): HashMap<String, Any> {
-    val newObj = HashMap<String, Any>()
+fun mergeObj(obj1: JSONObject, obj2: HashMap<String, Any?>): HashMap<String, Any?> {
+    val newObj = HashMap<String, Any?>()
 
     obj1.keys().forEach { key ->
         newObj[key] = obj1[key]

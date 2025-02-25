@@ -254,7 +254,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
             return
         }
 
-        var payments: Array<HashMap<String, Any>> = arrayOf()
+        var payments: Array<HashMap<String, Any?>> = arrayOf()
         var paymentReplaced = false
 
         try {
@@ -275,7 +275,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
                         continue
                     }
 
-                    val map = HashMap<String, Any>()
+                    val map = HashMap<String, Any?>()
                     for (key in existingPayment.keys()) {
                         map[key] = existingPayments.getJSONObject(i).get(key)
                     }
@@ -296,13 +296,13 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
         File(LdkModule.accountStoragePath + "/" + LdkFileNames.PaymentsClaimed.fileName).writeText(JSONArray(payments).toString())
     }
 
-    fun persistPaymentSent(payment: HashMap<String, Any>) {
+    fun persistPaymentSent(payment: HashMap<String, Any?>) {
         if (LdkModule.accountStoragePath == "") {
             LdkEventEmitter.send(EventTypes.native_log, "Error. Failed to persist sent payment to disk (No set storage)")
             return
         }
 
-        var payments: Array<HashMap<String, Any>> = arrayOf()
+        var payments: Array<HashMap<String, Any?>> = arrayOf()
         var paymentReplaced = false
 
         try {
@@ -319,7 +319,7 @@ class LdkChannelManagerPersister: ChannelManagerConstructor.EventHandler {
                         continue
                     }
 
-                    val map = HashMap<String, Any>()
+                    val map = HashMap<String, Any?>()
                     for (key in existingPayment.keys()) {
                         map[key] = existingPayment.get(key)
                     }
