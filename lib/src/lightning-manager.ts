@@ -141,6 +141,8 @@ class LightningManager {
 		minAllowedNonAnchorChannelRemoteFee: 5,
 		onChainSweep: 5,
 		outputSpendingFee: 5,
+		maximumFeeEstimate: 5,
+		urgentOnChainSweep: 5,
 	});
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
 	lspLogEvent: TLspLogEvent | undefined;

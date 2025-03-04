@@ -16,8 +16,20 @@ class LdkFeeEstimator: FeeEstimator {
     private var onChainSweep: UInt32 = 0
     private var minAllowedNonAnchorChannelRemoteFee: UInt32 = 0
     private var outputSpendingFee: UInt32 = 0
+    private var maximumFeeEstimate: UInt32 = 0
+    private var urgentOnChainSweep: UInt32 = 0
 
-    func update(anchorChannelFee: UInt32, nonAnchorChannelFee: UInt32, channelCloseMinimum: UInt32, minAllowedAnchorChannelRemoteFee: UInt32, onChainSweep: UInt32, minAllowedNonAnchorChannelRemoteFee: UInt32, outputSpendingFee: UInt32) {
+    func update(
+        anchorChannelFee: UInt32,
+        nonAnchorChannelFee: UInt32,
+        channelCloseMinimum: UInt32,
+        minAllowedAnchorChannelRemoteFee: UInt32,
+        onChainSweep: UInt32,
+        minAllowedNonAnchorChannelRemoteFee: UInt32,
+        outputSpendingFee: UInt32,
+        maximumFeeEstimate: UInt32,
+        urgentOnChainSweep: UInt32
+    ) {
         self.anchorChannelFee = anchorChannelFee
         self.nonAnchorChannelFee = nonAnchorChannelFee
         self.channelCloseMinimum = channelCloseMinimum
@@ -25,6 +37,8 @@ class LdkFeeEstimator: FeeEstimator {
         self.onChainSweep = onChainSweep
         self.minAllowedNonAnchorChannelRemoteFee = minAllowedNonAnchorChannelRemoteFee
         self.outputSpendingFee = outputSpendingFee
+        self.maximumFeeEstimate = maximumFeeEstimate
+        self.urgentOnChainSweep = urgentOnChainSweep
 
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "Fee estimator updated")
     }
@@ -41,12 +55,14 @@ class LdkFeeEstimator: FeeEstimator {
             return channelCloseMinimum
         case .MinAllowedAnchorChannelRemoteFee:
             return minAllowedAnchorChannelRemoteFee
-        case .OnChainSweep:
-            return onChainSweep
         case .MinAllowedNonAnchorChannelRemoteFee:
             return minAllowedNonAnchorChannelRemoteFee
         case .OutputSpendingFee:
             return outputSpendingFee
+        case .MaximumFeeEstimate:
+            return maximumFeeEstimate
+        case .UrgentOnChainSweep:
+            return urgentOnChainSweep
         }
     }
 }

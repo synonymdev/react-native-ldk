@@ -10,14 +10,16 @@ import LightningDevKit
 
 class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
     // Custom function to manage any unlikely missing info from the event object
-    func handleEventError(_ event: Event) {
+    func handleEventError(_ event: Event) -> Result_NoneReplayEventZ {
         LdkEventEmitter.shared.send(
             withEvent: .native_log,
             body: "Error missing details for handle_event of type \(event.getValueType())"
         )
+
+        return .initWithErr(e: .init())
     }
 
-    func handleEvent(event: Event) {
+    func handleEvent(event: Event) -> Result_NoneReplayEventZ {
         // Follows ldk-sample event handling structure
         // https://github.com/lightningdevkit/ldk-sample/blob/c0a722430b8fbcb30310d64487a32aae839da3e8/src/main.rs#L600
         switch event.getValueType() {
@@ -35,7 +37,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "value_satoshis": fundingGeneration.getChannelValueSatoshis()
                 ]
             )
-            return
+            return .initWithOk()
         case .PaymentClaimable:
             guard let paymentClaimable = event.getValueAsPaymentClaimable() else {
                 return handleEventError(event)
@@ -62,7 +64,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
 
             // Save to disk for TX history
             persistPaymentClaimed(body)
-            return
+            return .initWithOk()
         case .PaymentSent:
             guard let paymentSent = event.getValueAsPaymentSent() else {
                 return handleEventError(event)
@@ -84,7 +86,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
 
             // Save to disk for tx history
             persistPaymentSent(body)
-            return
+            return .initWithOk()
         case .OpenChannelRequest:
             // Use if we ever manually accept inbound channels. Setting in initConfig.
             guard let openChannelRequest = event.getValueAsOpenChannelRequest() else {
@@ -102,7 +104,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "requires_anchors_zero_fee_htlc_tx": openChannelRequest.getChannelType().requiresAnchorsZeroFeeHtlcTx()
                 ] as [String: Any]
             )
-            return
+            return .initWithOk()
         case .PaymentPathSuccessful:
             guard let paymentPathSuccessful = event.getValueAsPaymentPathSuccessful() else {
                 return handleEventError(event)
@@ -119,7 +121,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "path_hops": paymentPathSuccessful.getPath().getHops().map { $0.asJson }
                 ] as [String: Any]
             )
-            return
+            return .initWithOk()
         case .PaymentPathFailed:
             guard let paymentPathFailed = event.getValueAsPaymentPathFailed() else {
                 return handleEventError(event)
@@ -147,14 +149,14 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "state": paymentPathFailed.getPaymentFailedPermanently() ? "failed" : "pending"
                 ]
             )
-            return
+            return .initWithOk()
         case .PaymentFailed:
             guard let paymentFailed = event.getValueAsPaymentFailed() else {
                 return handleEventError(event)
             }
 
             let paymentId = Data(paymentFailed.getPaymentId()).hexEncodedString()
-            let paymentHash = Data(paymentFailed.getPaymentHash()).hexEncodedString()
+            let paymentHash = Data(paymentFailed.getPaymentHash() ?? []).hexEncodedString()
 
             LdkEventEmitter.shared.send(
                 withEvent: .channel_manager_payment_failed,
@@ -174,10 +176,10 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "state": "failed"
                 ]
             )
-            return
+            return .initWithOk()
         case .PaymentForwarded:
             // Unused on mobile
-            return
+            return .initWithOk()
         case .PendingHTLCsForwardable:
             guard let pendingHtlcsForwardable = event.getValueAsPendingHtlcsForwardable() else {
                 return handleEventError(event)
@@ -189,7 +191,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "time_forwardable": pendingHtlcsForwardable.getTimeForwardable()
                 ]
             )
-            return
+            return .initWithOk()
         case .SpendableOutputs:
             guard let spendableOutputs = event.getValueAsSpendableOutputs() else {
                 return handleEventError(event)
@@ -201,7 +203,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                     "outputsSerialized": spendableOutputs.getOutputs().map { Data($0.write()).hexEncodedString() }
                 ]
             )
-            return
+            return .initWithOk()
         case .ChannelClosed:
             guard let channelClosed = event.getValueAsChannelClosed() else {
                 return handleEventError(event)
@@ -252,7 +254,7 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 ]
             )
 
-            return
+            return .initWithOk()
         case .DiscardFunding:
             guard let discardFunding = event.getValueAsDiscardFunding() else {
                 return handleEventError(event)
@@ -263,10 +265,10 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 withEvent: .channel_manager_discard_funding,
                 body: [
                     "channel_id": Data(discardFunding.getChannelId().getA() ?? []).hexEncodedString(),
-                    "tx": Data(discardFunding.getTransaction()).hexEncodedString()
+                    "tx": Data(discardFunding.getChannelId().getA() ?? []).hexEncodedString()
                 ]
             )
-            return
+            return .initWithOk()
         case .PaymentClaimed:
             guard let paymentClaimed = event.getValueAsPaymentClaimed() else {
                 return handleEventError(event)
@@ -293,13 +295,13 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
 
             // Save to disk for TX history
             persistPaymentClaimed(body)
-            return
+            return .initWithOk()
         case .ChannelReady:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ChannelReady")
-            return
+            return .initWithOk()
         case .ChannelPending:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ChannelPending")
-            return
+            return .initWithOk()
         case .BumpTransaction:
             guard let bumpTransaction = event.getValueAsBumpTransaction() else {
                 return handleEventError(event)
@@ -315,29 +317,38 @@ class LdkChannelManagerPersister: Persister, ExtendedChannelManagerPersister {
                 ]
 
                 LdkEventEmitter.shared.send(withEvent: .lsp_log, body: body)
-                return
+                return .initWithOk()
             }
 
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "BumpTransaction event not handled")
-            return
+            return .initWithOk()
         case .ProbeFailed:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ProbeFailed")
-            return
+            return .initWithOk()
         case .ProbeSuccessful:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ProbeSuccessful")
-            return
-        case .InvoiceRequestFailed:
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: InvoiceRequestFailed")
-            return
+            return .initWithOk()
         case .HTLCIntercepted:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: HTLCIntercepted")
-            return
+            return .initWithOk()
         case .HTLCHandlingFailed:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: HTLCHandlingFailed")
-            return
+            return .initWithOk()
         case .ConnectionNeeded:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: ConnectionNeeded")
-            return
+            return .initWithOk()
+        case .FundingTxBroadcastSafe:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: FundingTxBroadcastSafe")
+            return .initWithOk()
+        case .InvoiceReceived:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: InvoiceReceived")
+            return .initWithOk()
+        case .OnionMessageIntercepted:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: OnionMessageIntercepted")
+            return .initWithOk()
+        case .OnionMessagePeerConnected:
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Unused Persister event: OnionMessagePeerConnected")
+            return .initWithOk()
         }
     }
 

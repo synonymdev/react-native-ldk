@@ -16,6 +16,6 @@ framework module LightningDevKit {
 }
 
 module LightningDevKit.Swift {
-    header "LightningDevKit-Swift.h"
-    requires objc
+  header "LightningDevKit-Swift.h"
+  requires objc
 }
