@@ -13,7 +13,6 @@ class LdkFeeEstimator: FeeEstimator {
     private var nonAnchorChannelFee: UInt32 = 0
     private var channelCloseMinimum: UInt32 = 0
     private var minAllowedAnchorChannelRemoteFee: UInt32 = 0
-    private var onChainSweep: UInt32 = 0
     private var minAllowedNonAnchorChannelRemoteFee: UInt32 = 0
     private var outputSpendingFee: UInt32 = 0
     private var maximumFeeEstimate: UInt32 = 0
@@ -24,7 +23,6 @@ class LdkFeeEstimator: FeeEstimator {
         nonAnchorChannelFee: UInt32,
         channelCloseMinimum: UInt32,
         minAllowedAnchorChannelRemoteFee: UInt32,
-        onChainSweep: UInt32,
         minAllowedNonAnchorChannelRemoteFee: UInt32,
         outputSpendingFee: UInt32,
         maximumFeeEstimate: UInt32,
@@ -34,7 +32,6 @@ class LdkFeeEstimator: FeeEstimator {
         self.nonAnchorChannelFee = nonAnchorChannelFee
         self.channelCloseMinimum = channelCloseMinimum
         self.minAllowedAnchorChannelRemoteFee = minAllowedAnchorChannelRemoteFee
-        self.onChainSweep = onChainSweep
         self.minAllowedNonAnchorChannelRemoteFee = minAllowedNonAnchorChannelRemoteFee
         self.outputSpendingFee = outputSpendingFee
         self.maximumFeeEstimate = maximumFeeEstimate
