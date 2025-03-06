@@ -21,7 +21,7 @@ import org.ldk.structs.Result_ChannelIdAPIErrorZ.Result_ChannelIdAPIErrorZ_OK
 import org.ldk.structs.Result_NoneAPIErrorZ.Result_NoneAPIErrorZ_OK
 import org.ldk.structs.Result_NoneRetryableSendFailureZ.Result_NoneRetryableSendFailureZ_Err
 import org.ldk.structs.Result_PublicKeyNoneZ.Result_PublicKeyNoneZ_OK
-import org.ldk.structs.Result_StrSecp256k1ErrorZ.Result_StrSecp256k1ErrorZ_OK
+//import org.ldk.structs.Result_StrSecp256k1ErrorZ.Result_StrSecp256k1ErrorZ_OK
 import org.ldk.util.UInt128
 import java.io.File
 import java.net.InetSocketAddress
@@ -592,8 +592,27 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     //MARK: Update methods
 
     @ReactMethod
-    fun updateFees(anchorChannelFee: Double, nonAnchorChannelFee: Double, channelCloseMinimum: Double, minAllowedAnchorChannelRemoteFee: Double, onChainSweep: Double, minAllowedNonAnchorChannelRemoteFee: Double, outputSpendingFee: Double, promise: Promise) {
-        feeEstimator.update(anchorChannelFee.toInt(), nonAnchorChannelFee.toInt(), channelCloseMinimum.toInt(), minAllowedAnchorChannelRemoteFee.toInt(), onChainSweep.toInt(), minAllowedNonAnchorChannelRemoteFee.toInt(), outputSpendingFee.toInt())
+    fun updateFees(
+        anchorChannelFee: Double,
+        nonAnchorChannelFee: Double,
+        channelCloseMinimum: Double,
+        minAllowedAnchorChannelRemoteFee: Double,
+        minAllowedNonAnchorChannelRemoteFee: Double,
+        outputSpendingFee: Double,
+        maximumFeeEstimate: Double,
+        urgentOnChainSweep: Double,
+        promise: Promise
+    ) {
+        feeEstimator.update(
+            anchorChannelFee.toInt(),
+            nonAnchorChannelFee.toInt(),
+            channelCloseMinimum.toInt(),
+            minAllowedAnchorChannelRemoteFee.toInt(),
+            minAllowedNonAnchorChannelRemoteFee.toInt(),
+            outputSpendingFee.toInt(),
+            maximumFeeEstimate.toInt(),
+            urgentOnChainSweep.toInt(),
+        )
         handleResolve(promise, LdkCallbackResponses.fees_updated)
     }
 
@@ -761,7 +780,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
         val channelIdObj = ChannelId.of(channelId.hexa())
-        val res = if (force) channelManager!!.force_close_broadcasting_latest_txn(channelIdObj, counterpartyNodeId.hexa()) else channelManager!!.close_channel(channelIdObj, counterpartyNodeId.hexa())
+        val res = if (force) channelManager!!.force_close_broadcasting_latest_txn(channelIdObj, counterpartyNodeId.hexa(), "Force close") else channelManager!!.close_channel(channelIdObj, counterpartyNodeId.hexa())
         if (!res.is_ok) {
             return handleReject(promise, LdkErrors.channel_close_fail)
         }
@@ -846,9 +865,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
 
         if (broadcastLatestTx) {
-            channelManager!!.force_close_all_channels_broadcasting_latest_txn()
+            channelManager!!.force_close_all_channels_broadcasting_latest_txn("Force close broadcasting latest tx")
         } else {
-            channelManager!!.force_close_all_channels_without_broadcasting_txn()
+            channelManager!!.force_close_all_channels_without_broadcasting_txn("Force close without broadcasting latest tx")
         }
 
         handleResolve(promise, LdkCallbackResponses.close_channel_success)
@@ -1353,7 +1372,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                         descriptors,
                         emptyArray(),
                         changeDestinationScript.hexa(),
-                        feeEstimator.onChainSweep,
+                        feeEstimator.urgentOnChainSweep,
                         Option_u32Z.none()
                     )
                 } else {
@@ -1361,7 +1380,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                         descriptors,
                         emptyArray(),
                         changeDestinationScript.hexa(),
-                        feeEstimator.onChainSweep,
+                        feeEstimator.urgentOnChainSweep,
                         Option_u32Z.none()
                     )
                 }
@@ -1381,13 +1400,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     fun nodeSign(message: String, promise: Promise) {
         keysManager ?: return handleReject(promise, LdkErrors.init_keys_manager)
 
-        val res = UtilMethods.sign(message.toByteArray(Charsets.UTF_8), keysManager!!.inner._node_secret_key)
-
-        if (!res.is_ok) {
-            return handleReject(promise, LdkErrors.failed_signing_request)
-        }
-
-        promise.resolve((res as Result_StrSecp256k1ErrorZ_OK).res)
+        promise.resolve(UtilMethods.sign(message.toByteArray(Charsets.UTF_8), keysManager!!.inner._node_secret_key))
     }
 
     @ReactMethod

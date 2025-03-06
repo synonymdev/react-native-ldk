@@ -8,7 +8,7 @@ import org.ldk.structs.Persist.PersistInterface
 import java.io.File
 
 class LdkPersister {
-    fun handleChannel(channelFundingOutpoint: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
+    fun handleChannel(channelFundingOutpoint: OutPoint, data: ChannelMonitor): ChannelMonitorUpdateStatus {
         val channelId = data.channel_id()._a.hexEncodedString()
         val body = Arguments.createMap()
         body.putString("channel_id", channelId)
@@ -46,7 +46,7 @@ class LdkPersister {
                 }
 
                 //Update chain monitor with successful persist
-                val res = LdkModule.chainMonitor?.channel_monitor_updated(channelFundingOutpoint, update_id)
+                val res = LdkModule.chainMonitor?.channel_monitor_updated(channelFundingOutpoint, data._latest_update_id)
                 if (res == null || !res.is_ok) {
                     LdkEventEmitter.send(EventTypes.native_log, "Failed to update chain monitor with persisted channel (${channelId})")
                 } else {
@@ -64,12 +64,12 @@ class LdkPersister {
     }
 
     var persister = Persist.new_impl(object : PersistInterface {
-        override fun persist_new_channel(channelFundingOutpoint: OutPoint, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
-            return handleChannel(channelFundingOutpoint, data, update_id)
+        override fun persist_new_channel(channelFundingOutpoint: OutPoint, data: ChannelMonitor): ChannelMonitorUpdateStatus {
+            return handleChannel(channelFundingOutpoint, data)
         }
 
-        override fun update_persisted_channel(channelFundingOutpoint: OutPoint, update: ChannelMonitorUpdate?, data: ChannelMonitor, update_id: MonitorUpdateId): ChannelMonitorUpdateStatus {
-            return handleChannel(channelFundingOutpoint, data, update_id)
+        override fun update_persisted_channel(channelFundingOutpoint: OutPoint, update: ChannelMonitorUpdate?, data: ChannelMonitor): ChannelMonitorUpdateStatus {
+            return handleChannel(channelFundingOutpoint, data)
         }
 
         override fun archive_persisted_channel(p0: OutPoint?) {

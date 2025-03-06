@@ -9,7 +9,6 @@ import com.reactnativeldk.hexEncodedString
 import com.reactnativeldk.hexa
 import com.reactnativeldk.putDateOrNull
 import org.json.JSONObject
-import org.ldk.structs.Result_StrSecp256k1ErrorZ.Result_StrSecp256k1ErrorZ_OK
 import org.ldk.structs.UtilMethods
 import java.net.HttpURLConnection
 import java.net.URL
@@ -458,12 +457,7 @@ class BackupClient {
                 throw BackupError.requiresSetup
             }
 
-            val res = UtilMethods.sign("$signedMessagePrefix$message".toByteArray(Charsets.UTF_8), secretKey)
-            if (!res.is_ok) {
-                throw BackupError.signingError
-            }
-
-            return (res as Result_StrSecp256k1ErrorZ_OK).res
+            return UtilMethods.sign("$signedMessagePrefix$message".toByteArray(Charsets.UTF_8), secretKey)
         }
 
         private fun verifySignature(message: String, signature: String, pubKey: String): Boolean {

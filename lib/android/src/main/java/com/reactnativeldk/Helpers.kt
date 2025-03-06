@@ -116,7 +116,7 @@ val ChannelDetails.asJson: WritableMap
         val result = Arguments.createMap()
 
         result.putHexString("channel_id", _channel_id._a)
-        result.putBoolean("is_public", _is_public)
+        result.putBoolean("is_public", _is_announced)
         result.putBoolean("is_usable", _is_usable)
         result.putBoolean("is_channel_ready", _is_channel_ready)
         result.putBoolean("is_outbound", _is_outbound)
@@ -188,7 +188,7 @@ val NodeInfo.asJson: WritableMap
         val shortChannelIds = Arguments.createArray()
         _channels.iterator().forEach { shortChannelIds.pushString(it.toString()) }
         result.putArray("shortChannelIds", shortChannelIds)
-        result.putDouble("announcement_info_last_update", (_announcement_info?._last_update ?: 0).toDouble() * 1000)
+        result.putDouble("announcement_info_last_update", ((_announcement_info as Option_NodeAnnouncementInfoZ.Some).some.last_update()).toDouble() * 1000)
         return result
     }
 
@@ -335,7 +335,7 @@ fun ChannelHandshakeConfig.mergeWithMap(map: ReadableMap?): ChannelHandshakeConf
         _negotiate_scid_privacy = map.getBoolean("negotiate_scid_privacy")
     } catch (_: Exception) {}
     try {
-        _announced_channel = map.getBoolean("announced_channel")
+        _announce_for_forwarding = map.getBoolean("announced_channel")
     } catch (_: Exception) {}
     try {
         _commit_upfront_shutdown_pubkey = map.getBoolean("commit_upfront_shutdown_pubkey")

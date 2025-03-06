@@ -2,19 +2,19 @@ package com.reactnativeldk.classes
 
 import com.reactnativeldk.EventTypes
 import com.reactnativeldk.LdkEventEmitter
+import org.ldk.structs.EcdsaChannelSigner
 import org.ldk.structs.KeysManager
 import org.ldk.structs.Option_u32Z
 import org.ldk.structs.Result_CVec_u8ZNoneZ
+import org.ldk.structs.Result_EcdsaChannelSignerDecodeErrorZ
 import org.ldk.structs.Result_ShutdownScriptInvalidShutdownScriptZ
 import org.ldk.structs.Result_ShutdownScriptNoneZ
 import org.ldk.structs.Result_TransactionNoneZ
-import org.ldk.structs.Result_WriteableEcdsaChannelSignerDecodeErrorZ
 import org.ldk.structs.ShutdownScript
 import org.ldk.structs.SignerProvider.SignerProviderInterface
 import org.ldk.structs.SpendableOutputDescriptor
 import org.ldk.structs.TxOut
 import org.ldk.structs.WitnessProgram
-import org.ldk.structs.WriteableEcdsaChannelSigner
 import org.ldk.util.UInt128
 import org.ldk.util.WitnessVersion
 
@@ -79,7 +79,7 @@ class CustomSignerProvider : SignerProviderInterface {
     override fun derive_channel_signer(
         channel_value_satoshis: Long,
         channel_keys_id: ByteArray?
-    ): WriteableEcdsaChannelSigner {
+    ): EcdsaChannelSigner {
         return customKeysManager.inner.as_SignerProvider().derive_channel_signer(channel_value_satoshis, channel_keys_id)
     }
 
@@ -87,7 +87,7 @@ class CustomSignerProvider : SignerProviderInterface {
         return customKeysManager.inner.as_SignerProvider().generate_channel_keys_id(p0, p1, p2)
     }
 
-    override fun read_chan_signer(p0: ByteArray?): Result_WriteableEcdsaChannelSignerDecodeErrorZ {
+    override fun read_chan_signer(p0: ByteArray?): Result_EcdsaChannelSignerDecodeErrorZ? {
         return customKeysManager.inner.as_SignerProvider().read_chan_signer(p0!!)
     }
 }

@@ -9,18 +9,29 @@ class LdkFeeEstimator {
     var nonAnchorChannelFee: Int = 0
     var channelCloseMinimum: Int = 0
     var minAllowedAnchorChannelRemoteFee: Int = 0
-    var onChainSweep: Int = 0
     var minAllowedNonAnchorChannelRemoteFee: Int = 0
     var outputSpendingFee: Int = 0
+    var maximumFeeEstimate: Int = 0
+    var urgentOnChainSweep: Int = 0
 
-    fun update(anchorChannelFee: Int, nonAnchorChannelFee: Int, channelCloseMinimum: Int, minAllowedAnchorChannelRemoteFee: Int, onChainSweep: Int, minAllowedNonAnchorChannelRemoteFee: Int, outputSpendingFee: Int) {
+    fun update(
+        anchorChannelFee: Int,
+        nonAnchorChannelFee: Int,
+        channelCloseMinimum: Int,
+        minAllowedAnchorChannelRemoteFee: Int,
+        minAllowedNonAnchorChannelRemoteFee: Int,
+        outputSpendingFee: Int,
+        maximumFeeEstimate: Int,
+        urgentOnChainSweep: Int
+    ) {
         this.anchorChannelFee = anchorChannelFee
         this.nonAnchorChannelFee = nonAnchorChannelFee
         this.channelCloseMinimum = channelCloseMinimum
         this.minAllowedAnchorChannelRemoteFee = minAllowedAnchorChannelRemoteFee
-        this.onChainSweep = onChainSweep
         this.minAllowedNonAnchorChannelRemoteFee = minAllowedNonAnchorChannelRemoteFee
         this.outputSpendingFee = outputSpendingFee
+        this.maximumFeeEstimate = maximumFeeEstimate
+        this.urgentOnChainSweep = urgentOnChainSweep
 
         LdkEventEmitter.send(EventTypes.native_log, "Fee estimator updated")
     }
@@ -31,9 +42,10 @@ class LdkFeeEstimator {
             ConfirmationTarget.LDKConfirmationTarget_NonAnchorChannelFee -> nonAnchorChannelFee
             ConfirmationTarget.LDKConfirmationTarget_ChannelCloseMinimum -> channelCloseMinimum
             ConfirmationTarget.LDKConfirmationTarget_MinAllowedAnchorChannelRemoteFee -> minAllowedAnchorChannelRemoteFee
-            ConfirmationTarget.LDKConfirmationTarget_OnChainSweep -> onChainSweep
             ConfirmationTarget.LDKConfirmationTarget_MinAllowedNonAnchorChannelRemoteFee -> minAllowedNonAnchorChannelRemoteFee
             ConfirmationTarget.LDKConfirmationTarget_OutputSpendingFee -> outputSpendingFee
+            ConfirmationTarget.LDKConfirmationTarget_MaximumFeeEstimate -> maximumFeeEstimate
+            ConfirmationTarget.LDKConfirmationTarget_UrgentOnChainSweep -> urgentOnChainSweep
         }
     }
 }
