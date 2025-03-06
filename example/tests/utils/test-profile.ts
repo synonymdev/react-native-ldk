@@ -75,7 +75,6 @@ export default class TestProfile {
 			getScriptPubKeyHistory: this.getScriptPubKeyHistory,
 			getFees: () =>
 				Promise.resolve({
-					onChainSweep: 4,
 					maxAllowedNonAnchorChannelRemoteFee: Math.max(25, 4 * 10),
 					minAllowedAnchorChannelRemoteFee: 1,
 					minAllowedNonAnchorChannelRemoteFee: Math.max(1 - 1, 0),
@@ -83,6 +82,8 @@ export default class TestProfile {
 					nonAnchorChannelFee: 3,
 					channelCloseMinimum: 1,
 					outputSpendingFee: 5,
+					urgentOnChainSweep: 5,
+					maximumFeeEstimate: 5,
 				}),
 			getTransactionData: this.getTransactionData,
 			getTransactionPosition: this.getTransactionPosition,

@@ -139,8 +139,9 @@ class LightningManager {
 		channelCloseMinimum: 5,
 		minAllowedAnchorChannelRemoteFee: 5,
 		minAllowedNonAnchorChannelRemoteFee: 5,
-		onChainSweep: 5,
 		outputSpendingFee: 5,
+		maximumFeeEstimate: 5,
+		urgentOnChainSweep: 5,
 	});
 	broadcastTransaction: TBroadcastTransaction = async (): Promise<any> => {};
 	lspLogEvent: TLspLogEvent | undefined;
@@ -2207,7 +2208,7 @@ class LightningManager {
 	 */
 	private async getOnChainSweepFeeRate(): Promise<number> {
 		try {
-			let satsPerVByte = (await this.getFees()).onChainSweep;
+			let satsPerVByte = (await this.getFees()).urgentOnChainSweep;
 			// Multiply by 250 because https://docs.rs/lightning/latest/lightning/chain/chaininterface/trait.FeeEstimator.html#tymethod.get_est_sat_per_1000_weight
 			return satsPerVByte * 250;
 		} catch (error) {

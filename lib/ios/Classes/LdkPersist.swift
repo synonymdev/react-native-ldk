@@ -9,7 +9,7 @@ import Foundation
 import LightningDevKit
 
 class LdkPersister: Persist {
-    private func handleChannel(_ channelFundingOutpoint: Bindings.OutPoint, _ data: ChannelMonitor, _ updateId: Bindings.MonitorUpdateId) -> ChannelMonitorUpdateStatus {
+    private func handleChannel(_ channelFundingOutpoint: Bindings.OutPoint, _ data: ChannelMonitor) -> ChannelMonitorUpdateStatus {
         guard let channelId = data.channelId().getA() else {
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Missing channelFundingOutpoint.getTxid(). Cannot persist channel")
             return .UnrecoverableError
@@ -28,7 +28,7 @@ class LdkPersister: Persist {
             
             let isNew = !FileManager().fileExists(atPath: channelStoragePath.path)
             
-            //If we're not remotely backing up no need to update status later
+            // If we're not remotely backing up no need to update status later
             if BackupClient.skipRemoteBackup {
                 try Data(data.write()).write(to: channelStoragePath)
                 if isNew {
@@ -43,21 +43,21 @@ class LdkPersister: Persist {
                     return
                 }
                 
-                //Callback for when the persist queue queue entry is processed
+                // Callback for when the persist queue queue entry is processed
                 do {
                     try Data(data.write()).write(to: channelStoragePath)
                 } catch {
-                    //If this fails we can't do much but LDK will retry on startup
+                    // If this fails we can't do much but LDK will retry on startup
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to locally persist channel (\(channelIdHex)). \(error.localizedDescription)")
                     return
                 }
                                 
-                //Update chainmonitor with successful persist
-                let res = Ldk.chainMonitor?.channelMonitorUpdated(fundingTxo: channelFundingOutpoint, completedUpdateId: updateId)
+                // Update chainmonitor with successful persist
+                let res = Ldk.chainMonitor?.channelMonitorUpdated(fundingTxo: channelFundingOutpoint, completedUpdateId: data.getLatestUpdateId())
                 if let error = res?.getError() {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to update chain monitor for channel (\(channelIdHex)) Error \(error.getValueType()).")
                 } else {
-                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel \(channelIdHex). Update ID: \(updateId.hash())")
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Persisted channel \(channelIdHex). Update ID: \(data.getLatestUpdateId())")
                     if isNew {
                         LdkEventEmitter.shared.send(withEvent: .new_channel, body: body)
                     }
@@ -70,12 +70,12 @@ class LdkPersister: Persist {
             return ChannelMonitorUpdateStatus.UnrecoverableError
         }
     }
-    
-    override func persistNewChannel(channelFundingOutpoint: Bindings.OutPoint, data: Bindings.ChannelMonitor, updateId: Bindings.MonitorUpdateId) -> Bindings.ChannelMonitorUpdateStatus {
-        return handleChannel(channelFundingOutpoint, data, updateId)
+
+    override func persistNewChannel(channelFundingOutpoint: Bindings.OutPoint, monitor: Bindings.ChannelMonitor) -> Bindings.ChannelMonitorUpdateStatus {
+        return handleChannel(channelFundingOutpoint, monitor)
     }
     
-    override func updatePersistedChannel(channelFundingOutpoint: Bindings.OutPoint, update: Bindings.ChannelMonitorUpdate, data: Bindings.ChannelMonitor, updateId: Bindings.MonitorUpdateId) -> Bindings.ChannelMonitorUpdateStatus {
-        return handleChannel(channelFundingOutpoint, data, updateId)
+    override func updatePersistedChannel(channelFundingOutpoint: Bindings.OutPoint, monitorUpdate: Bindings.ChannelMonitorUpdate, monitor: Bindings.ChannelMonitor) -> Bindings.ChannelMonitorUpdateStatus {
+        return handleChannel(channelFundingOutpoint, monitor)
     }
 }

@@ -5,9 +5,9 @@
 //  Created by Jason van den Berg on 2023/08/21.
 //
 
+import CryptoKit
 import Foundation
 import LightningDevKit
-import CryptoKit
 
 enum BackupError: Error {
     case invalidNetwork
@@ -66,10 +66,10 @@ struct BackupFileState {
     
     var encoded: [String: Encodable] {
         [
-            "lastQueued": (self.lastQueued.timeIntervalSince1970 * 1000).rounded(),
-            "lastPersisted": self.lastPersisted != nil ? (self.lastPersisted!.timeIntervalSince1970 * 1000).rounded() : nil,
-            "lastFailed": self.lastFailed != nil ? (self.lastFailed!.timeIntervalSince1970 * 1000).rounded() : nil,
-            "lastErrorMessage": self.lastErrorMessage
+            "lastQueued": (lastQueued.timeIntervalSince1970 * 1000).rounded(),
+            "lastPersisted": lastPersisted != nil ? (lastPersisted!.timeIntervalSince1970 * 1000).rounded() : nil,
+            "lastFailed": lastFailed != nil ? (lastFailed!.timeIntervalSince1970 * 1000).rounded() : nil,
+            "lastErrorMessage": lastErrorMessage
         ]
     }
 }
@@ -95,7 +95,7 @@ class BackupClient {
                 return "channel_manager"
             case .channelMonitor:
                 return "channel_monitor"
-            case .misc(let fileName): //Tx history, watch txs, etc
+            case .misc(let fileName): // Tx history, watch txs, etc
                 return fileName
                     .replacingOccurrences(of: ".json", with: "")
                     .replacingOccurrences(of: ".bin", with: "")
@@ -105,21 +105,21 @@ class BackupClient {
         var backupStateKey: String? {
             switch self {
             case .channelManager:
-                return self.string
+                return string
             case .channelMonitor(let id):
-                return "\(self.string)_\(id)"
+                return "\(string)_\(id)"
             case .misc(let fileName):
-                return self.string
+                return string
             default:
-                return nil //Don't worry about the backup state event of these files
+                return nil // Don't worry about the backup state event of these files
             }
         }
     }
     
     private enum Method: String {
-        case persist = "persist"
-        case retrieve = "retrieve"
-        case list = "list"
+        case persist
+        case retrieve
+        case list
         case authChallenge = "auth/challenge"
         case authResponse = "auth/response"
     }
@@ -131,7 +131,7 @@ class BackupClient {
     private static let channelMonitorBackupQueue = DispatchQueue(label: "ldk.backup.client.channel-monitor", qos: .userInitiated)
     private static let miscBackupQueue = DispatchQueue(label: "ldk.backup.client.misc", qos: .background)
     
-    static var skipRemoteBackup = true //Allow dev to opt out (for development), will not throw error when attempting to persist
+    static var skipRemoteBackup = true // Allow dev to opt out (for development), will not throw error when attempting to persist
     
     private static var network: String?
     private static var server: String?
@@ -144,6 +144,7 @@ class BackupClient {
             return nil
         }
     }
+
     private static var pubKey: [UInt8]?
     private static var cachedBearer: BackupRetrieveBearer?
     
@@ -162,12 +163,12 @@ class BackupClient {
         Self.network = network
         Self.server = server
         Self.serverPubKey = serverPubKey
-        Self.cachedBearer = nil
+        cachedBearer = nil
         
         LdkEventEmitter.shared.send(withEvent: .native_log, body: "BackupClient setup for synchronous remote persistence. Server: \(server)")
     }
     
-    static private func backupUrl(_ method: Method, _ label: Label? = nil) throws -> URL {
+    private static func backupUrl(_ method: Method, _ label: Label? = nil) throws -> URL {
         guard let network = Self.network, let server = Self.server else {
             throw BackupError.requiresSetup
         }
@@ -178,13 +179,13 @@ class BackupClient {
             urlString = "\(urlString)&label=\(label.string)"
         }
         
-        if case let .channelMonitor(id) = label {
+        if case .channelMonitor(let id) = label {
             urlString = "\(urlString)&channelId=\(id)"
         }
         
-        //Only include files related to this library
+        // Only include files related to this library
         if method == .list {
-            //TODO add this to android
+            // TODO: add this to android
             urlString = "\(urlString)&fileGroup=ldk"
         }
         
@@ -192,7 +193,7 @@ class BackupClient {
     }
     
     private static func encrypt(_ blob: Data) throws -> Data {
-        guard let key = Self.encryptionKey else {
+        guard let key = encryptionKey else {
             throw BackupError.requiresSetup
         }
         
@@ -206,13 +207,13 @@ class BackupClient {
     }
     
     private static func decrypt(_ blob: Data) throws -> Data {
-        guard let key = Self.encryptionKey else {
+        guard let key = encryptionKey else {
             throw BackupError.requiresSetup
         }
         
-        //Remove appended 12 bytes nonce and 16 byte trailing tag
+        // Remove appended 12 bytes nonce and 16 byte trailing tag
         let encryptedData: Data = {
-            var bytes = blob.subdata(in: 12..<blob.count)
+            var bytes = blob.subdata(in: 12 ..< blob.count)
             let removalRange = bytes.count - 16 ..< bytes.count
             bytes.removeSubrange(removalRange)
             return bytes
@@ -241,14 +242,14 @@ class BackupClient {
         while attempts < retry {
             do {
                 try persist(label, bytes)
-                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persist success for \(label.string) after \(attempts+1) attempts")
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persist success for \(label.string) after \(attempts + 1) attempts")
                 return
             } catch {
                 persistError = error
                 onTryFail(error)
                 attempts += 1
                 LdkEventEmitter.shared.send(withEvent: .native_log, body: "Remote persist failed for \(label.string) (\(attempts) attempts)")
-                sleep(attempts) //Ease off with each attempt
+                sleep(attempts) // Ease off with each attempt
             }
         }
         
@@ -276,10 +277,10 @@ class BackupClient {
         let encryptedBackup = try encrypt(Data(bytes))
         let signedHash = try sign(hash(encryptedBackup))
         
-        //Hash of pubkey+timestamp
+        // Hash of pubkey+timestamp
         let clientChallenge = hash("\(pubKeyHex)\(Date().timeIntervalSince1970)".data(using: .utf8)!)
         
-        var request = URLRequest(url: try backupUrl(.persist, label))
+        var request = try URLRequest(url: backupUrl(.persist, label))
         request.httpMethod = "POST"
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         request.setValue(signedHash, forHTTPHeaderField: "Signed-Hash")
@@ -290,9 +291,9 @@ class BackupClient {
         
         var requestError: Error?
         var persistResponse: PersistResponse?
-        //Thread blocking, backups must be synchronous
+        // Thread blocking, backups must be synchronous
         let semaphore = DispatchSemaphore(value: 0)
-        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
             defer {
                 semaphore.signal()
             }
@@ -307,7 +308,7 @@ class BackupClient {
                         requestError = BackupError.invalidServerResponse(String(data: data, encoding: .utf8)!)
                         return
                     }
-                }  else {
+                } else {
                     requestError = BackupError.invalidServerResponse(String(httpURLResponse.statusCode))
                     return
                 }
@@ -341,14 +342,14 @@ class BackupClient {
         let bearer = try authToken()
         
         var encryptedBackup: Data?
-        var request = URLRequest(url: try backupUrl(.retrieve, label))
+        var request = try URLRequest(url: backupUrl(.retrieve, label))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(bearer, forHTTPHeaderField: "Authorization")
         
         var requestError: Error?
         let semaphore = DispatchSemaphore(value: 0)
-        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        let task = URLSession.shared.dataTask(with: request) { data, response, _ in
             defer {
                 semaphore.signal()
             }
@@ -388,14 +389,14 @@ class BackupClient {
         
         var backedUpFilenames: ListFilesResponse?
         
-        var request = URLRequest(url: try backupUrl(.list))
+        var request = try URLRequest(url: backupUrl(.list))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(bearer, forHTTPHeaderField: "Authorization")
         
         var requestError: Error?
         let semaphore = DispatchSemaphore(value: 0)
-        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        let task = URLSession.shared.dataTask(with: request) { data, response, _ in
             defer {
                 semaphore.signal()
             }
@@ -440,7 +441,7 @@ class BackupClient {
         var allFiles: [String: Data] = [:]
         var channelFiles: [String: Data] = [:]
         
-        //Fetch each file's data
+        // Fetch each file's data
         for fileName in backedUpFilenames.list {
             guard fileName != "\(Label.ping.string).bin" else {
                 continue
@@ -465,7 +466,7 @@ class BackupClient {
     }
     
     static func selfCheck() throws {
-        //Store a random encrypted string and retrieve it again to confirm the server is working
+        // Store a random encrypted string and retrieve it again to confirm the server is working
         let ping = "ping\(arc4random_uniform(99999))"
         try persist(.ping, [UInt8](Data(ping.utf8)))
         
@@ -484,12 +485,7 @@ class BackupClient {
         }
         
         let fullMessage = "\(signedMessagePrefix)\(message)"
-        let signed = Bindings.swiftSign(msg: Array(fullMessage.utf8), sk: secretKey)
-        if let _ = signed.getError() {
-            throw BackupError.signingError
-        }
-        
-        return signed.getValue()!
+        return Bindings.swiftSign(msg: Array(fullMessage.utf8), sk: secretKey)
     }
     
     static func verifySignature(message: String, signature: String, pubKey: String) -> Bool {
@@ -501,9 +497,9 @@ class BackupClient {
     }
     
     private static func authToken() throws -> String {
-        //Return cached token if still fresh
+        // Return cached token if still fresh
         if let cachedBearer {
-            if Double(cachedBearer.expires) > Date().timeIntervalSince1970*1000 {
+            if Double(cachedBearer.expires) > Date().timeIntervalSince1970 * 1000 {
                 return cachedBearer.bearer
             }
         }
@@ -512,13 +508,13 @@ class BackupClient {
             throw BackupError.requiresSetup
         }
         
-        //Fetch challenge with signed timestamp as nonce
+        // Fetch challenge with signed timestamp as nonce
         let pubKeyHex = Data(pubKey).hexEncodedString()
         let timestamp = String(Date().timeIntervalSince1970)
         
-        let payload = [
+        let payload = try [
             "timestamp": timestamp,
-            "signature": try sign(timestamp)
+            "signature": sign(timestamp)
         ]
         
         struct FetchChallengeResponse: Codable {
@@ -526,7 +522,7 @@ class BackupClient {
         }
         var fetchChallengeResponse: FetchChallengeResponse?
         
-        var request = URLRequest(url: try backupUrl(.authChallenge))
+        var request = try URLRequest(url: backupUrl(.authChallenge))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(pubKeyHex, forHTTPHeaderField: "Public-Key")
@@ -535,7 +531,7 @@ class BackupClient {
         
         var requestError: Error?
         let semaphore = DispatchSemaphore(value: 0)
-        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        let task = URLSession.shared.dataTask(with: request) { data, response, _ in
             defer {
                 semaphore.signal()
             }
@@ -571,11 +567,11 @@ class BackupClient {
             throw BackupError.missingResponse
         }
         
-        //Fetch bearer token
-        let fetchPayload = [
-            "signature": try sign(fetchChallengeResponse.challenge),
+        // Fetch bearer token
+        let fetchPayload = try [
+            "signature": sign(fetchChallengeResponse.challenge)
         ]
-        var fetchRequest = URLRequest(url: try backupUrl(.authResponse))
+        var fetchRequest = try URLRequest(url: backupUrl(.authResponse))
         fetchRequest.httpMethod = "POST"
         fetchRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         fetchRequest.setValue(pubKeyHex, forHTTPHeaderField: "Public-Key")
@@ -585,7 +581,7 @@ class BackupClient {
         var fetchRequestError: Error?
         var fetchBearerResponse: BackupRetrieveBearer?
         let fetchSemaphore = DispatchSemaphore(value: 0)
-        let fetchTask = URLSession.shared.dataTask(with: fetchRequest) { (data, response, error) in
+        let fetchTask = URLSession.shared.dataTask(with: fetchRequest) { data, response, _ in
             defer {
                 fetchSemaphore.signal()
             }
@@ -627,7 +623,7 @@ class BackupClient {
     }
 }
 
-//Backup queue management
+// Backup queue management
 extension BackupClient {
     static func updateBackupState(_ label: Label, type: BackupStateUpdateType) {
         guard let key = label.backupStateKey else {
@@ -656,9 +652,9 @@ extension BackupClient {
                 body[key] = backupState[key]!.encoded
             }
             
-            debounce(interval: 0.25, key: "backup-state-event") {
+            debounce(interval: 0.25, key: "backup-state-event", action: {
                 LdkEventEmitter.shared.send(withEvent: .backup_state_update, body: body)
-            }()
+            })()
         }
     }
     
@@ -677,15 +673,12 @@ extension BackupClient {
         case .channelManager:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Adding channel manager backup to queue")
             backupQueue = channelManagerBackupQueue
-            break
-        case .channelMonitor(_):
+        case .channelMonitor:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Adding channel monitor backup to queue")
             backupQueue = channelMonitorBackupQueue
-            break
         default:
             LdkEventEmitter.shared.send(withEvent: .native_log, body: "Adding \(label.string) to misc backup queue")
             backupQueue = miscBackupQueue
-            break
         }
         
         guard let backupQueue else {
@@ -696,7 +689,7 @@ extension BackupClient {
         backupQueue.async {
             do {
                 try persist(label, bytes, retry: 10) { attemptError in
-                    //Soft fail, will keep retyring but UI can be updated in the meantime
+                    // Soft fail, will keep retyring but UI can be updated in the meantime
                     updateBackupState(label, type: .fail(attemptError))
                 }
                 updateBackupState(label, type: .success)

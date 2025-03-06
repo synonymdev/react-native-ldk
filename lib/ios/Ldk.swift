@@ -618,15 +618,27 @@ class Ldk: NSObject {
     // MARK: Update methods
     
     @objc
-    func updateFees(_ anchorChannelFee: NSInteger, nonAnchorChannelFee: NSInteger, channelCloseMinimum: NSInteger, minAllowedAnchorChannelRemoteFee: NSInteger, onChainSweep: NSInteger, minAllowedNonAnchorChannelRemoteFee: NSInteger, outputSpendingFee: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    func updateFees(
+        _ anchorChannelFee: NSInteger,
+        nonAnchorChannelFee: NSInteger,
+        channelCloseMinimum: NSInteger,
+        minAllowedAnchorChannelRemoteFee: NSInteger,
+        minAllowedNonAnchorChannelRemoteFee: NSInteger,
+        outputSpendingFee: NSInteger,
+        maximumFeeEstimate: NSInteger,
+        urgentOnChainSweep: NSInteger,
+        resolve: @escaping RCTPromiseResolveBlock,
+        reject: @escaping RCTPromiseRejectBlock
+    ) {
         feeEstimator.update(
             anchorChannelFee: UInt32(anchorChannelFee),
             nonAnchorChannelFee: UInt32(nonAnchorChannelFee),
             channelCloseMinimum: UInt32(channelCloseMinimum),
             minAllowedAnchorChannelRemoteFee: UInt32(minAllowedAnchorChannelRemoteFee),
-            onChainSweep: UInt32(onChainSweep),
             minAllowedNonAnchorChannelRemoteFee: UInt32(minAllowedNonAnchorChannelRemoteFee),
-            outputSpendingFee: UInt32(outputSpendingFee)
+            outputSpendingFee: UInt32(outputSpendingFee),
+            maximumFeeEstimate: UInt32(maximumFeeEstimate),
+            urgentOnChainSweep: UInt32(urgentOnChainSweep)
         )
         return handleResolve(resolve, .fees_updated)
     }
@@ -882,7 +894,7 @@ class Ldk: NSObject {
         let counterpartyNodeId = String(counterPartyNodeId).hexaBytes
         
         let res = force ?
-            channelManager.forceCloseBroadcastingLatestTxn(channelId: channelId, counterpartyNodeId: counterpartyNodeId) :
+            channelManager.forceCloseBroadcastingLatestTxn(channelId: channelId, counterpartyNodeId: counterpartyNodeId, errorMessage: "Force close") :
             channelManager.closeChannel(channelId: channelId, counterpartyNodeId: counterpartyNodeId)
         guard res.isOk() else {
             guard let error = res.getError() else {
@@ -992,9 +1004,9 @@ class Ldk: NSObject {
         }
         
         if broadcastLatestTx {
-            channelManager.forceCloseAllChannelsBroadcastingLatestTxn()
+            channelManager.forceCloseAllChannelsBroadcastingLatestTxn(errorMessage: "Force close all")
         } else {
-            channelManager.forceCloseAllChannelsWithoutBroadcastingTxn()
+            channelManager.forceCloseAllChannelsWithoutBroadcastingTxn(errorMessage: "Force close all without broadcasting")
         }
         
         return handleResolve(resolve, .close_channel_success)
@@ -1532,7 +1544,7 @@ class Ldk: NSObject {
                 descriptors: descriptors,
                 outputs: [],
                 changeDestinationScript: String(changeDestinationScript).hexaBytes,
-                feerateSatPer1000Weight: feeEstimator.getEstSatPer1000Weight(confirmationTarget: .OnChainSweep),
+                feerateSatPer1000Weight: feeEstimator.getEstSatPer1000Weight(confirmationTarget: .UrgentOnChainSweep),
                 locktime: nil
             )
                 :
@@ -1540,7 +1552,7 @@ class Ldk: NSObject {
                     descriptors: descriptors,
                     outputs: [],
                     changeDestinationScript: String(changeDestinationScript).hexaBytes,
-                    feerateSatPer1000Weight: feeEstimator.getEstSatPer1000Weight(confirmationTarget: .OnChainSweep),
+                    feerateSatPer1000Weight: feeEstimator.getEstSatPer1000Weight(confirmationTarget: .UrgentOnChainSweep),
                     locktime: nil
                 )
             
@@ -1561,12 +1573,7 @@ class Ldk: NSObject {
             return handleReject(reject, .init_keys_manager)
         }
         
-        let signed = Bindings.swiftSign(msg: Array(String(message).utf8), sk: keysManager.inner.getNodeSecretKey())
-        if let _ = signed.getError() {
-            handleReject(reject, .failed_signing_request)
-        }
-        
-        return resolve(signed.getValue()!)
+        return resolve(Bindings.swiftSign(msg: Array(String(message).utf8), sk: keysManager.inner.getNodeSecretKey()))
     }
     
     @objc

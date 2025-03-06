@@ -250,9 +250,10 @@ export type TFeeUpdateReq = {
 	nonAnchorChannelFee: number;
 	channelCloseMinimum: number;
 	minAllowedAnchorChannelRemoteFee: number;
-	onChainSweep: number;
 	minAllowedNonAnchorChannelRemoteFee: number;
 	outputSpendingFee: number;
+	maximumFeeEstimate: number;
+	urgentOnChainSweep: number;
 };
 
 export type TPeer = {
@@ -402,6 +403,7 @@ export type TUserConfig = {
 	manually_accept_inbound_channels?: boolean;
 	accept_intercept_htlcs?: boolean;
 	accept_mpp_keysend?: boolean;
+	manually_handle_bolt12_invoices?: boolean;
 };
 
 export const defaultUserConfig: TUserConfig = {

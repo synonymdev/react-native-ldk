@@ -105,7 +105,6 @@ describe('Eclair', function () {
 			...profile.getStartParams(),
 			getFees: () => {
 				return Promise.resolve({
-					onChainSweep: 30,
 					maxAllowedNonAnchorChannelRemoteFee: Math.max(25, 30 * 10),
 					minAllowedAnchorChannelRemoteFee: 5,
 					minAllowedNonAnchorChannelRemoteFee: Math.max(5 - 1, 0),
@@ -113,6 +112,8 @@ describe('Eclair', function () {
 					nonAnchorChannelFee: 20,
 					channelCloseMinimum: 5,
 					outputSpendingFee: 10,
+					urgentOnChainSweep: 30,
+					maximumFeeEstimate: 30
 				});
 			},
 		});
