@@ -23,4 +23,14 @@ Pod::Spec.new do |s|
 
   s.vendored_frameworks = 'ios/LightningDevKit.xcframework'
   s.dependency "React"
+  
+  # Explicitly specify supported architectures
+  s.pod_target_xcconfig = { 
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
+    'VALID_ARCHS' => 'arm64 arm64e x86_64'
+  }
+  s.user_target_xcconfig = { 
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
+    'VALID_ARCHS' => 'arm64 arm64e x86_64'
+  }
 end
