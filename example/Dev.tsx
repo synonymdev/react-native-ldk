@@ -720,7 +720,15 @@ const Dev = (): ReactElement => {
 								return;
 							}
 
-							setMessage('Successfully restored wallet');
+							const setupResponse = await setupLdk();
+							if (setupResponse.isErr()) {
+								setMessage(setupResponse.error.message);
+								return;
+							}
+
+							setNodeStarted(true);
+
+							setMessage('Successfully restored and started wallet');
 						}}
 					/>
 					<Button
