@@ -123,7 +123,6 @@ enum class LdkCallbackResponses {
     peer_already_connected,
     peer_currently_connecting,
     chain_sync_success,
-    invoice_payment_success,
     tx_set_confirmed,
     tx_set_unconfirmed,
     process_pending_htlc_forwards_success,
@@ -427,7 +426,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         var channelManagerSerialized: ByteArray? = null
         val channelManagerFile = File(accountStoragePath + "/" + LdkFileNames.ChannelManager.fileName)
         if (channelManagerFile.exists()) {
-           channelManagerSerialized = channelManagerFile.readBytes()
+            channelManagerSerialized = channelManagerFile.readBytes()
         }
 
         //Scorer setup
@@ -558,11 +557,11 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 LdkEventEmitter.send(EventTypes.channel_manager_restarted, "")
                 LdkEventEmitter.send(EventTypes.native_log, "LDK restarted successfully")
                 handleResolve(promise, LdkCallbackResponses.ldk_restart)
-        },
+            },
             { reject ->
                 LdkEventEmitter.send(EventTypes.native_log, "Error restarting LDK. Error: $reject")
                 handleReject(promise, LdkErrors.unknown_error)
-        })
+            })
 
         initChannelManager(
             currentNetwork,
@@ -687,7 +686,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         if (currentlyConnectingPeers.contains(pubKey)) {
             return handleResolve(promise, LdkCallbackResponses.peer_currently_connecting)
         }
-        
+
         try {
             currentlyConnectingPeers.add(pubKey)
             peerHandler!!.connect(pubKey.hexa(), InetSocketAddress(address, port.toInt()), timeout.toInt())
@@ -927,11 +926,19 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
     @ReactMethod
     fun pay(paymentRequest: String, amountSats: Double, timeoutSeconds: Double, promise: Promise) {
-        channelManager ?: return handleReject(promise, LdkErrors.init_channel_manager)
+        val (paymentId, error) = handlePayment(paymentRequest, amountSats, timeoutSeconds)
+        if (error != null) {
+            return handleReject(promise, error)
+        }
+        return promise.resolve(paymentId)
+    }
+
+    private fun handlePayment(paymentRequest: String, amountSats: Double, timeoutSeconds: Double): Pair<String?, LdkErrors?> {
+        channelManager ?: return Pair(null, LdkErrors.init_channel_manager)
 
         val invoiceParse = Bolt11Invoice.from_str(paymentRequest)
         if (!invoiceParse.is_ok) {
-            return handleReject(promise, LdkErrors.decode_invoice_fail)
+            return Pair(null, LdkErrors.decode_invoice_fail)
         }
         val invoice = (invoiceParse as Result_Bolt11InvoiceParseOrSemanticErrorZ_OK).res
 
@@ -939,12 +946,12 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         //If it's a zero invoice and we don't have an amount then don't proceed
         if (isZeroValueInvoice && amountSats == 0.0) {
-            return handleReject(promise, LdkErrors.invoice_payment_fail_must_specify_amount)
+            return Pair(null, LdkErrors.invoice_payment_fail_must_specify_amount)
         }
 
         //Amount was set but not allowed to set own amount
         if (amountSats > 0 && !isZeroValueInvoice) {
-            return handleReject(promise, LdkErrors.invoice_payment_fail_must_not_specify_amount)
+            return Pair(null, LdkErrors.invoice_payment_fail_must_not_specify_amount)
         }
 
         val paymentId = invoice.payment_hash()
@@ -953,7 +960,7 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
             UtilMethods.payment_parameters_from_invoice(invoice)
 
         if (!detailsRes.is_ok) {
-            return handleReject(promise, LdkErrors.invoice_payment_fail_invoice)
+            return Pair(null, LdkErrors.invoice_payment_fail_invoice)
         }
 
         val sendDetails = detailsRes as Result_C3Tuple_ThirtyTwoBytesRecipientOnionFieldsRouteParametersZNoneZ_OK
@@ -974,26 +981,23 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
                 "state" to "pending"
             ))
 
-            return handleResolve(promise, LdkCallbackResponses.invoice_payment_success)
+            return Pair(paymentId.hexEncodedString(), null)
         }
 
         val error = res as? Result_NoneRetryableSendFailureZ_Err
-            ?: return handleReject(promise, LdkErrors.invoice_payment_fail_unknown)
+            ?: return Pair(null, LdkErrors.invoice_payment_fail_unknown)
 
-        when (error.err) {
+        return when (error.err) {
             RetryableSendFailure.LDKRetryableSendFailure_DuplicatePayment -> {
-                handleReject(promise, LdkErrors.invoice_payment_fail_duplicate_payment)
+                Pair(null, LdkErrors.invoice_payment_fail_duplicate_payment)
             }
-
             RetryableSendFailure.LDKRetryableSendFailure_PaymentExpired -> {
-                handleReject(promise, LdkErrors.invoice_payment_fail_payment_expired)
+                Pair(null, LdkErrors.invoice_payment_fail_payment_expired)
             }
-
             RetryableSendFailure.LDKRetryableSendFailure_RouteNotFound -> {
-                handleReject(promise, LdkErrors.invoice_payment_fail_route_not_found)
+                Pair(null, LdkErrors.invoice_payment_fail_route_not_found)
             }
-
-            else -> handleReject(promise, LdkErrors.invoice_payment_fail_unknown)
+            else -> Pair(null, LdkErrors.invoice_payment_fail_unknown)
         }
     }
 
@@ -1409,10 +1413,10 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
         keysManager?.inner?.as_NodeSigner()
             ?.get_node_id(Recipient.LDKRecipient_Node)?.let { pubKeyRes ->
-            if (pubKeyRes.is_ok) {
-                logDump.add("NodeID: ${(pubKeyRes as Result_PublicKeyNoneZ_OK).res.hexEncodedString()}")
+                if (pubKeyRes.is_ok) {
+                    logDump.add("NodeID: ${(pubKeyRes as Result_PublicKeyNoneZ_OK).res.hexEncodedString()}")
+                }
             }
-        }
 
         channelManager?.list_channels()?.forEach { channel ->
             logDump.add("Open channel:")

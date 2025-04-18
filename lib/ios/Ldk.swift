@@ -94,7 +94,6 @@ enum LdkCallbackResponses: String {
     case peer_already_connected
     case peer_currently_connecting
     case chain_sync_success
-    case invoice_payment_success
     case tx_set_confirmed
     case tx_set_unconfirmed
     case process_pending_htlc_forwards_success
@@ -1128,7 +1127,7 @@ class Ldk: NSObject {
             return handleReject(reject, orginalError)
         }
     }
-    
+        
     @objc
     func pay(_ paymentRequest: NSString, amountSats: NSInteger, timeoutSeconds: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
         let (paymentId, error) = handlePayment(paymentRequest: paymentRequest, amountSats: amountSats, timeoutSeconds: timeoutSeconds)
@@ -1201,10 +1200,6 @@ class Ldk: NSObject {
         case .PaymentExpired:
             return (nil, .invoice_payment_fail_payment_expired)
         case .RouteNotFound:
-            //Delete scorer
-            //Delete graph
-            //Download and update graph again
-            //Retry payment
             return (nil, .invoice_payment_fail_route_not_found)
         @unknown default:
             return (nil, .invoice_payment_fail_unknown)
