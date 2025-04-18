@@ -727,9 +727,9 @@ class Ldk: NSObject {
             .listPeers()
             .map { Data($0.getCounterpartyNodeId()).hexEncodedString() }
         
-        addedPeers.forEach { address, port, pubKey in
+        for (address, port, pubKey) in addedPeers {
             guard !currentList.contains(pubKey) else {
-                return
+                continue
             }
             
             currentlyConnectingPeers.append(String(pubKey))
@@ -1110,6 +1110,12 @@ class Ldk: NSObject {
         self.downloadScorer(currentScorerDownloadUrl, skipHoursThreshold: 1) { _ in
             self.initNetworkGraph(currentNetwork, rapidGossipSyncUrl: currentRapidGossipSyncUrl, skipHoursThreshold: 1, resolve: { _ in
                 self.restart { _ in
+                    self.handleDroppedPeers()
+                    
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Channels found in graph: \(self.networkGraph?.readOnly().listChannels().count ?? 0)")
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Peers connected: \(self.peerManager?.listPeers().count ?? 0)")
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restart complete. Attempting to retry payment after graph reset...")
+
                     let (paymentId2, error2) = self.handlePayment(paymentRequest: paymentRequest, amountSats: amountSats, timeoutSeconds: timeoutSeconds)
                     if let error2 {
                         return handleReject(reject, error2)
