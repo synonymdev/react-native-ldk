@@ -184,6 +184,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     private var currentNetwork: String? = null
     private var currentBlockchainTipHash: String? = null
     private var currentBlockchainHeight: Double? = null
+    private var currentScorerDownloadUrl: String? = null
+    private var currentRapidGossipSyncUrl: String? = null
 
     //List of peers that "should" remain connected. Stores address: String, port: Double, pubKey: String
     private var addedPeers = ConcurrentLinkedQueue<Map<String, Any>>()
@@ -291,6 +293,9 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     @ReactMethod
     fun downloadScorer(scorerSyncUrl: String, skipHoursThreshold: Double, promise: Promise) {
         val scorerFile = File(accountStoragePath + "/" + LdkFileNames.Scorer.fileName)
+
+        currentScorerDownloadUrl = scorerSyncUrl
+
         //If old one is still recent, skip download. Else delete it.
         if (scorerFile.exists()) {
             val lastModifiedHours = (System.currentTimeMillis().toDouble() - scorerFile.lastModified().toDouble()) / 1000 / 60 / 60
@@ -327,6 +332,8 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         if (networkGraph != null) {
             return handleReject(promise, LdkErrors.already_init)
         }
+
+        currentRapidGossipSyncUrl = rapidGossipSyncUrl
 
         val networkGraphFile = File(accountStoragePath + "/" + LdkFileNames.NetworkGraph.fileName)
         if (networkGraphFile.exists()) {
@@ -924,10 +931,107 @@ class LdkModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         promise.resolve(parsedInvoice.res.asJson)
     }
 
+    private fun resetGraphAndScorerAndRetryPayment(
+        originalError: LdkErrors,
+        paymentRequest: String,
+        amountSats: Double,
+        timeoutSeconds: Double,
+        promise: Promise
+    ) {
+        if (accountStoragePath == "") {
+            LdkEventEmitter.send(EventTypes.native_log, "Failed to reset graph: account storage path not set")
+            return handleReject(promise, originalError)
+        }
+
+        // Check required data and URLs
+        val currentNetwork = currentNetwork ?: return handleReject(promise, originalError)
+
+        if (currentRapidGossipSyncUrl.isNullOrEmpty() || currentScorerDownloadUrl.isNullOrEmpty()) {
+            val missingUrl = if (currentRapidGossipSyncUrl.isNullOrEmpty()) "rapid gossip sync" else "scorer download"
+            LdkEventEmitter.send(EventTypes.native_log, "Failed to reset graph: $missingUrl URL not set")
+            return handleReject(promise, originalError)
+        }
+
+        val scorerFile = File("$accountStoragePath/${LdkFileNames.Scorer.fileName}")
+        val networkGraphFile = File("$accountStoragePath/${LdkFileNames.NetworkGraph.fileName}")
+
+        // Delete scorer if exists
+        if (scorerFile.exists()) {
+            try {
+                scorerFile.delete()
+                LdkEventEmitter.send(EventTypes.native_log, "Deleted scorer file")
+            } catch (e: Exception) {
+                LdkEventEmitter.send(EventTypes.native_log, "Failed to delete scorer file: ${e.localizedMessage}")
+            }
+        }
+
+        // Delete network graph if exists
+        if (networkGraphFile.exists()) {
+            try {
+                networkGraphFile.delete()
+                LdkEventEmitter.send(EventTypes.native_log, "Deleted network graph file")
+                networkGraph = null
+            } catch (e: Exception) {
+                LdkEventEmitter.send(EventTypes.native_log, "Failed to delete network graph file: ${e.localizedMessage}")
+            }
+        }
+
+        LdkEventEmitter.send(EventTypes.native_log, "Deleted scorer and network graph, resyncing from scratch so we can retry payment")
+
+        // Download everything again and retry
+        downloadScorer(currentScorerDownloadUrl!!, 1.0, object : PromiseImpl(
+            { _ ->
+                LdkEventEmitter.send(EventTypes.native_log, "Scorer downloaded, initializing network graph...")
+                initNetworkGraph(currentNetwork, currentRapidGossipSyncUrl!!, 1.0, object : PromiseImpl(
+                    { _ ->
+                        LdkEventEmitter.send(EventTypes.native_log, "Network graph initialized, restarting channel manager...")
+                        restart(object : PromiseImpl(
+                            { _ ->
+                                // Run handleDroppedPeers on a background thread (can't work in the UI thread)
+                                Thread {
+                                    handleDroppedPeers()
+                                }.start()
+
+                                Thread.sleep(2500) //Wait a little as android peer connections happen async so we're just making sure they're all connected
+                                val channelsInGraph = networkGraph?.read_only()?.list_channels()?.size
+                                LdkEventEmitter.send(EventTypes.native_log, "Channels found in graph: $channelsInGraph")
+                                LdkEventEmitter.send(EventTypes.native_log, "Peers connected: ${peerManager?.list_peers()?.size}")
+                                LdkEventEmitter.send(EventTypes.native_log, "Restart complete. Attempting to retry payment after graph reset...")
+                                val (paymentId2, error2) = handlePayment(paymentRequest, amountSats, timeoutSeconds)
+
+                                if (error2 != null) {
+                                    LdkEventEmitter.send(EventTypes.native_log, "Failed to retry payment after graph reset: $error2")
+                                    handleReject(promise, error2)
+                                } else {
+                                    LdkEventEmitter.send(EventTypes.native_log, "Successfully retried payment after graph reset")
+                                    // 2nd attempt found a path with fresh graph
+                                    promise.resolve(paymentId2)
+                                }
+                            },
+                            { _ -> handleReject(promise, originalError) }
+                        ) {})
+                    },
+                    { _ -> handleReject(promise, originalError) }
+                ) {})
+            },
+            { _ -> handleReject(promise, originalError) }
+        ) {})
+    }
+
     @ReactMethod
     fun pay(paymentRequest: String, amountSats: Double, timeoutSeconds: Double, promise: Promise) {
         val (paymentId, error) = handlePayment(paymentRequest, amountSats, timeoutSeconds)
         if (error != null) {
+            // If error is route not found, maybe a problem with the graph, so reset it, download all again and try payment one more time
+            if (error == LdkErrors.invoice_payment_fail_route_not_found) {
+                return resetGraphAndScorerAndRetryPayment(
+                    error,
+                    paymentRequest,
+                    amountSats,
+                    timeoutSeconds,
+                    promise
+                )
+            }
             return handleReject(promise, error)
         }
         return promise.resolve(paymentId)
