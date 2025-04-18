@@ -94,7 +94,6 @@ enum LdkCallbackResponses: String {
     case peer_already_connected
     case peer_currently_connecting
     case chain_sync_success
-    case invoice_payment_success
     case tx_set_confirmed
     case tx_set_unconfirmed
     case process_pending_htlc_forwards_success
@@ -151,6 +150,8 @@ class Ldk: NSObject {
     var currentNetwork: NSString?
     var currentBlockchainTipHash: NSString?
     var currentBlockchainHeight: NSInteger?
+    var currentScorerDownloadUrl: NSString?
+    var currentRapidGossipSyncUrl: NSString?
     
     // Peer connection checks
     var backgroundedAt: Date? = nil
@@ -259,6 +260,8 @@ class Ldk: NSObject {
         guard let accountStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
+
+        currentScorerDownloadUrl = scorerSyncUrl
         
         let destinationFile = accountStoragePath.appendingPathComponent(LdkFileNames.scorer.rawValue)
         
@@ -299,6 +302,8 @@ class Ldk: NSObject {
         guard let accountStoragePath = Ldk.accountStoragePath else {
             return handleReject(reject, .init_storage_path)
         }
+
+        currentRapidGossipSyncUrl = rapidGossipSyncUrl
         
         let networkGraphStoragePath = accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue).standardizedFileURL
         
@@ -722,9 +727,9 @@ class Ldk: NSObject {
             .listPeers()
             .map { Data($0.getCounterpartyNodeId()).hexEncodedString() }
         
-        addedPeers.forEach { address, port, pubKey in
+        for (address, port, pubKey) in addedPeers {
             guard !currentList.contains(pubKey) else {
-                return
+                continue
             }
             
             currentlyConnectingPeers.append(String(pubKey))
@@ -1062,29 +1067,116 @@ class Ldk: NSObject {
         
         return resolve(invoice.asJson) // Invoice class extended in Helpers file
     }
-    
-    @objc
-    func pay(_ paymentRequest: NSString, amountSats: NSInteger, timeoutSeconds: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-        guard let channelManager = channelManager else {
-            return handleReject(reject, .init_channel_manager)
+
+    //Called when a payment fails but we want to reset graph and channel manager so if they try again it might work
+    func resetGraphAndScorerAndRetryPayment(orginalError: LdkErrors,  paymentRequest: NSString, amountSats: NSInteger, timeoutSeconds: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        guard let accountStoragePath = Ldk.accountStoragePath else {
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to reset graph: account storage path not set")
+            return handleReject(reject, orginalError)
+        }
+
+        let fileManager = FileManager.default
+        let scorerPath = accountStoragePath.appendingPathComponent(LdkFileNames.scorer.rawValue)
+        let networkGraphPath = accountStoragePath.appendingPathComponent(LdkFileNames.network_graph.rawValue)
+
+        // Delete scorer if exists
+        if fileManager.fileExists(atPath: scorerPath.path) {
+            do {
+                try fileManager.removeItem(at: scorerPath)
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Deleted scorer file")
+            } catch {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to delete scorer file: \(error.localizedDescription)")
+            }
+        }
+
+        // Delete network graph if exists
+        if fileManager.fileExists(atPath: networkGraphPath.path) {
+            do {
+                try fileManager.removeItem(at: networkGraphPath)
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Deleted network graph file")
+                networkGraph = nil
+            } catch {
+                LdkEventEmitter.shared.send(withEvent: .native_log, body: "Failed to delete network graph file: \(error.localizedDescription)")
+            }
         }
         
+        guard let currentScorerDownloadUrl, let currentRapidGossipSyncUrl, let currentNetwork else {
+            return handleReject(reject, orginalError)
+        }
+        
+        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Deleted scorer and network graph, resyncing from scratch so we can retry payment")
+        
+        //Download everything again and retry
+        self.downloadScorer(currentScorerDownloadUrl, skipHoursThreshold: 1) { _ in
+            self.initNetworkGraph(currentNetwork, rapidGossipSyncUrl: currentRapidGossipSyncUrl, skipHoursThreshold: 1, resolve: { _ in
+                self.restart { _ in
+                    self.handleDroppedPeers()
+                    
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Channels found in graph: \(self.networkGraph?.readOnly().listChannels().count ?? 0)")
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Peers connected: \(self.peerManager?.listPeers().count ?? 0)")
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Restart complete. Attempting to retry payment after graph reset...")
+
+                    let (paymentId2, error2) = self.handlePayment(paymentRequest: paymentRequest, amountSats: amountSats, timeoutSeconds: timeoutSeconds)
+                    if let error2 {
+                        return handleReject(reject, error2)
+                    }
+                    
+                    //2nd attempt found a path with fresh graph
+                    return resolve(paymentId2)
+                } reject: { _, _, _ in
+                    return handleReject(reject, orginalError)
+                }
+            }, reject: { _, _, _ in
+                return handleReject(reject, orginalError)
+            })
+        } reject: { _, _, _ in
+            return handleReject(reject, orginalError)
+        }
+    }
+        
+    @objc
+    func pay(_ paymentRequest: NSString, amountSats: NSInteger, timeoutSeconds: NSInteger, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let (paymentId, error) = handlePayment(paymentRequest: paymentRequest, amountSats: amountSats, timeoutSeconds: timeoutSeconds)
+        if let error {
+            //If error is route not found, maybe a problem with the graph, so reset it, download all again and try payment one more time
+            if error == .invoice_payment_fail_route_not_found {
+                return resetGraphAndScorerAndRetryPayment(
+                    orginalError: error,
+                    paymentRequest: paymentRequest,
+                    amountSats: amountSats,
+                    timeoutSeconds: timeoutSeconds,
+                    resolve: resolve,
+                    reject: reject
+                )
+            }
+
+            return handleReject(reject, error)
+        }
+
+        return resolve(paymentId)
+    }
+    
+    func handlePayment(paymentRequest: NSString, amountSats: NSInteger, timeoutSeconds: NSInteger) -> (String?, LdkErrors?) {
+        guard let channelManager = channelManager else {
+            return (nil, .init_channel_manager)
+        }
+
         guard let invoice = Bolt11Invoice.fromStr(s: String(paymentRequest)).getValue() else {
-            return handleReject(reject, .decode_invoice_fail)
+            return (nil, .decode_invoice_fail)
         }
         
         let isZeroValueInvoice = invoice.amountMilliSatoshis() == nil
         
         // If it's a zero invoice and we don't have an amount then don't proceed
         guard !(isZeroValueInvoice && amountSats == 0) else {
-            return handleReject(reject, .invoice_payment_fail_must_specify_amount)
+            return (nil, .invoice_payment_fail_must_specify_amount)
         }
         
         // Amount was set but not allowed to set own amount
         guard !(amountSats > 0 && !isZeroValueInvoice) else {
-            return handleReject(reject, .invoice_payment_fail_must_not_specify_amount)
+            return (nil, .invoice_payment_fail_must_not_specify_amount)
         }
-        
+
         let paymentId = invoice.paymentHash()!
         let (paymentHash, recipientOnion, routeParameters) = isZeroValueInvoice ? Bindings.paymentParametersFromZeroAmountInvoice(invoice: invoice, amountMsat: UInt64(amountSats * 1000)).getValue()! : Bindings.paymentParametersFromInvoice(invoice: invoice).getValue()!
         
@@ -1101,22 +1193,22 @@ class Ldk: NSObject {
         ])
         
         if res.isOk() {
-            return resolve(paymentId)
+            return (Data(paymentId).hexEncodedString(), nil)
         }
         
         guard let error = res.getError() else {
-            return handleReject(reject, .invoice_payment_fail_unknown)
+            return (nil, .invoice_payment_fail_unknown)
         }
         
         switch error {
         case .DuplicatePayment:
-            return handleReject(reject, .invoice_payment_fail_duplicate_payment)
+            return (nil, .invoice_payment_fail_duplicate_payment)
         case .PaymentExpired:
-            return handleReject(reject, .invoice_payment_fail_payment_expired)
+            return (nil, .invoice_payment_fail_payment_expired)
         case .RouteNotFound:
-            return handleReject(reject, .invoice_payment_fail_route_not_found)
+            return (nil, .invoice_payment_fail_route_not_found)
         @unknown default:
-            return handleReject(reject, .invoice_payment_fail_unknown)
+            return (nil, .invoice_payment_fail_unknown)
         }
     }
     
