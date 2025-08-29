@@ -61,7 +61,7 @@
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@babel/plugin-transform-private-property-in-object": "^7.24.7",
     "@babel/preset-env": "^7.20.0",
-    "@babel/runtime": "^7.20.0",
+    "@babel/runtime": "8.0.0-alpha.17",
     "@react-native/eslint-config": "^0.72.2",
     "@react-native/metro-config": "^0.72.11",
     "@tsconfig/react-native": "^3.0.0",
@@ -94,6 +94,13 @@
   "engines": {
     "node": ">=16"
   },
+  "resolutions": {
+    "**/ws": "^7.5.10",
+    "**/semver": "^6.3.1",
+    "**/brace-expansion": "^1.1.12",
+    "**/cipher-base": "^1.0.5",
+    "**/sha.js": "^2.4.12"
+  },
   "react-native": {
     "crypto": "react-native-crypto",
     "_stream_transform": "readable-stream/transform",
@@ -113,5 +120,6 @@
     "_stream_passthrough": "readable-stream/passthrough",
     "stream": "stream-browserify",
     "vm": "vm-browserify"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
