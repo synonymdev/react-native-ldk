@@ -1,7 +1,7 @@
 {
   "name": "@synonymdev/react-native-ldk",
   "title": "React Native LDK",
-  "version": "0.0.159",
+  "version": "0.0.160",
   "description": "React Native wrapper for LDK",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -66,5 +66,11 @@
   "bugs": {
     "url": "https://github.com/synonymdev/react-native-ldk/issues"
   },
-  "homepage": "https://github.com/synonymdev/react-native-ldk#readme"
+  "homepage": "https://github.com/synonymdev/react-native-ldk#readme",
+  "resolutions": {
+    "**/cipher-base": "^1.0.5",
+    "**/sha.js": "^2.4.12",
+    "**/base-x": "^3.0.11"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
