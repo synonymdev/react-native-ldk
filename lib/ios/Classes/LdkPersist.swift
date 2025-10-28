@@ -27,17 +27,33 @@ class LdkPersister: Persist {
             }
             
             let isNew = !FileManager().fileExists(atPath: channelStoragePath.path)
-
-            // Always write locally first
-            let serialized = Data(data.write())
-            try serialized.write(to: channelStoragePath)
-
-            // Notify chain monitor on main thread to avoid threading issues
-            DispatchQueue.main.async {
-                let res = Ldk.chainMonitor?.channelMonitorUpdated(
-                    fundingTxo: channelFundingOutpoint,
-                    completedUpdateId: data.getLatestUpdateId()
-                )
+            
+            // If we're not remotely backing up no need to update status later
+            if BackupClient.skipRemoteBackup {
+                try Data(data.write()).write(to: channelStoragePath)
+                if isNew {
+                    LdkEventEmitter.shared.send(withEvent: .new_channel, body: body)
+                }
+                return ChannelMonitorUpdateStatus.Completed
+            }
+                         
+            BackupClient.addToPersistQueue(.channelMonitor(id: channelIdHex), data.write()) { error in
+                if let error {
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed persist channel on remote server (\(channelIdHex)). \(error.localizedDescription)")
+                    return
+                }
+                
+                // Callback for when the persist queue queue entry is processed
+                do {
+                    try Data(data.write()).write(to: channelStoragePath)
+                } catch {
+                    // If this fails we can't do much but LDK will retry on startup
+                    LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to locally persist channel (\(channelIdHex)). \(error.localizedDescription)")
+                    return
+                }
+                                
+                // Update chainmonitor with successful persist
+                let res = Ldk.chainMonitor?.channelMonitorUpdated(fundingTxo: channelFundingOutpoint, completedUpdateId: data.getLatestUpdateId())
                 if let error = res?.getError() {
                     LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to update chain monitor for channel (\(channelIdHex)) Error \(error.getValueType()).")
                 } else {
@@ -47,19 +63,10 @@ class LdkPersister: Persist {
                     }
                 }
             }
-
-            // Kick off remote backup asynchronously; log but never block/skip local persist
-            if !BackupClient.skipRemoteBackup {
-                BackupClient.addToPersistQueue(.channelMonitor(id: channelIdHex), [UInt8](serialized)) { error in
-                    if let error {
-                        LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed persist channel on remote server (\(channelIdHex)). \(error.localizedDescription)")
-                    }
-                }
-            }
-
-            return ChannelMonitorUpdateStatus.Completed
+            
+            return ChannelMonitorUpdateStatus.InProgress
         } catch {
-            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to locally persist channel (\(channelIdHex)). \(error.localizedDescription)")
+            LdkEventEmitter.shared.send(withEvent: .native_log, body: "Error. Failed to persist channel (\(channelIdHex)) to disk Error \(error.localizedDescription).")
             return ChannelMonitorUpdateStatus.UnrecoverableError
         }
     }
