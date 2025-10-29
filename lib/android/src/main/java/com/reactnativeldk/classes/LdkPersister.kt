@@ -22,37 +22,65 @@ class LdkPersister {
             val file = File(LdkModule.channelStoragePath + "/" + channelId  + ".bin")
 
             val isNew = !file.exists()
+            val serialized = data.write()
 
+            // If we're not remotely backing up, write locally and return
             if (BackupClient.skipRemoteBackup) {
-                file.writeBytes(data.write())
+                file.writeBytes(serialized)
                 if (isNew) {
                     LdkEventEmitter.send(EventTypes.new_channel, body)
                 }
                 return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_Completed
             }
 
-            BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), data.write()) { error ->
+            // For new channels: write locally first to prevent loss if app is killed during backup
+            // Then try remote backup asynchronously
+            if (isNew) {
+                file.writeBytes(serialized)
+                
+                // Update chain monitor on main thread
+                LdkModule.reactContext?.runOnUiThread {
+                    val res = LdkModule.chainMonitor?.channel_monitor_updated(channelFundingOutpoint, data._latest_update_id)
+                    if (res == null || !res.is_ok) {
+                        LdkEventEmitter.send(EventTypes.native_log, "Failed to update chain monitor with persisted channel (${channelId})")
+                    } else {
+                        LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${channelId}) to disk")
+                        LdkEventEmitter.send(EventTypes.new_channel, body)
+                    }
+                }
+                
+                // Kick off remote backup asynchronously (non-blocking)
+                BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), serialized) { error ->
+                    if (error != null) {
+                        LdkEventEmitter.send(EventTypes.native_log, "Warning. Remote backup failed for new channel (${channelId}), but channel was persisted locally. $error")
+                    }
+                }
+                
+                return ChannelMonitorUpdateStatus.LDKChannelMonitorUpdateStatus_Completed
+            }
+
+            // For updates: try remote backup first, then write locally on success (original behavior)
+            BackupClient.addToPersistQueue(BackupClient.Label.CHANNEL_MONITOR(channelId=channelId), serialized) { error ->
                 if (error != null) {
                     LdkEventEmitter.send(EventTypes.native_log, "Failed to persist channel (${channelId}) to remote backup: $error")
                     return@addToPersistQueue
                 }
 
                 try {
-                    file.writeBytes(data.write())
+                    file.writeBytes(serialized)
                 } catch (e: Exception) {
                     //If this fails we can't do much but LDK will retry on startup
                     LdkEventEmitter.send(EventTypes.native_log, "Failed to locally persist channel (${channelId}) to disk")
                     return@addToPersistQueue
                 }
 
-                //Update chain monitor with successful persist
-                val res = LdkModule.chainMonitor?.channel_monitor_updated(channelFundingOutpoint, data._latest_update_id)
-                if (res == null || !res.is_ok) {
-                    LdkEventEmitter.send(EventTypes.native_log, "Failed to update chain monitor with persisted channel (${channelId})")
-                } else {
-                    LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${channelId}) to disk")
-                    if (isNew) {
-                        LdkEventEmitter.send(EventTypes.new_channel, body)
+                //Update chain monitor with successful persist on main thread
+                LdkModule.reactContext?.runOnUiThread {
+                    val res = LdkModule.chainMonitor?.channel_monitor_updated(channelFundingOutpoint, data._latest_update_id)
+                    if (res == null || !res.is_ok) {
+                        LdkEventEmitter.send(EventTypes.native_log, "Failed to update chain monitor with persisted channel (${channelId})")
+                    } else {
+                        LdkEventEmitter.send(EventTypes.native_log, "Persisted channel (${channelId}) to disk")
                     }
                 }
             }
