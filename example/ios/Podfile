@@ -5,25 +5,23 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-platform :ios, '13.0'
-prepare_react_native_project!
-
-# Fix boost checksum issue by using sourceforge mirror
+# Fix boost checksum issue BEFORE CocoaPods loads the podspec
 # https://github.com/facebook/react-native/issues/37748
-pre_install do |installer|
-  boost_path = File.join(installer.sandbox.root, '../node_modules/react-native/third-party-podspecs/boost.podspec')
-  if File.exist?(boost_path)
-    boost_spec = File.read(boost_path)
-    if boost_spec.include?('boostorg.jfrog.io')
-      boost_spec = boost_spec.gsub(
-        'https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.bz2',
-        'https://sourceforge.net/projects/boost/files/boost/1.76.0/boost_1_76_0.tar.bz2/download'
-      )
-      File.write(boost_path, boost_spec)
-      Pod::UI.puts 'Patched boost podspec to use sourceforge mirror'.green
-    end
+boost_path = File.join(__dir__, '../node_modules/react-native/third-party-podspecs/boost.podspec')
+if File.exist?(boost_path)
+  boost_spec = File.read(boost_path)
+  if boost_spec.include?('boostorg.jfrog.io')
+    boost_spec = boost_spec.gsub(
+      'https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.bz2',
+      'https://sourceforge.net/projects/boost/files/boost/1.76.0/boost_1_76_0.tar.bz2/download'
+    )
+    File.write(boost_path, boost_spec)
+    puts '✅ Patched boost podspec to use sourceforge mirror'
   end
 end
+
+platform :ios, '13.0'
+prepare_react_native_project!
 
 # If you are using a `react-native-flipper` your iOS build will fail when `NO_FLIPPER=1` is set.
 # because `react-native-flipper` depends on (FlipperKit,...) that will be excluded
