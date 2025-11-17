@@ -124,7 +124,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           working-directory: example
-          script: yarn e2e:test:android-release --timeout 200000 --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
+          script: yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
 
       - name: Run tests attempt 2
         if: steps.attempt1.outcome != 'success'
@@ -140,7 +140,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           working-directory: example
-          script: yarn e2e:test:android-release --timeout 200000 --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
+          script: yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
 
       - name: Run tests attempt 3 (final)
         if: steps.attempt2.outcome != 'success'
@@ -154,7 +154,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           working-directory: example
-          script: yarn e2e:test:android-release --timeout 200000 --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
+          script: yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
 
       - uses: actions/upload-artifact@v4
         if: failure()
