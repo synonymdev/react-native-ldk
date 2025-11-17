@@ -104,8 +104,8 @@ describe('Unit', function () {
 			'027f921585f2ac0c7c70e36110adecfd8fd14b8a99bfb3d000a283fcac358fce88',
 		);
 
-		expect(lm.getLdkPaymentsSent()).to.eventually.be.an('array').that.is.empty;
-		expect(lm.getLdkPaymentsClaimed()).to.eventually.be.an('array').that.is
+		await expect(lm.getLdkPaymentsSent()).to.eventually.be.an('array').that.is.empty;
+		await expect(lm.getLdkPaymentsClaimed()).to.eventually.be.an('array').that.is
 			.empty;
 
 		const claimableBalances = await ldk.claimableBalances(false);
