@@ -5,19 +5,31 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-# Fix boost checksum issue by removing SHA verification
+# Fix boost download issue by using SourceForge mirror instead of JFrog
 # https://github.com/facebook/react-native/issues/37748
 boost_path = File.join(__dir__, '../node_modules/react-native/third-party-podspecs/boost.podspec')
 if File.exist?(boost_path)
   boost_spec = File.read(boost_path)
+
+  # Replace JFrog URL with SourceForge mirror
+  if boost_spec.include?('boostorg.jfrog.io')
+    boost_spec = boost_spec.gsub(
+      'https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.bz2',
+      'https://archives.boost.io/release/1.76.0/source/boost_1_76_0.tar.bz2'
+    )
+    File.write(boost_path, boost_spec)
+    puts '✅ Patched boost podspec to use archives.boost.io mirror'
+  end
+
+  # Remove checksum as backup measure
+  boost_spec = File.read(boost_path)
   if boost_spec.include?(':sha256')
-    # Remove the sha256 checksum to avoid verification errors
     boost_spec = boost_spec.gsub(
       /,\s*:sha256\s*=>\s*['"][^'"]*['"]/,
       ''
     )
     File.write(boost_path, boost_spec)
-    puts '✅ Patched boost podspec to skip checksum verification'
+    puts '✅ Removed boost checksum verification'
   end
 end
 
