@@ -51,13 +51,18 @@ jobs:
           path: example/ios/Pods
           key: pods-${{ hashFiles('**/Podfile.lock') }}
 
+      - name: Clean CocoaPods cache
+        run: |
+          rm -rf ~/Library/Caches/CocoaPods
+          pod cache clean --all || true
+
       - name: Install pods
         working-directory: example
         env:
           COCOAPODS_DISABLE_CHECKSUM: true
         run: |
           gem update cocoapods xcodeproj
-          pod install --project-directory=ios || (rm -rf ~/Library/Caches/CocoaPods && pod cache clean --all && pod install --project-directory=ios)
+          pod install --project-directory=ios || pod install --project-directory=ios
 
       - name: Install applesimutils
         run: |
