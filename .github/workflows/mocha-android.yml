@@ -8,6 +8,10 @@ on:
     branches:
       - 'master'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   mocha-android:
     runs-on: ubuntu-latest
