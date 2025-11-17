@@ -22,23 +22,12 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Docker Colima 1
-        uses: douglascamata/setup-docker-macos-action@v1-alpha.13
-
-        id: docker1
-        continue-on-error: true
-        with:
-          lima: v0.18.0
-          colima: v0.5.6
-
-      - name: Setup Docker Colima 2
-        if: steps.docker1.outcome != 'success'
-        uses: douglascamata/setup-docker-macos-action@v1-alpha.13
-
-        id: docker2
-        with:
-          lima: v0.18.0
-          colima: v0.5.6
+      - name: Setup Docker Colima
+        run: |
+          brew install docker docker-compose colima
+          mkdir -p ~/.docker/cli-plugins
+          ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose || true
+          colima start --cpu 4 --memory 8 --disk 100
 
       - name: Install backup-server dependencies
         working-directory: backup-server
@@ -50,7 +39,7 @@ jobs:
           mkdir lnd
           mkdir clightning
           chmod 777 lnd clightning
-          docker-compose up -d --quiet-pull
+          docker compose up -d --quiet-pull
 
       - name: Wait for electrum server
         timeout-minutes: 2
@@ -85,7 +74,7 @@ jobs:
         working-directory: example
         run: |
           gem update cocoapods xcodeproj
-          pod install --project-directory=ios
+          pod install --project-directory=ios || (pod repo update && pod install --project-directory=ios --clean-install)
 
       - name: Install applesimutils
         run: |
