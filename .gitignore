@@ -6,3 +6,6 @@ example/.watchman*
 # docker
 example/docker/lnd/
 example/docker/clightning/
+
+#AI
+CLAUDE.md
