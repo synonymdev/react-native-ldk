@@ -20,9 +20,9 @@
     "reinstall": "cd ../lib/ && yarn install && yarn build && cd ../example/ && yarn add ../lib && yarn rn-setup",
     "clean": "rm -rf node_modules ios/Pods ios/Podfile.lock ios/build && yarn install && cd ios && pod deintegrate && pod install && cd ../",
     "rn-setup": "node rn-setup.js",
-    "test:mocha": "mocha-remote --context lndmacaroon=$(xxd -ps -u -c 1000 docker/lnd/admin.macaroon) clmacaroon=$(xxd -ps -u -c 1000 docker/clightning/access.macaroon)",
-    "test:mocha:ios": "mocha-remote --context lndmacaroon=$(xxd -ps -u -c 1000 docker/lnd/admin.macaroon) clmacaroon=$(xxd -ps -u -c 1000 docker/clightning/access.macaroon) -- concurrently --kill-others-on-fail npm:m npm:runner-ios",
-    "test:mocha:android": "mocha-remote --context lndmacaroon=$(xxd -ps -u -c 1000 docker/lnd/admin.macaroon) clmacaroon=$(xxd -ps -u -c 1000 docker/clightning/access.macaroon) -- concurrently --kill-others-on-fail npm:m npm:runner-android",
+    "test:mocha": "mocha-remote --context c=$(node ./tests/context.js)",
+    "test:mocha:ios": "mocha-remote --context c=$(node ./tests/context.js) -- concurrently --kill-others-on-fail npm:m npm:runner-ios",
+    "test:mocha:android": "mocha-remote --context c=$(node ./tests/context.js) -- concurrently --kill-others-on-fail npm:m npm:runner-android",
     "m": "react-native start --reset-cache",
     "runner-ios": "react-native run-ios --simulator='iPhone 14' --no-packager",
     "runner-android": "react-native run-android --no-packager"
