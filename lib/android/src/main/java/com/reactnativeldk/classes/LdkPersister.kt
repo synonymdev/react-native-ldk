@@ -39,7 +39,7 @@ class LdkPersister {
                 file.writeBytes(serialized)
                 
                 // Update chain monitor on main thread
-                LdkModule.getReactContext()?.runOnUiThread {
+                LdkEventEmitter.getReactContext()?.runOnUiQueueThread {
                     val res = LdkModule.chainMonitor?.channel_monitor_updated(channelFundingOutpoint, data._latest_update_id)
                     if (res == null || !res.is_ok) {
                         LdkEventEmitter.send(EventTypes.native_log, "Failed to update chain monitor with persisted channel (${channelId})")
@@ -75,7 +75,7 @@ class LdkPersister {
                 }
 
                 //Update chain monitor with successful persist on main thread
-                LdkModule.getReactContext()?.runOnUiThread {
+                LdkEventEmitter.getReactContext()?.runOnUiQueueThread {
                     val res = LdkModule.chainMonitor?.channel_monitor_updated(channelFundingOutpoint, data._latest_update_id)
                     if (res == null || !res.is_ok) {
                         LdkEventEmitter.send(EventTypes.native_log, "Failed to update chain monitor with persisted channel (${channelId})")
