@@ -20,6 +20,10 @@ const config = {
 			vm: path.resolve(__dirname, 'node_modules/vm-browserify/'),
 			process: path.resolve(__dirname, 'node_modules/process/'),
 		},
+		blockList: [
+			// Exclude nested node_modules in the lib package to avoid bundling conflicts
+			/node_modules\/@synonymdev\/react-native-ldk\/node_modules\/.*/,
+		],
 	},
 };
 

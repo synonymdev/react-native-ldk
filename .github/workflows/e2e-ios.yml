@@ -51,7 +51,7 @@ jobs:
         working-directory: example
         run: |
           gem update cocoapods xcodeproj
-          pod install --project-directory=ios || (pod repo update && pod install --project-directory=ios --clean-install)
+          pod install --project-directory=ios || (rm -rf ~/Library/Caches/CocoaPods && pod cache clean --all && pod install --project-directory=ios)
 
       - name: Install applesimutils
         run: |
