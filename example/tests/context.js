@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 const fs = require('fs');
 const run = require('child_process').execSync;
 
@@ -11,9 +12,7 @@ function readFileWithRetry(path, maxRetries = 30, delay = 1000) {
 				console.error(`Failed to read ${path} after ${maxRetries} attempts`);
 				throw err;
 			}
-			console.error(
-				`Attempt ${i + 1}/${maxRetries}: Waiting for ${path}...`,
-			);
+			console.error(`Attempt ${i + 1}/${maxRetries}: Waiting for ${path}...`);
 			// Sleep synchronously (only works on Unix-like systems)
 			run(`sleep ${delay / 1000}`);
 		}
@@ -27,7 +26,9 @@ function runWithRetry(cmd, maxRetries = 30, delay = 1000) {
 			return run(cmd, { encoding: 'utf8' });
 		} catch (err) {
 			if (i === maxRetries - 1) {
-				console.error(`Failed to run command after ${maxRetries} attempts: ${cmd}`);
+				console.error(
+					`Failed to run command after ${maxRetries} attempts: ${cmd}`,
+				);
 				throw err;
 			}
 			console.error(
