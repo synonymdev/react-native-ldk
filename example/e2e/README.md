@@ -2,24 +2,53 @@
 
 Comprehensive end-to-end tests for react-native-ldk using Detox, modeled after [Bitkit's E2E test patterns](https://github.com/synonymdev/bitkit/tree/master/e2e).
 
+## 🚀 Quick Start: RPC-Driven Tests (No UI Required!)
+
+**Want to run tests immediately without building any UI?** Use the RPC-driven tests:
+
+```bash
+cd example/docker && docker compose up     # Start regtest environment
+cd example
+yarn e2e:build:ios-debug                   # Build app
+yarn e2e:test:rpc                          # Run RPC tests - works now!
+```
+
+See [RPC_DRIVEN_TESTS.md](./RPC_DRIVEN_TESTS.md) for details.
+
 ## Overview
 
-This test suite replaces the outdated mocha-remote integration tests with modern Detox E2E tests that cover the same functionality through UI-driven flows. The tests validate LDK functionality from a user perspective while maintaining the same comprehensive coverage of Lightning Network features.
+This test suite provides **two testing approaches**:
+
+1. **RPC-Driven Tests** ([ldk-rpc.e2e.js](./ldk-rpc.e2e.js)) - ✅ **Works now!**
+   - Tests LDK functionality via direct API calls
+   - No UI implementation required
+   - Fast, reliable, comprehensive coverage
+   - Perfect for TDD and API verification
+
+2. **UI-Driven Tests** - ⊘ Requires UI implementation
+   - Tests user experience flows
+   - Validates UI interactions
+   - Ensures accessibility
+   - Complementary to RPC tests
 
 ## Test Organization
 
-### Test Suites
+### RPC-Driven Tests (Ready to Use)
 
-The tests are organized by feature area:
+| Test Suite | File | Coverage | Status |
+|-----------|------|----------|---------|
+| **LDK RPC Tests** | [ldk-rpc.e2e.js](./ldk-rpc.e2e.js) | Full LDK API coverage: init, channels, payments, events | ✅ **Works Now!** |
 
-| Test Suite | File | Coverage |
-|-----------|------|----------|
-| **Startup** | [startup.e2e.js](./startup.e2e.js) | LDK initialization, account creation, blockchain sync |
-| **Channels** | [channels.e2e.js](./channels.e2e.js) | Channel opening, management, cooperative close |
-| **Payments** | [payments.e2e.js](./payments.e2e.js) | Invoice creation, sending/receiving payments, MPP |
-| **Backup & Restore** | [backup-restore.e2e.js](./backup-restore.e2e.js) | Remote backup, persistence, restore flows |
-| **Force Close** | [force-close.e2e.js](./force-close.e2e.js) | Force close scenarios, fund recovery, justice transactions |
-| **Network Graph** | [network-graph.e2e.js](./network-graph.e2e.js) | Graph sync, routing, pathfinding, scorer |
+### UI-Driven Tests (Require UI)
+
+| Test Suite | File | Coverage | Status |
+|-----------|------|----------|---------|
+| **Startup** | [startup.e2e.js](./startup.e2e.js) | LDK initialization, account creation, blockchain sync | ✅ Basic tests work |
+| **Channels** | [channels.e2e.js](./channels.e2e.js) | Channel opening, management, cooperative close | ⊘ Requires UI |
+| **Payments** | [payments.e2e.js](./payments.e2e.js) | Invoice creation, sending/receiving payments, MPP | ⊘ Requires UI |
+| **Backup & Restore** | [backup-restore.e2e.js](./backup-restore.e2e.js) | Remote backup, persistence, restore flows | ⊘ Requires UI |
+| **Force Close** | [force-close.e2e.js](./force-close.e2e.js) | Force close scenarios, fund recovery, justice transactions | ⊘ Requires UI |
+| **Network Graph** | [network-graph.e2e.js](./network-graph.e2e.js) | Graph sync, routing, pathfinding, scorer | ⊘ Requires UI |
 
 ### Supporting Files
 

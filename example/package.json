@@ -22,6 +22,7 @@
     "e2e:test:backup": "detox test e2e/backup-restore.e2e.js",
     "e2e:test:force-close": "detox test e2e/force-close.e2e.js",
     "e2e:test:network-graph": "detox test e2e/network-graph.e2e.js",
+    "e2e:test:rpc": "detox test e2e/ldk-rpc.e2e.js",
     "e2e:clean": "rm -f e2e/.complete-*",
     "lint:check": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
