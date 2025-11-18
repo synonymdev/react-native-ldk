@@ -34,8 +34,3 @@ if (typeof localStorage !== 'undefined') {
 // If using the crypto shim, uncomment the following line to ensure
 // crypto is loaded first, so it can populate global.crypto
 require('crypto');
-
-// Setup chai-as-promised for mocha tests
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-chai.use(chaiAsPromised);

@@ -128,17 +128,14 @@ class Tests extends Component {
 				});
 				// global.fs = require("react-native-fs");
 				// global.path = require("path-browserify");
-				// global.environment = {
-				// Default to the host machine when running on Android
-				// realmBaseUrl: Platform.OS === "android" ? "http://10.0.2.2:9090" : undefined,
-				// ...context,
-				// reactNative: Platform.OS,
-				// android: Platform.OS === "android",
-				// ios: Platform.OS === "ios",
-				// };
-				(global as any).environment = JSON.parse(
-					Buffer.from(context.c as string, 'hex').toString('utf-8'),
-				);
+				global.environment = {
+					// Default to the host machine when running on Android
+					// realmBaseUrl: Platform.OS === "android" ? "http://10.0.2.2:9090" : undefined,
+					...context,
+					// reactNative: Platform.OS,
+					// android: Platform.OS === "android",
+					// ios: Platform.OS === "ios",
+				};
 				// Make the tests reinitializable, to allow test running on changes to the "realm" package
 				// Probing the existance of `getModules` as this only exists in debug mode
 				// if ("getModules" in require) {
