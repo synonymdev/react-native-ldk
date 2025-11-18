@@ -1730,6 +1730,10 @@ object LdkEventEmitter {
         this.reactContext = reactContext
     }
 
+    fun getReactContext(): ReactContext? {
+        return this.reactContext
+    }
+    
     fun send(eventType: EventTypes, body: Any) {
         if (this.reactContext === null) {
             return
