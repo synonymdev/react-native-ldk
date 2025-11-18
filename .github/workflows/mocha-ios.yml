@@ -45,9 +45,32 @@ jobs:
           chmod 777 lnd clightning
           docker compose up -d --quiet-pull
 
-      - name: Wait for electrum server
-        timeout-minutes: 2
-        run: while ! nc -z '127.0.0.1' 60001; do sleep 1; done
+      - name: Wait for electrum server, LND and CLightning
+        timeout-minutes: 5
+        run: |
+          # Wait for Electrum
+          while ! nc -z '127.0.0.1' 60001; do
+            echo "Waiting for Electrum..."
+            sleep 1
+          done
+          echo "Electrum is ready!"
+
+          # Wait for LND macaroon file
+          cd example
+          while [ ! -f docker/lnd/admin.macaroon ]; do
+            echo "Waiting for LND macaroon..."
+            sleep 2
+          done
+          echo "LND macaroon found!"
+
+          # Wait for CLightning to be ready
+          while ! docker logs clightning 2>&1 | grep -q "Server started with public key"; do
+            echo "Waiting for CLightning..."
+            sleep 2
+          done
+          echo "CLightning is ready!"
+
+          echo "All services ready!"
 
       - name: Node
         uses: actions/setup-node@v4
@@ -97,6 +120,7 @@ jobs:
         run: npx react-native run-ios --no-packager --simulator='iPhone 15'
 
       - name: Test iOS app
+        timeout-minutes: 30
         working-directory: example
         run: yarn test:mocha:ios
 
