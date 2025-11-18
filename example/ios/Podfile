@@ -5,35 +5,7 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-# Fix boost download issue by using SourceForge mirror instead of JFrog
-# https://github.com/facebook/react-native/issues/37748
-boost_path = File.join(__dir__, '../node_modules/react-native/third-party-podspecs/boost.podspec')
-if File.exist?(boost_path)
-  boost_spec = File.read(boost_path)
-
-  # Replace JFrog URL with SourceForge mirror
-  if boost_spec.include?('boostorg.jfrog.io')
-    boost_spec = boost_spec.gsub(
-      'https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.tar.bz2',
-      'https://archives.boost.io/release/1.76.0/source/boost_1_76_0.tar.bz2'
-    )
-    File.write(boost_path, boost_spec)
-    puts '✅ Patched boost podspec to use archives.boost.io mirror'
-  end
-
-  # Remove checksum as backup measure
-  boost_spec = File.read(boost_path)
-  if boost_spec.include?(':sha256')
-    boost_spec = boost_spec.gsub(
-      /,\s*:sha256\s*=>\s*['"][^'"]*['"]/,
-      ''
-    )
-    File.write(boost_path, boost_spec)
-    puts '✅ Removed boost checksum verification'
-  end
-end
-
-platform :ios, '13.0'
+platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
 # If you are using a `react-native-flipper` your iOS build will fail when `NO_FLIPPER=1` is set.
@@ -86,12 +58,5 @@ target 'exmpl' do
       :mac_catalyst_enabled => false
     )
     __apply_Xcode_12_5_M1_post_install_workaround(installer)
-
-    # Fix iOS deployment target to 13.0 (required by react-native-ldk)
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-      end
-    end
   end
 end
