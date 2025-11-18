@@ -8,10 +8,6 @@ on:
     branches:
       - 'master'
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   mocha-android:
     runs-on: ubuntu-latest
@@ -77,31 +73,11 @@ jobs:
           mkdir lnd
           mkdir clightning
           chmod 777 lnd clightning
-          docker compose up -d --quiet-pull
+          docker-compose up -d --quiet-pull
 
-      - name: Wait for electrum server, LND and CLightning
-        timeout-minutes: 5
-        run: |
-          # Wait for Electrum
-          while ! nc -z '127.0.0.1' 60001; do
-            echo "Waiting for Electrum..."
-            sleep 1
-          done
-          echo "Electrum is ready!"
-
-          # Wait for LND macaroon file
-          sudo bash -c "while [ ! -f example/docker/lnd/admin.macaroon ]; do echo 'Waiting for LND macaroon...'; sleep 2; done"
-          sudo chmod -R 777 example/docker/lnd
-          echo "LND macaroon found!"
-
-          # Wait for CLightning to be ready
-          while ! docker logs clightning 2>&1 | grep -q "Server started with public key"; do
-            echo "Waiting for CLightning..."
-            sleep 2
-          done
-          echo "CLightning is ready!"
-
-          echo "All services ready!"
+      - name: Wait for electrum server
+        timeout-minutes: 2
+        run: while ! nc -z '127.0.0.1' 60001; do sleep 1; done
 
       - name: Install lib dependencies
         working-directory: lib
@@ -142,7 +118,6 @@ jobs:
             npx react-native run-android --no-packager
 
       - name: run tests
-        timeout-minutes: 30
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
