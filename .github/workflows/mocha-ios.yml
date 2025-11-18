@@ -11,6 +11,10 @@ on:
     branches:
       - 'master'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   mocha-ios:
     runs-on: macos-13
@@ -22,23 +26,12 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Setup Docker Colima 1
-        uses: douglascamata/setup-docker-macos-action@v1-alpha.13
-
-        id: docker1
-        continue-on-error: true
-        with:
-          lima: v0.18.0
-          colima: v0.5.6
-
-      - name: Setup Docker Colima 2
-        if: steps.docker1.outcome != 'success'
-        uses: douglascamata/setup-docker-macos-action@v1-alpha.13
-
-        id: docker2
-        with:
-          lima: v0.18.0
-          colima: v0.5.6
+      - name: Setup Docker Colima
+        run: |
+          brew install docker docker-compose colima
+          mkdir -p ~/.docker/cli-plugins
+          ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose || true
+          colima start --cpu 4 --memory 8 --disk 100
 
       - name: Install backup-server dependencies
         working-directory: backup-server
@@ -50,11 +43,34 @@ jobs:
           mkdir lnd
           mkdir clightning
           chmod 777 lnd clightning
-          docker-compose up -d --quiet-pull
+          docker compose up -d --quiet-pull
 
-      - name: Wait for electrum server
-        timeout-minutes: 2
-        run: while ! nc -z '127.0.0.1' 60001; do sleep 1; done
+      - name: Wait for electrum server, LND and CLightning
+        timeout-minutes: 5
+        run: |
+          # Wait for Electrum
+          while ! nc -z '127.0.0.1' 60001; do
+            echo "Waiting for Electrum..."
+            sleep 1
+          done
+          echo "Electrum is ready!"
+
+          # Wait for LND macaroon file
+          cd example
+          while [ ! -f docker/lnd/admin.macaroon ]; do
+            echo "Waiting for LND macaroon..."
+            sleep 2
+          done
+          echo "LND macaroon found!"
+
+          # Wait for CLightning to be ready
+          while ! docker logs clightning 2>&1 | grep -q "Server started with public key"; do
+            echo "Waiting for CLightning..."
+            sleep 2
+          done
+          echo "CLightning is ready!"
+
+          echo "All services ready!"
 
       - name: Node
         uses: actions/setup-node@v4
@@ -81,11 +97,18 @@ jobs:
           path: example/ios/Pods
           key: pods-${{ hashFiles('**/Podfile.lock') }}
 
+      - name: Clean CocoaPods cache
+        run: |
+          rm -rf ~/Library/Caches/CocoaPods
+          pod cache clean --all || true
+
       - name: Install pods
         working-directory: example
+        env:
+          COCOAPODS_DISABLE_CHECKSUM: true
         run: |
           gem update cocoapods xcodeproj
-          pod install --project-directory=ios
+          pod install --project-directory=ios || pod install --project-directory=ios
 
       - name: Install applesimutils
         run: |
@@ -94,9 +117,10 @@ jobs:
 
       - name: Build
         working-directory: example
-        run: npx react-native run-ios --no-packager --simulator='iPhone 14'
+        run: npx react-native run-ios --no-packager --simulator='iPhone 15'
 
       - name: Test iOS app
+        timeout-minutes: 30
         working-directory: example
         run: yarn test:mocha:ios
 

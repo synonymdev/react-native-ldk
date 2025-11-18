@@ -8,6 +8,10 @@ on:
     branches:
       - 'master'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   e2e-android:
     runs-on: ubuntu-latest
@@ -111,7 +115,9 @@ jobs:
       - name: Kill java processes
         run: pkill -9 -f java || true
 
-      - name: run tests
+      - name: Run tests attempt 1
+        id: attempt1
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           avd-name: Pixel_API_31_AOSP
@@ -122,7 +128,37 @@ jobs:
           arch: x86_64
           disable-animations: true
           working-directory: example
-          script: yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts || yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifactsyarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts || yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
+          script: yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
+
+      - name: Run tests attempt 2
+        if: steps.attempt1.outcome != 'success'
+        id: attempt2
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          avd-name: Pixel_API_31_AOSP
+          profile: 5.4in FWVGA
+          api-level: 31
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none -partition-size 2047
+          arch: x86_64
+          disable-animations: true
+          working-directory: example
+          script: yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
+
+      - name: Run tests attempt 3 (final)
+        if: steps.attempt2.outcome != 'success'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          avd-name: Pixel_API_31_AOSP
+          profile: 5.4in FWVGA
+          api-level: 31
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none -partition-size 2047
+          arch: x86_64
+          disable-animations: true
+          working-directory: example
+          script: yarn e2e:test:android-release --record-videos all --take-screenshots all --record-logs all --artifacts-location /mnt/artifacts
 
       - uses: actions/upload-artifact@v4
         if: failure()

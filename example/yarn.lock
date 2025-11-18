@@ -1837,7 +1837,7 @@
     bitcoinjs-lib "6.1.4"
 
 "@synonymdev/react-native-ldk@../lib":
-  version "0.0.160"
+  version "0.0.162"
   dependencies:
     "@synonymdev/raw-transaction-decoder" "1.1.0"
     bech32 "^2.0.0"
@@ -6585,7 +6585,7 @@ mkdirp@^0.5.1, mkdirp@~0.5.1:
   dependencies:
     minimist "^1.2.6"
 
-mocha-remote-cli@^1.6.1:
+mocha-remote-cli@^1.13.2:
   version "1.13.2"
   resolved "https://registry.yarnpkg.com/mocha-remote-cli/-/mocha-remote-cli-1.13.2.tgz#464a89081256f62a4720674caa5bc06cc84bc2ab"
   integrity sha512-Jly/TCM1BAhk3isQ4VzvHEfR5raRacjA9dqfvijN9X3/Gx+bJxQN+96AS41HiEi10PShrg6hWO2KvR49BlO68Q==
@@ -6595,7 +6595,7 @@ mocha-remote-cli@^1.6.1:
     mocha-remote-server "1.13.2"
     yargs "^17.7.2"
 
-mocha-remote-client@^1.6.1:
+mocha-remote-client@^1.13.2:
   version "1.13.2"
   resolved "https://registry.yarnpkg.com/mocha-remote-client/-/mocha-remote-client-1.13.2.tgz#db5ea0d1263f5fa38df7e5f8c62f1caa3007ff7f"
   integrity sha512-XDzWQrjA1/CmrNg0TipFOL4xK5xkjWjpwv8INKwA2pQ0QUckRWcnhEQZO78EFI5+pLu4fTAl79at6Z0Cks7orA==
@@ -8784,10 +8784,10 @@ write-file-atomic@^4.0.2:
     imurmurhash "^0.1.4"
     signal-exit "^3.0.7"
 
-ws@^6.2.2, ws@^7, ws@^7.0.0, ws@^7.5.1, ws@^7.5.10, ws@^8.17.1:
-  version "7.5.10"
-  resolved "https://registry.yarnpkg.com/ws/-/ws-7.5.10.tgz#58b5c20dc281633f6c19113f39b349bd8bd558d9"
-  integrity sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ==
+ws@^6.2.2, ws@^7, ws@^7.0.0, ws@^7.5.1, ws@^8.17.1:
+  version "8.18.3"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-8.18.3.tgz#b56b88abffde62791c639170400c93dcb0c95472"
+  integrity sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==
 
 xtend@^4.0.0, xtend@~4.0.1:
   version "4.0.2"

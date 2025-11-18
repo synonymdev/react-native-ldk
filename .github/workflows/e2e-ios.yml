@@ -11,6 +11,10 @@ on:
     branches:
       - 'master'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   e2e-ios:
     runs-on: macos-14
@@ -47,11 +51,18 @@ jobs:
           path: example/ios/Pods
           key: pods-${{ hashFiles('**/Podfile.lock') }}
 
+      - name: Clean CocoaPods cache
+        run: |
+          rm -rf ~/Library/Caches/CocoaPods
+          pod cache clean --all || true
+
       - name: Install pods
         working-directory: example
+        env:
+          COCOAPODS_DISABLE_CHECKSUM: true
         run: |
           gem update cocoapods xcodeproj
-          pod install --project-directory=ios
+          pod install --project-directory=ios || pod install --project-directory=ios
 
       - name: Install applesimutils
         run: |

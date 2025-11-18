@@ -113,7 +113,7 @@ describe('Eclair', function () {
 					channelCloseMinimum: 5,
 					outputSpendingFee: 10,
 					urgentOnChainSweep: 30,
-					maximumFeeEstimate: 30
+					maximumFeeEstimate: 30,
 				});
 			},
 		});

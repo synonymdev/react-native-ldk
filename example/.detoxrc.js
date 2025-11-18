@@ -25,20 +25,45 @@ module.exports = {
       binaryPath: 'android/app/build/outputs/apk/debug/app-debug.apk',
       build: 'cd android ; ./gradlew assembleDebug assembleAndroidTest -DtestBuildType=debug ; cd -',
       reversePorts: [
-        8081
+        8081,   // Metro bundler
+        8080,   // LND REST
+        9735,   // LND P2P
+        10009,  // LND RPC
+        18081,  // Core Lightning REST
+        9736,   // Core Lightning P2P
+        11001,  // Core Lightning RPC
+        28081,  // Eclair REST
+        9737,   // Eclair P2P
+        60001,  // Electrum
+        18443,  // Bitcoin RPC
+        3003    // Backup server
       ]
     },
     'android.release': {
       type: 'android.apk',
       binaryPath: 'android/app/build/outputs/apk/release/app-release.apk',
-      build: 'cd android ; ./gradlew assembleRelease assembleAndroidTest -DtestBuildType=release ; cd -'
+      build: 'cd android ; ./gradlew assembleRelease assembleAndroidTest -DtestBuildType=release ; cd -',
+      reversePorts: [
+        8081,   // Metro bundler
+        8080,   // LND REST
+        9735,   // LND P2P
+        10009,  // LND RPC
+        18081,  // Core Lightning REST
+        9736,   // Core Lightning P2P
+        11001,  // Core Lightning RPC
+        28081,  // Eclair REST
+        9737,   // Eclair P2P
+        60001,  // Electrum
+        18443,  // Bitcoin RPC
+        3003    // Backup server
+      ]
     }
   },
   devices: {
     simulator: {
       type: 'ios.simulator',
       device: {
-        type: 'iPhone 14'
+        type: 'iPhone 15'
       }
     },
     attached: {
