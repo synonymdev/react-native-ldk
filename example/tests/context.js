@@ -41,22 +41,23 @@ function runWithRetry(cmd, maxRetries = 30, delay = 1000) {
 
 try {
 	// Read lnd macaroon with retry
-	console.log('Waiting for LND macaroon...');
+	console.error('Waiting for LND macaroon...');
 	const lndmacaroon = readFileWithRetry('docker/lnd/admin.macaroon')
 		.toString('hex')
 		.toUpperCase();
-	console.log('LND macaroon loaded successfully');
+	console.error('LND macaroon loaded successfully');
 
 	// Run command to read clightning rune with retry
-	console.log('Waiting for CLightning to be ready...');
+	console.error('Waiting for CLightning to be ready...');
 	const clightning = runWithRetry(
 		'cd docker; docker compose exec --user clightning clightning lightning-cli createrune --regtest',
 	);
 	const lcrune = JSON.parse(clightning).rune;
-	console.log('CLightning rune generated successfully');
+	console.error('CLightning rune generated successfully');
 
 	const context = { lndmacaroon, lcrune };
 	const encoded = Buffer.from(JSON.stringify(context)).toString('hex');
+	// Only output the encoded context to stdout - everything else goes to stderr
 	console.log(encoded);
 } catch (error) {
 	console.error('Failed to prepare test context:', error.message);
