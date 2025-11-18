@@ -7,18 +7,11 @@ const {
 	launchAndWait,
 	navigateToDevScreen,
 	waitForLDKReady,
-	waitForText,
-	sleep,
 	checkComplete,
-	markComplete,
 	BitcoinRPC,
 	LNDRPC,
 	waitForLNDSync,
-	waitForPeerConnection,
-	waitForActiveChannel,
-	mineBlocks,
 	fundAddress,
-	waitForElectrumSync,
 } = require('./helpers');
 const config = require('./config');
 
@@ -27,7 +20,7 @@ const d = checkComplete('channels') ? describe.skip : describe;
 d('LDK Channel Management', () => {
 	let bitcoin;
 	let lnd;
-	let ldkNodeId;
+	// let ldkNodeId; // Will be populated once app exposes node ID
 
 	beforeAll(async () => {
 		// Initialize RPC clients
@@ -167,13 +160,13 @@ d('LDK Channel Management', () => {
 });
 
 d('LDK Multi-Node Channel Tests', () => {
-	let bitcoin;
-	let lnd;
+	// let bitcoin;
+	// let lnd;
 
-	beforeAll(async () => {
-		bitcoin = new BitcoinRPC(config.bitcoin.url);
-		lnd = new LNDRPC(config.lnd.host, config.lnd.restPort, config.lnd.macaroon);
-	});
+	// beforeAll(async () => {
+	// 	bitcoin = new BitcoinRPC(config.bitcoin.url);
+	// 	lnd = new LNDRPC(config.lnd.host, config.lnd.restPort, config.lnd.macaroon);
+	// });
 
 	beforeEach(async () => {
 		await launchAndWait();
@@ -204,13 +197,13 @@ d('LDK Multi-Node Channel Tests', () => {
 });
 
 d('LDK Zero-Conf Channels', () => {
-	let bitcoin;
-	let lnd;
+	// let bitcoin;
+	// let lnd;
 
-	beforeAll(async () => {
-		bitcoin = new BitcoinRPC(config.bitcoin.url);
-		lnd = new LNDRPC(config.lnd.host, config.lnd.restPort, config.lnd.macaroon);
-	});
+	// beforeAll(async () => {
+	// 	bitcoin = new BitcoinRPC(config.bitcoin.url);
+	// 	lnd = new LNDRPC(config.lnd.host, config.lnd.restPort, config.lnd.macaroon);
+	// });
 
 	beforeEach(async () => {
 		await launchAndWait();
@@ -242,13 +235,13 @@ d('LDK Zero-Conf Channels', () => {
 });
 
 d('LDK Channel Error Handling', () => {
-	let bitcoin;
-	let lnd;
+	// let bitcoin;
+	// let lnd;
 
-	beforeAll(async () => {
-		bitcoin = new BitcoinRPC(config.bitcoin.url);
-		lnd = new LNDRPC(config.lnd.host, config.lnd.restPort, config.lnd.macaroon);
-	});
+	// beforeAll(async () => {
+	// 	bitcoin = new BitcoinRPC(config.bitcoin.url);
+	// 	lnd = new LNDRPC(config.lnd.host, config.lnd.restPort, config.lnd.macaroon);
+	// });
 
 	beforeEach(async () => {
 		await launchAndWait();
@@ -279,19 +272,19 @@ d('LDK Channel Error Handling', () => {
 });
 
 // Helper function to wait for channel state
-async function waitForChannelState(expectedState, timeout = 30000) {
-	const startTime = Date.now();
-	while (Date.now() - startTime < timeout) {
-		try {
-			// Check if expected state text is visible
-			await expect(element(by.text(expectedState))).toBeVisible();
-			return;
-		} catch (e) {
-			await sleep(2000);
-		}
-	}
-	throw new Error(`Timeout waiting for channel state: ${expectedState}`);
-}
+// async function waitForChannelState(expectedState, timeout = 30000) {
+// 	const startTime = Date.now();
+// 	while (Date.now() - startTime < timeout) {
+// 		try {
+// 			// Check if expected state text is visible
+// 			await expect(element(by.text(expectedState))).toBeVisible();
+// 			return;
+// 		} catch (e) {
+// 			await sleep(2000);
+// 		}
+// 	}
+// 	throw new Error(`Timeout waiting for channel state: ${expectedState}`);
+// }
 
 // Note: Mark test suite as complete only when all critical tests pass
 // For now, these are placeholder tests requiring app UI implementation

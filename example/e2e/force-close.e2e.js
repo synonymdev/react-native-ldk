@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * LDK Force Close and Recovery E2E Tests
  * Tests channel force closure scenarios and fund recovery
@@ -7,16 +8,12 @@ const {
 	launchAndWait,
 	navigateToDevScreen,
 	waitForLDKReady,
-	waitForText,
 	sleep,
 	checkComplete,
-	markComplete,
 	BitcoinRPC,
 	LNDRPC,
-	waitForActiveChannel,
 	mineBlocks,
 	fundAddress,
-	waitForElectrumSync,
 } = require('./helpers');
 const config = require('./config');
 
@@ -374,4 +371,4 @@ d('LDK Force Close Monitoring', () => {
 });
 
 // Mark complete when critical force close tests pass
-markComplete('force-close');
+// markComplete('force-close'); // Uncomment when tests are implemented

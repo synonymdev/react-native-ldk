@@ -3,8 +3,6 @@
  * Shared configuration for all E2E tests
  */
 
-const { Platform } = require('react-native');
-
 /**
  * Get host for accessing localhost services
  * Android emulator uses 10.0.2.2 to access host machine

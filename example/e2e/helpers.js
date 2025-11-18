@@ -244,8 +244,8 @@ class LNDRPC {
 		};
 	}
 
-	async call(path, method = 'GET', body = null) {
-		const url = `http://${this.host}:${this.port}${path}`;
+	async call(apiPath, method = 'GET', body = null) {
+		const url = `http://${this.host}:${this.port}${apiPath}`;
 		const options = {
 			method,
 			headers: this.headers,
@@ -275,8 +275,10 @@ class LNDRPC {
 		const queryString = Object.keys(params)
 			.map((key) => `${key}=${params[key]}`)
 			.join('&');
-		const path = queryString ? `/v1/channels?${queryString}` : '/v1/channels';
-		return await this.call(path);
+		const apiPath = queryString
+			? `/v1/channels?${queryString}`
+			: '/v1/channels';
+		return await this.call(apiPath);
 	}
 
 	async openChannelSync(body) {
@@ -356,7 +358,9 @@ const waitForActiveChannel = async (lnd, channelPoint, timeout = 60000) => {
 		}
 		await sleep(2000);
 	}
-	throw new Error(`Timeout waiting for channel ${channelPoint} to become active`);
+	throw new Error(
+		`Timeout waiting for channel ${channelPoint} to become active`,
+	);
 };
 
 /**
@@ -387,10 +391,10 @@ const fundAddress = async (bitcoin, address, amount, confirmations = 6) => {
 
 /**
  * Wait for Electrum server to sync with Bitcoin Core
- * @param {number} timeout - Timeout in milliseconds
+ * @param {number} _timeout - Timeout in milliseconds (unused in simplified version)
  * @returns {Promise<void>}
  */
-const waitForElectrumSync = async (timeout = 30000) => {
+const waitForElectrumSync = async (_timeout = 30000) => {
 	// This is a simplified version - in production you'd connect to Electrum
 	// For now, just wait a bit for sync to happen
 	await sleep(2000);
@@ -398,10 +402,10 @@ const waitForElectrumSync = async (timeout = 30000) => {
 
 /**
  * Wait for backup to complete
- * @param {number} timeout - Timeout in milliseconds
+ * @param {number} _timeout - Timeout in milliseconds (unused in simplified version)
  * @returns {Promise<void>}
  */
-const waitForBackup = async (timeout = 10000) => {
+const waitForBackup = async (_timeout = 10000) => {
 	// Wait for backup state to update
 	await sleep(2000);
 	// In real implementation, you'd check backup server or app state
@@ -416,18 +420,21 @@ const getSeed = async () => {
 	// Navigate to settings/backup to view seed
 	// This is app-specific and would need to be implemented
 	// based on the actual UI flow
-	throw new Error('getSeed not implemented - app specific UI navigation required');
+	throw new Error(
+		'getSeed not implemented - app specific UI navigation required',
+	);
 };
 
 /**
  * Restore wallet from seed phrase
  * @param {string[]} seed - Array of seed words
- * @param {string} passphrase - BIP39 passphrase (optional)
+ * @param {string} _passphrase - BIP39 passphrase (optional)
  * @returns {Promise<void>}
  */
-const restoreWallet = async (seed, passphrase = '') => {
+const restoreWallet = async (seed, _passphrase = '') => {
 	// Navigate through restore flow
 	// This is app-specific and would need to be implemented
+	console.log('Seed to restore:', seed);
 	throw new Error(
 		'restoreWallet not implemented - app specific UI navigation required',
 	);
@@ -435,10 +442,10 @@ const restoreWallet = async (seed, passphrase = '') => {
 
 /**
  * Complete onboarding flow
- * @param {object} options - Onboarding options
+ * @param {object} _options - Onboarding options
  * @returns {Promise<void>}
  */
-const completeOnboarding = async (options = {}) => {
+const completeOnboarding = async (_options = {}) => {
 	// Navigate through onboarding screens
 	// This is app-specific and would need to be implemented
 	throw new Error(

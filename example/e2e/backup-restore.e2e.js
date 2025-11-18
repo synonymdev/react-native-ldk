@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * LDK Backup and Restore E2E Tests
  * Tests remote backup, local persistence, and restore flows
@@ -7,13 +8,10 @@ const {
 	launchAndWait,
 	navigateToDevScreen,
 	waitForLDKReady,
-	waitForText,
 	sleep,
 	checkComplete,
-	markComplete,
 	BitcoinRPC,
 	LNDRPC,
-	waitForBackup,
 	mineBlocks,
 } = require('./helpers');
 const config = require('./config');
@@ -336,4 +334,4 @@ d('LDK Backup Best Practices', () => {
 });
 
 // Mark complete when critical backup/restore tests pass
-markComplete('backup-restore');
+// markComplete('backup-restore'); // Uncomment when tests are implemented

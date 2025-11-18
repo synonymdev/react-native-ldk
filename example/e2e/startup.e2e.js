@@ -7,7 +7,6 @@ const {
 	launchAndWait,
 	navigateToDevScreen,
 	waitForLDKReady,
-	waitForText,
 	sleep,
 	checkComplete,
 	markComplete,

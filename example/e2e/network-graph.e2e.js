@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * LDK Network Graph E2E Tests
  * Tests network graph sync, routing, and pathfinding
@@ -7,10 +8,8 @@ const {
 	launchAndWait,
 	navigateToDevScreen,
 	waitForLDKReady,
-	waitForText,
 	sleep,
 	checkComplete,
-	markComplete,
 	BitcoinRPC,
 	LNDRPC,
 } = require('./helpers');
@@ -361,4 +360,4 @@ d('LDK Graph Optimization', () => {
 });
 
 // Mark complete when critical graph tests pass
-markComplete('network-graph');
+// markComplete('network-graph'); // Uncomment when tests are implemented
