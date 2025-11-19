@@ -22,6 +22,6 @@
     "ln-verifymessagejs": "^1.0.0"
   },
   "devDependencies": {
-    "ln-service": "^56.13.0"
+    "ln-service": "^57.27.0"
   }
 }
