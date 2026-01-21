@@ -1,0 +1,5 @@
+# E2E test files - ignore parser errors with complex async arrow functions
+backup-restore.e2e.js
+force-close.e2e.js
+network-graph.e2e.js
+payments.e2e.js

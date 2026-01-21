@@ -10,3 +10,9 @@ coverage
 rn-setup.js
 
 src/utils/backup/protos
+
+# E2E test files with ESLint parser issues
+e2e/backup-restore.e2e.js
+e2e/force-close.e2e.js
+e2e/network-graph.e2e.js  
+e2e/payments.e2e.js
