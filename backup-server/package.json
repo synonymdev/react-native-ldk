@@ -18,7 +18,7 @@
   "dependencies": {
     "@tweedegolf/storage-abstraction": "^1.4.6",
     "dotenv": "^16.3.1",
-    "fastify": "^4.21.0",
+    "fastify": "^5.7.3",
     "ln-verifymessagejs": "^1.0.0"
   },
   "devDependencies": {
